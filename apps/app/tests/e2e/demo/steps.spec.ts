@@ -1,4 +1,4 @@
-// Acceptance for the step tools (plan STP): the lead of the running P-2 works the Steps page in demo mode.
+// Acceptance for the step tools (plan STP): the manager of the demo company works the Steps page of the running P-2.
 // Filter to Only mine, group by person, drag a card to Blocked and name what it waits for, change a due day
 // in the List with the keyboard, tick a checklist item and reply to a comment. One browser plays the people
 // through the dev panel; the steps the test adds carry their owner, so the seeded steps do not matter.
@@ -17,28 +17,22 @@ async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager
   await page.keyboard.press("Escape");
 }
 
-/** Dev panel -> "Inbox of" a desk: the leader persona acts as that seat's holder. */
-async function actAs(page: Page, seat: string) {
-  await page.getByRole("button", { name: "Dev" }).click();
-  await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: new RegExp("^" + seat.replace(".", "\\.")) }).click();
-  await page.keyboard.press("Escape");
-}
-
 test("STP acceptance: filter, group, drag to Blocked, edit a cell, comment on a step", async ({ page }) => {
   await page.goto("/acme");
-  await viewAs(page, "Team leader");
-  await actAs(page, "D. Ferraro");
+  await viewAs(page, "Manager");
   await page.goto("/acme/projects/pj2?page=steps");
   const board = page.getByRole("region", { name: "Board", exact: true });
   const list = page.getByRole("region", { name: "List", exact: true });
 
-  await test.step("the lead adds two steps to To do, one owned by themself and one by L. Brandt", async () => {
+  await test.step("the manager adds one step owned by themself (the dialog) and one owned by L. Brandt (the board)", async () => {
+    await page.getByRole("button", { name: "+ Add step", exact: true }).first().click();
+    const dialog = page.getByRole("dialog", { name: "New step" });
+    await dialog.getByRole("textbox", { name: "What needs doing?" }).fill(MINE);
+    await dialog.getByRole("button", { name: "Add step" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(board.getByRole("article").filter({ hasText: MINE })).toBeVisible();
     await board.getByRole("button", { name: "Add a step to To do" }).click();
     const composer = board.getByRole("group", { name: "To do" });
-    await composer.getByRole("combobox", { name: "Owner" }).selectOption({ label: "D. Ferraro" });
-    await composer.getByRole("textbox", { name: "New step" }).fill(MINE);
-    await composer.getByRole("textbox", { name: "New step" }).press("Enter");
-    await expect(composer.getByRole("article").filter({ hasText: MINE })).toBeVisible();
     await composer.getByRole("combobox", { name: "Owner" }).selectOption({ label: "L. Brandt" });
     await composer.getByRole("textbox", { name: "New step" }).fill(OTHER);
     await composer.getByRole("textbox", { name: "New step" }).press("Enter");
@@ -100,7 +94,7 @@ test("STP acceptance: filter, group, drag to Blocked, edit a cell, comment on a 
     await sheet.getByRole("textbox", { name: "What needs doing?" }).fill(ITEM);
     await sheet.getByRole("textbox", { name: "What needs doing?" }).press("Enter");
     await expect(sheet.getByRole("heading", { name: "Steps inside · 0 of 1 done" })).toBeVisible();
-    await sheet.getByRole("checkbox", { name: "Mark " + ITEM + " done" }).check();
+    await sheet.getByRole("checkbox", { name: ITEM }).check();
     await expect(sheet.getByRole("heading", { name: "Steps inside · 1 of 1 done" })).toBeVisible();
   });
 

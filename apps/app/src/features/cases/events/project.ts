@@ -1,7 +1,7 @@
 // The project area's events (plan REG, decision D8): every project.* type, the app list of them, and the payload
 // fields only project events carry. MOV and RES write here; the composer (../events.ts) is closed. A field that more
 // than one file uses (stepId, dueDay, userId, check, source, system, ...) lives in CorePayload in ../events.ts.
-import type { PageIconKey, StepChecklistOp, StepWaitingOnInput, ToolKind } from "@/features/projects/types";
+import type { FormFieldInput, PageIconKey, StepChecklistOp, StepColumn, StepWaitingOnInput, ToolKind } from "@/features/projects/types";
 import type { MeasureImpact } from "@/features/projects/measure-source";
 
 /** The project.* types the app may append, in the order of APP_EVENT_TYPES. */
@@ -28,6 +28,11 @@ export const PROJECT_EVENT_TYPES = [
   "project.page.unmerged", // { mergeId }
   "project.milestone.added", // { milestoneId, title, startDay?, dueDay, note? }
   "project.milestone.edited", // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }
+  "project.form.saved", // { formId, title, intro, fields, shared }
+  "project.form.answered", // { formId, formRev, requestId, answers }
+  "project.request.stepped", // { requestId, step: { stepId, text, column, ownerUserId?, dueDay?, note? } }
+  "project.request.declined", // { requestId, why }
+  "project.request.reopened", // { requestId }
 ] as const;
 
 /** Every project.* type, with the fields it carries. */
@@ -85,7 +90,13 @@ export type ProjectAreaEventType =
   | "project.page.unmerged" // { mergeId }
   // Plan tools (plan PLN, D3).
   | "project.milestone.added" // { milestoneId, title, startDay?, dueDay, note? }  title 1-80, note up to 1000, dueDay not before startDay
-  | "project.milestone.edited"; // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }  only the fields sent change; startDay null clears; removed clears milestoneId on its steps
+  | "project.milestone.edited" // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }  only the fields sent change; startDay null clears; removed clears milestoneId on its steps
+  // Requests and forms (plan REQ, D4). Every payload fits EVENT_BUDGET.
+  | "project.form.saved" // { formId, title, intro, fields: [{ id, kind, label, required, options? }], shared }  title 1-80, intro up to 1000, 1-20 fields; every save counts the form's rev up
+  | "project.form.answered" // { formId, formRev, requestId, answers: { [fieldId]: string } }  formRev is the form's current rev; by any signed-in person of the company while the form is shared
+  | "project.request.stepped" // { requestId, step: { stepId, text, column, ownerUserId?, dueDay?, note? } }  one event that adds the step and links it; only a new request
+  | "project.request.declined" // { requestId, why }  why 1-400; only a new request
+  | "project.request.reopened"; // { requestId }  undo: a declined request becomes new; a stepped one only while its step is untouched, then the step goes away with it
 
 // Compile-time: every app type is a member of the area's union.
 const _appTypesAreMembers: readonly ProjectAreaEventType[] = PROJECT_EVENT_TYPES;
@@ -132,4 +143,13 @@ export type ProjectAreaPayload = {
   startDay?: number | null; // project.step.edited, project.milestone.added, project.milestone.edited (a working-day number; null clears)
   milestoneId?: string | null; // project.step.edited (null clears), project.milestone.added, project.milestone.edited
   shipped?: boolean; // project.milestone.edited
+  // Requests and forms (plan REQ). title and why are shared core fields.
+  formId?: string; formRev?: number; requestId?: string; // project.form.*, project.request.*
+  intro?: string; shared?: boolean; fields?: FormFieldInput[]; // project.form.saved
+  answers?: Record<string, string>; // project.form.answered
+  // project.request.stepped: the step it adds. case.approval (./approval.ts) uses the same field for the index of the answered step in its run.
+  step?: number | RequestStepInput;
 };
+
+/** The step a request becomes, with the fields of project.step.added. */
+export type RequestStepInput = { stepId: string; text: string; column: StepColumn; ownerUserId?: string | null; dueDay?: number | null; note?: string };

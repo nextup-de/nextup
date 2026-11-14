@@ -32,7 +32,7 @@ export type ApprovalAreaPayload = {
   runId?: string; // case.approval and its clock facts: the approval run (the case.provisional event's id)
   dueRev?: number; // case.approval and its clock facts: the step's revision, +1 on each send-back (D22, D32)
   decidingRoleId?: string | null; // case.provisional: the role whose desk said the yes, frozen for the run (D33)
-  step?: number; // case.approval: the index of the answered step in its run
+  // `step` (case.approval: the index of the answered step in its run) is declared with project.request.stepped in ./project.ts: one field, two meanings.
   approvalAnswer?: "yes" | "conditions" | "back" | "no"; // case.approval (D22)
   conditions?: string; // case.approval: the text of an approval with conditions, 1-1000 characters
   present?: number; // case.approval of a council: how many were present, 0-200; never who voted how (D3)
