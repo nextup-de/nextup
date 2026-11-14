@@ -14,7 +14,14 @@ export type MergeRecord = { from: { id: string; title: string; icon: PageIconKey
 export type StepColumn = "todo" | "doing" | "blocked" | "done";
 export const STEP_COLUMNS: readonly StepColumn[] = ["todo", "doing", "blocked", "done"];
 
+export type StepWaitingOn = { kind: "person" | "outside" | "nobody"; userId: string | null; name: string | null };
+export type StepWaitingOnInput = { kind: StepWaitingOn["kind"]; userId?: string | null; name?: string | null };
+export type StepChecklistOp = "add" | "edit" | "toggle" | "remove";
+
 export type Step = {
+  checklist: { id: string; text: string; done: boolean }[];
+  comments: { id: string; text: string; byUserId: string | null; by: string; day: number; replyTo: string | null }[];
+  waitingOn: StepWaitingOn | null;
   id: string;
   text: string;
   owner: string | null;

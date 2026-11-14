@@ -29,8 +29,13 @@ const ROUTES: Route[] = [{
 export const SEED: ReduceSeed = { cases: [], ideas: [], problems: [], routes: ROUTES, promiseDays: 5, seats: SEATS, roles: ROLES };
 export const DAY = 14;
 
-// PGE adds explicit empty page state; leave the pre-OVL golden unchanged.
-const beforePages = (p: ReducedProject) => Object.fromEntries(Object.entries(p).filter(([key]) => !["pages", "removed", "merges"].includes(key)));
+// PGE and STP add explicit empty page and step state; leave the pre-OVL golden unchanged.
+const beforePages = (p: ReducedProject) => Object.fromEntries(Object.entries(p)
+  .filter(([key]) => !["pages", "removed", "merges"].includes(key))
+  .map(([key, value]) => [key, key === "steps" ? p.steps.map((step) => {
+    expect(step).toMatchObject({ checklist: [], comments: [], waitingOn: null });
+    return Object.fromEntries(Object.entries(step).filter(([field]) => !["checklist", "comments", "waitingOn"].includes(field)));
+  }) : value]));
 
 it("OVL replay writes the golden of a pre-OVL log", async () => {
   const state = reduce(SEED, logFromRows(REPLAY_ROWS, DAY));

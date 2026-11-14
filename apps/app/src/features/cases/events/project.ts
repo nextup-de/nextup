@@ -1,13 +1,13 @@
 // The project area's events (plan REG, decision D8): every project.* type, the app list of them, and the payload
 // fields only project events carry. MOV and RES write here; the composer (../events.ts) is closed. A field that more
 // than one file uses (stepId, dueDay, userId, check, source, system, ...) lives in CorePayload in ../events.ts.
-import type { PageIconKey, ToolKind } from "@/features/projects/types";
+import type { PageIconKey, StepChecklistOp, StepWaitingOnInput, ToolKind } from "@/features/projects/types";
 import type { MeasureImpact } from "@/features/projects/measure-source";
 
 /** The project.* types the app may append, in the order of APP_EVENT_TYPES. */
 export const PROJECT_EVENT_TYPES = [
   "project.member", "project.handed", "project.baseline", "project.started", "project.step.added",
-  "project.step.moved", "project.step.edited", "project.linked", "project.sync", "project.commented", "project.done",
+  "project.step.moved", "project.step.edited", "project.step.checklist", "project.step.commented", "project.linked", "project.sync", "project.commented", "project.done",
   "project.measured", "project.measure.confirmed", "project.rewarded", "project.claimed", "project.stopped",
   "project.lead.answered", "project.template", "project.invited", "project.invite.answered", "project.goal",
   "project.start.moved",
@@ -36,7 +36,9 @@ export type ProjectAreaEventType =
   | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
   | "project.started" // -  refused without a baseline
   | "project.step.added" // { stepId, text, owner?, ownerUserId?, dueDay?, note?, to?, external? }  to: the column it starts in (To do when missing)
-  | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why?, before? }  before: the card it lands above (null = the bottom)
+  | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why?, before?, waitingOn? }  before: the card it lands above (null = the bottom)
+  | "project.step.checklist" // { stepId, op, itemId, text?, done? }: one item per event
+  | "project.step.commented" // { stepId, text, replyTo? }: replies name an earlier comment on this step
   | "project.step.edited" // { stepId, text?, owner?, ownerUserId?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
@@ -86,6 +88,9 @@ void _appTypesAreMembers;
 
 /** The EventPayload fields only project events carry. */
 export type ProjectAreaPayload = {
+  op?: StepChecklistOp; itemId?: string; done?: boolean; // project.step.checklist
+  replyTo?: string | null; // project.step.commented
+  waitingOn?: StepWaitingOnInput; // project.step.moved to blocked
   metric?: string; unit?: string; value?: number; better?: "up" | "down"; none?: boolean; // project.baseline, project.measured (value)
   owner?: string; // project.step.added, project.step.edited
   before?: string | null; removed?: boolean; // project.step.moved (before), project.step.edited (removed)

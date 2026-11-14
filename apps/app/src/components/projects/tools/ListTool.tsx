@@ -1,8 +1,7 @@
 "use client";
+import { List } from "../steps/list/List";
 import type { ToolProps } from "./types";
-import { ToolComing } from "./content";
 
 export function ListTool(props: ToolProps) {
-  void props;
-  return <ToolComing />;
+  return <List {...props} />;
 }
