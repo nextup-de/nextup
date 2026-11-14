@@ -1,4 +1,3 @@
-/* eslint-disable nextup/no-inline-strings -- test titles are not user-facing */
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
@@ -7,12 +6,12 @@ import type { ReducedProject, Step } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
 import { createT } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
-import { CalendarTool } from "./CalendarTool";
+import { CalendarTool } from "@/components/projects/tools/CalendarTool";
 
 vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ act: { project: {} }, S: { day: 10 }, seed: { clock: { mode: "demo" }, seats: [] }, actorUserId: "u1" }) }));
-vi.mock("../parts", () => ({ useRights: () => ({ addStep: true }), useSend: () => () => true, teamOf: () => [], withIds: () => [] }));
-vi.mock("../steps/StepPanel", () => ({ StepPanel: () => null }));
-vi.mock("../steps/CreateStepDialog", () => ({ CreateStepDialog: () => null }));
+vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ addStep: true }), useSend: () => () => true, teamOf: () => [], withIds: () => [] }));
+vi.mock("@/components/projects/steps/StepPanel", () => ({ StepPanel: () => null }));
+vi.mock("@/components/projects/steps/CreateStepDialog", () => ({ CreateStepDialog: () => null }));
 
 const t = createT("en");
 const step = (id: string, dueDay: number | null): Step => ({ id, text: "Step " + id, dueDay, column: "todo", external: null } as Step);
