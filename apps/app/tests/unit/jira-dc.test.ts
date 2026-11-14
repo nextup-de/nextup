@@ -38,7 +38,7 @@ describe("CNX Jira Data Center client", () => {
     expect(await api.project("NUP")).toMatchObject({ key: "NUP", name: "NextUp test" });
     expect(await api.project("NOPE")).toBeNull();
     expect((await api.issueTypes("NUP")).map((t) => t.id)).toEqual([EPIC_TYPE.id, TASK_TYPE.id]);
-    expect(await api.permissions("NUP")).toEqual({ browse: true, create: true, edit: true, transition: true, comment: true });
+    expect(await api.permissions("NUP")).toEqual({ browse: true, create: true, edit: true, transition: true, comment: true, administer: false });
   });
 
   it("creates an epic and a child with labels; edits, labels and moves it", async () => {

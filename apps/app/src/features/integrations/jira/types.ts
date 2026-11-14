@@ -8,6 +8,7 @@
 //   JiraIssue, JiraHistory, ...      ->  Jira's JSON as the pure pull code reads it
 //   JiraStatusView                   ->  what the admin page and the lead UI show
 //   TestJira                         ->  the admin "Test connection" (server/jira/test.ts)
+import type { CalendarSpec } from "@/features/clock";
 import type { StepColumn } from "@/features/projects/types";
 
 /** "dc" (Data Center) is a seam only: the settings accept it, nothing implements it yet. */
@@ -82,6 +83,61 @@ export type JiraStatus = { id: string; name: string; statusCategory: { key: Jira
 export type JiraIssueType = { id: string; name: string; subtask?: boolean };
 export type JiraUserRef = { accountId: string; displayName?: string };
 
+// ---- Versions and attachments (plan JSY) -----------------------------------------------------------
+
+/** A Jira version of the company's Jira project. Dates are `YYYY-MM-DD` as Jira writes them. */
+export type JiraVersion = {
+  id: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  releaseDate?: string;
+  released: boolean;
+  archived: boolean;
+};
+
+/** A version as an issue names it in `fixVersions`. */
+export type JiraVersionRef = { id: string; name: string; released?: boolean; releaseDate?: string };
+
+/** An attachment of an issue. `content` is Jira's own download URL: it is linked, never fetched. */
+export type JiraAttachment = { id: string; filename: string; size: number; mimeType?: string; created: string; author?: JiraUserRef; content: string };
+
+/**
+ * How a day number of the log maps to a date when milestones go to Jira (plan JSY D10, D21). The mode follows the company's
+ * clock: `workdays` counts working days of the company calendar after CLOCK_EPOCH (features/clock: dateOfWorkday,
+ * workdayOf); `calendar` counts every calendar day from `epoch`, the ISO date of day 0. Nothing converts without one of them.
+ */
+export type JiraDayClock = { mode: "workdays"; calendar: CalendarSpec } | { mode: "calendar"; epoch: string };
+
+/** The version fields a person's change may write (D21): only what changed since the cursor goes to Jira. */
+export type JiraVersionPatch = { name?: string; description?: string; startDate?: string | null; releaseDate?: string | null; released?: boolean; archived?: boolean };
+
+/** One attachment row of the Files tool's read-only Jira group (plan JSY D15, D23). */
+export type AttachmentRow = {
+  /** The attachment's id and its issue key together identify a row (an attachment id alone is not unique across issues). */
+  id: string;
+  issueKey: string;
+  filename: string;
+  size: number;
+  mimeType?: string;
+  created: string;
+  /** The author's display name from Jira, or "". Never compared or ranked. */
+  who: string;
+  /** The project's step the issue belongs to, or null for the epic. */
+  stepId: string | null;
+  /** A same-site Jira link (the issue's page), never a synthesized root path. */
+  openUrl: string;
+};
+
+/**
+ * What the Files tool's Jira group gets (plan JSY D15, D23). `ok` carries `partial: true` when some linked issue could not be
+ * read (403, 404, an error): the rows are those that could be, and the screen says the list may be incomplete. `no-access`:
+ * the viewer may not read the project. `not-connected`: no Jira, or the project does not sync. `offline`: nothing could be read.
+ */
+export type AttachmentsAnswer =
+  | { state: "ok"; rows: AttachmentRow[]; more: number; partial: boolean }
+  | { state: "empty" | "not-connected" | "no-access" | "offline" };
+
 export type JiraIssue = {
   id: string;
   key: string;
@@ -93,6 +149,10 @@ export type JiraIssue = {
     labels?: string[];
     /** ISO 8601, as Jira writes it. */
     updated?: string;
+    /** The issue's fix versions (plan JSY): present when the search asked for the field. */
+    fixVersions?: JiraVersionRef[];
+    /** The issue's attachments (plan JSY): read-only, present when the search asked for the field. */
+    attachment?: JiraAttachment[];
   };
   /** Present when the search asked for expand=changelog. Oldest history first is NOT guaranteed. */
   changelog?: { histories: JiraHistory[] };
@@ -118,7 +178,7 @@ export type JiraComment = {
 export type JiraTransition = { id: string; name: string; to: JiraStatus };
 
 /** What the integration account may do in the project (GET /mypermissions), for the connection test. */
-export type JiraPermissions = { browse: boolean; create: boolean; edit: boolean; transition: boolean; comment: boolean };
+export type JiraPermissions = { browse: boolean; create: boolean; edit: boolean; transition: boolean; comment: boolean; /** Administer Projects: the only permission that lets the account create or change versions (plan JSY D14). */ administer: boolean };
 
 export type JiraProjectInfo = { id: string; key: string; name: string };
 
@@ -163,6 +223,16 @@ export interface JiraApi {
   /** The moves open from the issue's current status. */
   transitions(key: string): Promise<JiraTransition[]>;
   transition(key: string, transitionId: string): Promise<void>;
+
+  // ---- Versions (plan JSY): need the Administer Projects permission to write ----
+  /** Every version of the project, archived ones included. */
+  versions(projectKey: string): Promise<JiraVersion[]>;
+  /** Create a version. `released` creates it already released (a milestone that is shipped before it first reaches Jira). */
+  createVersion(p: { projectKey: string; name: string; description: string; startDate: string | null; releaseDate: string | null; released?: boolean }): Promise<JiraVersion>;
+  /** Change only the fields sent; a date sent as null clears it. */
+  updateVersion(id: string, patch: JiraVersionPatch): Promise<void>;
+  /** Set the issue's fix versions to exactly these version ids. */
+  setFixVersions(issueKey: string, versionIds: string[]): Promise<void>;
 }
 
 /** Builds the client for a company's settings and its plain (opened) token. */
@@ -170,7 +240,14 @@ export type JiraApiFactory = (settings: JiraSettings, token: string) => JiraApi;
 
 // ---- The connection test --------------------------------------------------------------------------
 
-export type JiraCheck = { id: "auth" | "project" | "types" | "permissions" | "labels"; ok: boolean; label: string; detail: string };
+export type JiraCheck = {
+  id: "auth" | "project" | "types" | "permissions" | "labels" | "versions";
+  ok: boolean;
+  label: string;
+  detail: string;
+  /** A failed advisory check is shown but does not turn the whole result red (the Versions check, plan JSY D14). */
+  advisory?: boolean;
+};
 
 export type JiraTestResult = {
   /** True when every check passed. */

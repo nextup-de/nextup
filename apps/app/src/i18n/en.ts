@@ -62,6 +62,7 @@ import { projectPages } from "./messages/projectPages";
 import { projectSteps } from "./messages/projectSteps";
 import { projectCalendar } from "./messages/projectCalendar";
 import { projectFiles } from "./messages/projectFiles";
+import { projectJsy } from "./messages/projectJsy";
 import { projectPlan } from "./messages/projectPlan";
 import { projectHub } from "./messages/projectHub";
 import { projectRequests } from "./messages/projectRequests";
@@ -139,6 +140,7 @@ export const en = {
   projectSteps: projectSteps.en,
   projectCalendar: projectCalendar.en,
   projectFiles: projectFiles.en,
+  projectJsy: projectJsy.en,
   projectPlan: projectPlan.en,
   projectHub: projectHub.en,
   projectRequests: projectRequests.en,
