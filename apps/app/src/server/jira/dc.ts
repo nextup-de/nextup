@@ -9,6 +9,7 @@ import {
   JiraError,
   type JiraApi,
   type JiraApiFactory,
+  type JiraAttachment,
   type JiraComment,
   type JiraHistory,
   type JiraIssue,
@@ -17,6 +18,7 @@ import {
   type JiraProjectInfo,
   type JiraTransition,
   type JiraUserRef,
+  type JiraVersion,
 } from "@/features/integrations/jira/types";
 
 const TIMEOUT_MS = 20_000;
@@ -24,7 +26,7 @@ const TIMEOUT_MS = 20_000;
 const MAX_INLINE_WAIT_MS = 5_000;
 const PAGE = 100;
 const MAX_PAGES = 20;
-const FIELDS = ["summary", "status", "issuetype", "parent", "labels", "updated"];
+const FIELDS = ["summary", "status", "issuetype", "parent", "labels", "updated", "fixVersions", "attachment"];
 
 type Fetch = typeof fetch;
 type Opts = { fetch?: Fetch; sleep?: (ms: number) => Promise<void> };
@@ -55,7 +57,10 @@ function userRef(raw: unknown): JiraUserRef | undefined {
 }
 
 function issueOf(raw: unknown): JiraIssue {
-  const i = raw as JiraIssue;
+  let i = raw as JiraIssue;
+  // Attachments carry their author as a Data Center user: key and display name, like comments.
+  const attachment = record(record(raw).fields).attachment;
+  if (Array.isArray(attachment)) i = { ...i, fields: { ...i.fields, attachment: attachment.map((a) => ({ ...(a as JiraAttachment), author: userRef(record(a).author) })) } };
   const histories = record(record(raw).changelog).histories;
   if (!Array.isArray(histories)) return i;
   return {
@@ -66,6 +71,18 @@ function issueOf(raw: unknown): JiraIssue {
 
 function commentOf(raw: unknown): JiraComment {
   return { ...(raw as JiraComment), author: userRef(record(raw).author) };
+}
+
+/** A Jira version as the contract has it: dates stay `YYYY-MM-DD`, a missing or empty one is undefined. */
+function versionOf(raw: unknown): JiraVersion {
+  const v = record(raw);
+  const date = (x: unknown): string | undefined => (typeof x === "string" && /^\d{4}-\d{2}-\d{2}/.test(x) ? x.slice(0, 10) : undefined);
+  if (typeof v.id !== "string" && typeof v.id !== "number") throw new JiraError("502 Jira did not return the version's id", 502);
+  return {
+    id: String(v.id), name: typeof v.name === "string" ? v.name : "", ...(typeof v.description === "string" && v.description ? { description: v.description } : {}),
+    ...(date(v.startDate) ? { startDate: date(v.startDate) } : {}), ...(date(v.releaseDate) ? { releaseDate: date(v.releaseDate) } : {}),
+    released: v.released === true, archived: v.archived === true,
+  };
 }
 
 export function createDcApi(
@@ -150,17 +167,35 @@ export function createDcApi(
     },
 
     async permissions(projectKey): Promise<JiraPermissions> {
-      const names = ["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "TRANSITION_ISSUES", "ADD_COMMENTS"];
+      const names = ["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "TRANSITION_ISSUES", "ADD_COMMENTS", "ADMINISTER_PROJECTS"];
       const r = record(record(await call("GET", `/mypermissions?projectKey=${enc(projectKey)}&permissions=${names.join(",")}`)).permissions);
       const has = (n: string) => record(r[n]).havePermission === true;
-      return { browse: has(names[0]), create: has(names[1]), edit: has(names[2]), transition: has(names[3]), comment: has(names[4]), administer: false };
+      return { browse: has(names[0]), create: has(names[1]), edit: has(names[2]), transition: has(names[3]), comment: has(names[4]), administer: has(names[5]) };
     },
 
-    // Versions are not built yet (plan JSY, JSY-A1): the contract is in place, the calls come later.
-    async versions() { throw new JiraError("Versions are not built yet.", 0); },
-    async createVersion() { throw new JiraError("Versions are not built yet.", 0); },
-    async updateVersion() { throw new JiraError("Versions are not built yet.", 0); },
-    async setFixVersions() { throw new JiraError("Versions are not built yet.", 0); },
+    // ---- Versions (plan JSY): writing needs the Administer Projects permission; a refusal is a JiraError with the status first ----
+    async versions(projectKey) {
+      // Data Center answers the project's versions as one array (archived ones included).
+      const r = await call("GET", `/project/${enc(projectKey)}/versions`);
+      return (Array.isArray(r) ? r : []).map(versionOf);
+    },
+    async createVersion(p) {
+      return versionOf(await call("POST", "/version", {
+        name: p.name, project: p.projectKey, released: p.released === true,
+        ...(p.description ? { description: p.description } : {}),
+        ...(p.startDate ? { startDate: p.startDate } : {}),
+        ...(p.releaseDate ? { releaseDate: p.releaseDate } : {}),
+      }));
+    },
+    async updateVersion(id, patch) {
+      // Only the keys present are sent; a date of null is sent as null, which clears it in Jira.
+      const body: Record<string, unknown> = {};
+      for (const k of ["name", "description", "startDate", "releaseDate", "released", "archived"] as const) if (patch[k] !== undefined) body[k] = patch[k];
+      await call("PUT", `/version/${enc(id)}`, body);
+    },
+    async setFixVersions(issueKey, versionIds) {
+      await call("PUT", `/issue/${enc(issueKey)}`, { fields: { fixVersions: versionIds.map((id) => ({ id })) } });
+    },
 
     async search(jql, o) {
       const out: JiraIssue[] = [];
