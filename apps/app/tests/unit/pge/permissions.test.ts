@@ -99,7 +99,7 @@ it("PGE page rights: counts defaults, rejects existing ids and keeps single kind
   refused("project.page.added", { ...added, pageId: "gone" }, "projectPages.permPageExists");
   refused("project.tool.added", { pageId: "steps", toolId: "gone-0", kind: "doc" }, "projectPages.permPageExists");
   p.pages = p.pages.filter((x) => x.id !== "agent");
-  refused("project.page.added", { ...added, tools: [{ toolId: "a1", kind: "agent" }, { toolId: "a2", kind: "agent" }] }, "projectPages.permToolOnce");
+  refused("project.page.added", { ...added, pageId: "fresh", tools: [{ toolId: "a1", kind: "agent" }, { toolId: "a2", kind: "agent" }] }, "projectPages.permToolOnce");
 });
 
 it("PGE page rights: refuses overflowing adds, moves, restores, merges and unmerges and protects overview and the last page", () => {
