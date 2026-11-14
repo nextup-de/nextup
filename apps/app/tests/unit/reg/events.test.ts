@@ -26,7 +26,7 @@ const PGE_EVENT_TYPES = [
 ];
 
 describe("REG events split", () => {
-  const recorded: string[] = [...snapshot.appEventTypes, ...PGE_EVENT_TYPES, "project.step.checklist", "project.step.commented"].sort();
+  const recorded: string[] = [...snapshot.appEventTypes, ...PGE_EVENT_TYPES, "project.step.checklist", "project.step.commented", "project.milestone.added", "project.milestone.edited"].sort();
   it("every case.* app type is in CASE_EVENT_TYPES and every project.* one in PROJECT_EVENT_TYPES", () => {
     // GAT's four types are case.* by name and live in the approval area.
     expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.") && !(APPROVAL_EVENT_TYPES as readonly string[]).includes(t)));
@@ -41,7 +41,7 @@ describe("REG events split", () => {
     expect(OVERLOAD_EVENT_TYPES).toEqual(["person.away", "person.back", "desk.covered"]);
     expect([...OVERLOAD_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("person.") || t.startsWith("desk.")));
   });
-  it("APP_EVENT_TYPES as a set equals the pre-split snapshot plus PGE and STP additions, with no type twice", () => {
+  it("APP_EVENT_TYPES as a set equals the pre-split snapshot plus PGE, STP and PLN additions, with no type twice", () => {
     expect([...APP_EVENT_TYPES].sort()).toEqual(recorded);
     expect(new Set(APP_EVENT_TYPES).size).toBe(APP_EVENT_TYPES.length);
   });
