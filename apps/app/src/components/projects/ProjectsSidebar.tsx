@@ -310,7 +310,7 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
       </div>
     </>}
     <AddPageDialog p={p} open={adding} onClose={() => setAdding(false)} onCreated={(id) => { setNewPages((ids) => [...ids, id]); router.push(pageUrl(id)); }} />
-    {merging && <MergeDialog p={p} open fromPageId={merging.from} intoPageId={merging.into} onClose={() => setMerging(null)} onMerged={(id) => { setMerging(null); router.push(pageUrl(id)); }} />}
+    {merging && <MergeDialog p={p} open fromPageId={merging.from} intoPageId={merging.into} onClose={() => setMerging(null)} onMerged={(id) => router.push(pageUrl(id))} />}
   </div>;
 }
 
