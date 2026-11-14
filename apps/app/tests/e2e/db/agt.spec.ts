@@ -337,7 +337,7 @@ test.describe("AGT acceptance: the project agent", () => {
       const accepted = (await eventsOf("agent.accepted")).at(-1)!;
       expect(accepted).toMatchObject({ payload: { suggestionKind: "plan", followUpId: added.id } });
       await lead.goto(`/${SLUG}/projects/${PROJECT_ID}?tab=board`);
-      await expect(lead.getByText(PLAN_STEP)).toBeVisible();
+      await expect(lead.getByRole("region", { name: "Board", exact: true }).getByText(PLAN_STEP)).toBeVisible(); // the Steps page also lists it
       await lead.context().close();
     });
 
