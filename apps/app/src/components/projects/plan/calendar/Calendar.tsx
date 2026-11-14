@@ -15,10 +15,11 @@ import { teamOf, useRights, useSend, withIds } from "../../parts";
 import { CreateStepDialog } from "../../steps/CreateStepDialog";
 import { StepPanel } from "../../steps/StepPanel";
 import type { ToolProps } from "../../tools/types";
+import { HeadSlot } from "../../tools/HeadSlot";
 import { useDayMap } from "./days";
 import styles from "./Calendar.module.css";
 
-export function Calendar({ p, jira }: ToolProps) {
+export function Calendar({ p, jira, page, tool }: ToolProps) {
   const { act, S, seed, actorUserId } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -54,7 +55,7 @@ export function Calendar({ p, jira }: ToolProps) {
   };
 
   return <section className={styles.calendar} aria-label={t("projectPlan.calendarLabel")}>
-    <div className={styles.toolbar}>
+    <HeadSlot page={page} tool={tool}><div className={styles.toolbar}>
       <button type="button" className={styles.control} onClick={() => setAnchor(map.today)}>{t("projectPlan.calToday")}</button>
       <button type="button" className={styles.control} aria-label={t("projectPlan.calPrev")} onClick={() => setAnchor(shiftPeriod(anchor, scale, -1))}>‹</button>
       <strong className={styles.title}>{title}</strong>
@@ -64,7 +65,7 @@ export function Calendar({ p, jira }: ToolProps) {
       <div role="group" aria-label={t("projectPlan.scaleLabel")} className={styles.segmented}>
         {(["month", "week"] as const).map((s) => <button key={s} type="button" className={styles.control} aria-pressed={scale === s} onClick={() => setScale(s)}>{t(s === "month" ? "projectPlan.calMonth" : "projectPlan.calWeek")}</button>)}
       </div>
-    </div>
+    </div></HeadSlot>
     {error && <p role="alert" className={styles.error}>{error}</p>}
     <div className={styles.body}>
       <div className={styles.grid} data-days={map.workdays ? 5 : 7}>

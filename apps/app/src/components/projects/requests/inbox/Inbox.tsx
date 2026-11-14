@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { formSummaries, REQUEST_FILTERS, requestCounts, requestList, undoOf, type RequestFilter } from "@/features/projects/requests-view";
-import type { ReducedProject } from "@/features/projects/types";
+import type { ProjectPage, ReducedProject, ToolInstance } from "@/features/projects/types";
+import { HeadSlot } from "../../tools/HeadSlot";
 import { useT } from "@/i18n/client";
 import { useRights, useSend } from "../../parts";
 import { FormsPanel } from "./FormsPanel";
@@ -15,7 +16,7 @@ const FILTER_LABEL: Record<RequestFilter, "projectRequests.requestStateNew" | "p
   new: "projectRequests.requestStateNew", stepped: "projectRequests.requestStateStepped", declined: "projectRequests.requestStateDeclined",
 };
 
-export function Inbox({ p }: { p: ReducedProject }) {
+export function Inbox({ p, page, tool }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance }) {
   const { act } = useDemo();
   const t = useT();
   const { text, empty } = useText();
@@ -41,17 +42,17 @@ export function Inbox({ p }: { p: ReducedProject }) {
     <section className={styles.page} aria-labelledby={"requests-" + p.id}>
       <div className={styles.head}>
         <div>
-          <h2 id={"requests-" + p.id} className={styles.title}>{t("projectRequests.requestsTitle")}</h2>
+          <h2 id={"requests-" + p.id} className="nh-sr">{t("projectRequests.requestsTitle")}</h2>
           <p className={styles.sub}>{counts.new > 0 ? text("subtitleNew", { count: counts.new }) : text("subtitleNone")}</p>
         </div>
       </div>
-      <div className={styles.chips} role="group" aria-label={text("filterLabel")}>
+      <HeadSlot page={page} tool={tool}><div className={styles.chips} role="group" aria-label={text("filterLabel")}>
         {REQUEST_FILTERS.map((f) => (
           <button key={f} type="button" className={styles.chip} aria-pressed={filter === f} onClick={() => setFilter(f)}>
             {t(FILTER_LABEL[f])}{f === "new" || counts[f] > 0 ? <span className={styles.count}>{counts[f]}</span> : null}
           </button>
         ))}
-      </div>
+      </div></HeadSlot>
       <div className={styles.body}>
         <ul className={styles.list}>
           {rows.length === 0 && <li><p className={styles.empty}>{empty(filter)}</p></li>}

@@ -45,15 +45,7 @@ export function List({ p, jira }: ToolProps) {
     if (send("project.step.added", { stepId: "probe", text: text.trim() }, () => act.project.addStep(p.id, text.trim()))) setText("");
   };
   return <div className={styles.list}>
-    <div className={styles.toolbar}>
-      <input type="search" className={`nh-input ${styles.search}`} aria-label={t("projectSteps.searchList")} placeholder={t("projectSteps.searchList")} value={filter.query} onChange={(e) => { setFilter({ ...filter, query: e.target.value }); setAll(false); }} />
-      <div className={styles.faces} role="group" aria-label={t("projectSteps.owner")}>
-        {owners.map((owner) => <button type="button" key={owner.userId} className={styles.face} aria-label={t("projectSteps.filterOwner", { name: owner.name })} aria-pressed={filter.owners.includes(owner.userId)} onClick={() => { setFilter({ ...filter, owners: filter.owners.includes(owner.userId) ? filter.owners.filter((id) => id !== owner.userId) : [...filter.owners, owner.userId] }); setAll(false); }}><PersonFace name={owner.name} size="sm" /></button>)}
-      </div>
-      <div className={styles.filters} role="group" aria-label={t("projectSteps.filterLabel")}>
-        {(["mine", "waiting", "dueWeek", "notStarted", "dropped"] as const).map((key) => <button type="button" key={key} className={styles.control} aria-pressed={filter[key]} onClick={() => { setFilter({ ...filter, [key]: !filter[key] }); setAll(false); }}>{t(key === "mine" ? "projectSteps.onlyMine" : key === "waiting" ? "projectSteps.waiting" : key === "dueWeek" ? "projectSteps.dueWeek" : key === "notStarted" ? "projectSteps.notStarted" : "projectSteps.dropped")}{key === "waiting" && waitingCount > 0 && <span className={styles.count}>{waitingCount}</span>}</button>)}
-      </div>
-    </div>
+    <StepFilterRow search="projectSteps.searchList" filter={filter} onFilter={(next) => { setFilter(next); setAll(false); }} owners={owners} waitingCount={waitingCount} page={page} tool={tool} />
     {active ? <button type="button" className={styles.filterChip} onClick={() => { setFilter({ ...NO_FILTER }); setAll(false); }}>{t("projectSteps.showing", { shown: rows.length, total: p.steps.length })}</button> : null}
     <div className={styles.tableWrap}>
       <table className={styles.table}>

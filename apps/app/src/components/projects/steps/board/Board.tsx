@@ -83,18 +83,7 @@ export function Board({ p, hints, jira }: ToolProps) {
   };
 
   return <div className={styles.board}>
-    <div className={styles.toolbar}>
-      <input className={`nh-input ${styles.search}`} type="search" aria-label={t("projectSteps.searchBoard")} placeholder={t("projectSteps.searchBoard")} value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} />
-      <div className={styles.faces} role="group" aria-label={t("projectSteps.owner")}>
-        {owners.map((owner) => <button key={owner.id} type="button" className={styles.face} aria-label={t("projectSteps.filterOwner", { name: owner.owner ?? "" })} aria-pressed={filter.owners.includes(owner.ownerUserId!)} onClick={() => setFilter((v) => ({ ...v, owners: v.owners.includes(owner.ownerUserId!) ? v.owners.filter((id) => id !== owner.ownerUserId) : [...v.owners, owner.ownerUserId!] }))}><PersonFace name={owner.owner ?? ""} size="sm" /></button>)}
-      </div>
-      <div className={styles.filters} role="group" aria-label={t("projectSteps.filterLabel")}>
-        {(["mine", "waiting", "dueWeek", "notStarted", "dropped"] as const).map((key) => <button key={key} type="button" className={styles.control} aria-pressed={filter[key]} onClick={() => toggle(key)}>{t(key === "mine" ? "projectSteps.onlyMine" : key === "waiting" ? "projectSteps.waiting" : key === "dueWeek" ? "projectSteps.dueWeek" : key === "notStarted" ? "projectSteps.notStarted" : "projectSteps.dropped")}{key === "waiting" && waitingCount > 0 && <span className={styles.count}>{waitingCount}</span>}</button>)}
-      </div>
-      <div className={styles.segmented} role="group" aria-label={t("projectSteps.groupBy")}>
-        {(["status", "person"] as const).map((by) => <button key={by} type="button" className={styles.control} aria-pressed={groupBy === by} onClick={() => setGroupBy(by)}>{t(by === "status" ? "projectSteps.byStatus" : "projectSteps.byPerson")}</button>)}
-      </div>
-    </div>
+    <StepFilterRow search="projectSteps.searchBoard" filter={filter} onFilter={setFilter} owners={owners.map((l) => ({ userId: l.ownerUserId as string, name: l.owner ?? "" }))} waitingCount={waitingCount} group={{ value: groupBy, onChange: setGroupBy }} page={page} tool={tool} />
     {hints.length > 0 && rights.addStep && <div className={styles.hints} role="group" aria-label={t("projects.suggestedSteps")}>
       <strong>{t("projects.suggestedSteps")}</strong>
       {hints.map((hint) => <div className={styles.hint} key={hint.text}><span>{hint.label} · {hint.text}</span><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" aria-label={t("projects.addStepNamed", { text: hint.text })} onClick={() => send("project.step.added", { stepId: "probe", text: hint.text }, () => act.project.addStep(p.id, hint.text))}>{t("projectSteps.add")}</button></div>)}
