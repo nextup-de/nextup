@@ -128,8 +128,14 @@ export function createCloudApi(
       const names = ["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "TRANSITION_ISSUES", "ADD_COMMENTS"];
       const r = record(record(await call("GET", `/mypermissions?projectKey=${enc(projectKey)}&permissions=${names.join(",")}`)).permissions);
       const has = (n: string) => record(r[n]).havePermission === true;
-      return { browse: has(names[0]), create: has(names[1]), edit: has(names[2]), transition: has(names[3]), comment: has(names[4]) };
+      return { browse: has(names[0]), create: has(names[1]), edit: has(names[2]), transition: has(names[3]), comment: has(names[4]), administer: false };
     },
+
+    // Versions are not built yet (plan JSY, JSY-A1): the contract is in place, the calls come later.
+    async versions() { throw new JiraError("Versions are not built yet.", 0); },
+    async createVersion() { throw new JiraError("Versions are not built yet.", 0); },
+    async updateVersion() { throw new JiraError("Versions are not built yet.", 0); },
+    async setFixVersions() { throw new JiraError("Versions are not built yet.", 0); },
 
     async search(jql, o) {
       const out: JiraIssue[] = [];

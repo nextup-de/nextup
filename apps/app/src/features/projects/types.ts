@@ -52,7 +52,22 @@ export type Step = {
 };
 
 /** A named point in the plan that steps belong to (plan PLN, D3). */
-export type Milestone = { id: string; title: string; startDay: number | null; dueDay: number; note: string; shipped: boolean; shippedDay: number | null };
+/**
+ * The Jira version a milestone is twinned with (plan JSY, D9, D20). Set only by the sync actor. `owned`: the sync created it
+ * for this very milestone, or adopted it by its exact marker, so the sync may write it. `imported`: made from a Jira version
+ * nobody here owns: its title, dates, description and released are read-only in NextUp (its steps may still be attached).
+ * `key` is the version's id as a string.
+ */
+export type MilestoneExternal = { system: "jira"; key: string; url: string; mode: "owned" | "imported" };
+/** A write to Jira the sync has not finished (D22): shown as a pending or failed state and retried; set and cleared only by the sync actor. */
+export type MilestoneSync = { state: "pending" | "failed"; op: "create" | "update" | "archive" | "fixVersion"; why?: string };
+export type Milestone = {
+  id: string; title: string; startDay: number | null; dueDay: number; note: string; shipped: boolean; shippedDay: number | null;
+  external?: MilestoneExternal | null;
+  sync?: MilestoneSync | null;
+};
+/** What stays of a removed milestone (D22): the sync archives its owned version from this and never imports it again. Replay-derived, not stored. */
+export type MilestoneTombstone = { id: string; title: string; external: MilestoneExternal | null; day: number };
 
 /** A question of a form as saved (plan REQ, D4). `options` only for a choice. */
 export type FormFieldKind = "short" | "long" | "choice" | "date";
@@ -164,6 +179,8 @@ export type ReducedProject = {
   /** null: no page event yet; use the default pages. */
   pages: ProjectPage[] | null;
   milestones: Milestone[];
+  /** Milestones removed from this project, newest last (plan JSY); absent on a project that never removed one. */
+  milestoneTombstones?: MilestoneTombstone[];
   forms: Form[];
   requests: Request[];
   removed: RemovedItem[];

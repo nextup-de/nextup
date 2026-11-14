@@ -414,7 +414,11 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       const added = ev.type === "project.milestone.added";
       const current = p.milestones.find((m) => m.id === pl.milestoneId);
       if (added ? !isProjectId(pl.milestoneId) || current : !current) return no(added ? "projectPlan.permMilestoneIdUnusable" : "projectPlan.permNoMilestone");
+      // The Jira link, its owner and a pending write are the sync's alone (plan JSY D9, D20, D22): a person can neither set nor clear them.
+      if (pl.external !== undefined || pl.sync !== undefined) return no("projectJsy.permMilestoneExternal");
       if (!added && pl.removed) return OK;
+      // An imported milestone is a read-only view of a Jira version: its fields change in Jira (its steps stay editable).
+      if (!added && current?.external?.mode === "imported" && ["title", "startDay", "dueDay", "note", "shipped"].some((k) => pl[k as keyof typeof pl] !== undefined)) return no("projectJsy.permMilestoneImported");
       if ((added || pl.title !== undefined) && !text(pl.title, 80)) return no("projectPlan.permMilestoneTitle");
       if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 1000)) return no("projectPlan.permMilestoneNote");
       if (pl.startDay !== undefined && pl.startDay !== null && !whole(pl.startDay)) return no("projectPlan.permMilestoneDates");
