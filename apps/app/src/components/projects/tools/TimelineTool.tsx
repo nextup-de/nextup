@@ -1,8 +1,7 @@
 "use client";
+import { Timeline } from "../plan/timeline/Timeline";
 import type { ToolProps } from "./types";
-import { ToolComing } from "./content";
 
-export function TimelineTool(props: ToolProps) {
-  void props;
-  return <ToolComing />;
+export function TimelineTool({ p, jira, page, tool }: ToolProps) {
+  return <Timeline p={p} jira={jira} page={page} tool={tool} />;
 }

@@ -60,6 +60,8 @@ import { inbox } from "./messages/inbox";
 import { projectDraft } from "./messages/projectDraft";
 import { projectPages } from "./messages/projectPages";
 import { projectSteps } from "./messages/projectSteps";
+import { projectCalendar } from "./messages/projectCalendar";
+import { projectFiles } from "./messages/projectFiles";
 import { projectPlan } from "./messages/projectPlan";
 import { projectHub } from "./messages/projectHub";
 import { projectRequests } from "./messages/projectRequests";
@@ -135,6 +137,8 @@ export const de = {
   projectMove: projectMove.de,
   projectPages: projectPages.de,
   projectSteps: projectSteps.de,
+  projectCalendar: projectCalendar.de,
+  projectFiles: projectFiles.de,
   projectPlan: projectPlan.de,
   projectHub: projectHub.de,
   projectRequests: projectRequests.de,

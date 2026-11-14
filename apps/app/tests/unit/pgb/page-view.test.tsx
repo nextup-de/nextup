@@ -24,12 +24,12 @@ beforeEach(() => { mocks.editor = true; vi.clearAllMocks(); });
 
 it("PGB stacked page: renders tools in order, their names, insertion points and import with final props", () => {
   const out = render();
-  expect(out).toContain(">Steps</h2>");
+  expect(out).toContain(">Steps</h1>");
   expect(out).toContain("2 tools · Board, List");
   expect(out.indexOf('data-tool="steps.board"')).toBeLessThan(out.indexOf('data-tool="steps.list"'));
   expect(out.match(/Add a tool here/g)).toHaveLength(2);
   expect(out).toContain("Add a tool to this page");
-  expect(out).toContain("+ Add step");
+  expect(out).toContain("Add step");
   const sections = mocks.sections.mock.calls.map(([value]) => value as ToolSectionProps);
   expect(sections.map((s) => [s.index, s.count, s.editor])).toEqual([[0, 2, true], [1, 2, true]]);
   expect(sections[0].onAddAt).toBe(sections[1].onAddAt);
@@ -57,9 +57,9 @@ it("PGB stacked page: Jira summary requires every tool to be a Jira tool on a sy
 
 it("PGB stacked page: saved default titles translate and custom titles remain literal", () => {
   const saved = { ...p, pages: pagesOf(p, { agent: false }) };
-  expect(render({ ...props, p: saved })).toContain(">Steps</h2>");
+  expect(render({ ...props, p: saved })).toContain(">Steps</h1>");
   const out = render({ ...props, p: saved, page: { ...props.page, title: "Parts review", tools: [{ ...props.page.tools[0], title: "Our board" }] } });
-  expect(out).toContain(">Parts review</h2>");
+  expect(out).toContain(">Parts review</h1>");
   expect(out).toContain("1 tool · Our board");
 });
 
@@ -67,6 +67,6 @@ it("PGB add points: shared picker hides Agent, disables a singleton and allows a
   const out = html(h(I18nProvider, { locale: "en", children: h(AddToolMenu, { ...props, index: 1, onClose: () => {} }) }));
   expect(out).not.toMatch(/>Agent</);
   expect(out).toContain("Already in this project");
-  expect(out).toMatch(/disabled=""[^>]*><span>Overview/);
-  expect(out).toMatch(/<button[^>]*(?<!disabled="")><span>Doc/);
+  expect(out).toMatch(/data-taken="true" disabled=""><span[^>]*>[^<]*<\/span><span[^>]*>Overview/);
+  expect(out).toMatch(/<button(?![^>]*disabled)[^>]*><span[^>]*>[^<]*<\/span><span[^>]*>Doc/);
 });

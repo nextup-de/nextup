@@ -1,0 +1,36 @@
+import { defineMessages } from "../define";
+
+export const projectCalendar = defineMessages({
+  en: {
+    notScheduled: "Not scheduled",
+    drawerHint: "Drag a step onto a day to give it a due day, or press Schedule…",
+    drawerEmpty: "Every open step has a due day.",
+    schedule: "Schedule…",
+    moveToDay: "Move to day…",
+    stepMenu: "Actions for {step}",
+    date: "Date",
+    move: "Move",
+    newStepOn: "New step · {date}",
+    moreFields: "More fields",
+    addStepOn: "Add a step on {date}",
+    dropHint: "Due {date}",
+    openStep: "Open step: {step}",
+    noWorkday: "Choose a working day.",
+  },
+  de: {
+    notScheduled: "Nicht terminiert",
+    drawerHint: "Ziehen Sie einen Schritt auf einen Tag, oder wählen Sie Terminieren…",
+    drawerEmpty: "Jeder offene Schritt hat ein Fälligkeitsdatum.",
+    schedule: "Terminieren…",
+    moveToDay: "Auf Tag verschieben…",
+    stepMenu: "Aktionen für {step}",
+    date: "Datum",
+    move: "Verschieben",
+    newStepOn: "Neuer Schritt · {date}",
+    moreFields: "Weitere Felder",
+    addStepOn: "Einen Schritt am {date} hinzufügen",
+    dropHint: "Fällig {date}",
+    openStep: "Schritt öffnen: {step}",
+    noWorkday: "Wählen Sie einen Arbeitstag.",
+  },
+});

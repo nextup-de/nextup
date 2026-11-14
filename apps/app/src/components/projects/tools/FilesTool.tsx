@@ -6,13 +6,20 @@ import { loadShots } from "@/lib/shots";
 import { useT } from "@/i18n/client";
 import { FilesPanel, OriginPanel } from "../ProjectOrigin";
 import { ToolsPanel } from "../ProjectTeam";
+import { FilesView } from "../files/FilesView";
+import { listDemoFolder } from "@/features/demo/files-demo";
+import { projectFolderAction } from "@/server/actions/project-files";
+import { useRights } from "../parts";
+import { useCallback } from "react";
 import type { ToolProps } from "./types";
 import s from "../hub/content/content.module.css";
 import styles from "../Projects.module.css";
 
 export function FilesTool({ p, jira }: ToolProps) {
   const t = useT();
-  const { S, seed, tenant, f } = useDemo();
+  const { S, seed, tenant, f, serverMode } = useDemo();
+  const rights = useRights(p);
+  const load = useCallback((path: string, next?: string | null) => (serverMode ? projectFolderAction(p.id, path, next) : Promise.resolve(listDemoFolder(path))), [serverMode, p.id]);
   const briefs = { ...seed.briefs, ...loadRaised(tenant.slug) };
   const files = p.sources.flatMap((id) => {
     const source = S.cases.find((c) => c.id === id);
@@ -23,6 +30,7 @@ export function FilesTool({ p, jira }: ToolProps) {
     ];
   });
   return <div className={s.files}>
+    <FilesView p={p} load={load} editor={rights.addStep} />
     <OriginPanel p={p} />
     {!!files.length && <section aria-label={t("projectHub.filesAttachments")}>
       <h2 className={styles.h2}>{t("projectHub.filesAttachments")}</h2>

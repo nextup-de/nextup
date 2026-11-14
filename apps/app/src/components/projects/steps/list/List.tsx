@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { PersonFace } from "@/components/ui/elements";
 import { DEFAULT_SORT, listRows, stepKey, type ListColumn, type ListSort } from "@/features/projects/list-view";
 import { NO_FILTER, stepFilter, type StepFilter } from "@/features/projects/step-filter";
 import { columnLabel } from "@/features/projects/views";
@@ -9,6 +8,7 @@ import { useLocale, useT } from "@/i18n/client";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { teamOf, useRights, useSend, withIds } from "../../parts";
 import type { ToolProps } from "../../tools/types";
+import { StepFilterRow } from "../StepFilterRow";
 import { StepPanel } from "../StepPanel";
 import { CellMenu } from "./CellMenu";
 import styles from "./List.module.css";
@@ -16,7 +16,7 @@ import styles from "./List.module.css";
 const columns: ListColumn[] = ["key", "step", "owner", "status", "due", "waitingOn"];
 const labels = { key: "projectSteps.key", step: "projectSteps.listStep", owner: "projectSteps.owner", status: "projectSteps.status", due: "projectSteps.due", waitingOn: "projectSteps.waitingOn" } as const;
 
-export function List({ p, jira }: ToolProps) {
+export function List({ p, jira, page, tool }: ToolProps) {
   const { S, seed, actorUserId, act, f } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -44,16 +44,8 @@ export function List({ p, jira }: ToolProps) {
     if (!text.trim() || !rights.addStep) return;
     if (send("project.step.added", { stepId: "probe", text: text.trim() }, () => act.project.addStep(p.id, text.trim()))) setText("");
   };
-  return <section className={styles.list} aria-label={t("projectSteps.list")}>
-    <div className={styles.toolbar}>
-      <input type="search" className={`nh-input ${styles.search}`} aria-label={t("projectSteps.searchList")} placeholder={t("projectSteps.searchList")} value={filter.query} onChange={(e) => { setFilter({ ...filter, query: e.target.value }); setAll(false); }} />
-      <div className={styles.faces} role="group" aria-label={t("projectSteps.owner")}>
-        {owners.map((owner) => <button type="button" key={owner.userId} className={styles.face} aria-label={t("projectSteps.filterOwner", { name: owner.name })} aria-pressed={filter.owners.includes(owner.userId)} onClick={() => { setFilter({ ...filter, owners: filter.owners.includes(owner.userId) ? filter.owners.filter((id) => id !== owner.userId) : [...filter.owners, owner.userId] }); setAll(false); }}><PersonFace name={owner.name} size="sm" /></button>)}
-      </div>
-      <div className={styles.filters} role="group" aria-label={t("projectSteps.filterLabel")}>
-        {(["mine", "waiting", "dueWeek", "notStarted", "dropped"] as const).map((key) => <button type="button" key={key} className={styles.control} aria-pressed={filter[key]} onClick={() => { setFilter({ ...filter, [key]: !filter[key] }); setAll(false); }}>{t(key === "mine" ? "projectSteps.onlyMine" : key === "waiting" ? "projectSteps.waiting" : key === "dueWeek" ? "projectSteps.dueWeek" : key === "notStarted" ? "projectSteps.notStarted" : "projectSteps.dropped")}{key === "waiting" && waitingCount > 0 && <span className={styles.count}>{waitingCount}</span>}</button>)}
-      </div>
-    </div>
+  return <div className={styles.list}>
+    <StepFilterRow search="projectSteps.searchList" filter={filter} onFilter={(next) => { setFilter(next); setAll(false); }} owners={owners} waitingCount={waitingCount} page={page} tool={tool} />
     {active ? <button type="button" className={styles.filterChip} onClick={() => { setFilter({ ...NO_FILTER }); setAll(false); }}>{t("projectSteps.showing", { shown: rows.length, total: p.steps.length })}</button> : null}
     <div className={styles.tableWrap}>
       <table className={styles.table}>
@@ -86,5 +78,5 @@ export function List({ p, jira }: ToolProps) {
       </div>
     </div>
     {open && <StepPanel p={p} stepId={open} jira={jira} onClose={() => setOpen(null)} />}
-  </section>;
+  </div>;
 }
