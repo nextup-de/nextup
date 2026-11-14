@@ -1,18 +1,17 @@
-/* eslint-disable nextup/no-inline-strings -- test titles are not user-facing */
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { JiraRow } from "@/features/projects/views";
 import type { ReducedProject, Step, ToolInstance } from "@/features/projects/types";
 import { I18nProvider } from "@/i18n/client";
-import { TimelineTool } from "./TimelineTool";
+import { TimelineTool } from "@/components/projects/tools/TimelineTool";
 
 const mocks = vi.hoisted(() => ({ editor: true }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ S: { day: 10 }, f: (d: number) => `d${d}`, seed: { clock: { mode: "demo" }, seats: [] }, act: { project: { editStep: vi.fn() } } }) }));
-vi.mock("../parts", () => ({ useRights: () => ({ addStep: mocks.editor, editStep: () => mocks.editor }), useSend: () => () => true }));
-vi.mock("../steps/StepPanel", () => ({ StepPanel: () => null }));
-vi.mock("../steps/CreateStepDialog", () => ({ CreateStepDialog: () => null }));
+vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ addStep: mocks.editor, editStep: () => mocks.editor }), useSend: () => () => true }));
+vi.mock("@/components/projects/steps/StepPanel", () => ({ StepPanel: () => null }));
+vi.mock("@/components/projects/steps/CreateStepDialog", () => ({ CreateStepDialog: () => null }));
 
 const step = (id: string, patch: Partial<Step> = {}): Step => ({
   id, text: id, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, movedDay: 0, by: "Lead", startedDay: null, doneDay: null,
