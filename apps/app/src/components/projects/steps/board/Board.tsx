@@ -91,7 +91,7 @@ export function Board({ p, hints, jira }: ToolProps) {
     </div>
     {hints.length > 0 && rights.addStep && <div className={styles.hints} role="group" aria-label={t("projects.suggestedSteps")}>
       <strong>{t("projects.suggestedSteps")}</strong>
-      {hints.map((hint) => <div className={styles.hint} key={hint.text}><span>{hint.label} · {hint.text}</span><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => send("project.step.added", { stepId: "probe", text: hint.text }, () => act.project.addStep(p.id, hint.text))}>{t("projectSteps.add")}</button></div>)}
+      {hints.map((hint) => <div className={styles.hint} key={hint.text}><span>{hint.label} · {hint.text}</span><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" aria-label={t("projects.addStepNamed", { text: hint.text })} onClick={() => send("project.step.added", { stepId: "probe", text: hint.text }, () => act.project.addStep(p.id, hint.text))}>{t("projectSteps.add")}</button></div>)}
     </div>}
     {!rights.addStep && !p.steps.some((s) => rights.moveStep(s)) && <p>{t("projects.readOnly")}</p>}
     {shown.length === 0 && <p>{t(p.steps.length ? "projectSteps.emptyFilter" : "projectSteps.emptyBoard")}</p>}
@@ -126,7 +126,7 @@ export function Board({ p, hints, jira }: ToolProps) {
           </article></div>)}
           {line(null)}
           {column === "done" && older > 0 && filter.hideOldDone && groupBy === "status" && <button type="button" className={styles.quiet} onClick={() => setFilter({ ...filter, hideOldDone: false })}>{t("projectSteps.olderDone", { count: older })}</button>}
-          {composer ? <Composer key={`${lane.id}-${column}`} {...{ p, column, team }} ownerUserId={groupBy === "person" ? lane.ownerUserId : null} onCancel={() => setAdding(null)} onBlocked={(step) => { setBlocked({ step, target }); setAdding(null); }} /> : rights.addStep && <button type="button" className={styles.add} onClick={() => setAdding({ column, lane: lane.id })}>+ {t("projectSteps.addStep")}</button>}
+          {composer ? <Composer key={`${lane.id}-${column}`} {...{ p, column, team }} ownerUserId={groupBy === "person" ? lane.ownerUserId : null} onCancel={() => setAdding(null)} onBlocked={(step) => { setBlocked({ step, target }); setAdding(null); }} /> : rights.addStep && <button type="button" className={styles.add} aria-label={t("projects.addStepTo", { column: columnLabel(column, locale) })} onClick={() => setAdding({ column, lane: lane.id })}>+ {t("projectSteps.addStep")}</button>}
         </div>;
       })}</div>}
     </div>)}
@@ -160,7 +160,7 @@ function Composer({ p, column, team, ownerUserId, onCancel, onBlocked }: {
     });
   };
   return <form className={styles.composer} onSubmit={(e) => { e.preventDefault(); submit(); }} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onCancel(); } }}>
-    <textarea className="nh-input" autoFocus aria-label={t("projectSteps.stepTitle")} placeholder={t("projectSteps.stepTitle")} maxLength={500} rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
+    <textarea className="nh-input" autoFocus aria-label={t("projects.newStep")} placeholder={t("projectSteps.stepTitle")} maxLength={500} rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
     <div className={styles.composerRow}><select className="nh-input" aria-label={t("projectSteps.owner")} value={owner} onChange={(e) => setOwner(e.target.value)}><option value="">{t("projectSteps.noOwner")}</option>{team.map((person) => <option key={person.userId} value={person.userId}>{person.name}</option>)}</select><input className="nh-input" type="number" min={0} max={365} aria-label={t("projects.dueInDays")} placeholder={t("projectSteps.due")} value={due} onChange={(e) => setDue(e.target.value)} /></div>
     <div className={styles.composerRow}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!text.trim()}>{t("projectSteps.add")}</button><button type="button" className={styles.quiet} onClick={onCancel}>{t("projectSteps.cancel")}</button></div><small>{t("projectSteps.enterAdd")}</small>
   </form>;
