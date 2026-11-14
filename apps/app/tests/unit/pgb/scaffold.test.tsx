@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ check: mocks.check }) }));
-vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ act: { project: { page: mocks.page } } }) }));
+vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ flag: () => true, showToast: vi.fn(), act: { project: { page: mocks.page } } }) }));
 
 const p = reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0];
 const page = DEFAULT_PAGES[0];

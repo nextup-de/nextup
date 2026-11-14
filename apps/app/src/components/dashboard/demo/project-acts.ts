@@ -20,13 +20,14 @@ export type ToolChange = { title?: string; collapsed?: boolean; content?: string
 
 export type ProjectAct = {
   page: {
+    create: (projectId: string, input: PageInput) => Promise<AppendOutcome & { pageId?: string; tools?: { kind: ToolKind; toolId: string }[] }>;
     add: (projectId: string, input: PageInput) => string;
     edit: (projectId: string, pageId: string, change: PageChange) => void;
     move: (projectId: string, pageId: string, before: string | null) => void;
     remove: (projectId: string, pageId: string) => void;
     restore: (projectId: string, pageId: string) => void;
     addTool: (projectId: string, pageId: string, kind: ToolKind, before?: string | null) => string;
-    moveTool: (projectId: string, toolId: string, toPageId: string, before?: string | null) => void;
+    moveTool: (projectId: string, toolId: string, toPageId: string, before?: string | null) => Promise<AppendOutcome>;
     editTool: (projectId: string, toolId: string, change: ToolChange) => void;
     removeTool: (projectId: string, toolId: string) => void;
     restoreTool: (projectId: string, toolId: string) => void;
@@ -98,6 +99,12 @@ export function projectActs(d: ActDeps): ProjectAct {
   const { emit, S, serverMode } = d;
   return {
     page: {
+      create: async (id, input) => {
+        const pageId = newId("page");
+        const tools = input.tools.map((tool) => ({ ...tool, toolId: newId("tool") }));
+        const result = await emit("project.page.added", id, { ...input, pageId, tools });
+        return result.ok ? { ...result, pageId, tools } : result;
+      },
       add: (id, input) => {
         const pageId = newId("page");
         emit("project.page.added", id, { ...input, pageId, tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })) });
