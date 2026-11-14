@@ -23,9 +23,11 @@ test("STP acceptance: filter, group, drag to Blocked, edit a cell, comment on a 
   await page.goto("/acme/projects/pj2?page=steps");
   const board = page.getByRole("region", { name: "Board", exact: true });
   const list = page.getByRole("region", { name: "List", exact: true });
+  // The first tool's filter row sits in the page header, outside its region.
+  const bar = page.getByTestId("step-filter-row").first();
 
   await test.step("the manager adds one step owned by themself (the dialog) and one owned by L. Brandt (the board)", async () => {
-    await page.getByRole("button", { name: "+ Add step", exact: true }).first().click();
+    await page.getByRole("button", { name: /^\+\s*Add step$/ }).first().click();
     const dialog = page.getByRole("dialog", { name: "New step" });
     await dialog.getByRole("textbox", { name: "What needs doing?" }).fill(MINE);
     await dialog.getByRole("button", { name: "Add step" }).click();
@@ -40,8 +42,8 @@ test("STP acceptance: filter, group, drag to Blocked, edit a cell, comment on a 
   });
 
   await test.step("Only mine keeps the lead's step, hides the others and says how many it shows", async () => {
-    await board.getByRole("button", { name: "Only mine" }).click();
-    await expect(board.getByRole("button", { name: "Only mine" })).toHaveAttribute("aria-pressed", "true");
+    await bar.getByRole("button", { name: "Only mine" }).click();
+    await expect(bar.getByRole("button", { name: "Only mine" })).toHaveAttribute("aria-pressed", "true");
     await expect(board.getByRole("article").filter({ hasText: MINE })).toBeVisible();
     await expect(board.getByRole("article").filter({ hasText: OTHER })).toHaveCount(0);
     await expect(board.getByRole("article").filter({ hasText: "Offline form on the service tablets" })).toHaveCount(0);
@@ -49,11 +51,11 @@ test("STP acceptance: filter, group, drag to Blocked, edit a cell, comment on a 
   });
 
   await test.step("grouping by person shows the lead's own lane", async () => {
-    await board.getByRole("button", { name: "By person" }).click();
+    await bar.getByRole("button", { name: "By person" }).click();
     await expect(board.getByRole("button", { name: /^▾?\s*You/ })).toBeVisible();
     await expect(board.getByRole("article").filter({ hasText: MINE })).toBeVisible();
-    await board.getByRole("button", { name: "By status" }).click();
-    await expect(board.getByRole("button", { name: "By status" })).toHaveAttribute("aria-pressed", "true");
+    await bar.getByRole("button", { name: "By status" }).click();
+    await expect(bar.getByRole("button", { name: "By status" })).toHaveAttribute("aria-pressed", "true");
   });
 
   await test.step("dragging the step to Blocked asks what it waits for, then the card says it", async () => {
