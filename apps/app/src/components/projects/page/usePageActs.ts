@@ -26,7 +26,7 @@ export function usePageActs(p: ReducedProject) {
       ...input, pageId: newId("page"), tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })),
     }, () => { const id = page.add(p.id, input); onCreated?.(id); }),
     create: (input: PageInput, onCreated?: (pageId: string, tools: { kind: ToolKind; toolId: string }[]) => void) => send("project.page.added", {
-      ...input, pageId: newId("page"), tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })),
+      ...input, pageId: input.pageId ?? newId("page"), tools: input.tools.map((tool) => ({ ...tool, toolId: tool.toolId ?? newId("tool") })),
     }, async () => {
       const result = await page.create(p.id, input);
       if (result.ok && result.pageId) onCreated?.(result.pageId, result.tools ?? []);
@@ -48,6 +48,14 @@ export function usePageActs(p: ReducedProject) {
     merge: (fromPageId: string, intoPageId: string, onMerged?: (mergeId: string) => void) => send("project.page.merged", {
       mergeId: newId("merge"), fromPageId, intoPageId,
     }, () => { const id = page.merge(p.id, fromPageId, intoPageId); onMerged?.(id); }),
+    /** Waits for the server; `onMerged` gets the mergeId only after it said ok. */
+    mergeNow: (fromPageId: string, intoPageId: string, onMerged?: (mergeId: string) => void) => send("project.page.merged", {
+      mergeId: newId("merge"), fromPageId, intoPageId,
+    }, async () => {
+      const result = await page.mergeAndWait(p.id, fromPageId, intoPageId);
+      if (result.ok) onMerged?.(result.mergeId);
+      return result;
+    }),
     unmerge: (mergeId: string) => send("project.page.unmerged", { mergeId }, () => page.unmerge(p.id, mergeId)),
   };
 }
