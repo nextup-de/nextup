@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { isJiraTool } from "@/features/projects/pages";
+import { isJiraTool, jiraTagTitleKey } from "@/features/projects/pages";
 import { addToolOptions } from "@/features/projects/page-view";
 import type { Milestone, ReducedProject } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
@@ -99,4 +99,10 @@ it("JSY jira tags: the Milestones head carries the Jira pill, Open in Jira and A
   expect(head("milestones", row("synced"), false).primary).toBeUndefined();
   expect(head("files", row("synced")).source?.system).not.toBe("jira");
   expect(head("results", row("synced"))).toEqual({ title: "Plan" });
+});
+
+it("JSY jira tags: the milestones tag has its own tooltip in both languages and no other Jira tool gets one", () => {
+  expect(jiraTagTitleKey("milestones")).toBe("projectJsy.tagMilestonesTitle");
+  for (const kind of ["board", "list", "calendar", "timeline", "files"] as const) expect(jiraTagTitleKey(kind)).toBeNull();
+  for (const locale of ["en", "de"] as const) expect(createT(locale)("projectJsy.tagMilestonesTitle")).not.toBe("projectJsy.tagMilestonesTitle");
 });

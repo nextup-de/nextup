@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { isJiraTool, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, suggestPageName, TOOL_GROUPS } from "@/features/projects/pages";
+import { isJiraTool, jiraTagTitleKey, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, suggestPageName, TOOL_GROUPS } from "@/features/projects/pages";
 import { canCreate, canNext, preselect as initialState, toolIcon, wizard } from "@/features/projects/page-wizard";
 import type { PageIconKey, ReducedProject, ToolKind } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
@@ -60,7 +60,7 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
   const pages = pagesOf(p, { agent: flag("agent") });
   const hasJira = jira !== undefined && jira.projectKey !== null;
   const nameOf = (kind: ToolKind) => t(toolKey(kind));
-  const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
+  const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined} title={jiraTagTitleKey(kind) ? t(jiraTagTitleKey(kind)!) : undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
   const reorder = (from: number, to: number) => dispatch({ type: "reorder", from, to });
   const suggestions = suggestPageName(state.picks.map((pick) => pick.kind));
   const create = async () => {

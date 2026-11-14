@@ -16,6 +16,8 @@ export const TOOL_GROUPS = [
   { title: "projectPages.groupProject", kinds: ["overview", "team", "activity", "agent"] },
 ] as const satisfies readonly { title: string; kinds: readonly ToolKind[] }[];
 
+/** The tooltip key of a Jira tool's tag, where it says more than the tag (milestones: they come from Jira versions). */
+export const jiraTagTitleKey = (kind: ToolKind) => (kind === "milestones" ? "projectJsy.tagMilestonesTitle" as const : null);
 export const isJiraTool = (kind: ToolKind): boolean => (["board", "list", "calendar", "timeline", "milestones"] as readonly ToolKind[]).includes(kind);
 export const LIMITS = { pages: 24, tools: 24, titleMin: 1, titleMax: 60, removedDays: 30 } as const;
 

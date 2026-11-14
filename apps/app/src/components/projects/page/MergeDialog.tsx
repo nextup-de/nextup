@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_PAGES, isJiraTool, mergePlan, pagesOf } from "@/features/projects/pages";
+import { DEFAULT_PAGES, isJiraTool, jiraTagTitleKey, mergePlan, pagesOf } from "@/features/projects/pages";
 import { mergeRows } from "@/features/projects/page-undo";
 import type { ProjectPage, ReducedProject, ToolKind } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
@@ -60,7 +60,7 @@ export function MergeDialog({ p, fromPageId, intoPageId, open, onClose, onMerged
   const plan = mergePlan(into, from);
   const rows = mergeRows(into, from);
   const hasJira = jira !== undefined && jira.projectKey !== null;
-  const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
+  const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined} title={jiraTagTitleKey(kind) ? t(jiraTagTitleKey(kind)!) : undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
   const refused = plan.refused === "overview" ? "projectPages.permPageOverview" : plan.refused === "tooMany" ? "projectPages.permPageLimit" : null;
   const confirm = async () => {
     setBusy(true); setError(null);

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ProjectPage, ReducedProject, ToolKind } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
 import { addToolOptions, TOOL_GLYPH } from "@/features/projects/page-view";
-import { canAddTool, pagesOf } from "@/features/projects/pages";
+import { canAddTool, jiraTagTitleKey, pagesOf } from "@/features/projects/pages";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { useRights } from "../parts";
@@ -58,7 +58,7 @@ export function AddToolMenu({ p, page, jira, agent, index, onClose }: AddToolMen
         <span className={rows.glyph} aria-hidden="true">{TOOL_GLYPH[kind]}</span>
         <span className={rows.grow}>{name(kind)}</span>
         {taken ? <span className={styles.tag}>{t("projectPages.alreadyInProject")}</span>
-          : tag && <span className={`${styles.tag} ${rows.tag}`} data-tag={tag}>{tag === "jira" ? `⟳ ${t("projectPages.tagJira")}` : t("projectPages.tagNextUpOnly")}</span>}
+          : tag && <span className={`${styles.tag} ${rows.tag}`} data-tag={tag} title={tag === "jira" && jiraTagTitleKey(kind) ? t(jiraTagTitleKey(kind)!) : undefined}>{tag === "jira" ? `⟳ ${t("projectPages.tagJira")}` : t("projectPages.tagNextUpOnly")}</span>}
       </button>)}
       {options.length === 0 && <p className={styles.summary}>{t("projectPages.noToolsFound")}</p>}
     </div>
