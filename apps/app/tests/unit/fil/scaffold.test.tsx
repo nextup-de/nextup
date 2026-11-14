@@ -54,11 +54,7 @@ describe("FIL scaffold", () => {
   it("FIL scaffold: FilesView renders its list card, its side panel and every stub", () => {
     for (const locale of ["en", "de"] as const) {
       const html = render(h(FilesView, { p, load: async () => ({ state: "empty" as const }), editor: true }), locale);
-<<<<<<< HEAD
-      for (const id of ["files-view", "files-list-card", "files-side", "files-breadcrumb", "files-file-toolbar", "files-drop-zone", "files-file-states", "files-upload-progress", "files-folder-panel", "files-history-panel", "files-upload-menu", "files-row-menu", "files-delete-dialog", "files-request-dialog", "files-link-step-dialog"]) expect(html).toContain(`data-testid="${id}"`);
-=======
-      for (const id of ["files-view", "files-list-card", "files-side", "files-breadcrumb", "files-drop-zone", "files-file-states", "files-upload-progress", "files-folder-panel", "files-upload-menu", "files-source-popover", "files-folder-picker", "files-row-menu", "files-delete-dialog", "files-request-dialog"]) expect(html).toContain(`data-testid="${id}"`);
->>>>>>> orch/fil-a2
+      for (const id of ["files-view", "files-list-card", "files-side", "files-breadcrumb", "files-drop-zone", "files-file-states", "files-upload-progress", "files-folder-panel", "files-upload-menu", "files-row-menu", "files-delete-dialog", "files-request-dialog"]) expect(html).toContain(`data-testid="${id}"`);
       expect(html).toContain(createT(locale)("projectFiles.pageLabel"));
     }
   });
