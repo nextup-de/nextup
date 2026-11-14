@@ -1,8 +1,7 @@
 "use client";
-import { ProjectBoard } from "../ProjectBoard";
+import { Board } from "../steps/board/Board";
 import type { ToolProps } from "./types";
-import styles from "../Projects.module.css";
 
-export function BoardTool({ p, hints, jira }: ToolProps) {
-  return <div className={styles.tabCards}><ProjectBoard p={p} hints={hints} jira={jira} /></div>;
+export function BoardTool(props: ToolProps) {
+  return <Board {...props} />;
 }

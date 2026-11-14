@@ -15,7 +15,8 @@ export function usePageActs(p: ReducedProject) {
   const send = async (type: string, payload: EventPayload, go: () => unknown): Promise<PageActOutcome> => {
     const verdict = check(type, payload);
     if (!verdict.ok) return { ok: false, error: verdict.error };
-    await go();
+    const result = await go();
+    if (result && typeof result === "object" && "ok" in result && result.ok === false && "error" in result) return { ok: false, error: String(result.error) };
     return { ok: true };
   };
   // The act layer mints the persisted ids. Fresh probe ids let the same rights rules check additions.
@@ -24,6 +25,13 @@ export function usePageActs(p: ReducedProject) {
     add: (input: PageInput, onCreated?: (pageId: string) => void) => send("project.page.added", {
       ...input, pageId: newId("page"), tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })),
     }, () => { const id = page.add(p.id, input); onCreated?.(id); }),
+    create: (input: PageInput, onCreated?: (pageId: string, tools: { kind: ToolKind; toolId: string }[]) => void) => send("project.page.added", {
+      ...input, pageId: newId("page"), tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })),
+    }, async () => {
+      const result = await page.create(p.id, input);
+      if (result.ok && result.pageId) onCreated?.(result.pageId, result.tools ?? []);
+      return result;
+    }),
     edit: (pageId: string, change: PageChange) => send("project.page.edited", { pageId, ...change }, () => page.edit(p.id, pageId, change)),
     move: (pageId: string, before: string | null) => send("project.page.moved", { pageId, before }, () => page.move(p.id, pageId, before)),
     remove: (pageId: string) => send("project.page.removed", { pageId }, () => page.remove(p.id, pageId)),
