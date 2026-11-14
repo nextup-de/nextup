@@ -8,7 +8,6 @@ import { NO_FILTER, olderDoneCount, stepFilter, type StepFilter } from "@/featur
 import { STEP_COLUMNS, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { teamOf, useRights, useSend, withIds } from "../../parts";
 import type { ToolProps } from "../../tools/types";
 import { MarkBlockedForm } from "../MarkBlockedForm";
@@ -25,8 +24,8 @@ export function Board({ p, hints, jira }: ToolProps) {
   const [filter, setFilter] = useState<StepFilter>({ ...NO_FILTER, hideOldDone: true });
   const [groupBy, setGroupBy] = useState<"status" | "person">("status");
   const [folded, setFolded] = useState<string[]>([]);
-  const [open, setOpen] = useState<string | null>(useUrlId("step"));
-  useIdInUrl(open, setOpen, "step");
+  // Local state only: the Steps page also holds the List, which owns ?step=; two panels would overlap and repeat field ids.
+  const [open, setOpen] = useState<string | null>(null);
   const [adding, setAdding] = useState<{ column: StepColumn; lane: string } | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [spot, setSpot] = useState<BoardTarget | null>(null);
@@ -115,7 +114,7 @@ export function Board({ p, hints, jira }: ToolProps) {
             onClick={(e) => { if (!(e.target as Element).closest("button")) setOpen(step.id); }}
             onDragStart={(e) => { dragRef.current = step.id; setDrag(step.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", step.id); }} onDragEnd={end}
             onDragOver={(e) => { if (!dragged) return; e.preventDefault(); e.stopPropagation(); const box = e.currentTarget.getBoundingClientRect(); setTarget({ ...target, before: e.clientY < box.top + box.height / 2 ? step.id : list[index + 1]?.id ?? null }); }}>
-            <div className={styles.cardTop}><span className={styles.key}>{step.external?.key}</span>{step.ownerUserId && <PersonFace name={step.owner ?? ""} size="sm" />}</div>
+            <div className={styles.cardTop}><span className={styles.key}>{step.external?.key ?? (jira.waiting ? <span title={t("projects.waitKeyTitle")}>{t("projects.waitKey")}</span> : null)}</span>{step.ownerUserId && <PersonFace name={step.owner ?? ""} size="sm" />}</div>
             <button type="button" className={styles.cardOpen} onClick={() => setOpen(step.id)} aria-label={t("projectSteps.openStep", { text: step.text })}>{step.text}</button>
             {step.checklist.length > 0 && <div className={styles.progress}><progress max={step.checklist.length} value={step.checklist.filter((item) => item.done).length} aria-label={t("projectSteps.checklistProgress", { done: step.checklist.filter((item) => item.done).length, total: step.checklist.length })} /><span>{step.checklist.filter((item) => item.done).length}/{step.checklist.length}</span></div>}
             {step.waitingOn && <div className={styles.waiting}>{t("projectSteps.waitingFor", { name: step.waitingOn.name ?? t("projectSteps.waitingNobody") })}</div>}
