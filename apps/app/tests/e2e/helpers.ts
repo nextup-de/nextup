@@ -96,7 +96,7 @@ export async function showSidebar(page: Page) {
  * on a phone the strip of tabs under the title.
  */
 export async function projectPages(page: Page): Promise<Locator> {
-  const nav = page.locator('nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
+  const nav = page.locator('nav[aria-label="Project pages"]:visible, nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
   // Right after a load the Show button can be there before the page listens to it: click until the pages show.
   await expect(async () => {
     if ((await nav.count()) === 0) {
