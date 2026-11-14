@@ -74,6 +74,17 @@ export const testJira: TestJira = async (settings: JiraSettings, token: string, 
       checks.push({ id: "permissions", ok: false, label: "Permissions", detail: why(e) });
     }
 
+    // Versions: Jira lets only a project administrator create or change them. Advisory: without it the sync reads versions and fix
+    // versions and never writes a version, so the result stays green (plan JSY D14).
+    if (perms) {
+      checks.push({
+        id: "versions", ok: perms.administer, advisory: true, label: "Versions",
+        detail: perms.administer
+          ? "The account is a project administrator: NextUp can create and change Jira versions."
+          : "Versions will be read-only: the account is not a project administrator, so NextUp reads Jira versions but cannot create or change them.",
+      });
+    }
+
     // Labels are how the sync finds its own issues again (so a repeat never makes a duplicate). They
     // are set while creating and editing, and read back through JQL: so those must work.
     try {
@@ -88,5 +99,5 @@ export const testJira: TestJira = async (settings: JiraSettings, token: string, 
     }
   }
 
-  return { ok: checks.length > 0 && checks.every((c) => c.ok), checks, account, issueTypes };
+  return { ok: checks.length > 0 && checks.every((c) => c.ok || c.advisory === true), checks, account, issueTypes };
 };
