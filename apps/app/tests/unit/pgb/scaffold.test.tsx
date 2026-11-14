@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
     page: Object.fromEntries(names.map((name) => [name, vi.fn(() => "created-id")])) as Record<typeof names[number], ReturnType<typeof vi.fn>>,
   };
 });
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ check: mocks.check }) }));
 vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ flag: () => true, showToast: vi.fn(), act: { project: { page: mocks.page } } }) }));
 
