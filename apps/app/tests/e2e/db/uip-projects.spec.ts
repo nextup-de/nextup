@@ -92,8 +92,9 @@ test("UIP project area", async ({ page }) => {
     await page.getByRole("textbox", { name: "New step" }).press("Enter");
     await expect(todo.getByRole("article")).toHaveCount(2);
     const sheet = await openStep(page, NEW_STEP);
-    await sheet.getByRole("button", { name: /Remove this step/ }).click();
-    await sheet.getByRole("button", { name: /Yes, remove/ }).click();
+    await sheet.getByRole("button", { name: "Step menu" }).click(); // removing sits in the sheet's ⋯ menu (STP)
+    await sheet.getByRole("menuitem", { name: "Remove step" }).click();
+    await sheet.getByRole("button", { name: "Remove step", exact: true }).click();
     await expect(todo.getByRole("article")).toHaveCount(1);
   });
 });

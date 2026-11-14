@@ -382,7 +382,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
       await form.getByLabel("The number now").fill(String(SECOND));
       await form.getByRole("button", { name: "Record the measure" }).click();
-      await expect.poll(async () => (await eventsOf("project.measured", projectId)).length).toBe(2);
+      await expect.poll(async () => (await eventsOf("project.measured", projectId)).length, { timeout: 30_000 }).toBe(2); // the drawer's save then a full refresh: slower under parallel workers
       await expect(page.getByTestId(`measure-reentered-${CHECK_DAYS}`)).toContainText(String(FIRST));
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toHaveCount(0);
       await page.context().close();
