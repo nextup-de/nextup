@@ -1,4 +1,4 @@
-// Acceptance for pages built from tools (plan PGB): the lead of the running P-2 builds a page from Calendar and
+// Acceptance for pages built from tools (plan PGB): the manager, who may change P-2, builds a page from Calendar and
 // Timeline, adds Milestones and a Doc, merges it into Steps by the keyboard way, undoes the merge, merges it again
 // by dragging, and removes a page and brings it back. Demo mode: one browser plays the people through the dev panel.
 import type { Page } from "@playwright/test";
@@ -13,18 +13,12 @@ async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager
   await page.keyboard.press("Escape");
 }
 
-/** Dev panel -> "Inbox of" a desk: the leader persona acts as that seat's holder. */
-async function actAs(page: Page, seat: string) {
-  await page.getByRole("button", { name: "Dev" }).click();
-  await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: new RegExp("^" + seat.replace(".", "\\.")) }).click();
-  await page.keyboard.press("Escape");
-}
-
 test("PGB acceptance: build a page from tools, add a tool, merge it into Steps", async ({ page }) => {
   await page.goto("/acme");
-  await viewAs(page, "Team leader");
-  await actAs(page, "D. Ferraro");
+  await viewAs(page, "Manager");
   await page.goto("/acme/projects/pj2");
+  const reveal = page.getByRole("button", { name: "Show sidebar" });
+  if (await reveal.isVisible()) await reveal.click();
 
   const pages = page.getByRole("navigation", { name: "Project pages" });
   const row = (title: string) => pages.locator("[data-page-id]").filter({ has: page.getByText(title, { exact: true }) });
@@ -69,8 +63,10 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
   });
 
   await test.step("the Dates row menu, by keyboard, merges it into Steps: the dialog lists what moves", async () => {
-    const more = pages.getByRole("button", { name: "Actions for Dates" });
-    await more.focus();
+    // The row's ⋯ shows while the row has focus: focus its link, then Tab onto the button.
+    await row("Dates").getByRole("link").focus();
+    await page.keyboard.press("Tab");
+    await expect(pages.getByRole("button", { name: "Actions for Dates" })).toBeFocused();
     await page.keyboard.press("Enter");
     const menu = page.getByRole("menu", { name: "Actions for Dates" });
     await expect(menu).toBeVisible();
@@ -113,7 +109,7 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
     await page.mouse.down();
     await page.mouse.move(from.x + from.width / 2, (from.y + to.y) / 2, { steps: 6 });
     await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
-    await expect(pages.getByRole("status")).toContainText("Drop to add 4 tools to Steps");
+    await expect(page.getByRole("status").filter({ hasText: "Drop to add 4 tools to Steps" })).toBeVisible();
     await page.mouse.up();
     await page.getByRole("dialog", { name: "Add Dates's tools to Steps?" }).getByRole("button", { name: "Add 4 tools to Steps" }).click();
     await expect(page).toHaveURL(/page=steps/);
@@ -124,10 +120,11 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
   await test.step("removing Team from its row menu and pressing Undo puts it back in its place", async () => {
     const before = await rowTitles();
     expect(before).toContain("Team");
+    await row("Team").hover();
     await pages.getByRole("button", { name: "Actions for Team" }).click();
     await page.getByRole("menu", { name: "Actions for Team" }).getByRole("menuitem", { name: "Remove page" }).click();
     await expect(row("Team")).toHaveCount(0);
-    await pages.getByRole("status").filter({ hasText: "Team removed" }).getByRole("button", { name: "Undo" }).click();
+    await page.getByRole("status").filter({ hasText: "Team removed" }).getByRole("button", { name: "Undo" }).click();
     await expect(row("Team")).toBeVisible();
     expect(await rowTitles()).toEqual(before);
   });

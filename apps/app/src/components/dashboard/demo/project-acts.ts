@@ -66,7 +66,8 @@ export type ProjectAct = {
   };
   request: {
     /** One event that adds the step and links it; returns the step's id. */
-    step: (projectId: string, requestId: string, step: RequestStep) => string;
+    /** Resolves with the server's answer and the new step's id (the dialog stays busy until then). */
+    step: (projectId: string, requestId: string, step: RequestStep) => Promise<AppendOutcome & { stepId: string }>;
     decline: (projectId: string, requestId: string, why: string) => void;
     reopen: (projectId: string, requestId: string) => void;
   };
@@ -174,7 +175,7 @@ export function projectActs(d: ActDeps): ProjectAct {
       answer: (id, formId, formRev, answers) => { const requestId = newId("q"); emit("project.form.answered", id, { formId, formRev, requestId, answers }); return requestId; },
     },
     request: {
-      step: (id, requestId, step) => { const stepId = newId("s"); emit("project.request.stepped", id, { requestId, step: { stepId, ...step } }); return stepId; },
+      step: async (id, requestId, step) => { const stepId = newId("s"); return { ...(await emit("project.request.stepped", id, { requestId, step: { stepId, ...step } })), stepId }; },
       decline: (id, requestId, why) => emit("project.request.declined", id, { requestId, why }),
       reopen: (id, requestId) => emit("project.request.reopened", id, { requestId }),
     },
