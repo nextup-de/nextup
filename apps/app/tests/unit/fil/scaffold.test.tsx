@@ -12,7 +12,7 @@ import { I18nProvider } from "@/i18n/client";
 import { projectFiles } from "@/i18n/messages/projectFiles";
 
 // The filled states read the demo context (the address prefix, the acts); the scaffold test has no provider.
-vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ f: () => "", href: (p: string) => p, S: { day: 0 }, serverMode: false, seed: { seats: [] }, act: { project: { link: () => {} } } }) }));
+vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ f: () => "", href: (p: string) => p, S: { day: 0 }, serverMode: false, persona: { who: { name: "L. Brandt" } }, showToast: () => {}, seed: { seats: [] }, act: { project: { link: () => {} } } }) }));
 vi.mock("@/components/projects/parts", () => ({ teamOf: () => [], useSend: () => () => true }));
 
 const KINDS: FileKind[] = ["sheet", "pdf", "doc", "slides", "image", "folder", "other"];
