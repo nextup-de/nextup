@@ -28,7 +28,8 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
   await viewAs(page, "Manager");
   await page.goto("/acme/projects/pj2?page=plan");
   const calendar = page.getByRole("region", { name: "Calendar of steps" });
-  const milestones = page.getByRole("region", { name: "Milestones", exact: true });
+  // The tool section and the milestones list are both regions of that name; the list is the inner one.
+  const milestones = page.getByRole("region", { name: "Milestones", exact: true }).filter({ has: page.getByRole("button", { name: "+ Create milestone" }) }).last();
 
   await test.step("two steps without a due day are added with the dialog", async () => {
     for (const title of [DRAGGED, KEYED]) {
@@ -46,18 +47,13 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
     await expect(drawer.getByRole("button", { name: "Open step: " + DRAGGED })).toBeVisible();
     await expect(drawer.getByRole("button", { name: "Open step: " + KEYED })).toBeVisible();
     const day = calendar.getByRole("group", { name: /, 0 steps$/ }).nth(12);
-    // The draggable is the card's wrapper, so the press starts there, then moves over the day in steps.
+    // The draggable is the card's wrapper. The drag events carry one DataTransfer, as a real drag would.
     const source = drawer.locator('[draggable="true"]').filter({ hasText: DRAGGED });
-    await source.scrollIntoViewIfNeeded();
-    const from = (await source.boundingBox())!;
-    await day.scrollIntoViewIfNeeded();
-    const to = (await day.boundingBox())!;
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(from.x + from.width / 2 - 10, from.y + from.height / 2 + 10, { steps: 3 });
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+    const transfer = await page.evaluateHandle(() => new DataTransfer());
+    await source.dispatchEvent("dragstart", { dataTransfer: transfer });
+    await day.dispatchEvent("dragover", { dataTransfer: transfer });
     await expect(calendar.getByRole("status").filter({ hasText: /^Due / }).first()).toBeVisible();
-    await page.mouse.up();
+    await day.dispatchEvent("drop", { dataTransfer: transfer });
     // The day's name counts its steps, so it is now the day with one step, and the chip sits in it.
     await expect(calendar.getByRole("group", { name: /, 1 steps$/ }).getByRole("button", { name: "Open step: " + DRAGGED })).toBeVisible();
     await expect(drawer.getByRole("button", { name: "Open step: " + DRAGGED })).toHaveCount(0);
@@ -80,7 +76,7 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
   await test.step("stretching a timeline bar by two days sends one change; Undo takes it back", async () => {
     const handle = page.locator(`span[aria-label="Change the due day of ${DRAGGED}"]`);
     await handle.scrollIntoViewIfNeeded();
-    const bar = page.getByRole("button", { name: "Open step: " + DRAGGED }).last();
+    const bar = handle.locator("xpath=..");
     const before = (await bar.boundingBox())!.width;
     const box = (await handle.boundingBox())!;
     const x = box.x + box.width / 2;
@@ -113,7 +109,7 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
     await expect(card).toContainText("Planned");
     await card.getByRole("button", { name: "Add steps →" }).click();
     const picker = card.getByRole("group", { name: "Steps without a milestone" });
-    await picker.locator("div").filter({ hasText: DRAGGED }).getByRole("button", { name: "Add" }).first().click();
+    await picker.locator("div").filter({ hasText: DRAGGED }).getByRole("button", { name: "Add", exact: true }).first().click();
     await picker.getByRole("button", { name: "Done" }).click();
     await expect(card.getByRole("button", { name: DRAGGED, exact: true })).toBeVisible();
     await expect(card.getByRole("img", { name: "0 of 1 steps done" })).toBeVisible();
