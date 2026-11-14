@@ -1,6 +1,6 @@
 {
   "askedOf": "Asked of {project}",
-  "required": "required",
+  "required": "*",
   "send": "Send",
   "sending": "Sending…",
   "sent": "Thank you. Your answer was sent.",

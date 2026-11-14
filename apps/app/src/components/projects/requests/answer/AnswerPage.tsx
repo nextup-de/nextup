@@ -76,7 +76,7 @@ export function AnswerPage({ formId, initial, requests }: { formId: string; init
         const near = max !== undefined && value.length >= max * NEAR;
         const id = `field-${field.id}`;
         return <div key={field.id} className={styles.field}>
-          <label className={styles.label} htmlFor={id}>{field.label}{field.required && <span className={styles.mark}>{x.required}</span>}{fresh.includes(field.id) && <span className={styles.new}>{x.changedNew}</span>}</label>
+          <label className={styles.label} htmlFor={id}>{field.label}{field.required && <span className={styles.mark} aria-hidden="true">{x.required}</span>}{fresh.includes(field.id) && <span className={styles.new}>{x.changedNew}</span>}</label>
           {field.kind === "short" && <input id={id} className="nh-input" value={value} maxLength={max} required={field.required} onChange={(e) => set(field.id, e.target.value)} />}
           {field.kind === "long" && <textarea id={id} className="nh-input" rows={5} value={value} maxLength={max} required={field.required} onChange={(e) => set(field.id, e.target.value)} />}
           {field.kind === "choice" && <select id={id} className="nh-input nh-select" value={value} required={field.required} onChange={(e) => set(field.id, e.target.value)}>
