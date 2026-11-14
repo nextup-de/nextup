@@ -32,7 +32,7 @@
 .formRow[data-draft="true"] .formName { color: var(--nh-mute); }
 .formName { display: block; font-weight: 500; overflow-wrap: anywhere; }
 .link { border: 0; background: none; color: var(--nh-brand); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.toast { position: sticky; bottom: var(--nh-gap); display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); align-self: center; padding: var(--nh-gap) var(--nh-pad-card); border-radius: var(--nh-r); background: var(--nh-ink); color: var(--nh-card); }
+.toast { position: sticky; bottom: var(--nh-gap); display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); align-self: center; padding: var(--nh-gap) var(--nh-pad-card); border-radius: var(--nh-r); background: var(--nh-card); color: var(--nh-ink); border: 1px solid var(--nh-line); box-shadow: var(--nh-card-shadow); }
 .toast button { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .quote { padding: var(--nh-gap); border-radius: var(--nh-r); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
 .sees { margin: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }

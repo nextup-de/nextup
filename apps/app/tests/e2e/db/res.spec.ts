@@ -325,11 +325,13 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect((await eventsOf("project.done", projectId))[0]).toMatchObject({
         actorUserId: id.lead, payload: { openSteps: [{ stepId: "s_done", end: "done" }, { stepId: "s_drop", end: "dropped", why: DROP_WHY }] },
       });
-      // D31: the dropped step counts in no total, so the overview reads 1 / 1 and not 1 / 2.
+      // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else.
       await page.goto(`/${SLUG}/projects/${projectId}`);
-      await expect(page.getByRole("region", { name: "Where it stands" }).locator("div").filter({ has: page.getByText("Steps done", { exact: true }) }).first()).toContainText("1 / 1");
+      await expect(page.getByRole("region", { name: "Where the steps are" }).getByRole("listitem")).toHaveText([/To do\s*0/, /Doing\s*0/, /Blocked\s*0/, /Done\s*1/]);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
-      await expect(page.getByText("1 of 1 done", { exact: true }), "the board header counts the dropped step in no total").toBeVisible();
+      const board = page.getByRole("region", { name: "Board", exact: true });
+      await expect(board.getByRole("group", { name: "Done" }), "the board counts the done step").toHaveText(/^Done\s*1(?!\d)/);
+      await expect(board.getByRole("group", { name: "To do" }), "the board counts the dropped step in no column").toHaveText(/^To do(?!\s*\d)/);
       await page.context().close();
     });
 
@@ -340,6 +342,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the lead types the first result", async () => {
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByTestId(`measure-type-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
       await form.getByLabel("The number now").fill(String(FIRST));
@@ -354,6 +357,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the deputy of the route sends it back with a reason; the lead is told", async () => {
       page = await signIn(browser, DEPUTY);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByTestId(`measure-sendback-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: "Send it back" });
       await form.getByLabel("What looks wrong?").fill(BACK_WHY);
@@ -372,12 +376,13 @@ test.describe("RES acceptance: a result that closes properly", () => {
       firstRevision = (await eventsOf("project.measured", projectId))[0].id;
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toContainText(BACK_WHY);
       await page.getByTestId(`measure-type-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
       await form.getByLabel("The number now").fill(String(SECOND));
       await form.getByRole("button", { name: "Record the measure" }).click();
-      await expect.poll(async () => (await eventsOf("project.measured", projectId)).length).toBe(2);
+      await expect.poll(async () => (await eventsOf("project.measured", projectId)).length, { timeout: 30_000 }).toBe(2); // the drawer's save then a full refresh: slower under parallel workers
       await expect(page.getByTestId(`measure-reentered-${CHECK_DAYS}`)).toContainText(String(FIRST));
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toHaveCount(0);
       await page.context().close();
@@ -395,6 +400,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the sponsor confirms the new number: the lead and the raiser are told, the reward is due", async () => {
       page = await signIn(browser, SPONSOR);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByTestId(`measure-confirm-${CHECK_DAYS}`).click();
       await page.getByRole("button", { name: "Yes, the number is right" }).click();
       await expect.poll(async () => (await eventsOf("project.measure.confirmed", projectId)).length).toBe(1);
@@ -433,6 +439,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByRole("form", { name: "Record the reward" }).getByRole("button", { name: "Record the reward" }).click();
       await expect.poll(async () => (await eventsOf("project.rewarded", projectId)).length).toBe(1);
       expect((await eventsOf("project.rewarded", projectId))[0]).toMatchObject({ actorUserId: id.manager });
