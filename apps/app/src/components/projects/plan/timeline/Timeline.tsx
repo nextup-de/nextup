@@ -1,15 +1,15 @@
 "use client";
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { datesEdit, dragEdit, fill, timelineRows, timelineText, TIMELINE_GROUPS, TIMELINE_SCALES, type DateEdit, type TimelineGroup, type TimelineGroupBy, type TimelineRow, type TimelineScale } from "@/features/projects/timeline-view";
+import { datesEdit, dragEdit, timelineRows, TIMELINE_GROUPS, TIMELINE_SCALES, type DateEdit, type TimelineGroup, type TimelineGroupBy, type TimelineRow, type TimelineScale } from "@/features/projects/timeline-view";
 import type { ReducedProject, StepColumn } from "@/features/projects/types";
-import { useLocale } from "@/i18n/client";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { useRights, useSend } from "../../parts";
 import { CreateStepDialog } from "../../steps/CreateStepDialog";
 import { StepPanel } from "../../steps/StepPanel";
 import type { JiraRow } from "@/features/projects/views";
 import styles from "./Timeline.module.css";
+import { useT } from "@/i18n/client";
 
 const COLUMN_PX = 96;
 const UNIT: Record<TimelineScale, number> = { weeks: 7, months: 30, quarters: 91 };
@@ -18,8 +18,7 @@ type Line = { kind: "group"; group: TimelineGroup } | { kind: "row"; row: Timeli
 
 export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { S, f, seed, act } = useDemo();
-  const locale = useLocale();
-  const x = timelineText(locale);
+  const t = useT();
   const rights = useRights(p);
   const send = useSend(p);
   const [groupBy, setGroupBy] = useState<TimelineGroupBy>("milestone");
@@ -41,17 +40,17 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const syncing = p.sync?.system === "jira" && p.sync.on;
   const step = (id: string) => p.steps.find((s) => s.id === id);
   const lines: Line[] = view.groups.flatMap((g): Line[] => [...(groupBy === "none" ? [] : [{ kind: "group" as const, group: g }]), ...g.rows.map((row) => ({ kind: "row" as const, row }))]);
-  const colLabel = { todo: x.todo, doing: x.doing, blocked: x.blocked, done: x.done } satisfies Record<StepColumn, string>;
-  const groupTitle = (g: TimelineGroup) => groupBy === "milestone" ? g.title ?? x.noMilestone
-    : groupBy === "person" ? (g.userId ? seed.seats.find((s) => s.userId === g.userId)?.label ?? g.userId : x.noOwner) : g.column ? colLabel[g.column] : "";
+  const colLabel = { todo: t("projectPlan.timelineTodo"), doing: t("projectPlan.timelineDoing"), blocked: t("projectPlan.timelineBlocked"), done: t("projectPlan.timelineDone") } satisfies Record<StepColumn, string>;
+  const groupTitle = (g: TimelineGroup) => groupBy === "milestone" ? g.title ?? t("projectPlan.timelineNoMilestone")
+    : groupBy === "person" ? (g.userId ? seed.seats.find((s) => s.userId === g.userId)?.label ?? g.userId : t("projectPlan.timelineNoOwner")) : g.column ? colLabel[g.column] : "";
 
   const apply = (id: string, change: DateEdit) => {
     const s = step(id);
     if (!s) return;
     const ok = send("project.step.edited", { stepId: id, ...change.edit }, () => act.project.editStep(p.id, id, change.edit));
     if (!ok) return;
-    const text = change.edit.dueDay !== undefined && change.edit.dueDay !== null ? fill(x.dueMoved, { date: f(change.edit.dueDay) })
-      : change.edit.startDay !== undefined && change.edit.startDay !== null ? fill(x.startMoved, { date: f(change.edit.startDay) }) : s.text;
+    const text = change.edit.dueDay !== undefined && change.edit.dueDay !== null ? t("projectPlan.timelineDueMoved", { date: f(change.edit.dueDay) })
+      : change.edit.startDay !== undefined && change.edit.startDay !== null ? t("projectPlan.timelineStartMoved", { date: f(change.edit.startDay) }) : s.text;
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     setToast({ text, undo: () => { send("project.step.edited", { stepId: id, ...change.undo }, () => act.project.editStep(p.id, id, change.undo)); setToast(null); } });
     toastTimer.current = window.setTimeout(() => setToast(null), 8000);
@@ -81,34 +80,34 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
 
   return <div className={styles.timeline}>
     <div className={styles.head}>
-      <h2 className={styles.title}>{x.title}</h2>
+      <h2 className={styles.title}>{t("projectPlan.timeline")}</h2>
       <div className={styles.controls}>
-        <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, dayLeft(S.day) - COLUMN_PX * 2), behavior: "smooth" })}>{x.today}</button>
-        <label className={styles.group}>{x.groupBy}:
+        <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, dayLeft(S.day) - COLUMN_PX * 2), behavior: "smooth" })}>{t("projectPlan.calToday")}</button>
+        <label className={styles.group}>{t("projectPlan.timelineGroupBy")}:
           <select className="nh-input nh-select" value={groupBy} onChange={(e) => setGroupBy(TIMELINE_GROUPS.find((g) => g === e.target.value) ?? "milestone")}>
-            {TIMELINE_GROUPS.map((g) => <option key={g} value={g}>{g === "milestone" ? x.groupMilestone : g === "person" ? x.groupPerson : g === "status" ? x.groupStatus : x.groupNone}</option>)}
+            {TIMELINE_GROUPS.map((g) => <option key={g} value={g}>{g === "milestone" ? t("projectPlan.fieldMilestone") : g === "person" ? t("projectPlan.timelineGroupPerson") : g === "status" ? t("projectPlan.groupStatus") : t("projectPlan.timelineGroupNone")}</option>)}
           </select>
         </label>
-        <div className={styles.scale} role="radiogroup" aria-label={x.scale}>
-          {TIMELINE_SCALES.map((sc) => <button key={sc} type="button" role="radio" aria-checked={scale === sc} data-on={scale === sc ? "true" : undefined} onClick={() => setScale(sc)}>{sc === "weeks" ? x.weeks : sc === "months" ? x.months : x.quarters}</button>)}
+        <div className={styles.scale} role="radiogroup" aria-label={t("projectPlan.scaleLabel")}>
+          {TIMELINE_SCALES.map((sc) => <button key={sc} type="button" role="radio" aria-checked={scale === sc} data-on={scale === sc ? "true" : undefined} onClick={() => setScale(sc)}>{sc === "weeks" ? t("projectPlan.scaleWeeks") : sc === "months" ? t("projectPlan.scaleMonths") : t("projectPlan.scaleQuarters")}</button>)}
         </div>
-        {rights.addStep && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setAdding(true)}>+ {x.addStep}</button>}
+        {rights.addStep && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setAdding(true)}>+ {t("projectPlan.timelineAddStep")}</button>}
       </div>
     </div>
-    {syncing && jira.state === "synced" && <p className={styles.note}>{x.syncNote}</p>}
-    {view.empty ? <p className={styles.note}>{x.empty}</p> : <div className={styles.frame}>
+    {syncing && jira.state === "synced" && <p className={styles.note}>{t("projectPlan.timelineSyncNote")}</p>}
+    {view.empty ? <p className={styles.note}>{t("projectPlan.timelineEmpty")}</p> : <div className={styles.frame}>
       <div className={styles.left}>
-        <div className={styles.leftHead}>{x.step}</div>
+        <div className={styles.leftHead}>{t("projectPlan.timelineStep")}</div>
         {lines.map((line) => line.kind === "group"
-          ? <div key={line.group.id} className={styles.groupRow}><strong>{groupTitle(line.group)}</strong><span className={styles.muted}>· {fill(x.doneOf, { done: line.group.done, total: line.group.total })}</span></div>
+          ? <div key={line.group.id} className={styles.groupRow}><strong>{groupTitle(line.group)}</strong><span className={styles.muted}>· {t("projectPlan.timelineDoneOf", { done: line.group.done, total: line.group.total })}</span></div>
           : <div key={line.row.stepId} className={styles.stepRow} data-done={line.row.column === "done" ? "true" : undefined}>
               {line.row.key && <span className={styles.key}>{line.row.key}</span>}
               <span className={styles.stepText}>{line.row.text}</span>
-              {rights.editStep(step(line.row.stepId) as NonNullable<ReturnType<typeof step>>) && <button type="button" className={styles.datesButton} aria-expanded={datesFor === line.row.stepId} onClick={() => setDatesFor(datesFor === line.row.stepId ? null : line.row.stepId)}>{x.dates}</button>}
+              {rights.editStep(step(line.row.stepId) as NonNullable<ReturnType<typeof step>>) && <button type="button" className={styles.datesButton} aria-expanded={datesFor === line.row.stepId} onClick={() => setDatesFor(datesFor === line.row.stepId ? null : line.row.stepId)}>{t("projectPlan.timelineDates")}</button>}
             </div>)}
       </div>
       <div className={styles.scroller} ref={scroller}>
-        <div className={styles.grid} role="group" aria-label={x.grid} style={{ width: view.columns.length * COLUMN_PX }}>
+        <div className={styles.grid} role="group" aria-label={t("projectPlan.timelineGrid")} style={{ width: view.columns.length * COLUMN_PX }}>
           <div className={styles.gridHead}>{view.columns.map((c) => <span key={c.start} className={styles.colHead} style={{ width: COLUMN_PX }}>{f(c.start)}</span>)}</div>
           <span className={styles.today} style={{ left: dayLeft(S.day) }} aria-hidden="true" />
           {lines.map((line) => line.kind === "group"
@@ -120,10 +119,10 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
                   const editable = rights.editStep(step(line.row.stepId) as NonNullable<ReturnType<typeof step>>);
                   return <div className={styles.bar} data-tone={line.row.tone} data-dragging={dragging ? "true" : undefined} style={{ left: dayLeft(bar.start), width: Math.max(dayPx, (bar.end - bar.start) * dayPx) }}
                     onPointerDown={(e) => { if (e.target === e.currentTarget) begin(e, line.row, "move"); }} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
-                    {editable && <span className={styles.handle} data-side="start" role="presentation" aria-label={fill(x.dragStart, { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "start"); }} onPointerMove={move} onPointerUp={end} />}
-                    <button type="button" className={styles.barOpen} aria-label={fill(x.openStep, { step: line.row.text })} onClick={() => setOpen(line.row.stepId)}>{line.row.text}</button>
-                    {editable && <span className={styles.handle} data-side="end" role="presentation" aria-label={fill(x.dragEnd, { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "end"); }} onPointerMove={move} onPointerUp={end} />}
-                    {dragging && <span className={styles.dragLabel} role="status">{fill(x.span, { from: f(bar.start), to: f(bar.end), days: bar.end - bar.start, was: line.row.bar.end - line.row.bar.start })}</span>}
+                    {editable && <span className={styles.handle} data-side="start" role="presentation" aria-label={t("projectPlan.timelineDragStart", { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "start"); }} onPointerMove={move} onPointerUp={end} />}
+                    <button type="button" className={styles.barOpen} aria-label={t("projectPlan.timelineOpenStep", { step: line.row.text })} onClick={() => setOpen(line.row.stepId)}>{line.row.text}</button>
+                    {editable && <span className={styles.handle} data-side="end" role="presentation" aria-label={t("projectPlan.timelineDragEnd", { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "end"); }} onPointerMove={move} onPointerUp={end} />}
+                    {dragging && <span className={styles.dragLabel} role="status">{t("projectPlan.timelineSpan", { from: f(bar.start), to: f(bar.end), days: bar.end - bar.start, was: line.row.bar.end - line.row.bar.start })}</span>}
                   </div>;
                 })()}
               </div>)}
@@ -131,7 +130,7 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
       </div>
     </div>}
     {datesFor && step(datesFor) && <DatesForm key={datesFor} p={p} stepId={datesFor} today={S.day} f={f} onApply={(id, c) => { apply(id, c); setDatesFor(null); }} onCancel={() => setDatesFor(null)} />}
-    {toast && <div className={styles.toast} role="status"><span>{toast.text}</span><button type="button" onClick={toast.undo}>{x.undo}</button></div>}
+    {toast && <div className={styles.toast} role="status"><span>{toast.text}</span><button type="button" onClick={toast.undo}>{t("projectPlan.toastUndo")}</button></div>}
     {open && <StepPanel p={p} stepId={open} jira={jira} onClose={() => setOpen(null)} />}
     <CreateStepDialog p={p} open={adding} onClose={() => setAdding(false)} />
   </div>;
@@ -139,7 +138,7 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
 
 /** 'Dates…': start and due as days from today, with the dates they fall on, so the edit works without a mouse (D6). */
 function DatesForm({ p, stepId, today, f, onApply, onCancel }: { p: ReducedProject; stepId: string; today: number; f: (d: number) => string; onApply: (id: string, change: DateEdit) => void; onCancel: () => void }) {
-  const x = timelineText(useLocale());
+  const t = useT();
   const s = p.steps.find((st) => st.id === stepId);
   const bar = s ? timelineRows({ steps: [s], milestones: [] }, { groupBy: "none", scale: "weeks", day: today }).groups[0].rows[0].bar : null;
   const [start, setStart] = useState(String((s?.startDay ?? bar?.start ?? today) - today));
@@ -153,11 +152,11 @@ function DatesForm({ p, stepId, today, f, onApply, onCancel }: { p: ReducedProje
     if (startDay === null || dueDay === null || dueDay < startDay) { setError(true); return; }
     if (change) onApply(stepId, change); else onCancel();
   };
-  return <form className={styles.dates} aria-label={fill(x.datesFor, { step: s.text })} onSubmit={(e) => { e.preventDefault(); submit(); }} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}>
-    <strong>{fill(x.datesFor, { step: s.text })}</strong>
-    <label>{x.start} <input className="nh-input" type="number" step={1} autoFocus value={start} onChange={(e) => { setStart(e.target.value); setError(false); }} /> <span className={styles.muted}>{x.daysFromToday}{startDay !== null ? ` · ${f(startDay)}` : ""}</span></label>
-    <label>{x.due} <input className="nh-input" type="number" step={1} value={due} onChange={(e) => { setDue(e.target.value); setError(false); }} /> <span className={styles.muted}>{x.daysFromToday}{dueDay !== null ? ` · ${f(dueDay)}` : ""}</span></label>
-    {error && <p role="alert" className={styles.error}>{x.invalid}</p>}
-    <div className={styles.actions}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{x.save}</button><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={onCancel}>{x.cancel}</button></div>
+  return <form className={styles.dates} aria-label={t("projectPlan.timelineDatesFor", { step: s.text })} onSubmit={(e) => { e.preventDefault(); submit(); }} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}>
+    <strong>{t("projectPlan.timelineDatesFor", { step: s.text })}</strong>
+    <label>{t("projectPlan.timelineStart")} <input className="nh-input" type="number" step={1} autoFocus value={start} onChange={(e) => { setStart(e.target.value); setError(false); }} /> <span className={styles.muted}>{t("projectPlan.timelineDaysFromToday")}{startDay !== null ? ` · ${f(startDay)}` : ""}</span></label>
+    <label>{t("projectPlan.fieldDue")} <input className="nh-input" type="number" step={1} value={due} onChange={(e) => { setDue(e.target.value); setError(false); }} /> <span className={styles.muted}>{t("projectPlan.timelineDaysFromToday")}{dueDay !== null ? ` · ${f(dueDay)}` : ""}</span></label>
+    {error && <p role="alert" className={styles.error}>{t("projectPlan.timelineInvalid")}</p>}
+    <div className={styles.actions}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projectPlan.milestoneSave")}</button><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={onCancel}>{t("projectPlan.quickAddCancel")}</button></div>
   </form>;
 }
