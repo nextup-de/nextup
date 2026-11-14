@@ -1,0 +1,24 @@
+{
+ "value": [
+  {
+   "id": "3.0",
+   "lastModifiedDateTime": "2026-11-02T08:00:00Z",
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "size": 48211
+  },
+  {
+   "id": "2.0",
+   "lastModifiedDateTime": "2026-10-20T08:00:00Z",
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "size": 40100
+  }
+ ]
+}
