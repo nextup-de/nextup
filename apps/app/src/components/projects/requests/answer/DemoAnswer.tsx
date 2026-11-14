@@ -1,7 +1,7 @@
 "use client";
 // The answer page where there is no database (the local demo): the form comes from the demo's own log, an answer goes through the demo acts, and
 // the requests shown are the current person's own. The server path (page.tsx, server/forms.ts) is untouched.
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { notFound } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { AnswerForm, MyRequest } from "@/server/forms";
@@ -11,8 +11,7 @@ import { AnswerPage, type AnswerSender } from "./AnswerPage";
 export function DemoAnswer({ formId }: { formId: string }) {
   const { S } = useDemo();
   // The demo's log lives in this browser: until it has loaded, the server render has nothing to show and must not decide "not found".
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => setLoaded(true), []);
+  const loaded = useSyncExternalStore(() => () => {}, () => true, () => false);
   if (!loaded) return null;
   const project = S.projects.find((p) => p.forms.some((form) => form.id === formId));
   const form = project?.forms.find((f) => f.id === formId);
