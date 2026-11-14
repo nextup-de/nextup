@@ -63,7 +63,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
     doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
-    rewardDueDay: null, helpAsks: [], pages: null, removed: [], merges: {},
+    rewardDueDay: null, helpAsks: [], pages: null, milestones: [], removed: [], merges: {},
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -555,6 +555,32 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (pl.ownerUserId !== undefined) s.ownerUserId = pl.ownerUserId;
       if (pl.dueDay !== undefined) s.dueDay = typeof pl.dueDay === "number" ? pl.dueDay : null;
       if (pl.note !== undefined) s.note = pl.note.trim();
+      if (pl.startDay !== undefined) s.startDay = typeof pl.startDay === "number" ? pl.startDay : null;
+      if (pl.milestoneId !== undefined) s.milestoneId = pl.milestoneId !== null && p.milestones.some((m) => m.id === pl.milestoneId) ? pl.milestoneId : null;
+      break;
+    }
+    case "project.milestone.added": {
+      const id = pl.milestoneId;
+      const title = pl.title?.trim();
+      if (!id || !title || typeof pl.dueDay !== "number" || p.milestones.some((m) => m.id === id)) break;
+      const startDay = typeof pl.startDay === "number" ? pl.startDay : null;
+      p.milestones.push({ id, title, startDay, dueDay: pl.dueDay, note: pl.note?.trim() ?? "", shipped: false, shippedDay: null });
+      break;
+    }
+    case "project.milestone.edited": {
+      const m = p.milestones.find((x) => x.id === pl.milestoneId);
+      if (!m) break;
+      if (pl.removed) {
+        p.milestones = p.milestones.filter((x) => x !== m);
+        p.steps.forEach((s) => { if (s.milestoneId === m.id) s.milestoneId = null; });
+        break;
+      }
+      const title = pl.title?.trim();
+      if (title) m.title = title;
+      if (pl.startDay !== undefined) m.startDay = typeof pl.startDay === "number" ? pl.startDay : null;
+      if (typeof pl.dueDay === "number") m.dueDay = pl.dueDay;
+      if (pl.note !== undefined) m.note = pl.note.trim();
+      if (typeof pl.shipped === "boolean" && pl.shipped !== m.shipped) { m.shipped = pl.shipped; m.shippedDay = pl.shipped ? d : null; }
       break;
     }
     case "project.linked": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PersonFace } from "@/components/ui/elements";
 import { boardLanes, dropOutcome, type BoardTarget } from "@/features/projects/board-view";
@@ -26,6 +26,13 @@ export function Board({ p, hints, jira }: ToolProps) {
   const [folded, setFolded] = useState<string[]>([]);
   // Local state only: the Steps page also holds the List, which owns ?step=; two panels would overlap and repeat field ids.
   const [open, setOpen] = useState<string | null>(null);
+  // The sheet closes on Escape even when focus fell to the page (a field that blurred, a button that went away); the sheet's own Escape handling runs first and prevents this one.
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) setOpen(null); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
   const [adding, setAdding] = useState<{ column: StepColumn; lane: string } | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [spot, setSpot] = useState<BoardTarget | null>(null);

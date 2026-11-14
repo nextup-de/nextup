@@ -28,6 +28,10 @@ export type Step = {
   /** The owner's user id (project.step.* ownerUserId); null when none was named. */
   ownerUserId?: string | null;
   dueDay: number | null;
+  /** The planned start (project.step.edited startDay); null when none was set. Not startedDay, the day it first moved to Doing. */
+  startDay?: number | null;
+  /** The milestone this step belongs to; null when none. */
+  milestoneId?: string | null;
   column: StepColumn;
   /** Dropped on the Done sheet (D13): it stays on the board, struck through, and counts in no total. Null/absent while it is not. */
   dropped?: { why: string; day: number; byUserId: string | null } | null;
@@ -46,6 +50,9 @@ export type Step = {
   /** Who the step is for: the lead, the sponsor or the team (a template's step, F6). Absent on a step added by hand and on legacy steps. */
   role?: StepRole;
 };
+
+/** A named point in the plan that steps belong to (plan PLN, D3). */
+export type Milestone = { id: string; title: string; startDay: number | null; dueDay: number; note: string; shipped: boolean; shippedDay: number | null };
 
 /** The role a template step is for. */
 export type StepRole = "lead" | "sponsor" | "team";
@@ -142,6 +149,7 @@ export type ProjectEscalation = {
 export type ReducedProject = {
   /** null: no page event yet; use the default pages. */
   pages: ProjectPage[] | null;
+  milestones: Milestone[];
   removed: RemovedItem[];
   merges: Record<string, MergeRecord>;
   id: string;
