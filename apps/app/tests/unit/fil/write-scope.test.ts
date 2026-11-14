@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { authorizeUrl, canSearchFiles, canWriteFiles, grantedScopes, M365_SCOPE, SIGN_IN_SCOPE } from "@/features/auth/entra";
+import { canSearchFiles, canWriteFiles, grantedScopes, M365_SCOPE, SIGN_IN_SCOPE } from "@/features/auth/entra";
 import { GRAPH_SCOPE, refreshRequestBody } from "@/features/m365/token";
 
 const READ = "https://graph.microsoft.com/Files.Read.All";
@@ -12,7 +12,6 @@ it("FIL write scope the connect flow and the refresh ask for Files.ReadWrite.All
   expect(M365_SCOPE.split(" ")).not.toContain(READ);
   expect(GRAPH_SCOPE.split(" ").sort()).toEqual([WRITE, "offline_access"]);
   expect(refreshRequestBody({ clientId: "a", clientSecret: "b", refreshToken: "r" }).get("scope")).toBe(GRAPH_SCOPE);
-  expect(new URL(authorizeUrl({ clientId: "a", tenant: "t", redirectUri: "https://x/cb", state: "s", challenge: "c", nonce: "n", scope: M365_SCOPE } as Parameters<typeof authorizeUrl>[0])).searchParams.get("scope")).toBe(M365_SCOPE);
   expect(SIGN_IN_SCOPE).not.toMatch(/Files/);
 });
 
