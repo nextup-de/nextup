@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { PersonFace } from "@/components/ui/elements";
 import { DEFAULT_SORT, listRows, stepKey, type ListColumn, type ListSort } from "@/features/projects/list-view";
 import { NO_FILTER, stepFilter, type StepFilter } from "@/features/projects/step-filter";
 import { columnLabel } from "@/features/projects/views";
@@ -9,6 +8,7 @@ import { useLocale, useT } from "@/i18n/client";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { teamOf, useRights, useSend, withIds } from "../../parts";
 import type { ToolProps } from "../../tools/types";
+import { StepFilterRow } from "../StepFilterRow";
 import { StepPanel } from "../StepPanel";
 import { CellMenu } from "./CellMenu";
 import styles from "./List.module.css";
@@ -16,7 +16,7 @@ import styles from "./List.module.css";
 const columns: ListColumn[] = ["key", "step", "owner", "status", "due", "waitingOn"];
 const labels = { key: "projectSteps.key", step: "projectSteps.listStep", owner: "projectSteps.owner", status: "projectSteps.status", due: "projectSteps.due", waitingOn: "projectSteps.waitingOn" } as const;
 
-export function List({ p, jira }: ToolProps) {
+export function List({ p, jira, page, tool }: ToolProps) {
   const { S, seed, actorUserId, act, f } = useDemo();
   const t = useT();
   const locale = useLocale();

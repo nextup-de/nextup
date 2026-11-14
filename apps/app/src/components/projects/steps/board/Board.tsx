@@ -11,10 +11,11 @@ import { useLocale, useT } from "@/i18n/client";
 import { teamOf, useRights, useSend, withIds } from "../../parts";
 import type { ToolProps } from "../../tools/types";
 import { MarkBlockedForm } from "../MarkBlockedForm";
+import { StepFilterRow } from "../StepFilterRow";
 import { StepPanel } from "../StepPanel";
 import styles from "./Board.module.css";
 
-export function Board({ p, hints, jira }: ToolProps) {
+export function Board({ p, hints, jira, page, tool }: ToolProps) {
   const { act, S, seed, actorUserId, f } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -47,7 +48,6 @@ export function Board({ p, hints, jira }: ToolProps) {
   const waitingCount = stepFilter(p, { ...NO_FILTER, waiting: true }, { day: S.day, me: actorUserId }).filter((s) => !s.dropped).length;
   const older = olderDoneCount(p, S.day);
   const active = filter.query.trim() || filter.owners.length || filter.mine || filter.waiting || filter.dueWeek || filter.notStarted || filter.dropped;
-  const toggle = (key: "mine" | "waiting" | "dueWeek" | "notStarted" | "dropped") => setFilter((v) => ({ ...v, [key]: !v[key] }));
   const setTarget = (target: BoardTarget | null) => { spotRef.current = target; setSpot(target); };
   const end = () => { dragRef.current = null; setDrag(null); setTarget(null); setGhost(null); };
   const reassign = (step: Step, target: BoardTarget) => {
