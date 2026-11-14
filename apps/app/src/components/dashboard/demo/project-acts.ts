@@ -9,7 +9,10 @@ import type { TemplateKey } from "@/features/templates/library";
 import type { ActDeps } from "./act-deps";
 
 /** A change to a step: only the fields given change. owner "" and dueDay null clear them; removed takes it off the board. */
-export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; note?: string; removed?: boolean };
+export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; startDay?: number | null; milestoneId?: string | null; note?: string; removed?: boolean };
+
+export type MilestoneInput = { title: string; startDay?: number | null; dueDay: number; note?: string };
+export type MilestoneChange = { title?: string; startDay?: number | null; dueDay?: number; note?: string; shipped?: boolean; removed?: boolean };
 
 export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
 
@@ -45,6 +48,10 @@ export type ProjectAct = {
   stepCheck: (projectId: string, stepId: string, op: StepChecklistOp, itemId: string, text?: string, done?: boolean) => void;
   stepComment: (projectId: string, stepId: string, text: string, replyTo?: string | null) => void;
   editStep: (projectId: string, stepId: string, change: StepChange) => void;
+  milestone: {
+    add: (projectId: string, input: MilestoneInput) => string;
+    edit: (projectId: string, milestoneId: string, change: MilestoneChange) => void;
+  };
   link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
   /**
    * Send the project to a tool, or stop syncing (project.sync). Server mode: the connector does the rest.
@@ -140,6 +147,10 @@ export function projectActs(d: ActDeps): ProjectAct {
     stepCheck: (id, stepId, op, itemId, text, done) => emit("project.step.checklist", id, { stepId, op, itemId, ...(text !== undefined ? { text } : {}), ...(done !== undefined ? { done } : {}) }),
     stepComment: (id, stepId, text, replyTo) => emit("project.step.commented", id, { stepId, text, ...(replyTo !== undefined ? { replyTo } : {}) }),
     editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
+    milestone: {
+      add: (id, input) => { const milestoneId = newId("m"); emit("project.milestone.added", id, { milestoneId, ...input }); return milestoneId; },
+      edit: (id, milestoneId, change) => emit("project.milestone.edited", id, { milestoneId, ...change }),
+    },
     link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),
     sync: (id, on, system = "jira") => {
       emit("project.sync", id, { system, on });

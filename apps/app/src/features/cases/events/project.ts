@@ -26,6 +26,8 @@ export const PROJECT_EVENT_TYPES = [
   "project.tool.restored", // { toolId }
   "project.page.merged", // { mergeId, fromPageId, intoPageId }  moves every tool in order
   "project.page.unmerged", // { mergeId }
+  "project.milestone.added", // { milestoneId, title, startDay?, dueDay, note? }
+  "project.milestone.edited", // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }
 ] as const;
 
 /** Every project.* type, with the fields it carries. */
@@ -39,7 +41,7 @@ export type ProjectAreaEventType =
   | "project.step.moved" // { stepId, to: 'todo'|'doing'|'blocked'|'done', why?, before?, waitingOn? }  before: the card it lands above (null = the bottom)
   | "project.step.checklist" // { stepId, op, itemId, text?, done? }: one item per event
   | "project.step.commented" // { stepId, text, replyTo? }: replies name an earlier comment on this step
-  | "project.step.edited" // { stepId, text?, owner?, ownerUserId?, dueDay?, note?, removed? }  only the fields sent change; owner "" and dueDay null clear
+  | "project.step.edited" // { stepId, text?, owner?, ownerUserId?, dueDay?, startDay?, milestoneId?, note?, removed? }  only the fields sent change; owner "" and dueDay, startDay, milestoneId null clear
   | "project.linked" // { system, url, key?, stepId? }
   | "project.commented" // { text }
   | "project.sync" // { system: 'jira', on }  send the project to Jira / stop syncing it; lead or manager, while the project is open
@@ -80,7 +82,10 @@ export type ProjectAreaEventType =
   | "project.tool.removed" // { toolId }
   | "project.tool.restored" // { toolId }
   | "project.page.merged" // { mergeId, fromPageId, intoPageId }  moves every tool in order
-  | "project.page.unmerged"; // { mergeId }
+  | "project.page.unmerged" // { mergeId }
+  // Plan tools (plan PLN, D3).
+  | "project.milestone.added" // { milestoneId, title, startDay?, dueDay, note? }  title 1-80, note up to 1000, dueDay not before startDay
+  | "project.milestone.edited"; // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }  only the fields sent change; startDay null clears; removed clears milestoneId on its steps
 
 // Compile-time: every app type is a member of the area's union.
 const _appTypesAreMembers: readonly ProjectAreaEventType[] = PROJECT_EVENT_TYPES;
@@ -123,4 +128,8 @@ export type ProjectAreaPayload = {
   tools?: { toolId: string; kind: ToolKind; title?: string; content?: string }[];
   collapsed?: boolean; content?: string; baseRev?: number;
   mergeId?: string; fromPageId?: string; intoPageId?: string;
+  // Plan tools (plan PLN). title, note, dueDay and removed are shared fields.
+  startDay?: number | null; // project.step.edited, project.milestone.added, project.milestone.edited (a working-day number; null clears)
+  milestoneId?: string | null; // project.step.edited (null clears), project.milestone.added, project.milestone.edited
+  shipped?: boolean; // project.milestone.edited
 };
