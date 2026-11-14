@@ -127,9 +127,9 @@ it("PGB scaffold: all four stand-ins render with final props in both languages",
     expect(render(h(MergeDialog, { ...mergeProps, open: false }), locale)).toBe("");
     const section = { p, page, tool, index: 0, count: 1, jira, editor: true, hints: [], onAddAt: noop };
     const markup = render(h(ToolSection, section), locale);
-    expect(markup).toContain(`<h2>${t("projectPages.toolDoc")}</h2>`);
+    expect(markup).toContain(`>${t("projectPages.toolDoc")}</h2>`);
     expect(markup).toContain("Decision recorded");
-    expect(render(h(ToolSection, { ...section, tool: { ...tool, title: "Our decisions" } }), locale)).toContain("<h2>Our decisions</h2>");
+    expect(render(h(ToolSection, { ...section, tool: { ...tool, title: "Our decisions" } }), locale)).toContain(">Our decisions</h2>");
     expect(render(h(BrowserPagesImport, { p, editor: true }), locale)).toBe("");
     expect(render(h(BrowserPagesImport, { p, editor: false }), locale)).toBe("");
   }
