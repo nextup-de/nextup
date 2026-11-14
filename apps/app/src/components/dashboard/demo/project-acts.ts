@@ -14,7 +14,8 @@ export type StepChange = { text?: string; owner?: string; ownerUserId?: string |
 export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
 
 // Everything done to a project, each one event (features/projects). Ids are minted here when the caller needs them back.
-export type PageInput = { title: string; icon: PageIconKey; tools: { kind: ToolKind; title?: string; content?: string }[]; before?: string | null };
+/** `pageId` and `toolId` are only for a caller that needs fixed ids (the browser import, PGB D10); everyone else lets the act mint them. */
+export type PageInput = { title: string; icon: PageIconKey; tools: { kind: ToolKind; title?: string; content?: string; toolId?: string }[]; before?: string | null; pageId?: string };
 export type PageChange = { title?: string; icon?: PageIconKey };
 export type ToolChange = { title?: string; collapsed?: boolean; content?: string; baseRev?: number };
 
@@ -32,6 +33,8 @@ export type ProjectAct = {
     removeTool: (projectId: string, toolId: string) => void;
     restoreTool: (projectId: string, toolId: string) => void;
     merge: (projectId: string, fromPageId: string, intoPageId: string) => string;
+    /** Like merge, but resolves with the server's answer (the merge dialog waits for it, PGB D13). */
+    mergeAndWait: (projectId: string, fromPageId: string, intoPageId: string) => Promise<AppendOutcome & { mergeId: string }>;
     unmerge: (projectId: string, mergeId: string) => void;
   };
   /** Team changes name the person by user id; the label rides along for the timeline. */
@@ -100,8 +103,8 @@ export function projectActs(d: ActDeps): ProjectAct {
   return {
     page: {
       create: async (id, input) => {
-        const pageId = newId("page");
-        const tools = input.tools.map((tool) => ({ ...tool, toolId: newId("tool") }));
+        const pageId = input.pageId ?? newId("page");
+        const tools = input.tools.map((tool) => ({ ...tool, toolId: tool.toolId ?? newId("tool") }));
         const result = await emit("project.page.added", id, { ...input, pageId, tools });
         return result.ok ? { ...result, pageId, tools } : result;
       },
@@ -127,6 +130,10 @@ export function projectActs(d: ActDeps): ProjectAct {
         const mergeId = newId("merge");
         emit("project.page.merged", id, { mergeId, fromPageId, intoPageId });
         return mergeId;
+      },
+      mergeAndWait: async (id, fromPageId, intoPageId) => {
+        const mergeId = newId("merge");
+        return { ...(await emit("project.page.merged", id, { mergeId, fromPageId, intoPageId })), mergeId };
       },
       unmerge: (id, mergeId) => emit("project.page.unmerged", id, { mergeId }),
     },
