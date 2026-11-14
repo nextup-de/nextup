@@ -115,6 +115,20 @@ with price 0 on "Prices per model" (`mistral-nemo 0 0`); without a price it is h
 **Release.** The brain's chat path ships in the brain image; a stack on the choice needs app and brain of the same
 release (`install.sh` moves both together when the instance runs a brain).
 
+## Claude API (demo companies only)
+
+The choice `anthropic` sends the same calls as Bedrock to Anthropic's own API (api.anthropic.com) with an API key
+from the Anthropic Console; the brain's purposes get the key per request and keep nothing. It exists to spend
+Console credit on our demo companies (Musterwerk, acme): their content is made up, so leaving the EU does not
+matter there. The gate (`apps/app/src/features/ai/gate.ts`) refuses it in every other stage, and go-live lists it
+as a check to fix.
+
+1. Console → API keys: create a key for the demo stacks (Kevin; never in a repo, a chat or a ticket).
+2. The demo company's admin → Connectors → AI: choose "Claude API (Anthropic)", paste the key, leave the model
+   empty for `claude-opus-5-5` or name another, and a brain model if routing and coaching should use a cheaper one.
+3. Enter the model's price in the price box, so the month's budget counts it (prices.ts); without one, the token cap
+   applies.
+
 ## When neither qualifies
 
 Keep the AI off for the pilot (PILOT/HD8): `LLM_PROVIDER=mock`, as in `AI_DEMO.md`. Everything

@@ -7,9 +7,10 @@ import type { Connector } from "./base";
 
 /**
  * `off` is a valid company setting with no adapter behind it (D8). `local` is the model on the company's own stack,
- * behind its brain service: no endpoint, no key, nothing leaves the stack (Q8.4).
+ * behind its brain service: no endpoint, no key, nothing leaves the stack (Q8.4). `anthropic` is Claude through
+ * Anthropic's own API with the company's API key - for demo companies only (the app's gate refuses it elsewhere).
  */
-export const AI_PROVIDER_CHOICES = ["bedrock", "azure-openai", "openai-compatible", "off", "local"] as const;
+export const AI_PROVIDER_CHOICES = ["bedrock", "azure-openai", "openai-compatible", "off", "local", "anthropic"] as const;
 export const AiProviderChoice = z.enum(AI_PROVIDER_CHOICES);
 export type AiProviderChoice = z.infer<typeof AiProviderChoice>;
 

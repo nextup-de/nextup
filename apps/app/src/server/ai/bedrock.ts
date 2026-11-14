@@ -1,7 +1,10 @@
 // Claude on Amazon Bedrock: the assistant's streaming Provider and the contract's `complete`.
 // The only file in the app that imports the Bedrock SDK. Credentials come from the AWS chain
 // (env, profile, instance role) - no key in this repo. docs/ASSISTANT.md.
+// claudeStreaming / claudeComplete take any Claude client: server/ai/anthropic.ts runs the same code
+// against Anthropic's own API.
 import { AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool, ToolResultBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import type { AiRequest, AiResponse } from "@nextup/contracts/public";
 import type { Provider, ProviderRun, ProviderResult } from "@/features/assist";
@@ -20,12 +23,22 @@ function clientFor(region: string): AnthropicBedrockMantle {
   return c;
 }
 
+/** What claudeStreaming and claudeComplete need of a client: Bedrock's Mantle client and Anthropic's own both have it. */
+export type ClaudeClient = { messages: Pick<Anthropic["messages"], "create" | "stream"> };
+
 export function bedrockStreaming(settings: AiSettings): Provider {
-  const c = clientFor(settings.region);
+  return claudeStreaming("bedrock", clientFor(settings.region), settings);
+}
+
+export function bedrockComplete(settings: AiSettings, req: AiRequest): Promise<AiResponse> {
+  return claudeComplete(clientFor(settings.region), settings, req);
+}
+
+export function claudeStreaming(id: "bedrock" | "anthropic", c: ClaudeClient, settings: AiSettings): Provider {
   const tools = (defs: ProviderRun["tools"]): Tool[] => defs.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
 
   return {
-    id: "bedrock",
+    id,
     async run(r: ProviderRun): Promise<ProviderResult> {
       const messages: MessageParam[] = [
         ...r.history.map((m) => ({ role: m.role, content: m.text }) satisfies MessageParam),
@@ -81,8 +94,8 @@ export function bedrockStreaming(settings: AiSettings): Provider {
   };
 }
 
-export async function bedrockComplete(settings: AiSettings, req: AiRequest): Promise<AiResponse> {
-  const msg = await clientFor(settings.region).messages.create({
+export async function claudeComplete(c: ClaudeClient, settings: AiSettings, req: AiRequest): Promise<AiResponse> {
+  const msg = await c.messages.create({
     model: settings.model,
     max_tokens: req.maxTokens,
     system: req.system,

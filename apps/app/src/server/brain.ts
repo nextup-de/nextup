@@ -5,7 +5,7 @@
 // Not a "use server" module: server/actions/brain.ts and the idea turn route call it.
 import { z } from "zod";
 import type { AiGate } from "@/features/ai/gate";
-import type { AiSettings } from "@/features/ai/settings";
+import { DEFAULT_ANTHROPIC_MODEL, type AiSettings } from "@/features/ai/settings";
 import { isAboveCeiling, redact } from "@/features/assist/redact";
 import { maskAddressed } from "@/features/ai/names";
 import type { Level } from "@/features/assist/classify";
@@ -112,17 +112,18 @@ async function loadCompany(slug: string, policy: BrainPolicy, audience?: Audienc
   return { tenant, seed, known, goals, cleanAll, clean, state, log };
 }
 
-// What a call needs besides the gate: the company's API key (azure-openai, openai-compatible) and,
+// What a call needs besides the gate: the company's API key (azure-openai, openai-compatible, anthropic) and,
 // in tests, a fetch to inject.
 export type BrainOptions = { key?: string | null; fetch?: typeof fetch };
 export type BrainLlm =
   | { provider: "bedrock"; region: string; model: string }
+  | { provider: "anthropic"; model: string; api_key: string }
   | { provider: "azure-openai"; base_url: string; model: string; api_key: string }
   | { base_url: string; model: string; api_key: string };
 
 /**
  * The company's own provider for one request (docs/plans AIP D8, AIB D8). Bedrock with a brainModel,
- * azure-openai and openai-compatible carry one; everything else uses the brain's stack model. `local` (the model
+ * azure-openai, openai-compatible and anthropic (Claude through Anthropic's API) carry one; everything else uses the brain's stack model. `local` (the model
  * on this stack, Q8.4) never carries one, whatever else is saved: that is the point of the choice.
  * Null when the settings or the key are incomplete - then nothing is sent.
  */
@@ -131,8 +132,9 @@ export function llmFor(settings: AiSettings, key: string | null | undefined): Br
   if (settings.choice === "bedrock") {
     return settings.brainModel ? { provider: "bedrock", region: settings.region, model: settings.brainModel } : "none";
   }
-  if (settings.choice !== "azure-openai" && settings.choice !== "openai-compatible") return "none";
+  if (settings.choice !== "azure-openai" && settings.choice !== "openai-compatible" && settings.choice !== "anthropic") return "none";
   if (!key) return null;
+  if (settings.choice === "anthropic") return { provider: "anthropic", model: settings.brainModel || settings.model || DEFAULT_ANTHROPIC_MODEL, api_key: key };
   if (settings.choice === "azure-openai") {
     const host = settings.endpoint?.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const model = settings.brainModel || settings.deployment;
