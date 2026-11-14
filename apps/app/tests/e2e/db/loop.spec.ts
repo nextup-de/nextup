@@ -5,7 +5,7 @@
 // the yes, and switching projects off on the Rules page takes Projects out of the member's nav.
 // Own company, made straight in the database and deleted at the end, like flr.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, raiseLine, test, vis } from "../helpers";
+import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, projectPages, raiseLine, setupStep, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
@@ -48,8 +48,9 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 /** The project page's Results tab: the measure card and the reward panel are there. */
 async function openResults(page: Page) {
   await page.goto(`/${SLUG}/projects/${projectId}`);
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /^Results/ }).click();
-  await expect(page).toHaveURL(/tab=results/);
+  await (await projectPages(page)).getByRole("link", { name: /^Results/ }).click();
+  await expect(page).toHaveURL(/page=results/);
+  await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
 }
 
 const userId = async (name: string) => (await getDb().user.findFirstOrThrow({ where: { companyId, name }, select: { id: true } })).id;
@@ -170,10 +171,12 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     const page = await signIn(browser, LEAD);
     await page.goto(`/${SLUG}/projects/${projectId}`);
     // The decider is the lead (the default of the yes sheet), so the draft is theirs from the yes: goal, then baseline.
+    await setupStep(page, "Goal");
     await page.getByRole("textbox", { name: "Goal", exact: true }).fill("Less scrap on line 3");
     await page.getByRole("textbox", { name: "Done when", exact: true }).fill("Scrap under 2 percent for a month");
     await page.getByRole("button", { name: "Save the goal" }).click();
     await expect.poll(() => getDb().caseEvent.count({ where: { companyId, type: "project.goal", targetId: projectId } })).toBe(1);
+    await setupStep(page, "Baseline");
     await page.getByLabel("What is measured").filter({ visible: true }).fill(BASELINE.metric);
     await page.getByLabel(/Today.s number/).filter({ visible: true }).fill(BASELINE.value);
     await page.getByLabel("Unit").filter({ visible: true }).fill(BASELINE.unit);
@@ -215,6 +218,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await expect(page.getByRole("main")).toContainText(/1[ ,.’']?200/); // the CO₂ figure
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.reload();
+    await page.getByRole("button", { name: "Open result", exact: true }).click(); // a reload closes the result drawer
     await expect(vis(page, "measure-source-30")).toBeVisible();
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.context().close();

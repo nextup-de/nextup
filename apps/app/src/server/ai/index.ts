@@ -1,11 +1,12 @@
 // The company's chosen model, behind the contract's AiProvider and the assistant's streaming
-// Provider (docs/plans AIP D7). `off` has no adapter; `mock` has only the streaming one. `local` is the
+// Provider (docs/plans AIP D7). `anthropic` is Claude through Anthropic's own API (server/ai/anthropic.ts). `off` has no adapter; `mock` has only the streaming one. `local` is the
 // model on this stack: the same chat calls, sent to the stack's brain service instead of a provider (Q8.4).
 import { PUBLIC_CONTRACT_VERSION, type AiProvider, type AiRequest } from "@nextup/contracts/public";
 import type { Provider } from "@/features/assist";
 import { mockProvider } from "@/features/assist/mock";
 import type { AiSettings } from "@/features/ai/settings";
 import { brainTarget, brainTimeoutMs } from "@/server/brain-health";
+import { anthropicComplete, anthropicStreaming } from "./anthropic";
 import { bedrockComplete, bedrockStreaming } from "./bedrock";
 import { openaiComplete, openaiStreaming, TIMEOUT_MS, type FetchLike, type Net } from "./openai";
 
@@ -32,6 +33,7 @@ export function aiProviderFor(settings: AiSettings, key: string | null, net?: Ne
     info: { kind: "AiProvider", id: choice, contractVersion: PUBLIC_CONTRACT_VERSION },
     complete: (req: AiRequest) => {
       if (choice === "bedrock") return bedrockComplete(settings, req);
+      if (choice === "anthropic") return anthropicComplete(settings, key, req);
       if (choice === "local") {
         const b = viaBrain(settings, net);
         return openaiComplete("local", b.settings, b.key, req, b.net);
@@ -45,6 +47,7 @@ export function aiProviderFor(settings: AiSettings, key: string | null, net?: Ne
 export function streamingFor(settings: AiSettings, key: string | null, net?: Net | FetchLike): Provider {
   switch (settings.choice) {
     case "bedrock": return bedrockStreaming(settings);
+    case "anthropic": return anthropicStreaming(settings, key);
     case "azure-openai":
     case "openai-compatible": return openaiStreaming(settings.choice, settings, key, netOf(net));
     case "local": {

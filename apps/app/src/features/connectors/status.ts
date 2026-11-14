@@ -1,6 +1,6 @@
 // One word per connector for the console's Connectors page: on, off, needs you, or error. Pure: the
 // facts the page already reads in, the status out. It never looks at a key, only whether one is set.
-import type { BrainState } from "@/features/ai/settings";
+import { needsKey, type BrainState } from "@/features/ai/settings";
 
 export type ConnectorStatus = "on" | "off" | "needs" | "error";
 
@@ -23,8 +23,7 @@ export function m365Status(f: { on: boolean; microsoft: boolean; vault: boolean 
 export function aiStatus(f: { choice: string; key: "set" | "not set"; vault: boolean; brain?: BrainState }): ConnectorStatus {
   if (f.choice === "off" || f.choice === "mock") return "off";
   if (f.choice === "local") return f.brain === "ok" ? "on" : f.brain === "down" ? "error" : "needs";
-  const hosted = f.choice === "azure-openai" || f.choice === "openai-compatible";
-  if (hosted && (f.key !== "set" || !f.vault)) return "needs";
+  if (needsKey(f.choice) && (f.key !== "set" || !f.vault)) return "needs";
   return "on";
 }
 

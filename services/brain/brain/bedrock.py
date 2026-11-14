@@ -1,10 +1,10 @@
-"""Claude on Amazon Bedrock, through the Anthropic SDK's Mantle endpoint.
+"""Claude through the Anthropic SDK: on Amazon Bedrock (the Mantle endpoint), or on Anthropic's own API.
 
-The only file that imports the SDK. Credentials come from the AWS chain (environment, role),
-never from a request.
+The only file that imports the SDK. Bedrock's credentials come from the AWS chain (environment, role),
+never from a request; the Claude API's key comes with the request (AnthropicOverride) and is never kept.
 """
 
-from anthropic import AnthropicBedrockMantle
+from anthropic import Anthropic, AnthropicBedrockMantle
 
 from brain.config import Settings
 from brain.llm import OUTPUT_CAP, LLMClient
@@ -40,3 +40,14 @@ class BedrockLLMClient(LLMClient):
     def health(self) -> dict:
         # Does not call the model: built means reachable as far as we can tell without paying.
         return {"reachable": True, "model_available": True}
+
+
+class AnthropicApiLLMClient(BedrockLLMClient):
+    """The same calls as Bedrock, sent to Anthropic's own API with the company's key (provider `anthropic`)."""
+
+    def __init__(self, settings: Settings, api_key: str):
+        self.settings = settings
+        self.provider = "anthropic"
+        self.region = ""
+        self.client = Anthropic(api_key=api_key, max_retries=1, timeout=settings.llm_timeout)
+        self._reset_counters()

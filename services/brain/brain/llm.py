@@ -14,7 +14,7 @@ from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 from brain.config import Settings
-from brain.schemas import BedrockOverride, LlmOverride
+from brain.schemas import AnthropicOverride, BedrockOverride, LlmOverride
 from brain.strict import strict_schema
 
 log = logging.getLogger("brain.llm")
@@ -70,7 +70,7 @@ class LLMClient:
         """The model that answered (a deployment name has no price), else the configured one."""
         return self.answered_by or self.settings.llm_model
 
-    def for_request(self, override: LlmOverride | BedrockOverride | None) -> "LLMClient":
+    def for_request(self, override: LlmOverride | BedrockOverride | AnthropicOverride | None) -> "LLMClient":
         """The client for one request: always a new object, so counters never mix between threads.
 
         Without an override it is a copy sharing this one's SDK client; with the company's own
@@ -84,6 +84,10 @@ class LLMClient:
         if isinstance(override, BedrockOverride):
             from brain.bedrock import BedrockLLMClient  # lazy: a stack without Bedrock never builds it
             return BedrockLLMClient(self.settings.model_copy(update={"llm_model": override.model}), override.region)
+        if isinstance(override, AnthropicOverride):
+            from brain.bedrock import AnthropicApiLLMClient  # lazy, like Bedrock
+            return AnthropicApiLLMClient(self.settings.model_copy(update={"llm_model": override.model}),
+                                         override.api_key.get_secret_value())
         settings = self.settings.model_copy(update={
             "llm_base_url": override.base_url, "llm_model": override.model,
             "llm_api_key": override.api_key.get_secret_value()})

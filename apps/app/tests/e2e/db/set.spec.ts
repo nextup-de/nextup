@@ -17,7 +17,7 @@
 // due now: a draft is "late" against the company's real day, which a sandbox clock cannot move) and the planner and
 // clock passes. Own company, made straight in the database and deleted at the end, like loop.spec.ts and inb.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, test } from "../helpers";
+import { expect, passSecondFactor, setupStep, test } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { appendEventRow } from "../../../src/lib/db/events";
 import { addRole, addSeat, addUnit, saveRoute } from "../../../src/lib/db/org-edit";
@@ -259,12 +259,13 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await expect(page).toHaveURL(new RegExp(`/projects/${projectA}$`));
       await expect(page.getByTestId("draft-top-line")).toContainText("once"); // no start day before the lead takes it
       await page.getByRole("button", { name: "Take it" }).click();
-      await expect(page.getByTestId("draft-top-line")).toContainText(/start expected \S/);
+      await expect(page.getByTestId("draft-top-line")).toContainText(/Start expected \S/);
       await expect(page.getByTestId("draft-top-line")).not.toContainText("once");
       await expect.poll(async () => (await eventsOf("project.lead.answered", projectA)).length).toBe(1);
       expect((await eventsOf("project.lead.answered", projectA))[0]).toMatchObject({ actorUserId: id.lead, payload: { take: true } });
 
       await test.step("picks the Quick win template", async () => {
+        await setupStep(page, "Template");
         const quick = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Quick win" }) });
         await quick.getByRole("button", { name: "Use this template" }).click();
         await expect(quick.getByText("In use")).toBeVisible();
@@ -273,6 +274,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       });
 
       await test.step("invites Max as a member", async () => {
+        await setupStep(page, "Team");
         const invite = page.getByRole("form", { name: "Invite" });
         await invite.getByLabel("Person").selectOption(id.member);
         await invite.getByLabel("Role").selectOption("member");
@@ -303,6 +305,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
     await test.step("the lead sets the goal", async () => {
       const page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectA}`);
+      await setupStep(page, "Goal");
       await page.getByRole("textbox", { name: "Goal", exact: true }).fill(GOAL);
       await page.getByRole("textbox", { name: "Done when", exact: true }).fill(DONE_WHEN);
       await page.getByRole("button", { name: "Save the goal" }).click();
@@ -355,6 +358,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
     await test.step("the lead sets the baseline and starts the project before its start day", async () => {
       const page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectA}`);
+      await setupStep(page, "Baseline");
       await page.getByLabel("What is measured").filter({ visible: true }).fill(BASELINE.metric);
       await page.getByLabel(/Today.s number/).filter({ visible: true }).fill(BASELINE.value);
       await page.getByLabel("Unit").filter({ visible: true }).fill(BASELINE.unit);
@@ -368,6 +372,7 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await append("project.baseline.confirmed", MANAGER, id.manager, projectA, {});
       await expect.poll(async () => (await eventsOf("project.baseline.confirmed", projectA)).length).toBe(1);
       await page.reload();
+      await setupStep(page, "Start");
 
       const start = page.getByRole("button", { name: "Start the project" });
       await expect(start).toBeEnabled();

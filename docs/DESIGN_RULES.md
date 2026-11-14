@@ -62,7 +62,7 @@ still calls black the action colour (Visual Foundations), this file and its own 
 | Rule | Enforced by |
 |---|---|
 | Every user-facing string is in the en and de catalog with the same keys; no inline strings in components. | `tests/unit/i18n/*` |
-| German uses the formal "Sie" everywhere: app, mails, Teams, floor pages, the AI coach. | `tests/unit/design/copy.test.ts` for the catalog (four SET strings still say du: listed there); mails, Teams and the AI coach not tested |
+| German uses the formal "Sie" everywhere: app, mails, Teams, floor pages, the AI coach. | `tests/unit/design/copy.test.ts` for the catalog; mails, Teams and the AI coach not tested |
 | Dates and numbers are formatted per locale in Europe/Berlin; mails name real dates. | `tests/unit/i18n/core.test.ts` |
 | Plain and concrete: a person, a date or a number; employee words, not system words; sentence case; short verb buttons; " · " as separator; no emoji, no exclamation marks. | partly: `tests/unit/design/copy.test.ts` (no emoji, no exclamation marks) |
 | Store facts, build sentences at render; never store display text as state. | not tested |

@@ -7,6 +7,8 @@
 //                the signed data-processing agreement; assist needs the assistant switch, routing needs aiRouting.
 //   local        the model on this stack (Q8.4) needs the stack's brain service (stackBrain) wherever there is a
 //                database: every call goes there and nothing leaves the stack, so no agreement is asked.
+//   anthropic    Claude through Anthropic's own API: the demo stage only, our made-up content. Any other stage
+//                is refused whatever is signed - a real company's data stays with Bedrock or Azure in the EU.
 //   every stage  Bedrock needs the brain's model for every purpose but the assistant (plan REM, reason `no_model`); a real model is not called once the month's budget is used up (budget.ts, decision Q7.3), or
 //                once its models without a price used their monthly token cap (decision Q7.5); the raise path
 //                (budget.ts RAISE_PATH_PURPOSES) goes on to GRACE_PCT of a cap first (decision Q7.4);
@@ -57,6 +59,9 @@ export function aiGate(a: {
   };
   if (!a.hasDatabase) {
     return demo ? { on: true, settings: { ...a.settings, choice: "mock" } } : { on: false, why: "The assistant needs the database for its audit trail." };
+  }
+  if (a.settings.choice === "anthropic" && !demo) {
+    return { on: false, why: "The Claude API is for demo companies only. Real companies use Amazon Bedrock or Azure OpenAI in the EU." };
   }
   if (a.settings.choice === "local" && !a.stackBrain) {
     return { on: false, why: "The model on this stack is chosen, but this stack runs no brain service." };

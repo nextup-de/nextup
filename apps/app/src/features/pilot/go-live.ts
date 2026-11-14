@@ -113,6 +113,8 @@ export function goLiveChecks(i: GoLiveInput): GoLiveCheck[] {
   // ai
   if (i.ai.choice === "off") out.push(check("ai", "needed", "done", "lineAiOff", {}, null, AI_CONSOLE_PATH));
   else if (i.ai.choice === "mock") out.push(check("ai", "needed", "needs", "lineAiNeedsMock", {}, null, AI_CONSOLE_PATH));
+  // The Claude API is for demo companies only (features/ai/gate.ts): a company going live must pick another.
+  else if (i.ai.choice === "anthropic") out.push(check("ai", "needed", "needs", "lineAiNeedsEu", {}, null, AI_CONSOLE_PATH));
   // The model on this stack: nothing leaves, so no agreement; it needs the stack's brain, answering (Q8.4).
   else if (i.ai.choice === "local") {
     if (i.ai.brain === "ok") out.push(check("ai", "needed", "done", "lineAiLocal", {}, null));

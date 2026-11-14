@@ -6,7 +6,7 @@ import type { Step } from "@/features/projects/types";
 
 const step = (id: string, column: Step["column"], movedDay: number, dueDay: number | null = null): Step => ({
   id, text: id, owner: null, dueDay, column, why: "", note: "", addedDay: 0, by: "L. Brandt", movedDay,
-  startedDay: null, doneDay: null, external: null,
+  startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null,
 });
 
 describe("projectTabOf", () => {

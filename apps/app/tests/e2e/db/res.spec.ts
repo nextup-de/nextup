@@ -17,7 +17,7 @@
 // working days once the project is marked done (see `moveHistoryBack`): the check then opens today. Own company, made straight in the database
 // and deleted at the end, like mov.spec.ts, set.spec.ts and loop.spec.ts. Run on any weekday.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, test } from "../helpers";
+import { expect, passSecondFactor, setupStep, test } from "../helpers";
 import { meFor, type Actor } from "../../../src/features/auth/identity";
 import { reduce } from "../../../src/features/cases/reducer";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
@@ -229,8 +229,10 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the lead cannot start: the baseline waits for the sponsor or the route's deputy, and neither the lead nor who typed it may confirm it", async () => {
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await setupStep(page, "Start");
       await expect(page.getByTestId("draft-baseline-waits")).toBeVisible();
       await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+      await setupStep(page, "Baseline");
       await expect(page.getByTestId("baseline-confirm"), "the lead has no confirm button").toHaveCount(0);
       await expect(page.getByTestId("baseline-waits")).toContainText("The sponsor or the route's deputy confirms it");
       await page.context().close();
@@ -253,11 +255,13 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await setupStep(page, "Start");
       await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
       await page.context().close();
 
       page = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await setupStep(page, "Baseline");
       await page.getByTestId("baseline-confirm").click();
       await expect.poll(async () => (await eventsOf("project.baseline.confirmed", soloProject)).length).toBe(1);
       expect((await eventsOf("project.baseline.confirmed", soloProject))[0]).toMatchObject({ actorUserId: id.manager });
@@ -265,6 +269,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
+      await setupStep(page, "Start");
       await expect(page.getByRole("button", { name: "Start the project" })).toBeEnabled();
       await page.context().close();
     });
@@ -272,6 +277,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the sponsor confirms the baseline in the UI; the lead is told and starts the project", async () => {
       page = await signIn(browser, SPONSOR);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await setupStep(page, "Baseline");
       await page.getByTestId("baseline-confirm").click();
       await expect.poll(async () => (await eventsOf("project.baseline.confirmed", projectId)).length).toBe(1);
       expect((await eventsOf("project.baseline.confirmed", projectId))[0]).toMatchObject({ actorUserId: id.sponsor });
@@ -283,6 +289,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await setupStep(page, "Start");
       await expect(page.getByTestId("draft-baseline-waits")).toHaveCount(0);
       await page.getByRole("button", { name: "Start the project" }).click();
       await expect.poll(async () => (await eventsOf("project.started", projectId)).length).toBe(1);
@@ -318,11 +325,13 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect((await eventsOf("project.done", projectId))[0]).toMatchObject({
         actorUserId: id.lead, payload: { openSteps: [{ stepId: "s_done", end: "done" }, { stepId: "s_drop", end: "dropped", why: DROP_WHY }] },
       });
-      // D31: the dropped step counts in no total, so the overview reads 1 / 1 and not 1 / 2.
+      // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else.
       await page.goto(`/${SLUG}/projects/${projectId}`);
-      await expect(page.getByRole("region", { name: "Where it stands" }).locator("div").filter({ has: page.getByText("Steps done", { exact: true }) }).first()).toContainText("1 / 1");
+      await expect(page.getByRole("region", { name: "Where the steps are" }).getByRole("listitem")).toHaveText([/To do\s*0/, /Doing\s*0/, /Blocked\s*0/, /Done\s*1/]);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
-      await expect(page.getByText("1 of 1 done", { exact: true }), "the board header counts the dropped step in no total").toBeVisible();
+      const board = page.getByRole("region", { name: "Board", exact: true });
+      await expect(board.getByRole("group", { name: "Done" }), "the board counts the done step").toHaveText(/^Done\s*1(?!\d)/);
+      await expect(board.getByRole("group", { name: "To do" }), "the board counts the dropped step in no column").toHaveText(/^To do(?!\s*\d)/);
       await page.context().close();
     });
 
@@ -333,6 +342,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the lead types the first result", async () => {
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByTestId(`measure-type-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
       await form.getByLabel("The number now").fill(String(FIRST));
@@ -347,6 +357,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the deputy of the route sends it back with a reason; the lead is told", async () => {
       page = await signIn(browser, DEPUTY);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByTestId(`measure-sendback-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: "Send it back" });
       await form.getByLabel("What looks wrong?").fill(BACK_WHY);
@@ -365,12 +376,13 @@ test.describe("RES acceptance: a result that closes properly", () => {
       firstRevision = (await eventsOf("project.measured", projectId))[0].id;
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toContainText(BACK_WHY);
       await page.getByTestId(`measure-type-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
       await form.getByLabel("The number now").fill(String(SECOND));
       await form.getByRole("button", { name: "Record the measure" }).click();
-      await expect.poll(async () => (await eventsOf("project.measured", projectId)).length).toBe(2);
+      await expect.poll(async () => (await eventsOf("project.measured", projectId)).length, { timeout: 30_000 }).toBe(2); // the drawer's save then a full refresh: slower under parallel workers
       await expect(page.getByTestId(`measure-reentered-${CHECK_DAYS}`)).toContainText(String(FIRST));
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toHaveCount(0);
       await page.context().close();
@@ -388,6 +400,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await test.step("the sponsor confirms the new number: the lead and the raiser are told, the reward is due", async () => {
       page = await signIn(browser, SPONSOR);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByTestId(`measure-confirm-${CHECK_DAYS}`).click();
       await page.getByRole("button", { name: "Yes, the number is right" }).click();
       await expect.poll(async () => (await eventsOf("project.measure.confirmed", projectId)).length).toBe(1);
@@ -426,6 +439,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await page.getByRole("form", { name: "Record the reward" }).getByRole("button", { name: "Record the reward" }).click();
       await expect.poll(async () => (await eventsOf("project.rewarded", projectId)).length).toBe(1);
       expect((await eventsOf("project.rewarded", projectId))[0]).toMatchObject({ actorUserId: id.manager });
@@ -452,7 +466,8 @@ test.describe("RES acceptance: a result that closes properly", () => {
       // The projects sidebar and its "Show sidebar" control are navigation, not actions on this project: count the project's own buttons only.
       const actions = page.getByRole("main").locator('button:not(aside[aria-label="Projects"] *):not([aria-label="Show sidebar"])').filter({ visible: true });
       await expect(actions, "no buttons on the raiser's page").toHaveCount(0);
-      await expect(page.getByRole("main").getByRole("textbox"), "no entry on the raiser's page").toHaveCount(0);
+      const entries = page.getByRole("main").locator('input:not(aside[aria-label="Projects"] *), textarea:not(aside[aria-label="Projects"] *)').filter({ visible: true }); // the sidebar's search is navigation
+      await expect(entries, "no entry on the raiser's page").toHaveCount(0);
       await page.context().close();
 
       // Q1's current default: this is a presentation only. The browser's log still carries the project's events - the board, the numbers,

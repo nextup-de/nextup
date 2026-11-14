@@ -39,7 +39,7 @@ test("UIP acceptance", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   await sweepPages(page, CARDS);
   await sweepPages(page, HEADERS, { marker: "page-header" });
-  await sweepPages(page, AREA, { marker: "projects-tabs", title: false });
+  await sweepPages(page, AREA, { marker: "projects-area", title: false });
 
   // A page module must win over settings.module.css whichever loads first: the search is the wide field.
   await page.setViewportSize({ width: 1440, height: 900 });

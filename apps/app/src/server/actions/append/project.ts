@@ -12,6 +12,12 @@ import type { AppendCtx, AppendHook } from "./shared";
 const LEAD_TARGET_EVENTS: readonly string[] = ["project.handed", "project.lead.changed"];
 
 export async function prepareProjectAppend(c: AppendCtx): Promise<AppendHook> {
+  if (c.type === "project.step.moved" && c.payload.to === "blocked" && c.payload.waitingOn?.kind === "person") {
+    const userId = c.payload.waitingOn.userId;
+    if (typeof userId !== "string" || !userId || !await getDb().user.findFirst({ where: { id: userId, companyId: c.companyId, active: true }, select: { id: true } })) {
+      return { ok: false, error: translate(c.locale, "projectSteps.permWaitingPerson") };
+    }
+  }
   if (LEAD_TARGET_EVENTS.includes(c.type)) {
     const refuse = (error: string): AppendHook => ({ ok: false, error });
     const toUserId = c.payload.toUserId;

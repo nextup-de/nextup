@@ -5,6 +5,7 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
+import { maySeeAgentTab } from "@/features/agent/permissions";
 import { holdsRole, seatsOfRole, type Me } from "@/features/auth/identity";
 import type { Route } from "@/features/demo/types";
 import { unmetApprovals } from "@/features/approvals/rights";
@@ -15,8 +16,11 @@ import { TEMPLATES } from "@/features/templates/library";
 import { mayConfirm, unconfirmedOf } from "./confirm";
 import { baselineNeedsConfirm, DROP_WHY_MAX, HELP_TEXT_MAX, openStepsOf, QUESTION_WHY_MAX, revisionMatches } from "./result";
 import { isMeasureSource, readImpact } from "./measure-source";
+import { untouchedStepOf } from "./reduce";
 import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
-import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject } from "./types";
+import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject, type ToolKind, type ToolInstance } from "./types";
+
+import { canAddTool, fitsEvent, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, TOOL_KINDS } from "./pages";
 
 const OK: Verdict = { ok: true };
 
@@ -27,6 +31,7 @@ const webUrl = (v: unknown): v is string => typeof v === "string" && v.length <=
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 /** The columns a new step may start in: Blocked needs its reason, so a step only moves there. */
 const STARTS: readonly string[] = ["todo", "doing", "done"];
+const FIELD_KINDS = ["short", "long", "choice", "date"] as const;
 
 const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
 /** A line of `min` to `max` characters once trimmed (the goal and its done-when, D17). */
@@ -103,6 +108,141 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   const whole = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
 
   switch (ev.type) {
+    case "project.page.added":
+    case "project.page.edited":
+    case "project.page.moved":
+    case "project.page.removed":
+    case "project.page.restored":
+    case "project.tool.added":
+    case "project.tool.moved":
+    case "project.tool.edited":
+    case "project.tool.removed":
+    case "project.tool.restored":
+    case "project.page.merged":
+    case "project.page.unmerged": {
+      if (!onTeam) return no("projectPages.permPageWho");
+      if (!live) return no("projectPages.permPageClosed");
+      if (!fitsEvent(pl)) return no("projectPages.permEventTooLong");
+      // Defaults and hidden Agent tools count towards every limit before the first page event too.
+      const pages = pagesOf(p, { agent: true });
+      const tools = pages.flatMap((page) => page.tools);
+      const removed = p.removed.filter((item) => state.day - item.day <= LIMITS.removedDays);
+      const agent = maySeeAgentTab({ userId: uid, role: actor.role, me: actor.me }, p).ok;
+      const page = pages.find((x) => x.id === pl.pageId);
+      const tool = tools.find((x) => x.id === pl.toolId);
+      const validTitle = (v: unknown) => lineOf(v, LIMITS.titleMin, LIMITS.titleMax);
+      const validKind = (v: unknown): v is ToolKind => (TOOL_KINDS as readonly unknown[]).includes(v);
+      const hasAgent = (items: readonly Pick<ToolInstance, "kind">[]) => items.some((x) => x.kind === "agent");
+      const idExists = (id: string) => pages.some((x) => x.id === id) || tools.some((x) => x.id === id)
+        || removed.some((x) => x.page?.id === id || x.tool?.id === id || x.page?.tools.some((t) => t.id === id))
+        || Object.values(p.merges).some((x) => x.from.id === id || x.toolIds.includes(id));
+      const beforePage = () => pl.before === undefined || pl.before === null || pages.some((x) => x.id === pl.before);
+      const beforeTool = (items: readonly ToolInstance[]) => pl.before === undefined || pl.before === null || items.some((x) => x.id === pl.before);
+      const checkTools = (items: readonly Pick<ToolInstance, "kind">[]): Verdict => {
+        if (!agent && hasAgent(items)) return no("projectPages.permToolAgent");
+        if (SINGLE_KINDS.some((kind) => items.filter((x) => x.kind === kind).length + tools.filter((x) => x.kind === kind).length > 1)) return no("projectPages.permToolOnce");
+        return OK;
+      };
+      switch (ev.type) {
+        case "project.page.added": {
+          if (!isProjectId(pl.pageId)) return no("projectPages.permPageUnknown");
+          if (idExists(pl.pageId)) return no("projectPages.permPageExists");
+          if (!validTitle(pl.title)) return no("projectPages.permPageTitle");
+          if (!(PAGE_ICON_KEYS as readonly unknown[]).includes(pl.icon)) return no("projectPages.permPageIcon");
+          if (!Array.isArray(pl.tools) || pl.tools.some((x) => !x || !validKind(x.kind))) return no("projectPages.permToolKind");
+          if (pages.length >= LIMITS.pages || pl.tools.length > LIMITS.tools) return no("projectPages.permPageLimit");
+          const ids = new Set([pl.pageId]);
+          for (const item of pl.tools) {
+            if (ids.has(item.toolId) || idExists(item.toolId)) return no("projectPages.permPageExists");
+            if (!isProjectId(item.toolId)) return no("projectPages.permToolUnknown");
+            ids.add(item.toolId);
+            if (item.title !== undefined && !validTitle(item.title)) return no("projectPages.permPageTitle");
+            if (item.content !== undefined && typeof item.content !== "string") return no("projectPages.permToolUnknown");
+          }
+          if (!beforePage()) return no("projectPages.permPageUnknown");
+          return checkTools(pl.tools);
+        }
+        case "project.page.edited":
+          if (!page) return no("projectPages.permPageUnknown");
+          if (pl.title !== undefined && !validTitle(pl.title)) return no("projectPages.permPageTitle");
+          return pl.icon === undefined || (PAGE_ICON_KEYS as readonly unknown[]).includes(pl.icon) ? OK : no("projectPages.permPageIcon");
+        case "project.page.moved":
+          if (!page || pl.before === undefined || !beforePage()) return no("projectPages.permPageUnknown");
+          return !agent && hasAgent(page.tools) ? no("projectPages.permToolAgent") : OK;
+        case "project.page.removed":
+          if (!page) return no("projectPages.permPageUnknown");
+          if (page.id === "overview") return no("projectPages.permPageOverview");
+          if (pages.length <= 1) return no("projectPages.permPageLast");
+          return !agent && hasAgent(page.tools) ? no("projectPages.permToolAgent") : OK;
+        case "project.page.restored": {
+          const item = removed.find((x) => x.page?.id === pl.pageId)?.page;
+          if (!item) return no("projectPages.permPageUnknown");
+          if (page || item.tools.some((x) => tools.some((t) => t.id === x.id))) return no("projectPages.permPageExists");
+          if (pages.length >= LIMITS.pages || item.tools.length > LIMITS.tools) return no("projectPages.permPageLimit");
+          return checkTools(item.tools);
+        }
+        case "project.tool.added": {
+          if (!page) return no("projectPages.permPageUnknown");
+          if (typeof pl.toolId === "string" && idExists(pl.toolId)) return no("projectPages.permPageExists");
+          if (!isProjectId(pl.toolId)) return no("projectPages.permToolUnknown");
+          if (!validKind(pl.kind)) return no("projectPages.permToolKind");
+          if (!beforeTool(page.tools)) return no("projectPages.permToolUnknown");
+          const rights = checkTools([{ kind: pl.kind }]);
+          if (!rights.ok) return rights;
+          return canAddTool(pages, page, pl.kind, { agent }) ? OK : no("projectPages.permPageLimit");
+        }
+        case "project.tool.moved": {
+          if (!tool) return no("projectPages.permToolUnknown");
+          const into = pages.find((x) => x.id === pl.toPageId);
+          if (!into) return no("projectPages.permPageUnknown");
+          if (!beforeTool(into.tools)) return no("projectPages.permToolUnknown");
+          if (!agent && tool.kind === "agent") return no("projectPages.permToolAgent");
+          return into.tools.some((x) => x.id === tool.id) || into.tools.length < LIMITS.tools ? OK : no("projectPages.permPageLimit");
+        }
+        case "project.tool.edited":
+          if (!tool) return no("projectPages.permToolUnknown");
+          if (pl.title !== undefined && !validTitle(pl.title)) return no("projectPages.permPageTitle");
+          if (pl.collapsed !== undefined && typeof pl.collapsed !== "boolean") return no("projectPages.permToolUnknown");
+          if (pl.content !== undefined) {
+            if (typeof pl.content !== "string") return no("projectPages.permToolUnknown");
+            if (pl.baseRev !== tool.rev) return no("projectPages.permToolStale");
+          }
+          return OK;
+        case "project.tool.removed":
+          if (!tool) return no("projectPages.permToolUnknown");
+          return !agent && tool.kind === "agent" ? no("projectPages.permToolAgent") : OK;
+        case "project.tool.restored": {
+          const item = removed.find((x) => x.tool?.id === pl.toolId);
+          if (!item?.tool) return no("projectPages.permToolUnknown");
+          const into = pages.find((x) => x.id === item.pageId);
+          if (!into) return no("projectPages.permPageUnknown");
+          if (tool) return no("projectPages.permPageExists");
+          if (into.tools.length >= LIMITS.tools) return no("projectPages.permPageLimit");
+          return checkTools([item.tool]);
+        }
+        case "project.page.merged": {
+          const sourcePage = pages.find((x) => x.id === pl.fromPageId);
+          const into = pages.find((x) => x.id === pl.intoPageId);
+          if (!sourcePage || !into || sourcePage === into) return no("projectPages.permPageUnknown");
+          if (sourcePage.id === "overview") return no("projectPages.permPageOverview");
+          if (!isProjectId(pl.mergeId)) return no("projectPages.permMergeUnknown");
+          if (Object.hasOwn(p.merges, pl.mergeId)) return no("projectPages.permPageExists");
+          if (!agent && hasAgent(sourcePage.tools)) return no("projectPages.permToolAgent");
+          return sourcePage.tools.length + into.tools.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
+        }
+        case "project.page.unmerged": {
+          if (typeof pl.mergeId !== "string" || !Object.hasOwn(p.merges, pl.mergeId)) return no("projectPages.permMergeUnknown");
+          const merge = p.merges[pl.mergeId];
+          const sourcePageId = merge.from.id;
+          if (pages.some((x) => x.id === sourcePageId)) return no("projectPages.permPageExists");
+          const moved = tools.filter((x) => merge.toolIds.includes(x.id));
+          if (!agent && hasAgent(moved)) return no("projectPages.permToolAgent");
+          return pages.length < LIMITS.pages && moved.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
+        }
+      }
+      return no("projectPages.permPageUnknown");
+    }
+
     case "project.commented":
       // A draft in planning is read by the others; the raiser of its case may still comment (Q5.15, D20).
       if (draft && planning && !(onTeam || isMe(p.sponsorUserId) || p.followerUserIds.some(isMe) || p.authorUserIds.some(isMe))) return no("projects.permDraftCommentWho");
@@ -212,6 +352,27 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("projects.permDetailsLong");
       return text(pl.text, 500) ? OK : no("projects.permStepText");
 
+    case "project.step.checklist":
+    case "project.step.commented": {
+      if (!(onTeam || (ev.type === "project.step.commented" && isMe(p.sponsorUserId)))) return no("projectSteps.permStepTeam");
+      if (!live) return no("projectSteps.permClosed");
+      const step = p.steps.find((s) => s.id === pl.stepId);
+      if (!step) return no("projectSteps.permNoStep");
+      if (ev.type === "project.step.commented") {
+        if (!text(pl.text, 2000)) return no("projectSteps.permCommentText");
+        return pl.replyTo == null || step.comments.some((c) => c.id === pl.replyTo) ? OK : no("projectSteps.permReply");
+      }
+      if (!isProjectId(pl.itemId) || !["add", "edit", "toggle", "remove"].includes(pl.op ?? "")) return no("projectSteps.permChecklistOp");
+      const item = step.checklist.find((x) => x.id === pl.itemId);
+      // An edit arriving after another person removed this item is an accepted no-op.
+      if (pl.op !== "add" && !item) return OK;
+      if (pl.op === "add" && item) return OK;
+      if (pl.op === "add" && step.checklist.length >= 30) return no("projectSteps.permChecklistLimit");
+      if ((pl.op === "add" || pl.op === "edit") && !text(pl.text, 200)) return no("projectSteps.permChecklistText");
+      if ((pl.op === "toggle" && typeof pl.done !== "boolean") || (pl.done !== undefined && typeof pl.done !== "boolean")) return no("projectSteps.permChecklistDone");
+      return OK;
+    }
+
     case "project.step.moved": {
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projects.permNoStep");
@@ -221,6 +382,12 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       // F5 (D18): a step goes to Blocked with its reason, whoever moves it.
       const column = pl.to;
       if (column === "blocked" && !text(pl.why, 400)) return no("projectMove.permBlockedWhy");
+      if (column === "blocked" && pl.waitingOn !== undefined) {
+        const w = pl.waitingOn;
+        if (!w || !["person", "outside", "nobody"].includes(w.kind)) return no("projectSteps.permWaitingOn");
+        if (w.kind === "person" && !isProjectId(w.userId)) return no("projectSteps.permWaitingPerson");
+        if (w.kind === "outside" && !text(w.name, 80)) return no("projectSteps.permWaitingOutside");
+      }
       return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("projects.permMoveWhere");
     }
 
@@ -235,6 +402,100 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.ownerUserId !== undefined && pl.ownerUserId !== null && typeof pl.ownerUserId !== "string") return no("projects.permStepOwnerWho");
       if (pl.dueDay !== undefined && pl.dueDay !== null && !(typeof pl.dueDay === "number" && Number.isFinite(pl.dueDay))) return no("projects.permStepDue");
       if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("projects.permDetailsLong");
+      if (pl.startDay !== undefined && pl.startDay !== null && !whole(pl.startDay)) return no("projectPlan.permStepStart");
+      if (pl.milestoneId !== undefined && pl.milestoneId !== null && !p.milestones.some((m) => m.id === pl.milestoneId)) return no("projectPlan.permNoMilestone");
+      return OK;
+    }
+
+    case "project.milestone.added":
+    case "project.milestone.edited": {
+      if (!onTeam) return no("projectPlan.permMilestoneTeam");
+      if (!live) return no("projectPlan.permClosed");
+      const added = ev.type === "project.milestone.added";
+      const current = p.milestones.find((m) => m.id === pl.milestoneId);
+      if (added ? !isProjectId(pl.milestoneId) || current : !current) return no(added ? "projectPlan.permMilestoneIdUnusable" : "projectPlan.permNoMilestone");
+      if (!added && pl.removed) return OK;
+      if ((added || pl.title !== undefined) && !text(pl.title, 80)) return no("projectPlan.permMilestoneTitle");
+      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 1000)) return no("projectPlan.permMilestoneNote");
+      if (pl.startDay !== undefined && pl.startDay !== null && !whole(pl.startDay)) return no("projectPlan.permMilestoneDates");
+      if ((added || pl.dueDay !== undefined) && !whole(pl.dueDay)) return no("projectPlan.permMilestoneDates");
+      if (!added && pl.shipped !== undefined && typeof pl.shipped !== "boolean") return no("projectPlan.permMilestoneShipped");
+      const start = pl.startDay !== undefined ? pl.startDay : current?.startDay ?? null;
+      const due = whole(pl.dueDay) ? pl.dueDay : current?.dueDay;
+      return start !== null && due !== undefined && start > due ? no("projectPlan.permMilestoneDates") : OK;
+    }
+
+    case "project.form.saved": {
+      if (!onTeam) return no("projectRequests.permTeam");
+      if (!live) return no("projectRequests.permClosed");
+      if (!fitsEvent(pl)) return no("projectRequests.permEventTooLong");
+      if (!isProjectId(pl.formId)) return no("projectRequests.permFormId");
+      if (!text(pl.title, 80)) return no("projectRequests.permFormTitle");
+      if (pl.intro !== undefined && (typeof pl.intro !== "string" || pl.intro.length > 1000)) return no("projectRequests.permFormIntro");
+      if (typeof pl.shared !== "boolean") return no("projectRequests.permFormShared");
+      const fields = pl.fields;
+      if (!Array.isArray(fields) || fields.length < 1 || fields.length > 20) return no("projectRequests.permFormFields");
+      const seen = new Set<string>();
+      for (const x of fields) {
+        if (x === null || typeof x !== "object" || !isProjectId(x.id) || seen.has(x.id)) return no("projectRequests.permFieldId");
+        seen.add(x.id);
+        if (!(FIELD_KINDS as readonly unknown[]).includes(x.kind)) return no("projectRequests.permFieldKind");
+        if (!text(x.label, 200)) return no("projectRequests.permFieldLabel");
+        if (typeof x.required !== "boolean") return no("projectRequests.permFieldRequired");
+        if (x.kind === "choice" && !(Array.isArray(x.options) && x.options.length >= 2 && x.options.length <= 12 && x.options.every((o) => text(o, 80)))) return no("projectRequests.permFieldOptions");
+      }
+      return OK;
+    }
+
+    case "project.form.answered": {
+      // Anyone signed in to the company may answer a shared form (REQ D3); the server takes who from the session. Nothing else of the project opens up.
+      if (actor.userId === null || actor.userId === undefined) return no("projectRequests.permAnswerWho");
+      if (!live) return no("projectRequests.permClosed");
+      if (!fitsEvent(pl)) return no("projectRequests.permEventTooLong");
+      const form = p.forms.find((x) => x.id === pl.formId);
+      if (!form || !form.shared) return no("projectRequests.permNoForm");
+      if (pl.formRev !== form.rev) return no("projectRequests.permFormChanged");
+      if (!isProjectId(pl.requestId) || p.requests.some((x) => x.id === pl.requestId)) return no("projectRequests.permRequestId");
+      const answers = pl.answers;
+      if (answers === null || typeof answers !== "object" || Array.isArray(answers)) return no("projectRequests.permAnswerShape");
+      if (Object.keys(answers).some((k) => !form.fields.some((f) => f.id === k))) return no("projectRequests.permAnswerUnknown");
+      for (const f of form.fields) {
+        const v = answers[f.id];
+        if (v === undefined || (typeof v === "string" && v.trim() === "")) {
+          if (f.required) return no("projectRequests.permAnswerRequired", { label: f.label });
+          continue;
+        }
+        if (typeof v !== "string") return no("projectRequests.permAnswerShape");
+        if (f.kind === "short" && v.length > 300) return no("projectRequests.permAnswerShort");
+        if (f.kind === "long" && v.length > 4000) return no("projectRequests.permAnswerLong");
+        if (f.kind === "choice" && !(f.options ?? []).includes(v)) return no("projectRequests.permAnswerChoice");
+        if (f.kind === "date" && !/^-?\d{1,7}$/.test(v)) return no("projectRequests.permAnswerDate");
+      }
+      return OK;
+    }
+
+    case "project.request.stepped":
+    case "project.request.declined":
+    case "project.request.reopened": {
+      if (!onTeam) return no("projectRequests.permTeam");
+      if (!live) return no("projectRequests.permClosed");
+      if (!fitsEvent(pl)) return no("projectRequests.permEventTooLong");
+      const request = p.requests.find((x) => x.id === pl.requestId);
+      if (!request) return no("projectRequests.permNoRequest");
+      if (ev.type === "project.request.reopened") {
+        if (request.state === "new") return no("projectRequests.permRequestIsNew");
+        return request.state === "stepped" && untouchedStepOf(p, request) === null ? no("projectRequests.permRequestStepMoved") : OK;
+      }
+      if (request.state !== "new") return no("projectRequests.permRequestNotNew");
+      if (ev.type === "project.request.declined") return text(pl.why, 400) ? OK : no("projectRequests.permDeclineWhy");
+      const s = pl.step;
+      if (s === null || typeof s !== "object") return no("projectRequests.permRequestStep");
+      if (!isProjectId(s.stepId) || p.steps.some((x) => x.id === s.stepId)) return no("projects.permStepIdUnusable");
+      if (!text(s.text, 500)) return no("projects.permStepText");
+      if (typeof s.column !== "string" || !STARTS.includes(s.column)) return no("projects.permStepStart");
+      if (s.note !== undefined && (typeof s.note !== "string" || s.note.length > 2000)) return no("projects.permDetailsLong");
+      if (s.ownerUserId !== undefined && s.ownerUserId !== null && typeof s.ownerUserId !== "string") return no("projects.permStepOwnerWho");
+      if (s.dueDay !== undefined && s.dueDay !== null && !(typeof s.dueDay === "number" && Number.isFinite(s.dueDay))) return no("projects.permStepDue");
       return OK;
     }
 

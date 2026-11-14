@@ -2,14 +2,15 @@
 // opens with the case.decided yes that names it, and changes only through project.* events.
 // Pure like the case reducer: state in, state out, nothing stored.
 import type { SeatRow } from "@/features/auth/identity";
-import type { CaseEvent, CaseEventType } from "@/features/cases/events";
+import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import { templateSteps } from "@/features/templates/library";
-import type { CheckDue, Invite, InviteRole, ReducedProject, SeedProject, Step, StepColumn } from "./types";
+import type { CheckDue, Invite, InviteRole, ProjectPage, ReducedProject, Request, SeedProject, Step, StepColumn, ToolInstance } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
+import { DEFAULT_PAGES, LIMITS, mergePlan, TOOL_KINDS } from "./pages";
 import { revisionMatches } from "./result";
 import { verdictOf } from "./verdict";
 
@@ -62,7 +63,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
     doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
-    rewardDueDay: null, helpAsks: [],
+    rewardDueDay: null, helpAsks: [], pages: null, milestones: [], forms: [], requests: [], removed: [], merges: {},
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -138,9 +139,156 @@ function placeStep(p: ReducedProject, stepId: string, before: string | null): vo
   else p.steps.splice(at, 0, s);
 }
 
+/** Insert at the remembered next sibling, or append when that sibling no longer exists. */
+function insertBefore<T extends { id: string }>(items: T[], item: T, before: string | null | undefined): void {
+  const at = items.findIndex((x) => x.id === before);
+  items.splice(at < 0 ? items.length : at, 0, item);
+}
+
+/** Page facts replay independently of visibility; even the Agent tools belong to the stored model. */
+function applyPageEvent(p: ReducedProject, ev: CaseEvent): void {
+  const pages = p.pages ??= DEFAULT_PAGES.map((page) => ({ ...page, tools: page.tools.map((tool) => ({ ...tool })) }));
+  const pl = ev.payload;
+  const day = ev.day | 0;
+  p.removed = p.removed.filter((item) => day - item.day <= LIMITS.removedDays);
+  const page = pages.find((x) => x.id === pl.pageId);
+  const toolPage = pages.find((x) => x.tools.some((tool) => tool.id === pl.toolId));
+  const tool = toolPage?.tools.find((x) => x.id === pl.toolId);
+  switch (ev.type) {
+    case "project.page.added": {
+      if (!pl.pageId || page || !pl.title || !pl.icon || !pl.tools) break;
+      const tools: ToolInstance[] = pl.tools.map((x) => ({ id: x.toolId, kind: x.kind, title: x.title ?? null, content: x.content ?? null, collapsed: false, rev: 0 }));
+      insertBefore(pages, { id: pl.pageId, title: pl.title, icon: pl.icon, tools }, pl.before);
+      break;
+    }
+    case "project.page.edited":
+      if (page) {
+        if (pl.title !== undefined) page.title = pl.title;
+        if (pl.icon !== undefined) page.icon = pl.icon;
+      }
+      break;
+    case "project.page.moved":
+      if (page && pl.before !== page.id) {
+        pages.splice(pages.indexOf(page), 1);
+        insertBefore(pages, page, pl.before);
+      }
+      break;
+    case "project.page.removed":
+      if (page && page.id !== "overview" && pages.length > 1) {
+        const at = pages.indexOf(page);
+        p.removed.push({ page, tool: null, pageId: page.id, before: pages[at + 1]?.id ?? null, day });
+        pages.splice(at, 1);
+      }
+      break;
+    case "project.page.restored": {
+      const at = p.removed.findIndex((x) => x.page?.id === pl.pageId);
+      const item = p.removed[at];
+      if (item?.page && !page) {
+        insertBefore(pages, item.page, item.before);
+        p.removed.splice(at, 1);
+      }
+      break;
+    }
+    case "project.tool.added":
+      if (page && pl.toolId && pl.kind && TOOL_KINDS.includes(pl.kind as ToolInstance["kind"]) && !tool) {
+        insertBefore(page.tools, { id: pl.toolId, kind: pl.kind as ToolInstance["kind"], title: null, collapsed: false, content: null, rev: 0 }, pl.before);
+      }
+      break;
+    case "project.tool.moved": {
+      const into = pages.find((x) => x.id === pl.toPageId);
+      if (into && tool && toolPage && pl.before !== tool.id) {
+        toolPage.tools.splice(toolPage.tools.indexOf(tool), 1);
+        insertBefore(into.tools, tool, pl.before);
+      }
+      break;
+    }
+    case "project.tool.edited":
+      if (tool) {
+        if (pl.title !== undefined) tool.title = pl.title;
+        if (pl.collapsed !== undefined) tool.collapsed = pl.collapsed;
+        if (pl.content !== undefined) { tool.content = pl.content; tool.rev += 1; }
+      }
+      break;
+    case "project.tool.removed":
+      if (tool && toolPage) {
+        const at = toolPage.tools.indexOf(tool);
+        p.removed.push({ page: null, tool, pageId: toolPage.id, before: toolPage.tools[at + 1]?.id ?? null, day });
+        toolPage.tools.splice(at, 1);
+      }
+      break;
+    case "project.tool.restored": {
+      const at = p.removed.findIndex((x) => x.tool?.id === pl.toolId);
+      const item = p.removed[at];
+      const into = pages.find((x) => x.id === item?.pageId);
+      if (into && item?.tool && !tool) {
+        insertBefore(into.tools, item.tool, item.before);
+        p.removed.splice(at, 1);
+      }
+      break;
+    }
+    case "project.page.merged": {
+      const sourcePage = pages.find((x) => x.id === pl.fromPageId);
+      const destinationPage = pages.find((x) => x.id === pl.intoPageId);
+      if (!sourcePage || !destinationPage || sourcePage === destinationPage || !pl.mergeId || Object.hasOwn(p.merges, pl.mergeId)) break;
+      const plan = mergePlan(destinationPage, sourcePage);
+      if (plan.refused) break;
+      const at = pages.indexOf(sourcePage);
+      p.merges[pl.mergeId] = { from: { id: sourcePage.id, title: sourcePage.title, icon: sourcePage.icon, before: pages[at + 1]?.id ?? null }, toolIds: sourcePage.tools.map((x) => x.id) };
+      destinationPage.tools.push(...plan.moved);
+      pages.splice(at, 1);
+      break;
+    }
+    case "project.page.unmerged": {
+      const mergeId = pl.mergeId;
+      if (!mergeId || !Object.hasOwn(p.merges, mergeId)) break;
+      const { from: originalPage, toolIds } = p.merges[mergeId];
+      if (pages.some((x) => x.id === originalPage.id)) break;
+      const tools: ToolInstance[] = [];
+      for (const id of toolIds) {
+        const holder = pages.find((x) => x.tools.some((t) => t.id === id));
+        const at = holder?.tools.findIndex((x) => x.id === id) ?? -1;
+        if (holder && at >= 0) tools.push(...holder.tools.splice(at, 1));
+      }
+      const restored: ProjectPage = { id: originalPage.id, title: originalPage.title, icon: originalPage.icon, tools };
+      insertBefore(pages, restored, originalPage.before);
+      delete p.merges[mergeId];
+      break;
+    }
+  }
+}
+
 /** Frees the open steps of a user who left the team or the company: they have no owner now (MOV D22). Done steps keep theirs. */
 function freeSteps(p: ReducedProject, userId: string): void {
   p.steps.forEach((x) => { if (x.column !== "done" && x.ownerUserId === userId) { x.owner = null; x.ownerUserId = null; } });
+}
+
+/** The step a project.step.added (or a stepped request) puts on the board: any column but Blocked, which needs its reason, so it is a move. */
+function newStep(ev: CaseEvent, d: number, a: { stepId: string; text: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; note?: string; to?: unknown; external?: EventPayload["external"] }): Step {
+  const column: StepColumn = isColumn(a.to) && a.to !== "blocked" ? a.to : "todo";
+  return {
+    checklist: [], comments: [], waitingOn: null,
+    id: a.stepId, text: a.text, owner: a.owner?.trim() || null, ownerUserId: a.ownerUserId ?? null, dueDay: typeof a.dueDay === "number" ? a.dueDay : null,
+    column, why: "", note: a.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
+    startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
+    external: a.external?.system && a.external.key ? { system: a.external.system, key: a.external.key, url: a.external.url } : null, dropped: null,
+  };
+}
+
+/** The events that touch a step after it was made: a move, an edit, a comment, a checklist change, a link, a call for help. */
+const STEP_TOUCH: ReadonlySet<CaseEventType> = new Set<CaseEventType>(["project.step.moved", "project.step.edited", "project.step.commented", "project.step.checklist", "project.linked", "project.help.asked"]);
+
+/**
+ * The step a stepped request made, while nobody has touched it since (REQ D4): still in the column it started in, never edited, moved,
+ * commented or linked, and without a Jira key. Null when the request has no step or the step is no longer untouched.
+ */
+export function untouchedStepOf(p: ReducedProject, request: Request): Step | null {
+  const step = request.stepId === null ? undefined : p.steps.find((x) => x.id === request.stepId);
+  if (!step || step.external !== null || step.dropped || step.comments.length > 0 || step.checklist.length > 0) return null;
+  const at = p.history.findLastIndex((e) => e.type === "project.request.stepped" && e.payload.requestId === request.id);
+  if (at < 0) return null;
+  const made = p.history[at].payload.step;
+  if (typeof made !== "object" || made.column !== step.column) return null;
+  return p.history.slice(at + 1).some((e) => STEP_TOUCH.has(e.type) && e.payload.stepId === step.id) ? null : step;
 }
 
 /** The events that count as the project moving (MOV D12): the quiet and stalled clocks start over after each of them. */
@@ -196,6 +344,11 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   const pl = ev.payload ?? {};
   const d = ev.day | 0;
   const live = p.stopped === null;
+  if (ev.type.startsWith("project.page.") || ev.type.startsWith("project.tool.")) {
+    applyPageEvent(p, ev);
+    p.history.push(ev);
+    return true;
+  }
   switch (ev.type) {
     case "project.member": {
       const userId = pl.userId;
@@ -271,6 +424,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         const id = `t:${key}:${version}:${i}`;
         if (p.steps.some((x) => x.id === id)) return;
         p.steps.push({
+          checklist: [], comments: [], waitingOn: null,
           id, text: t.text, owner: null, ownerUserId: null, dueDay: f.takenDay === null ? null : f.takenDay + t.day, column: "todo", why: "", note: "",
           addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role, dropped: null,
         });
@@ -359,13 +513,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const text = pl.text?.trim();
       if (!stepId || !text || p.steps.some((s) => s.id === stepId)) break;
       // A card can start in any column but Blocked (that one needs its reason, so it is a move).
-      const column: StepColumn = isColumn(pl.to) && pl.to !== "blocked" ? pl.to : "todo";
-      p.steps.push({
-        id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
-        column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
-        startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
-        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null, dropped: null,
-      });
+      p.steps.push(newStep(ev, d, { stepId, text, owner: pl.owner, ownerUserId: pl.ownerUserId, dueDay: pl.dueDay, note: pl.note, to: pl.to, external: pl.external }));
       break;
     }
     case "project.step.moved": {
@@ -374,6 +522,13 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       touchedSteps.add(s);
       const changed = s.column !== pl.to;
       s.column = pl.to;
+      if (s.column !== "blocked") s.waitingOn = null;
+      else if (pl.waitingOn) {
+        const w = pl.waitingOn;
+        s.waitingOn = w.kind === "person" ? { kind: w.kind, userId: w.userId ?? null, name: null }
+          : w.kind === "outside" ? { kind: w.kind, userId: null, name: w.name?.trim() ?? null }
+          : { kind: "nobody", userId: null, name: null };
+      } else if (changed) s.waitingOn = null;
       // A reorder inside the column keeps its day (and, without a new one, its reason).
       s.why = pl.why ?? (changed ? "" : s.why);
       if (changed) s.movedDay = d;
@@ -382,6 +537,33 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       // The board's order is the steps' order: a card lands above `before`, or at the bottom of its new
       // column. A move that names no place and keeps the column (a connector repeating a status) stays put.
       if (pl.before !== undefined || changed) placeStep(p, s.id, pl.before ?? null);
+      break;
+    }
+    case "project.step.checklist": {
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      if (!s || !live || p.reward !== null || !pl.itemId) break;
+      const item = s.checklist.find((x) => x.id === pl.itemId);
+      const text = pl.text?.trim();
+      if (pl.op === "add") {
+        if (item || s.checklist.length >= 30 || !text || text.length > 200) break;
+        s.checklist.push({ id: pl.itemId, text, done: pl.done ?? false });
+      } else {
+        if (!item) break;
+        if (pl.op === "edit" && text && text.length <= 200) item.text = text;
+        else if (pl.op === "toggle" && typeof pl.done === "boolean") item.done = pl.done;
+        else if (pl.op === "remove") s.checklist = s.checklist.filter((x) => x !== item);
+        else break;
+      }
+      touchedSteps.add(s);
+      break;
+    }
+    case "project.step.commented": {
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      const text = pl.text?.trim();
+      if (!s || !live || p.reward !== null || !text || text.length > 2000 || s.comments.some((x) => x.id === ev.id)) break;
+      if (pl.replyTo != null && !s.comments.some((x) => x.id === pl.replyTo)) break;
+      s.comments.push({ id: ev.id, text, byUserId: ev.actorUserId ?? null, by: ev.actor, day: d, replyTo: pl.replyTo ?? null });
+      touchedSteps.add(s);
       break;
     }
     case "project.step.edited": {
@@ -395,6 +577,81 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (pl.ownerUserId !== undefined) s.ownerUserId = pl.ownerUserId;
       if (pl.dueDay !== undefined) s.dueDay = typeof pl.dueDay === "number" ? pl.dueDay : null;
       if (pl.note !== undefined) s.note = pl.note.trim();
+      if (pl.startDay !== undefined) s.startDay = typeof pl.startDay === "number" ? pl.startDay : null;
+      if (pl.milestoneId !== undefined) s.milestoneId = pl.milestoneId !== null && p.milestones.some((m) => m.id === pl.milestoneId) ? pl.milestoneId : null;
+      break;
+    }
+    case "project.milestone.added": {
+      const id = pl.milestoneId;
+      const title = pl.title?.trim();
+      if (!id || !title || typeof pl.dueDay !== "number" || p.milestones.some((m) => m.id === id)) break;
+      const startDay = typeof pl.startDay === "number" ? pl.startDay : null;
+      p.milestones.push({ id, title, startDay, dueDay: pl.dueDay, note: pl.note?.trim() ?? "", shipped: false, shippedDay: null });
+      break;
+    }
+    case "project.milestone.edited": {
+      const m = p.milestones.find((x) => x.id === pl.milestoneId);
+      if (!m) break;
+      if (pl.removed) {
+        p.milestones = p.milestones.filter((x) => x !== m);
+        p.steps.forEach((s) => { if (s.milestoneId === m.id) s.milestoneId = null; });
+        break;
+      }
+      const title = pl.title?.trim();
+      if (title) m.title = title;
+      if (pl.startDay !== undefined) m.startDay = typeof pl.startDay === "number" ? pl.startDay : null;
+      if (typeof pl.dueDay === "number") m.dueDay = pl.dueDay;
+      if (pl.note !== undefined) m.note = pl.note.trim();
+      if (typeof pl.shipped === "boolean" && pl.shipped !== m.shipped) { m.shipped = pl.shipped; m.shippedDay = pl.shipped ? d : null; }
+      break;
+    }
+    case "project.form.saved": {
+      const title = pl.title?.trim();
+      if (!pl.formId || !title || !Array.isArray(pl.fields) || pl.fields.length === 0) break;
+      const fields = pl.fields.map((x) => ({ id: x.id, kind: x.kind, label: x.label.trim(), required: x.required === true, ...(x.kind === "choice" && x.options ? { options: x.options.map((o) => o.trim()) } : {}) }));
+      const form = p.forms.find((x) => x.id === pl.formId);
+      const rev = (form?.rev ?? 0) + 1;
+      const next = { id: pl.formId, title, intro: pl.intro?.trim() ?? "", fields, shared: pl.shared === true, rev, revisions: [...(form?.revisions ?? []), { rev, fields }] };
+      if (form) Object.assign(form, next); else p.forms.push(next);
+      break;
+    }
+    case "project.form.answered": {
+      const form = p.forms.find((x) => x.id === pl.formId);
+      if (!form || !form.shared || !live || pl.formRev !== form.rev || !pl.requestId || p.requests.some((x) => x.id === pl.requestId)) break;
+      const answers: Record<string, string> = {};
+      for (const f of form.fields) { const v = pl.answers?.[f.id]; if (typeof v === "string" && v.trim()) answers[f.id] = v.trim(); }
+      p.requests.push({ id: pl.requestId, formId: form.id, formRev: form.rev, answers, byUserId: ev.actorUserId ?? null, day: d, state: "new", stepId: null, why: null });
+      break;
+    }
+    case "project.request.stepped": {
+      const r = p.requests.find((x) => x.id === pl.requestId);
+      const a = typeof pl.step === "object" ? pl.step : undefined;
+      const text = a?.text.trim();
+      if (!r || r.state !== "new" || !a || !text || p.steps.some((s) => s.id === a.stepId)) break;
+      p.steps.push(newStep(ev, d, { stepId: a.stepId, text, ownerUserId: a.ownerUserId, dueDay: a.dueDay, note: a.note, to: a.column }));
+      r.state = "stepped";
+      r.stepId = a.stepId;
+      break;
+    }
+    case "project.request.declined": {
+      const r = p.requests.find((x) => x.id === pl.requestId);
+      const why = pl.why?.trim();
+      if (!r || r.state !== "new" || !why) break;
+      r.state = "declined";
+      r.why = why;
+      break;
+    }
+    case "project.request.reopened": {
+      const r = p.requests.find((x) => x.id === pl.requestId);
+      if (!r || r.state === "new") break;
+      if (r.state === "stepped") {
+        const step = untouchedStepOf(p, r);
+        if (!step) break;
+        p.steps = p.steps.filter((x) => x !== step);
+      }
+      r.state = "new";
+      r.why = null;
+      r.stepId = null;
       break;
     }
     case "project.linked": {
@@ -427,6 +684,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
             touchedSteps.add(s);
             if (o.end === "done") {
               s.column = "done";
+              s.waitingOn = null;
               s.movedDay = d;
               s.doneDay = d;
               if (s.startedDay === null) s.startedDay = d;

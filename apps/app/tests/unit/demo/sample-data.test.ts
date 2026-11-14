@@ -8,6 +8,7 @@ import { canOpen, unitsOf } from "@/features/cases/visibility";
 import { EMPTY_SEED, LOCAL_SEED } from "@/features/demo";
 import { isSampleId, sampleDataOn, withSampleData, type SampleViewer } from "@/features/demo/sample-data";
 import { sampleDecisionLines } from "@/features/demo/sample-decisions";
+import { inboxItems } from "@/features/inbox";
 import { visibleProjectsFor } from "@/features/projects/views";
 import type { Role } from "@/config/roles";
 
@@ -36,10 +37,44 @@ describe("who gets the sample data", () => {
 describe("what each role finds", () => {
   it.each(["member", "leader", "manager"] as const)("%s has cases they raised and projects, even in an empty company", (role) => {
     const { S, me } = stateFor(role);
-    expect(mineOf(S, me)).toHaveLength(3);
+    // Open, asked, decided yes, a reasoned no and one merged into an open case.
+    expect(mineOf(S, me).map((c) => c.status).sort()).toEqual(["asked", "decided", "decided", "merged", "open"]);
     const projects = visibleProjectsFor(S, { userId: me.userId, role, me } as Parameters<typeof visibleProjectsFor>[1]);
-    expect(projects).toHaveLength(4);
-    expect(new Set(projects.map((p) => p.status))).toEqual(new Set(["planning", "running", "measuring", "recognised"]));
+    expect(new Set(projects.map((p) => p.status))).toEqual(new Set(role === "member" ? ["planning", "running", "measuring", "recognised"] : ["planning", "running", "measuring", "recognised", "stopped"]));
+    // Two drafts the viewer is part of: one waits for them to take the lead, one invites them onto the team.
+    expect(projects.filter((p) => p.draft).map((p) => p.id).sort()).toEqual(role === "member" ? ["sample-pj2", "sample-pj5"] : ["sample-pj2", "sample-pj5", "sample-pj7"]);
+  });
+
+  it.each([
+    ["member", ["invitation", "lead", "question", "update", "view"]],
+    ["leader", ["approval", "case", "help", "invitation", "lead", "question", "update", "view"]],
+    ["manager", ["appeal", "approval", "baseline", "case", "confirm", "help", "idea", "invitation", "lead", "question", "update"]],
+  ] as const)("%s finds what the new features ask of them in the inbox", (role, kinds) => {
+    const { seed, S, me } = stateFor(role);
+    const items = inboxItems({ state: S, me, seats: seed.seats, today: 0, demo: true, flags: { projects: true, discussion: true }, role });
+    expect([...new Set(items.map((i) => i.kind))].filter((k) => k !== "move").sort()).toEqual([...kinds]);
+    if (role !== "member") expect(items.find((i) => i.caseId === "sample-c2")?.cause).toBe("passed");
+  });
+
+  it("the projects show a pause, a stop, a moved done-by, a help ask, a weekly update and a dropped step", () => {
+    const { S } = stateFor("leader");
+    const p = (id: string) => S.projects.find((x) => x.id === id)!;
+    expect(p("sample-pj8").pausedUntil).toBe(9);
+    expect(p("sample-pj9").stopped?.why).toMatch(/trays/);
+    expect(p("sample-pj1").doneByMoves).toHaveLength(1);
+    expect(p("sample-pj1").helpAsks).toHaveLength(1);
+    expect(p("sample-pj1").latestUpdate?.week).toBe(-4);
+    expect(p("sample-pj3").steps.find((s) => s.id === "s3")?.dropped?.why).toMatch(/spring/);
+    expect(p("sample-pj5").invites).toHaveLength(1);
+  });
+
+  it("a case waits for an approval, a no carries its category and revisit day, and a second look waits", () => {
+    const { S } = stateFor("leader");
+    const c = (id: string) => S.cases.find((x) => x.id === id)!;
+    expect(c("sample-c12").status).toBe("approval");
+    expect(c("sample-c10").decided).toMatchObject({ answer: "no", category: "not-now", revisitDay: 18 });
+    expect(c("sample-c8").appeal?.decided).toBeNull();
+    expect(c("sample-c11").status).toBe("merged");
   });
 
   it("a leader's and a manager's desk holds three open cases, an employee's none", () => {
@@ -56,14 +91,14 @@ describe("what each role finds", () => {
     expect(open).not.toContain("sample-c1");
   });
 
-  it("a manager has two ideas waiting and a decision log with a yes and a no", () => {
+  it("a manager has two ideas waiting and a decision log with yeses and noes", () => {
     const { seed, S } = stateFor("manager");
     expect(S.ideas.filter((i) => i.status === "Awaiting decision")).toHaveLength(2);
     const filters = { period: "90", answer: "", project: "", q: "" } as const;
     const lines = sampleDecisionLines(S.cases, S, seed.roles ?? [], filters, (d) => String(d));
-    expect(lines.map((l) => l.answer).sort()).toEqual(["no", "yes", "yes"]);
+    expect(lines.map((l) => l.answer).sort()).toEqual(["no", "no", "yes", "yes", "yes", "yes"]);
     expect(lines[0].caseId).toBe("sample-c9"); // the newest first
-    expect(sampleDecisionLines(S.cases, S, seed.roles ?? [], { ...filters, answer: "no" }, (d) => String(d))).toHaveLength(1);
+    expect(sampleDecisionLines(S.cases, S, seed.roles ?? [], { ...filters, answer: "no" }, (d) => String(d))).toHaveLength(2);
   });
 });
 

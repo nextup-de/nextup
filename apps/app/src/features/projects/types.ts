@@ -4,16 +4,34 @@
 import type { CaseEvent, SeedEvent } from "@/features/cases/events";
 import type { MeasureImpact, MeasureSource } from "./measure-source";
 
+export type ToolKind = "overview" | "board" | "list" | "calendar" | "timeline" | "milestones" | "results" | "files" | "doc" | "checklist" | "table" | "links" | "requests" | "team" | "activity" | "agent";
+export type PageIconKey = "home" | "board" | "list" | "calendar" | "timeline" | "flag" | "target" | "folder" | "link" | "inbox" | "people" | "pulse" | "doc" | "checklist" | "table" | "star" | "chat" | "box";
+export type ToolInstance = { id: string; kind: ToolKind; title: string | null; collapsed: boolean; content: string | null; rev: number };
+export type ProjectPage = { id: string; title: string; icon: PageIconKey; tools: ToolInstance[] };
+export type RemovedItem = { page: ProjectPage | null; tool: ToolInstance | null; pageId: string; before: string | null; day: number };
+export type MergeRecord = { from: { id: string; title: string; icon: PageIconKey; before: string | null }; toolIds: string[] };
+
 export type StepColumn = "todo" | "doing" | "blocked" | "done";
 export const STEP_COLUMNS: readonly StepColumn[] = ["todo", "doing", "blocked", "done"];
 
+export type StepWaitingOn = { kind: "person" | "outside" | "nobody"; userId: string | null; name: string | null };
+export type StepWaitingOnInput = { kind: StepWaitingOn["kind"]; userId?: string | null; name?: string | null };
+export type StepChecklistOp = "add" | "edit" | "toggle" | "remove";
+
 export type Step = {
+  checklist: { id: string; text: string; done: boolean }[];
+  comments: { id: string; text: string; byUserId: string | null; by: string; day: number; replyTo: string | null }[];
+  waitingOn: StepWaitingOn | null;
   id: string;
   text: string;
   owner: string | null;
   /** The owner's user id (project.step.* ownerUserId); null when none was named. */
   ownerUserId?: string | null;
   dueDay: number | null;
+  /** The planned start (project.step.edited startDay); null when none was set. Not startedDay, the day it first moved to Doing. */
+  startDay?: number | null;
+  /** The milestone this step belongs to; null when none. */
+  milestoneId?: string | null;
   column: StepColumn;
   /** Dropped on the Done sheet (D13): it stays on the board, struck through, and counts in no total. Null/absent while it is not. */
   dropped?: { why: string; day: number; byUserId: string | null } | null;
@@ -32,6 +50,23 @@ export type Step = {
   /** Who the step is for: the lead, the sponsor or the team (a template's step, F6). Absent on a step added by hand and on legacy steps. */
   role?: StepRole;
 };
+
+/** A named point in the plan that steps belong to (plan PLN, D3). */
+export type Milestone = { id: string; title: string; startDay: number | null; dueDay: number; note: string; shipped: boolean; shippedDay: number | null };
+
+/** A question of a form as saved (plan REQ, D4). `options` only for a choice. */
+export type FormFieldKind = "short" | "long" | "choice" | "date";
+export type FormField = { id: string; kind: FormFieldKind; label: string; required: boolean; options?: string[] };
+export type FormFieldInput = FormField;
+/** A form the team publishes; every save counts `rev` up and keeps that revision's fields, so an answer reads with the questions it was given on. */
+export type Form = { id: string; title: string; intro: string; fields: FormField[]; shared: boolean; rev: number; revisions: { rev: number; fields: FormField[] }[] };
+/** What someone answered on a form: a request the team steps, declines or leaves new. */
+export type Request = { id: string; formId: string; formRev: number; answers: Record<string, string>; byUserId: string | null; day: number; state: "new" | "stepped" | "declined"; stepId: string | null; why: string | null };
+
+/** The questions a form had on revision `rev`; the current ones when that revision is unknown. */
+export function fieldsOf(form: Pick<Form, "fields" | "revisions">, rev: number): FormField[] {
+  return form.revisions.find((r) => r.rev === rev)?.fields ?? form.fields;
+}
 
 /** The role a template step is for. */
 export type StepRole = "lead" | "sponsor" | "team";
@@ -126,6 +161,13 @@ export type ProjectEscalation = {
   toUserId?: string | null };
 
 export type ReducedProject = {
+  /** null: no page event yet; use the default pages. */
+  pages: ProjectPage[] | null;
+  milestones: Milestone[];
+  forms: Form[];
+  requests: Request[];
+  removed: RemovedItem[];
+  merges: Record<string, MergeRecord>;
   id: string;
   /** P-1, P-2, ...: the order the projects opened in. */
   number: number;

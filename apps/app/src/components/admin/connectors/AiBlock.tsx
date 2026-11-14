@@ -1,6 +1,7 @@
 "use client";
 // Console connectors: the AI provider. The key is typed here and never comes back; only "set" shows.
 import { useState, useTransition } from "react";
+import { DEFAULT_ANTHROPIC_MODEL } from "@/features/ai/settings";
 import { aiStatus } from "@/features/connectors/status";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
@@ -18,6 +19,7 @@ const CHOICES: { value: string; label: MessageKey }[] = [
   { value: "bedrock", label: "adminConnectors.aiBedrock" },
   { value: "azure-openai", label: "adminConnectors.aiAzure" },
   { value: "openai-compatible", label: "adminConnectors.aiCompatible" },
+  { value: "anthropic", label: "adminConnectors.aiAnthropic" },
   { value: "local", label: "adminConnectors.aiLocal" },
   { value: "off", label: "adminConnectors.aiOffChoice" },
 ];
@@ -32,12 +34,15 @@ export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boole
   const hosted = azure || f.choice === "openai-compatible";
   // The model on this stack: no region, endpoint, model or key; the brain of this stack answers (Q8.4).
   const local = f.choice === "local";
+  // Claude through Anthropic's own API: a key and a model, no region or endpoint; demo companies only (gate.ts).
+  const claudeApi = f.choice === "anthropic";
   const status = aiStatus(view);
   const notes: Note[] = [];
   if (view.choice === "mock") notes.push({ tone: "plain", text: t("adminConnectors.aiMock") });
   if (local && view.brain === "none") notes.push({ tone: "warn", text: t("adminConnectors.aiLocalNoBrain") });
   else if (local && view.choice === "local" && view.brain === "down") notes.push({ tone: "warn", text: t("adminConnectors.aiLocalDown") });
   else if (local) notes.push({ tone: "plain", text: t("adminConnectors.aiLocalLine") });
+  if (claudeApi) notes.push({ tone: "warn", text: t("adminConnectors.aiAnthropicLine") });
   if (status === "needs" && view.choice !== "local") notes.push({ tone: "warn", text: view.vault ? t("adminConnectors.aiNeedsKey") : t("adminConnectors.errNoVault") });
   if (status === "off" && view.choice !== "mock") notes.push({ tone: "plain", text: t("adminConnectors.aiOffLine") });
   return (
@@ -62,16 +67,18 @@ export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boole
         </div>
         {f.choice === "off" || local ? null : (
           <>
-            <Row id="ca-region" label={t("adminConnectors.aiRegion")}>
-              <input className={c.input} id="ca-region" value={f.region} disabled={readOnly} onChange={(e) => set("region", e.target.value)} />
-            </Row>
+            {claudeApi ? null : (
+              <Row id="ca-region" label={t("adminConnectors.aiRegion")}>
+                <input className={c.input} id="ca-region" value={f.region} disabled={readOnly} onChange={(e) => set("region", e.target.value)} />
+              </Row>
+            )}
             {hosted ? (
               <Row id="ca-endpoint" label={t("adminConnectors.aiEndpoint")}>
                 <input className={c.input} id="ca-endpoint" value={f.endpoint} disabled={readOnly} onChange={(e) => set("endpoint", e.target.value)} autoComplete="off" />
               </Row>
             ) : null}
             <Row id="ca-model" label={t("adminConnectors.aiModel")} hint={t("adminConnectors.aiModelHint")}>
-              <input className={`${c.input} ${c.mono}`} id="ca-model" value={f.model} disabled={readOnly} onChange={(e) => set("model", e.target.value)} />
+              <input className={`${c.input} ${c.mono}`} id="ca-model" value={f.model} disabled={readOnly} placeholder={claudeApi ? DEFAULT_ANTHROPIC_MODEL : undefined} onChange={(e) => set("model", e.target.value)} />
             </Row>
             <Row id="ca-brain-model" label={t("adminConnectors.aiBrainModel")} hint={t("adminConnectors.aiBrainModelHint")}>
               <input className={`${c.input} ${c.mono}`} id="ca-brain-model" value={f.brainModel} maxLength={120} disabled={readOnly} onChange={(e) => set("brainModel", e.target.value)} autoComplete="off" />
@@ -81,7 +88,7 @@ export function AiBlock({ view, readOnly }: { view: AiBlockView; readOnly: boole
                 <input className={c.input} id="ca-deployment" value={f.deployment} disabled={readOnly} onChange={(e) => set("deployment", e.target.value)} />
               </Row>
             ) : null}
-            {hosted ? (
+            {hosted || claudeApi ? (
               <Row id="ca-key" label={t("adminConnectors.aiKey")} hint={t("adminConnectors.aiKeyHint")}>
                 <input className={c.input} id="ca-key" type="password" value={f.key} disabled={readOnly} onChange={(e) => set("key", e.target.value)} autoComplete="new-password" />
               </Row>

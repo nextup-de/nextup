@@ -14,6 +14,8 @@ import { peopleOf, useRights, useSend } from "../parts";
 import styles from "./Draft.module.css";
 
 const ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+/** Up to two initials of a display name, for the round mark in front of a person. */
+const initialsOf = (name: string) => name.split(/[\s.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
 export function InvitePanel({ p }: { p: ReducedProject }) {
   const { act, seed, S, actorUserId } = useDemo();
@@ -40,6 +42,7 @@ export function InvitePanel({ p }: { p: ReducedProject }) {
         ))}
         {p.followerUserIds.map((u) => (
           <li key={"f:" + u} className={styles.row}>
+            <span className={styles.avatar} aria-hidden="true">{initialsOf(nameOf(u))}</span>
             <span className={styles.grow}>{nameOf(u)} · {t("projectDraft.role_follower")}</span>
             <span className={styles.state} data-state="accepted">{t("projectDraft.teamAsFollower")}</span>
           </li>
@@ -98,6 +101,7 @@ function InviteRow({ p, invite, name, focus }: { p: ReducedProject; invite: Invi
   return (
     <li ref={ref} id={"invite-" + invite.id} className={styles.rowBlock} data-focus={focus ? "true" : undefined}>
       <div className={styles.row}>
+        <span className={styles.avatar} aria-hidden="true">{initialsOf(name)}</span>
         <span className={styles.grow}>{name} · {role}</span>
         <span className={styles.state} data-state={invite.state}>{t(("projectDraft.inviteState_" + invite.state) as "projectDraft.inviteState_pending")}</span>
       </div>

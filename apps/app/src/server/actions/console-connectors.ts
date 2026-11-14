@@ -11,7 +11,7 @@ import { readJiraForm, settingsFromForm } from "@/features/admin/jira-admin";
 import { vaultKey } from "@/features/connectors/vault";
 import { cleanBrainModel } from "@/components/admin/connectors/views";
 import { parsePriceLines } from "@/features/ai/prices";
-import { AI_SYSTEM, DEFAULT_REGION, type AiSettings } from "@/features/ai/settings";
+import { AI_SYSTEM, DEFAULT_REGION, needsKey, type AiSettings } from "@/features/ai/settings";
 import { normalizeSiteUrl, parseJiraSettings } from "@/features/integrations/jira/settings";
 import type { JiraAccount, JiraCheck, JiraIssueType } from "@/features/integrations/jira/types";
 import { saveAiSettings } from "@/lib/db/ai";
@@ -188,7 +188,9 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
   // The model on this stack (Q8.4) takes no endpoint, model, deployment or key: whatever the form still holds from
   // another choice is dropped, so nothing saved could point outside the stack. The prices still apply.
   const local = picked === "local";
-  const endpointRaw = local ? "" : text(r.endpoint, 300);
+  // The Claude API (anthropic) has Anthropic's fixed address: whatever endpoint or deployment the form still holds is dropped.
+  const claudeApi = picked === "anthropic";
+  const endpointRaw = local || claudeApi ? "" : text(r.endpoint, 300);
   const endpoint = endpointRaw ? normalizeSiteUrl(endpointRaw) : null;
   if (endpointRaw && !endpoint) return { ok: false, code: "invalid", detail: "endpoint" };
   const needsEndpoint = picked === "azure-openai" || picked === "openai-compatible";
@@ -204,13 +206,13 @@ export async function saveConsoleAi(raw: unknown): Promise<ConsoleConnectorState
     region: (local ? "" : text(r.region, 40)) || DEFAULT_REGION,
     model: local ? "" : text(r.model, 120),
     endpoint,
-    deployment: local ? null : text(r.deployment, 120) || null,
+    deployment: local || claudeApi ? null : text(r.deployment, 120) || null,
     brainModel: local ? null : cleanBrainModel(r.brainModel),
     ...(prices ? { prices } : {}),
   };
   const key = local ? "" : text(r.key, 500);
   if (key && !vaultKey()) return { ok: false, code: "no-vault" };
-  if (needsEndpoint && !key && !(await integrationSecrets(d.c.companyId, AI_SYSTEM))?.secretSealed) return { ok: false, code: "no-token" };
+  if (needsKey(picked) && !key && !(await integrationSecrets(d.c.companyId, AI_SYSTEM))?.secretSealed) return { ok: false, code: "no-token" };
   const actor = await consoleActor();
   const by = await who();
   const beforeRow = await getIntegration(d.c.companyId, AI_SYSTEM);

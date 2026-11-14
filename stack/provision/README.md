@@ -50,16 +50,20 @@ Proof: `bash stack/tests/break-glass-window.test.sh`.
 `AUTH_SECRET`, n8n and restic values of real stacks it received earlier. Delete those entries there
 by hand once; the agent will not send them again and this repo cannot change nextup-admin.
 
-## Picking the demo's version (`promote`)
+## Pinning a stack's version (`promote`, `unpin`)
 
-admin's **Version** card on a pinned stack (today only `demo`, the interview stack) queues a
-`promote` job with `slug` and `sha`. The agent:
+Every stack follows its track; a stack is pinned only by hand. admin's **Version** card queues a
+`promote` job with `slug` and `sha` (**Pin to this version** / **Install this version**). The agent:
 
-1. accepts it only for a stack the box has pinned (`PINNED=` in its stack.conf), reserved slug or
-   not - every other stack follows its track (stack/nginx/RUNBOOK.md, "Staging and the release track");
+1. accepts it for any installed release-track stack, pinned already or not, reserved slug or not -
+   never for staging (track main) or a preview slot (stack/nginx/RUNBOOK.md, "Staging and the release track");
 2. accepts only a sha in `~/nextup/staged` or `~/nextup/released`, never one that skipped staging;
 3. runs `stack/nginx/deploy.sh promote <slug> <sha>`: pull, backup, that commit's `stack/`, pin, start;
 4. checks `/api/health` and reports the log (codes scrubbed) with the "to go back" line.
+
+**Follow releases again** on a pinned stack's card queues an `unpin` job (slug only). The agent
+accepts it only for a pinned release-track stack and runs `stack/nginx/deploy.sh unpin <slug>`:
+backup, the last released sha, `PINNED=` and the stack's own `stack/` removed, start, health.
 
 For the card to show, the stack needs a company page: **Companies → Register a stack that already
 runs** with `demo` (3121), and the same for `staging` (3991) to switch its feature flags there.

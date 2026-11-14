@@ -15,7 +15,8 @@ Add a row **before** running `add-stack.sh`. It refuses a slug/port pair that is
 **Track** says which versions a company stack gets (`deploy.sh`, RUNBOOK "Staging and the release
 track"): `main` = every green merge, straight from CI (the staging stack); `release` = only a commit
 that passed staging and was approved. A stack started from admin.sellux.ch has no row here and is
-always on `release`. A pinned stack (`PINNED=` in its stack.conf) ignores its track. Stage `preview`
+always on `release`. A stack pinned by hand (`PINNED=` in its stack.conf; `deploy.sh promote`) ignores its
+track until `deploy.sh unpin` puts it back. Stage `preview`
 marks a PR preview slot: no track, no backups, no health alerts (RUNBOOK "PR previews").
 
 | Slug | Port | Stage | Track | Host | Notes |

@@ -1,6 +1,6 @@
 // UIP-P1: the Projects list and a project's tabs have the house look: every tab passes the page sweep at
 // desktop and phone width, there is no Agent tab, and a step can still be added and taken off the board.
-import { expect, test } from "../helpers";
+import { expect, projectPages, test } from "../helpers";
 import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { signIn, sweepPages } from "./fixtures/page-sweep";
 import type { CaseEventType } from "../../../src/features/cases/events";
@@ -13,6 +13,8 @@ const SLUG = "uip-projects";
 const PROJECT = "pj-uip";
 const CASE = "c-uip";
 const TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const; // agent: the manager sees the Agent tab (plan AGT, D15)
+// The sidebar's pages since PGB-B1: the default set, Agent included for a manager.
+const PAGES = ["overview", "steps", "plan", "results", "files", "requests", "team", "activity", "agent"] as const;
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL");
 
 const MANAGER = { name: "Mara Sweep", email: `mara@${SLUG}.test`, role: "manager" as const };
@@ -64,17 +66,20 @@ test.afterAll(async () => {
 test("UIP project area", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   const base = `/${SLUG}/projects/${PROJECT}`;
-  await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-tabs", title: false }); // the tab names the page
+  await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-area", title: false }); // the sidebar names the page
   await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
-  await test.step("the tabs are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
+  await test.step("the pages are Overview, Steps, Plan, Results, Files, Requests, Team, Activity and, for a manager, Agent (PGB, AGT D15)", async () => {
+    // The sweep ends at phone width, and a phone has no sidebar: its pages are read on a laptop.
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(base);
-    const tabs = page.getByRole("navigation", { name: "Project sections" });
-    await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
+    const tabs = await projectPages(page); // the sidebar carries the project's pages
+    await expect(tabs.getByRole("link")).toHaveCount(PAGES.length);
     await expect(tabs.getByRole("link", { name: "Agent", exact: true })).toHaveCount(1); // the lead, the sponsor and managers see it (D15)
-    for (const name of ["Overview", "Board", "Team", "Results"]) {
-      await tabs.getByRole("link", { name: new RegExp("^" + name) }).click();
-      await expect(tabs.getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
+    for (const name of ["Overview", "Steps", "Team", "Results"]) {
+      const link = tabs.getByRole("link", { name: new RegExp("(^|⠿ )" + name + "$") }); // an editor's rows carry a drag grip
+      await link.click();
+      await expect(link).toHaveAttribute("aria-current", "page");
     }
   });
 
@@ -84,16 +89,17 @@ test("UIP project area", async ({ page }) => {
     await expect(todo.getByRole("article")).toHaveCount(1);
     await todo.getByRole("button", { name: "Add a step to To do" }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(NEW_STEP);
-    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await page.getByRole("textbox", { name: "New step" }).press("Enter");
     await expect(todo.getByRole("article")).toHaveCount(2);
     const sheet = await openStep(page, NEW_STEP);
-    await sheet.getByRole("button", { name: /Remove this step/ }).click();
-    await sheet.getByRole("button", { name: /Yes, remove/ }).click();
+    await sheet.getByRole("button", { name: "Step menu" }).click(); // removing sits in the sheet's ⋯ menu (STP)
+    await sheet.getByRole("menuitem", { name: "Remove step" }).click();
+    await sheet.getByRole("button", { name: "Remove step", exact: true }).click();
     await expect(todo.getByRole("article")).toHaveCount(1);
   });
 });
 
 async function openStep(page: import("@playwright/test").Page, text: string) {
-  await page.getByRole("button", { name: "Open “" + text + "”" }).click();
-  return page.getByRole("dialog", { name: text });
+  await page.getByRole("region", { name: "Board", exact: true }).getByRole("button", { name: "Open step: " + text, exact: true }).click();
+  return page.getByRole("dialog", { name: text, exact: true }).last(); // the Steps page also holds the List
 }

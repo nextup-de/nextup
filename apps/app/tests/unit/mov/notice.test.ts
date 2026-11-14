@@ -35,7 +35,7 @@ const raised = ev("case.raised", "u_au", "c_a", { kind: "idea", title: "Idea", b
 const yes = ev("case.decided", "u_own", "c_a", { answer: "yes", projectId: "p_one", lead: "Lena Lead", leadUserId: "u_lead", title: "Shorter changeover" });
 
 const step = (id: string, text: string, over: Partial<Step> = {}): Step => ({
-  id, text, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, external: null, ...over,
+  id, text, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null, ...over,
 });
 
 /** The state after `events`, with the project's MOV fields set by `setup`. */

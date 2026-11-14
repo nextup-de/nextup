@@ -14,6 +14,7 @@ app's content security policy allows the browser to talk to its own origin only 
 | `bedrock` (Claude on Amazon Bedrock, AWS) | Redacted question text and knowledge snippets for the assistant; text of a case for a routing proposal; redacted file names and snippets for the company context draft, when an admin starts it | **Only when the company chooses it**, the assistant or routing switch is on (the context draft has no switch of its own: an admin starts each run), and a DPA date (`dpaSignedAt`) is recorded. Default region `eu-central-1` (`LLM_REGION`) | AWS region of the choice |
 | `azure-openai` | Same data as above, sent to the company's own Azure OpenAI endpoint through the brain | **Only when the company chooses it**, same gate | The company's endpoint |
 | `openai-compatible` | Same data as above, sent to the endpoint the company enters | **Only when the company chooses it**, same gate | The company's endpoint |
+| `anthropic` (Claude through Anthropic's own API) | Same data as above, sent to Anthropic's API (api.anthropic.com) with the company's API key, by the app and through the brain | **Only when the company chooses it**, and only for a demo company: the gate refuses it in every other stage, so a real company's data never takes this path | Anthropic (US); demo content only |
 
 How the gate works: `aiGate` in `apps/app/src/features/ai/gate.ts` fails closed. For a real company with any model
 choice and no `dpaSignedAt`, nothing leaves the stack. The choice `off` and the `mock` provider send nothing. Data is

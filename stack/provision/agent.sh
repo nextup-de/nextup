@@ -30,8 +30,11 @@
 #   restart      start a stack again (after stop, or to recover)
 #   stop         stop a stack; data stays; deploys leave it stopped (stack.conf STOPPED=true)
 #   purge        delete a DEMO stack for good: containers, volumes, .env, nginx site
-#   promote      move a PINNED stack (demo) to a commit that reached staging or was released, and
-#                pin it there (stack/nginx/deploy.sh promote: backup first) - admin's Version card
+#   promote      pin a stack by hand: move it to a commit that reached staging or was released and
+#                keep it there (stack/nginx/deploy.sh promote: backup first) - admin's Version card.
+#                Any release-track stack, pinned or not; never staging (track main) or a preview slot
+#   unpin        put a pinned stack back on its track: the last released sha, from then on every
+#                release (stack/nginx/deploy.sh unpin: backup first) - admin's Version card
 #
 # Every poll also tells admin which versions it may offer (X-Agent-Info): released= the last ten
 # released shas, newest first; staged= the newest staged one; pins= slug:sha of each pinned stack.
@@ -193,12 +196,12 @@ run_watched() {
   return "$rc"
 }
 
-[[ "$action" =~ ^(create|credentials|restart|stop|purge|promote)$ ]] || fail "action '$action' is not allowed"
+[[ "$action" =~ ^(create|credentials|restart|stop|purge|promote|unpin)$ ]] || fail "action '$action' is not allowed"
 [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$ ]] || fail "bad slug"
-if [ "$action" = promote ]; then
-  # May name a reserved slug (demo): it only ever moves a stack the box itself has pinned (checked
+if [ "$action" = promote ] || [ "$action" = unpin ]; then
+  # May name a reserved slug (demo): they only ever move an installed release-track stack (checked
   # below), and only to a commit that passed staging. Port and stage come from the box, never from the job.
-  [[ "$sha" =~ ^[0-9a-f]{7}$ ]] || fail "sha must be a 7-char commit sha"
+  [ "$action" = unpin ] || [[ "$sha" =~ ^[0-9a-f]{7}$ ]] || fail "sha must be a 7-char commit sha"
 else
   # credentials may name a reserved slug too: it only reads an installed stack's passwords, so
   # staging and demo can be registered in admin like acme. Creating, stopping or deleting one never.
@@ -219,6 +222,12 @@ box_stage() {
   s="$(awk -F'|' -v slug="$slug" 'NF>5 { for (i=2;i<=4;i++) gsub(/ /,"",$i); if ($2==slug) print $4 }' "$stack/nginx/ports.md")"
   [ -n "$s" ] || s="$(sed -n -E 's/^STAGE=(demo|real)$/\1/p' "$conf" 2>/dev/null)"
   echo "$s"
+}
+box_track() {  # release, main or preview: a ports.md row says; a stack only in a stack.conf is release
+  local t
+  t="$(awk -F'|' -v slug="$slug" 'NF>5 { for (i=2;i<=5;i++) gsub(/ /,"",$i); if ($2==slug) print ($4=="preview" ? "preview" : $5) }' "$stack/nginx/ports.md")"
+  [ -n "$t" ] || t=release
+  echo "$t"
 }
 box_port() {
   local p
@@ -398,11 +407,11 @@ case "$action" in
     ;;
 
   promote)
-    # Pinned stacks only: every other stack follows its track (deploy.sh stage/release), and a
-    # job from admin must never fork one off it.
+    # Pinning by hand: any release-track stack, pinned already or not. Staging (track main) gets
+    # every green merge and a preview slot belongs to its PR - admin never forks those off.
     progress checks
     [ -f "$env_file" ] || fail "$slug is not installed on this box"
-    grep -qE '^PINNED=[0-9a-f]{7}$' "$conf" 2>/dev/null || fail "$slug is not pinned - it follows its track (deploy.sh stage/release), not a version picked in admin"
+    [ "$(box_track)" = release ] || fail "$slug is not on the release track (staging or a preview slot) - it is never pinned from admin"
     reached_staging "$sha" || fail "$sha never reached staging and was never released - nothing changed"
     port="$(box_port)"
     [[ "$port" =~ ^[0-9]{4,5}$ ]] || fail "the box knows no port for $slug"
@@ -415,6 +424,24 @@ case "$action" in
     progress health
     health || fail "the app does not answer on 127.0.0.1:$port"
     echo "The app answers on 127.0.0.1:$port, pinned at $sha." >> "$log"
+    report done
+    ;;
+
+  unpin)
+    # Back onto the release track: the last released sha now, every release from then on.
+    progress checks
+    [ -f "$env_file" ] || fail "$slug is not installed on this box"
+    [ "$(box_track)" = release ] || fail "$slug is not on the release track - nothing to unpin from admin"
+    grep -qE '^PINNED=[0-9a-f]{7}$' "$conf" 2>/dev/null || fail "$slug is not pinned - it already follows the releases"
+    port="$(box_port)"
+    [[ "$port" =~ ^[0-9]{4,5}$ ]] || fail "the box knows no port for $slug"
+    disk="$(disk_mb)"
+    [ "${disk:-0}" -ge "$MIN_DISK_MB" ] || fail "only ${disk} MB disk free, need $MIN_DISK_MB MB for new images"
+    progress install
+    run_watched "$stack/nginx/deploy.sh" unpin "$slug" || fail "deploy.sh unpin failed - see the log above"
+    progress health
+    health || fail "the app does not answer on 127.0.0.1:$port"
+    echo "The app answers on 127.0.0.1:$port and follows the releases again." >> "$log"
     report done
     ;;
 esac

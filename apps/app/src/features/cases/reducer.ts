@@ -177,7 +177,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
   // Seed history first (in day order), then live events (in log order).
   const seedEvents: CaseEvent[] = [];
   const pushSeed = (target: string) => (ev: NonNullable<SeedCase["seedEvents"]>[number], k: number) =>
-    seedEvents.push({ id: "seed_" + target + "_" + k, ts: 0, target, seed: true, type: ev.type, day: ev.day, actor: ev.actor, actorUserId: ev.actorUserId ?? null, payload: ev.payload ?? {} });
+    seedEvents.push({ id: "seed_" + target + "_" + k, ts: 0, target: ev.target ?? target, seed: true, type: ev.type, day: ev.day, actor: ev.actor, actorUserId: ev.actorUserId ?? null, payload: ev.payload ?? {} });
   seed.cases.forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));
   seed.ideas.forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));
   (seed.projects ?? []).forEach((row) => (row.seedEvents ?? []).forEach(pushSeed(row.id)));

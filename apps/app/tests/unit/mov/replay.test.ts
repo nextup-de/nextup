@@ -55,15 +55,20 @@ const MOV_FIELDS = ["doneBy", "doneByMoves", "pausedUntil", "pauseWhy", "lastAct
 // What plan RES added on top (declared in RES-G1): the project's own fields, and the fields of its baseline, steps and measures.
 const RES_FIELDS = ["rewardDueDay", "helpAsks"] as const;
 const RES_MEASURE_FIELDS = ["eventId", "sentBack", "reentered", "managerOnly", "questions", "previous"] as const;
+// STP adds empty step fields; the historical snapshots stay unchanged.
+const beforeStp = (s: ReducedProject["steps"][number]) => {
+  expect(s).toMatchObject({ checklist: [], comments: [], waitingOn: null });
+  return s;
+};
 const without = <T extends object>(o: T, keys: readonly string[]): T => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k))) as T;
 /** Every field the project had before MOV, as plain data: the history as its event ids. */
 const before = (p: ReducedProject) => {
   const { history, ...rest } = p;
-  for (const k of [...MOV_FIELDS, ...RES_FIELDS]) delete (rest as Partial<ReducedProject>)[k];
+  for (const k of [...MOV_FIELDS, ...RES_FIELDS, "pages", "milestones", "forms", "requests", "removed", "merges"] as const) delete (rest as Partial<ReducedProject>)[k];
   return {
     ...rest,
     baseline: rest.baseline === null ? null : without(rest.baseline, ["byUserId", "eventId", "confirmed"]),
-    steps: rest.steps.map((s) => without(s, ["dropped"])),
+    steps: rest.steps.map((s) => without(beforeStp(s), ["dropped", "checklist", "comments", "waitingOn"])),
     measures: rest.measures.map((m) => without(m, RES_MEASURE_FIELDS)),
     history: history.map((e) => e.id.replace(/^y\d+$/, "y")),
   };

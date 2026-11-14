@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Proof for OPS-E1: stage, release and deploy back each stack up (backup.sh pre-migrate) before its
 # add-stack.sh, skip a stack whose backup fails, and move a stack without a backup as before.
+# Also: a stack pinned by hand (promote) is skipped by release, and unpin puts it back on its track.
 # Everything is stubs inside the container host (stack/tests/README.md); no real server.
 #   bash stack/tests/box-release.test.sh
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
@@ -113,6 +114,32 @@ t_eq "globex: still moved" 1 "$(calls | grep -c '^add-stack.sh globex 3111 demo 
 t_ok "output names the failed backup" grep -q '!! acme: backup failed' <<< "$out"
 t_ok "deploy.log records the failure" host_exec 'grep -q "release ccccccc done (failed=1)" "$(cat /tmp/box-path)/deploy.log"'
 host_exec ': > "$(cat /tmp/box-path)/fail"'
+
+# --- pinned by hand: release skips it; unpin puts it back on the last released sha ---
+deploy promote globex ccccccc >/dev/null
+reset_calls
+out="$(deploy release ccccccc)"; rc=$?
+t_eq "release with globex pinned: no add-stack.sh for globex" 0 "$(calls | grep -c '^add-stack.sh globex ')"
+t_ok "release says globex stays pinned" grep -q '== globex stays at ccccccc (pinned' <<< "$out"
+host_exec 'BOX="$(cat /tmp/box-path)"; echo "ddddddd $(date -u +%FT%TZ)" >> "$BOX/released"'
+reset_calls
+out="$(deploy unpin globex)"; rc=$?
+t_eq "unpin globex exits 0" 0 "$rc"
+t_eq "unpin: globex moved to the last released sha" 1 "$(calls | grep -c '^add-stack.sh globex 3111 demo --images ddddddd$')"
+t_ok "unpin: PINNED= gone from stack.conf" host_exec '! grep -q "^PINNED=" "$(cat /tmp/box-path)/instances/globex/stack.conf"'
+t_ok "unpin: its own stack/ copy is gone" host_exec '[ ! -d "$(cat /tmp/box-path)/instances/globex/stack" ]'
+t_ok "unpin: ran the shared stack/'s add-stack.sh" bash -c \
+  'grep -q "/nextup/stack/nginx/add-stack.sh$" <<< "$1"' _ \
+  "$(host_exec 'cat "$(cat /tmp/box-path)/call-paths"')"
+t_ok "deploy.log records the unpin" host_exec 'grep -q "unpin globex done" "$(cat /tmp/box-path)/deploy.log"'
+reset_calls
+out="$(deploy unpin globex)"; rc=$?
+t_eq "unpin of a stack that is not pinned exits 0" 0 "$rc"
+t_ok "and says it already follows its track" grep -q 'already follows its track' <<< "$out"
+t_eq "and moves nothing" 0 "$(calls | grep -c '^add-stack.sh')"
+host_exec 'BOX="$(cat /tmp/box-path)"; cd "$BOX/nextup"
+  SSH_ORIGINAL_COMMAND="unpin globex" NEXTUP_DEPLOY_LOG="$BOX/deploy.log" stack/nginx/deploy.sh >/dev/null 2>&1'
+t_eq "forced command 'unpin globex' is refused with exit 2" 2 "$?"
 
 # --- a forced command still cannot deploy ---
 host_exec 'BOX="$(cat /tmp/box-path)"; cd "$BOX/nextup"

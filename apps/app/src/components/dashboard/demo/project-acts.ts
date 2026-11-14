@@ -3,18 +3,46 @@
 import { newId, type EventPayload } from "@/features/cases/events";
 import { stopChoice, type StopPick } from "@/features/projects/stop-choice";
 import type { AppendOutcome } from "@/server/actions/events";
-import type { InviteRole, StepColumn, SyncSystem } from "@/features/projects/types";
+import type { FormField, InviteRole, PageIconKey, StepChecklistOp, StepColumn, StepWaitingOnInput, SyncSystem, ToolKind } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import type { TemplateKey } from "@/features/templates/library";
 import type { ActDeps } from "./act-deps";
 
 /** A change to a step: only the fields given change. owner "" and dueDay null clear them; removed takes it off the board. */
-export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; note?: string; removed?: boolean };
+export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; startDay?: number | null; milestoneId?: string | null; note?: string; removed?: boolean };
+
+export type FormInput = { title: string; intro: string; fields: FormField[]; shared: boolean };
+export type RequestStep = { text: string; column: StepColumn; ownerUserId?: string | null; dueDay?: number | null; note?: string };
+
+export type MilestoneInput = { title: string; startDay?: number | null; dueDay: number; note?: string };
+export type MilestoneChange = { title?: string; startDay?: number | null; dueDay?: number; note?: string; shipped?: boolean; removed?: boolean };
 
 export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
 
 // Everything done to a project, each one event (features/projects). Ids are minted here when the caller needs them back.
+/** `pageId` and `toolId` are only for a caller that needs fixed ids (the browser import, PGB D10); everyone else lets the act mint them. */
+export type PageInput = { title: string; icon: PageIconKey; tools: { kind: ToolKind; title?: string; content?: string; toolId?: string }[]; before?: string | null; pageId?: string };
+export type PageChange = { title?: string; icon?: PageIconKey };
+export type ToolChange = { title?: string; collapsed?: boolean; content?: string; baseRev?: number };
+
 export type ProjectAct = {
+  page: {
+    create: (projectId: string, input: PageInput) => Promise<AppendOutcome & { pageId?: string; tools?: { kind: ToolKind; toolId: string }[] }>;
+    add: (projectId: string, input: PageInput) => string;
+    edit: (projectId: string, pageId: string, change: PageChange) => void;
+    move: (projectId: string, pageId: string, before: string | null) => void;
+    remove: (projectId: string, pageId: string) => void;
+    restore: (projectId: string, pageId: string) => void;
+    addTool: (projectId: string, pageId: string, kind: ToolKind, before?: string | null) => string;
+    moveTool: (projectId: string, toolId: string, toPageId: string, before?: string | null) => Promise<AppendOutcome>;
+    editTool: (projectId: string, toolId: string, change: ToolChange) => Promise<AppendOutcome>;
+    removeTool: (projectId: string, toolId: string) => void;
+    restoreTool: (projectId: string, toolId: string) => void;
+    merge: (projectId: string, fromPageId: string, intoPageId: string) => string;
+    /** Like merge, but resolves with the server's answer (the merge dialog waits for it, PGB D13). */
+    mergeAndWait: (projectId: string, fromPageId: string, intoPageId: string) => Promise<AppendOutcome & { mergeId: string }>;
+    unmerge: (projectId: string, mergeId: string) => void;
+  };
   /** Team changes name the person by user id; the label rides along for the timeline. */
   member: (projectId: string, who: { userId: string; name: string }, on: boolean) => void;
   hand: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
@@ -22,8 +50,27 @@ export type ProjectAct = {
   start: (projectId: string) => void;
   addStep: (projectId: string, text: string, owner?: string, dueDay?: number, to?: StepColumn, note?: string, ownerUserId?: string | null) => string;
   /** before: the card it lands above; null puts it at the bottom of the column. */
-  moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null) => void;
+  moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null, waitingOn?: StepWaitingOnInput) => void;
+  stepCheck: (projectId: string, stepId: string, op: StepChecklistOp, itemId: string, text?: string, done?: boolean) => void;
+  stepComment: (projectId: string, stepId: string, text: string, replyTo?: string | null) => void;
   editStep: (projectId: string, stepId: string, change: StepChange) => void;
+  milestone: {
+    add: (projectId: string, input: MilestoneInput) => string;
+    edit: (projectId: string, milestoneId: string, change: MilestoneChange) => void;
+  };
+  form: {
+    /** Saves a form: `formId` names an existing one (a new revision) or is minted when missing. Returns the id. */
+    save: (projectId: string, input: FormInput, formId?: string) => string;
+    /** Answers the form's current revision; returns the request's id. */
+    answer: (projectId: string, formId: string, formRev: number, answers: Record<string, string>) => string;
+  };
+  request: {
+    /** One event that adds the step and links it; returns the step's id. */
+    /** Resolves with the server's answer and the new step's id (the dialog stays busy until then). */
+    step: (projectId: string, requestId: string, step: RequestStep) => Promise<AppendOutcome & { stepId: string }>;
+    decline: (projectId: string, requestId: string, why: string) => void;
+    reopen: (projectId: string, requestId: string) => void;
+  };
   link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
   /**
    * Send the project to a tool, or stop syncing (project.sync). Server mode: the connector does the rest.
@@ -77,14 +124,65 @@ export type ProjectAct = {
 export function projectActs(d: ActDeps): ProjectAct {
   const { emit, S, serverMode } = d;
   return {
+    page: {
+      create: async (id, input) => {
+        const pageId = input.pageId ?? newId("page");
+        const tools = input.tools.map((tool) => ({ ...tool, toolId: tool.toolId ?? newId("tool") }));
+        const result = await emit("project.page.added", id, { ...input, pageId, tools });
+        return result.ok ? { ...result, pageId, tools } : result;
+      },
+      add: (id, input) => {
+        const pageId = newId("page");
+        emit("project.page.added", id, { ...input, pageId, tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })) });
+        return pageId;
+      },
+      edit: (id, pageId, change) => emit("project.page.edited", id, { pageId, ...change }),
+      move: (id, pageId, before) => emit("project.page.moved", id, { pageId, before }),
+      remove: (id, pageId) => emit("project.page.removed", id, { pageId }),
+      restore: (id, pageId) => emit("project.page.restored", id, { pageId }),
+      addTool: (id, pageId, kind, before) => {
+        const toolId = newId("tool");
+        emit("project.tool.added", id, { pageId, toolId, kind, ...(before !== undefined ? { before } : {}) });
+        return toolId;
+      },
+      moveTool: (id, toolId, toPageId, before) => emit("project.tool.moved", id, { toolId, toPageId, ...(before !== undefined ? { before } : {}) }),
+      editTool: (id, toolId, change) => emit("project.tool.edited", id, { toolId, ...change }),
+      removeTool: (id, toolId) => emit("project.tool.removed", id, { toolId }),
+      restoreTool: (id, toolId) => emit("project.tool.restored", id, { toolId }),
+      merge: (id, fromPageId, intoPageId) => {
+        const mergeId = newId("merge");
+        emit("project.page.merged", id, { mergeId, fromPageId, intoPageId });
+        return mergeId;
+      },
+      mergeAndWait: async (id, fromPageId, intoPageId) => {
+        const mergeId = newId("merge");
+        return { ...(await emit("project.page.merged", id, { mergeId, fromPageId, intoPageId })), mergeId };
+      },
+      unmerge: (id, mergeId) => emit("project.page.unmerged", id, { mergeId }),
+    },
     // Taking a person off the team also frees their open steps (D22).
     member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on, ...(on ? {} : { unassign: true }) }),
     hand: (id, to, why) => emit("project.handed", id, { to: to.name, toUserId: to.userId, why }),
     baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
     start: (id) => emit("project.started", id),
     addStep: (id, text, owner, dueDay, to, note, ownerUserId) => { const stepId = newId("s"); emit("project.step.added", id, { stepId, text, owner, ...(ownerUserId ? { ownerUserId } : {}), dueDay, to, note }); return stepId; },
-    moveStep: (id, stepId, to, why, before) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}) }),
+    moveStep: (id, stepId, to, why, before, waitingOn) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}), ...(waitingOn !== undefined ? { waitingOn } : {}) }),
+    stepCheck: (id, stepId, op, itemId, text, done) => emit("project.step.checklist", id, { stepId, op, itemId, ...(text !== undefined ? { text } : {}), ...(done !== undefined ? { done } : {}) }),
+    stepComment: (id, stepId, text, replyTo) => emit("project.step.commented", id, { stepId, text, ...(replyTo !== undefined ? { replyTo } : {}) }),
     editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
+    form: {
+      save: (id, input, formId = newId("f")) => { emit("project.form.saved", id, { formId, ...input }); return formId; },
+      answer: (id, formId, formRev, answers) => { const requestId = newId("q"); emit("project.form.answered", id, { formId, formRev, requestId, answers }); return requestId; },
+    },
+    request: {
+      step: async (id, requestId, step) => { const stepId = newId("s"); return { ...(await emit("project.request.stepped", id, { requestId, step: { stepId, ...step } })), stepId }; },
+      decline: (id, requestId, why) => emit("project.request.declined", id, { requestId, why }),
+      reopen: (id, requestId) => emit("project.request.reopened", id, { requestId }),
+    },
+    milestone: {
+      add: (id, input) => { const milestoneId = newId("m"); emit("project.milestone.added", id, { milestoneId, ...input }); return milestoneId; },
+      edit: (id, milestoneId, change) => emit("project.milestone.edited", id, { milestoneId, ...change }),
+    },
     link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),
     sync: (id, on, system = "jira") => {
       emit("project.sync", id, { system, on });

@@ -26,6 +26,13 @@ class BedrockOverride(Strict):
     model: str = Field(min_length=1, max_length=200)
 
 
+# Claude through Anthropic's own API with the company's key (the app allows it for demo companies only).
+# Never stored, never logged: the key is a SecretStr and has no repr.
+class AnthropicOverride(Strict):
+    provider: Literal["anthropic"]
+    model: str = Field(min_length=1, max_length=200)
+    api_key: SecretStr = Field(min_length=1, max_length=500)
+
 
 # Everything the model needs comes with the request: the service stores nothing and knows no
 # company. Route rows carry the owner's role, never a name - the AI points to roles.
@@ -51,7 +58,7 @@ class RouteIn(Strict):
     idea: Idea
     routes: list[RouteRow] = Field(min_length=1, max_length=50)
     known: list[KnownItem] = Field(default=[], max_length=80)
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 # ---------------------------------------------------------------- what the model answers
@@ -117,7 +124,7 @@ class ReadIn(Strict):
     skip: list[str] = Field(default=[], max_length=20)
     previous: list[DialBrief] = Field(default=[], max_length=5)
     locale: Locale = "en"                        # the language of the page that shows the answer
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 DIALS = ("value", "feasibility", "cost", "fit", "risk")
@@ -192,7 +199,7 @@ class CoachIn(Strict):
     routes: list[RouteRow] = Field(default=[], max_length=50)
     known: list[KnownItem] = Field(default=[], max_length=80)
     locale: Locale = "en"                        # the language of the page that shows the answer
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 class CoachTurn(Strict):
@@ -238,7 +245,7 @@ class PlanIn(Strict):
     goals: list[Goal] = Field(default=[], max_length=20)
     # Present: a whole plan against these templates (version 2, brain-plan-v2). Absent: the first steps and the metric, as before (v1).
     templates: list[PlanTemplate] | None = Field(None, max_length=10)
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 class PlanDraft(Strict):
@@ -313,7 +320,7 @@ class HintIn(Strict):
     category: str = Field(max_length=80)
     reason: str = Field(max_length=2000)
     locale: Locale
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 class HintDraft(Strict):
@@ -344,7 +351,7 @@ class CheckinIn(Strict):
     said: list[Said] = Field(default=[], max_length=30, description="What was said in this round, oldest first")
     weak: list[str] = Field(default=[], max_length=10, description="The points the app's analysis still finds weak")
     round: int = Field(ge=1, le=20)
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 class CheckinDraft(Strict):
@@ -416,7 +423,7 @@ class AgentIn(Strict):
     today: int
     project: AgentProject
     kinds: list[AgentKind] = Field(max_length=3, description="The kinds the app can take today")
-    llm: LlmOverride | BedrockOverride | None = None
+    llm: LlmOverride | BedrockOverride | AnthropicOverride | None = None
 
 
 class AgentStepProposal(Strict):
