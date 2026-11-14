@@ -44,7 +44,7 @@ export function List({ p, jira }: ToolProps) {
     if (!text.trim() || !rights.addStep) return;
     if (send("project.step.added", { stepId: "probe", text: text.trim() }, () => act.project.addStep(p.id, text.trim()))) setText("");
   };
-  return <section className={styles.list} aria-label={t("projectSteps.list")}>
+  return <div className={styles.list}>
     <div className={styles.toolbar}>
       <input type="search" className={`nh-input ${styles.search}`} aria-label={t("projectSteps.searchList")} placeholder={t("projectSteps.searchList")} value={filter.query} onChange={(e) => { setFilter({ ...filter, query: e.target.value }); setAll(false); }} />
       <div className={styles.faces} role="group" aria-label={t("projectSteps.owner")}>
@@ -86,5 +86,5 @@ export function List({ p, jira }: ToolProps) {
       </div>
     </div>
     {open && <StepPanel p={p} stepId={open} jira={jira} onClose={() => setOpen(null)} />}
-  </section>;
+  </div>;
 }
