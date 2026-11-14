@@ -1,0 +1,8 @@
+.banner { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--nh-brand-line); border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-sm); }
+.hint { color: var(--nh-ink-2); font-size: var(--nh-fs-xs); }
+.error { color: var(--nh-danger); font-size: var(--nh-fs-xs); }
+.actions { display: flex; gap: 8px; margin-left: auto; }
+.actions button { padding: 6px 12px; border: 1px solid var(--nh-line); border-radius: 6px; background: var(--nh-card); color: var(--nh-ink-2); font: inherit; cursor: pointer; }
+.actions .primary { border-color: var(--nh-brand); background: var(--nh-brand); color: var(--nh-on-brand); }
+.actions button:disabled { opacity: .45; cursor: default; }
+.actions button:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
