@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { JiraApi, JiraAttachment, JiraCheck, JiraDayClock, JiraIssue, JiraPermissions, JiraVersion } from "@/features/integrations/jira/types";
+import type { JiraAttachment, JiraCheck, JiraDayClock, JiraIssue, JiraPermissions, JiraVersion } from "@/features/integrations/jira/types";
 import { translate } from "@/i18n";
 import { projectJsy } from "@/i18n/messages/projectJsy";
 import { createCloudApi } from "@/server/jira/cloud";
