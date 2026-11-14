@@ -20,8 +20,8 @@ const BUDGET = { capEur: 50, spentEur: 0, tokensUnpriced: 0, tokenCap: 1000 };
 const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 
 describe("Q8.4 contract and settings", () => {
-  it("is a fifth choice next to the four, which stay as they were", () => {
-    expect(AI_PROVIDER_CHOICES).toEqual(["bedrock", "azure-openai", "openai-compatible", "off", "local"]);
+  it("is a fifth choice next to the four, which stay as they were (the Claude API came sixth, 14 Nov 2026)", () => {
+    expect(AI_PROVIDER_CHOICES).toEqual(["bedrock", "azure-openai", "openai-compatible", "off", "local", "anthropic"]);
     expect(AiProviderChoice.parse("local")).toBe("local");
   });
 
