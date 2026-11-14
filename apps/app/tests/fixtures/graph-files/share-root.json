@@ -1,0 +1,12 @@
+{
+ "id": "01ROOT",
+ "name": "Supplier",
+ "folder": {
+  "childCount": 8
+ },
+ "parentReference": {
+  "driveId": "b!drive1",
+  "path": "/drives/b!drive1/root:"
+ },
+ "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier"
+}
