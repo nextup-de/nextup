@@ -73,10 +73,10 @@ test("REQ acceptance: a member answers a form and the lead makes it a step", asy
     await viewAs(page, "Manager");
     await page.goto("/acme/projects/pj2?page=requests");
     const card = page.getByRole("listitem", { name: /request/i }).filter({ hasText: FIRST_ANSWER });
-    await card.getByRole("button", { name: "Make a step" }).click();
+    await card.getByRole("button", { name: "Make it a step" }).click(); // D6: the card button reads "Make it a step"
     const dialog = page.getByRole("dialog", { name: "Make it a step" });
     await dialog.getByRole("textbox").first().fill(STEP);
-    await dialog.getByRole("button", { name: "Make a step" }).click();
+    await dialog.getByRole("button", { name: "Make it a step" }).click(); // D6: so does the submit button
     await expect(page.getByText("Step made")).toBeVisible();
     await page.goto("/acme/projects/pj2?page=steps");
     await expect(page.getByRole("group", { name: "To do" })).toContainText(STEP);
