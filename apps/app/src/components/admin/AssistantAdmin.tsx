@@ -46,7 +46,7 @@ export function AssistantAdmin({ view, privacyHref, connectorsHref }: { view: No
   const budgetWords = { spent: euro(budget.spentEur), cap: euro(budget.capEur), share, reset };
   const tokenText = (l: BudgetLevel) => (l === "stopped" ? "adminPrivacy.tokensStopped" : l === "reached" ? "adminPrivacy.tokensReached" : "adminPrivacy.tokensWarn");
   const budgetText = (l: BudgetLevel) => (l === "stopped" ? "adminPrivacy.budgetStopped" : l === "reached" ? "adminPrivacy.budgetReached" : "adminPrivacy.budgetWarn");
-  const providerLabel = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenAI", "openai-compatible": t("adminPrivacy.providerOpenaiCompat") } as const;
+  const providerLabel = { bedrock: "Amazon Bedrock", "azure-openai": "Azure OpenAI", "openai-compatible": t("adminPrivacy.providerOpenaiCompat"), anthropic: "Claude API (Anthropic)" } as const;
   const tiles: [string, string][] = [
     [String(st.answers), t("adminPrivacy.tileAnswers")],
     [pct(st.solved, st.answers), t("adminPrivacy.tileSolved")],

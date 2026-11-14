@@ -1,12 +1,18 @@
 // A company's AI choice (ADR 0006, docs/plans AIP D5). Lives in the company's Integration row with
 // system "ai": `on` = a model may be called, `settings` = the shape below, `secretSealed` = the API
-// key (azure-openai, openai-compatible), sealed by features/connectors/vault.ts. Pure.
+// key (azure-openai, openai-compatible, anthropic), sealed by features/connectors/vault.ts. Pure.
 import { AI_PROVIDER_CHOICES, type AiProviderChoice } from "@nextup/contracts/public";
 import { policyFor } from "@/features/admin/stages";
 import { pricesOf, type ModelPrices } from "./prices";
 
 export const AI_SYSTEM = "ai";
 export const DEFAULT_REGION = "eu-central-1";
+/** The model the Claude API choice uses when the form leaves it empty. */
+export const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5-5";
+
+/** The choices that call a provider with the company's own API key. */
+export const KEYED_CHOICES = ["azure-openai", "openai-compatible", "anthropic"] as const;
+export const needsKey = (choice: string): boolean => (KEYED_CHOICES as readonly string[]).includes(choice);
 
 export type AiSettings = {
   choice: AiProviderChoice | "mock";
