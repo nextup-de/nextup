@@ -13,7 +13,7 @@ const due = (step: Step) => step.dueDay ?? Infinity;
 
 /** Filtering and sorting are local to this tool; the project's priority order never changes. */
 export function listRows(p: ReducedProject, filter: StepFilter, sort: ListSort, ctx: ListContext): Step[] {
-  const value = (s: Step): string => sort.column === "key" ? stepKey(s) : sort.column === "step" ? s.text : sort.column === "owner" ? s.owner ?? "" : s.waitingOn?.name ?? s.waitingOn?.userId ?? "";
+  const value = (s: Step): string => sort.column === "key" ? stepKey(s) : sort.column === "step" ? s.text : sort.column === "owner" ? s.owner ?? "" : s.waitingOn?.name ?? s.waitingOn?.userId ?? p.helpAsks.filter((ask) => ask.stepId === s.id && ask.answeredDay === null).map((ask) => ask.text).join(" · ");
   return [...stepFilter(p, { ...filter, hideOldDone: false }, ctx)].sort((a, b) => {
     let order = 0;
     if (sort.column === "attention") {
@@ -31,11 +31,14 @@ export function cellEdit(step: Step, column: "status", value: StepColumn): CellE
 export function cellEdit(step: Step, column: "owner", value: { userId: string; name: string } | null): CellEvent;
 export function cellEdit(step: Step, column: "due", value: number | null): CellEvent;
 /** Blocked is submitted only after MarkBlockedForm has collected the reason and waiting-on. */
-export function cellEdit(step: Step, column: "status" | "owner" | "due", value: StepColumn | { userId: string; name: string } | number | null): CellEvent {
+export function cellEdit(step: Step, ...[column, value]:
+  | [column: "status", value: StepColumn]
+  | [column: "owner", value: { userId: string; name: string } | null]
+  | [column: "due", value: number | null]
+): CellEvent {
   if (column === "status") return { type: "project.step.moved", payload: { stepId: step.id, to: value } };
   if (column === "owner") {
-    const person = value as { userId: string; name: string } | null;
-    return { type: "project.step.edited", payload: { stepId: step.id, owner: person?.name ?? "", ownerUserId: person?.userId ?? null } };
+    return { type: "project.step.edited", payload: { stepId: step.id, owner: value?.name ?? "", ownerUserId: value?.userId ?? null } };
   }
   return { type: "project.step.edited", payload: { stepId: step.id, dueDay: value } };
 }

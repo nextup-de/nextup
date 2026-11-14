@@ -55,3 +55,22 @@ it("STP list: cell edits map status to moved and owner and due to edited, includ
   expect(cellEdit(s, "due", 0)).toEqual({ type: "project.step.edited", payload: { stepId: "s", dueDay: 0 } });
   expect(cellEdit(s, "due", null)).toEqual({ type: "project.step.edited", payload: { stepId: "s", dueDay: null } });
 });
+
+it("STP list: waiting-on sorting includes open help requests and ignores answered requests", () => {
+  const p = project([step("outside", { waitingOn: { kind: "outside", name: "Beta", userId: null } }), step("ask"), step("answered")]);
+  p.helpAsks = [
+    { id: "open", stepId: "ask", text: "Alpha", day: 20, byUserId: "me", toUserId: null, toRoleId: null, answeredDay: null },
+    { id: "closed", stepId: "answered", text: "Zulu", day: 20, byUserId: "me", toUserId: null, toRoleId: null, answeredDay: 21 },
+  ];
+  expect(listRows(p, NO_FILTER, { column: "waitingOn", direction: "asc" }, ctx).map((s) => s.id)).toEqual(["answered", "ask", "outside"]);
+  expect(listRows(p, { ...NO_FILTER, waiting: true }, { column: "waitingOn", direction: "desc" }, ctx).map((s) => s.id)).toEqual(["ask"]);
+});
+
+it("STP list: Not started and Dropped remain distinct filters and never change project totals", () => {
+  const p = project([step("fresh"), step("returned", { startedDay: 10 }), step("dropped", { column: "doing", dropped: { why: "Replaced", day: 20, byUserId: "me" } })]);
+  const before = structuredClone(p);
+  expect(listRows(p, { ...NO_FILTER, notStarted: true }, DEFAULT_SORT, ctx).map((s) => s.id)).toEqual(["fresh"]);
+  expect(listRows(p, { ...NO_FILTER, dropped: true }, DEFAULT_SORT, ctx).map((s) => s.id)).toEqual(["dropped"]);
+  expect(listRows(p, { ...NO_FILTER, dropped: true, notStarted: true }, DEFAULT_SORT, ctx)).toEqual([]);
+  expect(p).toEqual(before);
+});

@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { berlinDate, dateOfWorkday, workdayOf } from "@/features/clock/calendar";
 import { cellEdit } from "@/features/projects/list-view";
 import { statusOptions } from "@/features/projects/step-panel";
 import type { ReducedProject, Step } from "@/features/projects/types";
@@ -9,6 +8,7 @@ import { columnLabel, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { useSend, type Person } from "../../parts";
 import { MarkBlockedForm } from "../MarkBlockedForm";
+import { listDueDate, listDueOffset } from "./dates";
 import styles from "./List.module.css";
 
 export function CellMenu({ p, step, column, jira, team, onClose }: {
@@ -30,22 +30,15 @@ export function CellMenu({ p, step, column, jira, team, onClose }: {
     return () => document.removeEventListener("pointerdown", outside);
   }, [onClose]);
   const edit = (event: ReturnType<typeof cellEdit>) => {
-    const { stepId: _stepId, ...change } = event.payload;
+    const change = { ...event.payload };
+    delete change.stepId;
     if (send(event.type, event.payload, () => act.project.editStep(p.id, step.id, change))) onClose();
   };
   const setDue = (day: number | null) => edit(cellEdit(step, "due", day));
   const chooseDate = () => {
     if (!date) return;
-    const clock = seed.clock;
-    let day: number;
-    if (clock.mode === "workdays") {
-      day = workdayOf(new Date(`${date}T12:00:00Z`), clock.calendar);
-      if (day < 1 || dateOfWorkday(day, clock.calendar) !== date) { setBadDate(true); return; }
-    } else {
-      // Demo dates use the same offset from today's date as dayFormatter.
-      day = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${berlinDate(new Date())}T12:00:00Z`)) / 86400000);
-      if (day < 0) { setBadDate(true); return; }
-    }
+    const day = listDueDate(date, seed.clock, new Date());
+    if (day === null) { setBadDate(true); return; }
     setDue(day);
   };
   return <div ref={ref} className={styles.menu} role="dialog" aria-label={t(column === "status" ? "projectSteps.changeStatus" : column === "owner" ? "projectSteps.changeOwner" : "projectSteps.changeDue")} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") { e.preventDefault(); onClose(); } }}>
@@ -65,7 +58,7 @@ export function CellMenu({ p, step, column, jira, team, onClose }: {
       <button type="button" onClick={() => edit(cellEdit(step, "owner", null))}>{t("projectSteps.noOwner")}</button>
     </>}
     {column === "due" && <>
-      {([0, 3, 5, 10] as const).map((days) => <button type="button" key={days} onClick={() => setDue(S.day + days)}>{t(days === 0 ? "common.today" : days === 3 ? "projectSteps.listThreeDays" : days === 5 ? "projectSteps.listWeek" : "projectSteps.listTwoWeeks")}</button>)}
+      {([0, 3, 5, 10] as const).map((days) => <button type="button" key={days} onClick={() => setDue(S.day + listDueOffset(seed.clock, days))}>{t(days === 0 ? "common.today" : days === 3 ? "projectSteps.listThreeDays" : days === 5 ? "projectSteps.listWeek" : "projectSteps.listTwoWeeks")}</button>)}
       <form onSubmit={(e) => { e.preventDefault(); chooseDate(); }}>
         <label>{t("projectSteps.listDate")}<input className="nh-input" type="date" required value={date} onChange={(e) => { setDate(e.target.value); setBadDate(false); }} /></label>
         {badDate && <p role="alert">{t("projectSteps.listBadDate")}</p>}
