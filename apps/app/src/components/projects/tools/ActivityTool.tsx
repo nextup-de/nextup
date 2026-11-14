@@ -1,8 +1,7 @@
 "use client";
-import { ActivityPanel } from "../ProjectTeam";
 import type { ToolProps } from "./types";
-import styles from "../Projects.module.css";
+import { Activity } from "../hub/team/Activity";
 
 export function ActivityTool({ p }: ToolProps) {
-  return <div className={styles.tabCards}><ActivityPanel p={p} /></div>;
+  return <Activity p={p} />;
 }
