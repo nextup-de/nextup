@@ -152,10 +152,11 @@ describe.each(["cloud", "dc"] as const)("JSY push %s", (flavor) => {
     c.ms("m1");
     await c.round();
     const issue = [...c.f.issues.values()].find((i) => i.labels.includes("nextup-step-s1"))!;
-    const foreign = c.f.human.createVersion("Foreign", { releaseDate: d(99) });
+    // No release date: the pull never makes a milestone of it, so no milestone maps it and it stays foreign.
+    const foreign = c.f.human.createVersion("Foreign", {});
     c.f.human.setFixVersions(issue.key, [foreign]);
     c.log.human("project.step.edited", { stepId: "s1", milestoneId: "m1" });
-    expect((await c.round()).warnings).toEqual([]);
+    expect((await c.round()).warnings.filter((w) => !/no release date/.test(w))).toEqual([]);
     expect([...issue.fixVersions].sort()).toEqual([foreign, c.ids("m1")].sort());
     c.log.human("project.step.edited", { stepId: "s1", milestoneId: null });
     await c.round();
