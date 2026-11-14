@@ -8,7 +8,7 @@ import { stepDraft, type RequestRow } from "@/features/projects/requests-view";
 import type { ReducedProject, StepColumn } from "@/features/projects/types";
 import { columnLabel } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { teamOf, useSend, withIds } from "../../parts";
+import { teamOf, useRights, withIds } from "../../parts";
 import dialog from "../../steps/CreateStepDialog.module.css";
 import { useText } from "./useText";
 import styles from "./Inbox.module.css";
@@ -18,11 +18,11 @@ const COLUMNS: StepColumn[] = ["todo", "doing", "done"];
 type Props = { p: ReducedProject; row: RequestRow; name: string; onClose: () => void; onDone: () => void };
 
 export function StepDialog({ p, row, name, onClose, onDone }: Props) {
-  const { act, S, seed, actorUserId } = useDemo();
+  const { act, S, seed, actorUserId, showToast } = useDemo();
   const t = useT();
   const locale = useLocale();
   const { text } = useText();
-  const send = useSend(p);
+  const { check } = useRights(p);
   const draft = useMemo(() => stepDraft(row.request, row.form), [row]);
   const team = useMemo(() => withIds(teamOf(p, seed.seats)), [p, seed.seats]);
   const [title, setTitle] = useState(draft.title);
@@ -53,8 +53,11 @@ export function StepDialog({ p, row, name, onClose, onDone }: Props) {
     const step = { text: title.trim(), column, ...(owner ? { ownerUserId: owner.userId } : {}), ...(dueDay !== null ? { dueDay } : {}), ...(draft.note ? { note: draft.note } : {}) };
     setBusy(true);
     // The id is minted by the act; the rights are asked first with a probe id the server never sees.
-    const went = send("project.request.stepped", { requestId: row.request.id, step: { stepId: "probe", ...step } }, () => { act.project.request.step(p.id, row.request.id, step); });
-    if (went) onDone(); else setBusy(false);
+    const verdict = check("project.request.stepped", { requestId: row.request.id, step: { stepId: "probe", ...step } });
+    if (!verdict.ok) { showToast(verdict.error); setBusy(false); return; }
+    // Busy until the server has answered; a refusal shows as the act's own toast and keeps the dialog open.
+    const result = await act.project.request.step(p.id, row.request.id, step);
+    if (result.ok) onDone(); else setBusy(false);
   };
 
   return (
