@@ -8,6 +8,7 @@ import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/ev
 import { logFromRows } from "@/features/cases/persist";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { emptyOverload, overloadOf } from "@/features/overload/reduce";
+import type { ReducedProject } from "@/features/projects/types";
 import type { Route, SeedRole } from "@/features/demo/types";
 import { REPLAY_ROWS } from "../reg/events-replay";
 
@@ -28,10 +29,13 @@ const ROUTES: Route[] = [{
 export const SEED: ReduceSeed = { cases: [], ideas: [], problems: [], routes: ROUTES, promiseDays: 5, seats: SEATS, roles: ROLES };
 export const DAY = 14;
 
+// PGE adds explicit empty page state; leave the pre-OVL golden unchanged.
+const beforePages = (p: ReducedProject) => Object.fromEntries(Object.entries(p).filter(([key]) => !["pages", "removed", "merges"].includes(key)));
+
 it("OVL replay writes the golden of a pre-OVL log", async () => {
   const state = reduce(SEED, logFromRows(REPLAY_ROWS, DAY));
   // The golden was written before OVL: the field OVL adds is left out, so it reads the same at the base commit and after.
-  await expect(JSON.stringify({ ...state, overload: undefined }, null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
+  await expect(JSON.stringify({ ...state, projects: state.projects.map(beforePages), overload: undefined }, null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
 });
 
 it("OVL replay reduces a pre-OVL log to the golden apart from an empty overload", () => {
@@ -39,7 +43,7 @@ it("OVL replay reduces a pre-OVL log to the golden apart from an empty overload"
   // The new field is the only difference: empty, and read the same through overloadOf as without it.
   expect(state.overload).toEqual({ away: [], desks: [] });
   expect(overloadOf({})).toEqual(emptyOverload());
-  expect(JSON.stringify({ ...state, overload: undefined }, null, 2)).toBe(readFileSync("tests/unit/ovl/snapshot/replay.json", "utf8"));
+  expect(JSON.stringify({ ...state, projects: state.projects.map(beforePages), overload: undefined }, null, 2)).toBe(readFileSync("tests/unit/ovl/snapshot/replay.json", "utf8"));
 });
 
 let n = 0;
