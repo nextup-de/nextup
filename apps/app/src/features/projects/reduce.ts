@@ -7,9 +7,10 @@ import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import { templateSteps } from "@/features/templates/library";
-import type { CheckDue, Invite, InviteRole, ReducedProject, SeedProject, Step, StepColumn } from "./types";
+import type { CheckDue, Invite, InviteRole, ProjectPage, ReducedProject, SeedProject, Step, StepColumn, ToolInstance } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
+import { DEFAULT_PAGES, LIMITS, mergePlan, TOOL_KINDS } from "./pages";
 import { revisionMatches } from "./result";
 import { verdictOf } from "./verdict";
 
@@ -62,7 +63,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
     doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
-    rewardDueDay: null, helpAsks: [],
+    rewardDueDay: null, helpAsks: [], pages: null, removed: [], merges: {},
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -138,6 +139,124 @@ function placeStep(p: ReducedProject, stepId: string, before: string | null): vo
   else p.steps.splice(at, 0, s);
 }
 
+/** Insert at the remembered next sibling, or append when that sibling no longer exists. */
+function insertBefore<T extends { id: string }>(items: T[], item: T, before: string | null | undefined): void {
+  const at = items.findIndex((x) => x.id === before);
+  items.splice(at < 0 ? items.length : at, 0, item);
+}
+
+/** Page facts replay independently of visibility; even the Agent tools belong to the stored model. */
+function applyPageEvent(p: ReducedProject, ev: CaseEvent): void {
+  const pages = p.pages ??= DEFAULT_PAGES.map((page) => ({ ...page, tools: page.tools.map((tool) => ({ ...tool })) }));
+  const pl = ev.payload;
+  const day = ev.day | 0;
+  p.removed = p.removed.filter((item) => day - item.day <= LIMITS.removedDays);
+  const page = pages.find((x) => x.id === pl.pageId);
+  const toolPage = pages.find((x) => x.tools.some((tool) => tool.id === pl.toolId));
+  const tool = toolPage?.tools.find((x) => x.id === pl.toolId);
+  switch (ev.type) {
+    case "project.page.added": {
+      if (!pl.pageId || page || !pl.title || !pl.icon || !pl.tools) break;
+      const tools: ToolInstance[] = pl.tools.map((x) => ({ id: x.toolId, kind: x.kind, title: x.title ?? null, content: x.content ?? null, collapsed: false, rev: 0 }));
+      insertBefore(pages, { id: pl.pageId, title: pl.title, icon: pl.icon, tools }, pl.before);
+      break;
+    }
+    case "project.page.edited":
+      if (page) {
+        if (pl.title !== undefined) page.title = pl.title;
+        if (pl.icon !== undefined) page.icon = pl.icon;
+      }
+      break;
+    case "project.page.moved":
+      if (page && pl.before !== page.id) {
+        pages.splice(pages.indexOf(page), 1);
+        insertBefore(pages, page, pl.before);
+      }
+      break;
+    case "project.page.removed":
+      if (page && page.id !== "overview" && pages.length > 1) {
+        const at = pages.indexOf(page);
+        p.removed.push({ page, tool: null, pageId: page.id, before: pages[at + 1]?.id ?? null, day });
+        pages.splice(at, 1);
+      }
+      break;
+    case "project.page.restored": {
+      const at = p.removed.findIndex((x) => x.page?.id === pl.pageId);
+      const item = p.removed[at];
+      if (item?.page && !page) {
+        insertBefore(pages, item.page, item.before);
+        p.removed.splice(at, 1);
+      }
+      break;
+    }
+    case "project.tool.added":
+      if (page && pl.toolId && pl.kind && TOOL_KINDS.includes(pl.kind as ToolInstance["kind"]) && !tool) {
+        insertBefore(page.tools, { id: pl.toolId, kind: pl.kind as ToolInstance["kind"], title: null, collapsed: false, content: null, rev: 0 }, pl.before);
+      }
+      break;
+    case "project.tool.moved": {
+      const into = pages.find((x) => x.id === pl.toPageId);
+      if (into && tool && toolPage && pl.before !== tool.id) {
+        toolPage.tools.splice(toolPage.tools.indexOf(tool), 1);
+        insertBefore(into.tools, tool, pl.before);
+      }
+      break;
+    }
+    case "project.tool.edited":
+      if (tool) {
+        if (pl.title !== undefined) tool.title = pl.title;
+        if (pl.collapsed !== undefined) tool.collapsed = pl.collapsed;
+        if (pl.content !== undefined) { tool.content = pl.content; tool.rev += 1; }
+      }
+      break;
+    case "project.tool.removed":
+      if (tool && toolPage) {
+        const at = toolPage.tools.indexOf(tool);
+        p.removed.push({ page: null, tool, pageId: toolPage.id, before: toolPage.tools[at + 1]?.id ?? null, day });
+        toolPage.tools.splice(at, 1);
+      }
+      break;
+    case "project.tool.restored": {
+      const at = p.removed.findIndex((x) => x.tool?.id === pl.toolId);
+      const item = p.removed[at];
+      const into = pages.find((x) => x.id === item?.pageId);
+      if (into && item?.tool && !tool) {
+        insertBefore(into.tools, item.tool, item.before);
+        p.removed.splice(at, 1);
+      }
+      break;
+    }
+    case "project.page.merged": {
+      const sourcePage = pages.find((x) => x.id === pl.fromPageId);
+      const destinationPage = pages.find((x) => x.id === pl.intoPageId);
+      if (!sourcePage || !destinationPage || sourcePage === destinationPage || !pl.mergeId || Object.hasOwn(p.merges, pl.mergeId)) break;
+      const plan = mergePlan(destinationPage, sourcePage);
+      if (plan.refused) break;
+      const at = pages.indexOf(sourcePage);
+      p.merges[pl.mergeId] = { from: { id: sourcePage.id, title: sourcePage.title, icon: sourcePage.icon, before: pages[at + 1]?.id ?? null }, toolIds: sourcePage.tools.map((x) => x.id) };
+      destinationPage.tools.push(...plan.moved);
+      pages.splice(at, 1);
+      break;
+    }
+    case "project.page.unmerged": {
+      const mergeId = pl.mergeId;
+      if (!mergeId || !Object.hasOwn(p.merges, mergeId)) break;
+      const { from: originalPage, toolIds } = p.merges[mergeId];
+      if (pages.some((x) => x.id === originalPage.id)) break;
+      const tools: ToolInstance[] = [];
+      for (const id of toolIds) {
+        const holder = pages.find((x) => x.tools.some((t) => t.id === id));
+        const at = holder?.tools.findIndex((x) => x.id === id) ?? -1;
+        if (holder && at >= 0) tools.push(...holder.tools.splice(at, 1));
+      }
+      const restored: ProjectPage = { id: originalPage.id, title: originalPage.title, icon: originalPage.icon, tools };
+      insertBefore(pages, restored, originalPage.before);
+      delete p.merges[mergeId];
+      break;
+    }
+  }
+}
+
 /** Frees the open steps of a user who left the team or the company: they have no owner now (MOV D22). Done steps keep theirs. */
 function freeSteps(p: ReducedProject, userId: string): void {
   p.steps.forEach((x) => { if (x.column !== "done" && x.ownerUserId === userId) { x.owner = null; x.ownerUserId = null; } });
@@ -196,6 +315,11 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   const pl = ev.payload ?? {};
   const d = ev.day | 0;
   const live = p.stopped === null;
+  if (ev.type.startsWith("project.page.") || ev.type.startsWith("project.tool.")) {
+    applyPageEvent(p, ev);
+    p.history.push(ev);
+    return true;
+  }
   switch (ev.type) {
     case "project.member": {
       const userId = pl.userId;

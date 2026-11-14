@@ -33,7 +33,7 @@ const LOG = [
 // The fields plan RES added (RES-G1) are not part of what a log from before the draft reduced to: take them off before comparing.
 const without = <T extends object>(o: T, keys: readonly string[]): T => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k))) as T;
 const beforeRes = (p: ReducedProject): unknown => ({
-  ...without(p, ["rewardDueDay", "helpAsks"]),
+  ...without(p, ["rewardDueDay", "helpAsks", "pages", "removed", "merges"]),
   baseline: p.baseline === null ? null : without(p.baseline, ["byUserId", "eventId", "confirmed"]),
   steps: p.steps.map((s) => without(s, ["dropped"])),
   measures: p.measures.map((m) => without(m, ["eventId", "sentBack", "reentered", "managerOnly", "questions", "previous"])),
