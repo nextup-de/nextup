@@ -66,11 +66,11 @@ export const TOOL_GLYPH: Record<ToolKind, string> = {
  * nothing would change. Dropped on the upper half it goes before the target, on the lower half before the target's next sibling.
  */
 export function dropBefore(page: ProjectPage, draggedId: string, overId: string, upperHalf: boolean): string | null | undefined {
-  const from = page.tools.findIndex((tool) => tool.id === draggedId);
+  const dragged = page.tools.findIndex((tool) => tool.id === draggedId);
   const over = page.tools.findIndex((tool) => tool.id === overId);
-  if (from < 0 || over < 0 || draggedId === overId) return undefined;
+  if (dragged < 0 || over < 0 || draggedId === overId) return undefined;
   const slot = upperHalf ? over : over + 1;
-  if (slot === from || slot === from + 1) return undefined;
+  if (slot === dragged || slot === dragged + 1) return undefined;
   return page.tools[slot]?.id ?? null;
 }
 

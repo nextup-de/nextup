@@ -1,4 +1,3 @@
-/* eslint-disable nextup/no-inline-strings -- test titles are not user-facing */
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
@@ -7,11 +6,11 @@ import type { JiraRow } from "@/features/projects/views";
 import type { ReducedProject, ToolInstance } from "@/features/projects/types";
 import { createT } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
-import { ToolSection } from "./ToolSection";
+import { ToolSection } from "@/components/projects/page/ToolSection";
 
-vi.mock("./usePageActs", () => ({ usePageActs: () => ({}) }));
-vi.mock("./AddPageDialog", () => ({ AddPageDialog: () => null }));
-vi.mock("../tools/registry", () => ({ TOOL_REGISTRY: new Proxy({}, { get: () => () => h("div", { "data-testid": "body" }, "BODY") }) }));
+vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({}) }));
+vi.mock("@/components/projects/page/AddPageDialog", () => ({ AddPageDialog: () => null }));
+vi.mock("@/components/projects/tools/registry", () => ({ TOOL_REGISTRY: new Proxy({}, { get: () => () => h("div", { "data-testid": "body" }, "BODY") }) }));
 
 const t = createT("en");
 const jira = { state: "synced", siteUrl: "https://j.example", projectKey: "NUP" } as JiraRow;
