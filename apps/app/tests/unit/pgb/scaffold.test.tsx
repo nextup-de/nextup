@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => {
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ check: mocks.check }) }));
-vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ flag: () => true, showToast: vi.fn(), act: { project: { page: mocks.page } } }) }));
+vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ tenant: { slug: "acme" }, flag: () => true, showToast: vi.fn(), act: { project: { page: mocks.page } } }) }));
 
 const p = reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0];
 const page = DEFAULT_PAGES[0];
@@ -120,16 +120,16 @@ it("PGB scaffold: all four stand-ins render with final props in both languages",
   for (const locale of ["en", "de"] as const) {
     const t = createT(locale);
     const addProps = { p, open: true, onClose: noop, onCreated: noop, preselect: { kind: "doc" as const, toolId: tool.id } };
-    const mergeProps = { p, fromPageId: "notes", intoPageId: "steps", open: true, onClose: noop, onMerged: noop };
+    const mergeProps = { p, fromPageId: "files", intoPageId: "steps", open: true, onClose: noop, onMerged: noop };
     expect(render(h(AddPageDialog, addProps), locale)).toContain(t("projectPages.newPage"));
     expect(render(h(AddPageDialog, { ...addProps, open: false }), locale)).toBe("");
-    expect(render(h(MergeDialog, mergeProps), locale)).toContain(t("projectPages.mergePages"));
+    expect(render(h(MergeDialog, mergeProps), locale)).toContain(t("projectPages.mergeConfirm", { count: 2, page: t("projectPages.pageSteps") }).replace("&", "&amp;"));
     expect(render(h(MergeDialog, { ...mergeProps, open: false }), locale)).toBe("");
     const section = { p, page, tool, index: 0, count: 1, jira, editor: true, hints: [], onAddAt: noop };
     const markup = render(h(ToolSection, section), locale);
-    expect(markup).toContain(`<h2>${t("projectPages.toolDoc")}</h2>`);
+    expect(markup).toContain(`>${t("projectPages.toolDoc")}</h2>`);
     expect(markup).toContain("Decision recorded");
-    expect(render(h(ToolSection, { ...section, tool: { ...tool, title: "Our decisions" } }), locale)).toContain("<h2>Our decisions</h2>");
+    expect(render(h(ToolSection, { ...section, tool: { ...tool, title: "Our decisions" } }), locale)).toContain(">Our decisions</h2>");
     expect(render(h(BrowserPagesImport, { p, editor: true }), locale)).toBe("");
     expect(render(h(BrowserPagesImport, { p, editor: false }), locale)).toBe("");
   }

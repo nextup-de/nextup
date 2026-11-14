@@ -1,10 +1,6 @@
 "use client";
-// /projects/[projectId]: one project (docs/plans/2026-10-15_idea-to-project.md §3-5), in tabs
-// (docs/plans/2026-11-03_project-area.md). The head says what it is, where it came from and who works on
-// it, and stays on every tab. Overview: the viewer's move, where it stands and what happens next.
-// Board: the work, full width. Team, Results (baseline, measure checks, reward), Activity, and Files
-// and tools (the connected tools, the files, the idea it grew from). Every button is one
-// act.project.* event, shown only when the rules would let it through.
+// A project keeps its header and state actions while the company chooses pages built from tools
+// or the pilot-rc1 tabs. Draft setup and the raiser's progress view keep their own guarded shells.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -18,6 +14,9 @@ import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
+import { pagesOf } from "@/features/projects/pages";
+import { pageIdFor } from "@/features/projects/page-route";
+import { PageView } from "./page/PageView";
 import { AgentTab } from "./agent/AgentTab";
 import { PlanDraftLink } from "./agent/PlanDraftLink";
 import { useAgentTab } from "./agent/useAgentTab";
@@ -66,12 +65,65 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
 
 function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
   const ctx = useDemo();
+  const locale = useLocale();
+  const { S } = ctx;
+  const [now] = useState(() => Date.now());
+  const row = jiraRowOf(p, jira ?? (ctx.serverMode ? null : demoJiraView(now)), now, locale);
+  // A raiser who is not on the team sees how it is going and nothing else (plan RES, D21).
+  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
+  if (view.panel) {
+    return (
+      <div className={styles.projectPage} data-wide="true">
+        <RaiserHeader p={p} />
+        <RaiserPanel panel={view.panel} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.projectPage} data-wide="true">
+      {ctx.flag("projectPages") ? <>
+        <div className={styles.top}><Header p={p} jira={row} /></div>
+        <ProjectPageView p={p} jira={row} />
+      </> : <TabView p={p} jira={row} asked={asked} />}
+    </div>
+  );
+}
+
+function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+  const query = useSearchParams();
+  const agent = useAgentTab(p, false);
+  const pages = pagesOf(p, { agent: agent.view !== null });
+  const pageId = pageIdFor(pages, { page: query.get("page"), tab: query.get("tab") });
+  const page = pages.find((page) => page.id === pageId);
+  return page ? <>
+    {page.tools.some((tool) => tool.kind === "overview") && <PageMove p={p} />}
+    <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} />
+  </> : null;
+}
+
+/** Keep the viewer's next move visible on pages that contain the overview tool. */
+function PageMove({ p }: { p: ReducedProject }) {
+  const ctx = useDemo();
+  const r = useRights(p);
+  const t = useT();
+  const locale = useLocale();
+  const move = nextMove(p, ctx.S.day);
+  const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
+  const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
+  if ((!mine && !escalatedToMe) || !move) return null;
+  return <div role="status"><Banner tone="info">
+    <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>{" "}
+    {escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}
+  </Banner></div>;
+}
+
+/** The pilot-rc1 body, including browser-only pages, stays behind the company flag. */
+function TabView({ p, jira: row, asked }: { p: ReducedProject; jira: JiraRow; asked: ProjectTab }) {
+  const ctx = useDemo();
   const t = useT();
   const locale = useLocale();
   const { S } = ctx;
-  // The local demo has no Jira: it shows the sync as switched on and plays the connector itself (act.project.sync).
-  const [now] = useState(() => Date.now());
-  const row = jiraRowOf(p, jira ?? (ctx.serverMode ? null : demoJiraView(now)), now, locale);
   const r = useRights(p);
   const planning = p.status === "planning";
   const { stepHints, baseHint } = useProjectHints(p);
@@ -88,23 +140,11 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
   const [pages] = useProjectPages(ctx.tenant.slug, p.id, pagesFrom);
   const custom = pageId ? pages.pages.find((x) => x.id === pageId) : undefined;
   const shown: ProjectTab | null = custom ? null : tab;
-  // A raiser who is not on the team sees how it is going and nothing else (plan RES, D21).
-  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
-  if (view.panel) {
-    return (
-      <div className={styles.projectPage} data-wide="true">
-        <RaiserHeader p={p} />
-        <RaiserPanel panel={view.panel} />
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.projectPage} data-wide="true">
-      <div className={styles.top}>
-        <Header p={p} jira={row} />
-        <Tabs p={p} tab={tab} agent={agent.view !== null} />
-      </div>
+  return <>
+    <div className={styles.top}>
+      <Header p={p} jira={row} />
+      <Tabs p={p} tab={tab} agent={agent.view !== null} />
+    </div>
       {custom && <CustomPageView storeId={p.id} from={pagesFrom} page={custom} editor={r.addStep} />}
       {shown === "overview" && (
         <div className={styles.tabLayout}>
@@ -163,8 +203,7 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
           </aside>
         </div>
       )}
-    </div>
-  );
+  </>;
 }
 
 /** One link per tab; the Board and Team links carry their counts. */

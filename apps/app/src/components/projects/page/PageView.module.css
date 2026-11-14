@@ -1,0 +1,23 @@
+.page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.heading { min-width: 0; }
+.title { margin: 0; font-size: var(--nh-fs-2xl); font-weight: 600; color: var(--nh-ink); overflow-wrap: anywhere; }
+.summary { margin: 6px 0 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; overflow-wrap: anywhere; }
+.sync { color: var(--nh-brand-ink); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.insert { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.insert::before, .insert::after { content: ""; height: 1px; flex: 1; background: var(--nh-brand-line); }
+.insert button { border: 1px solid var(--nh-brand-line); border-radius: var(--radius-full); padding: 3px 10px; background: var(--nh-card); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-xs); cursor: pointer; }
+.end { min-height: 64px; padding: 16px; border: 1px dashed var(--nh-line); border-radius: var(--radius-md); background: var(--nh-card); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.insert button:hover, .end:hover { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.insert button:focus-visible, .end:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 2px; }
+.menu { color: var(--nh-ink); max-height: calc(var(--nh-screen-h) - 32px); overflow-y: auto; width: 380px; max-width: calc(100% - 32px); padding: 16px; border: 1px solid var(--nh-line); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); }
+.menuHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.menuTitle { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; }
+.options { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.option { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; padding: 8px; border: 0; border-radius: var(--radius-sm); color: var(--nh-ink); background: transparent; font: inherit; font-size: var(--nh-fs-sm); cursor: pointer; }
+.option:hover, .option:focus-visible { background: var(--nh-brand-tint); }
+.option:disabled { color: var(--nh-mute); cursor: default; }
+.tag { font-size: var(--nh-fs-xs); color: var(--nh-ink-2); }
+
+.menu::backdrop { background: transparent; }
