@@ -6,7 +6,7 @@ import type { Step } from "@/features/projects/types";
 
 const step = (role?: Step["role"]): Step => ({
   id: "s1", text: "Do it", owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "", movedDay: 0,
-  startedDay: null, doneDay: null, external: null, ...(role ? { role } : {}),
+  startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null, ...(role ? { role } : {}),
 });
 
 describe("SET step role", () => {

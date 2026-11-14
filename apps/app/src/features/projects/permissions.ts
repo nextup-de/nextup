@@ -219,19 +219,20 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
           return checkTools([item.tool]);
         }
         case "project.page.merged": {
-          const from = pages.find((x) => x.id === pl.fromPageId);
+          const sourcePage = pages.find((x) => x.id === pl.fromPageId);
           const into = pages.find((x) => x.id === pl.intoPageId);
-          if (!from || !into || from === into) return no("projectPages.permPageUnknown");
-          if (from.id === "overview") return no("projectPages.permPageOverview");
+          if (!sourcePage || !into || sourcePage === into) return no("projectPages.permPageUnknown");
+          if (sourcePage.id === "overview") return no("projectPages.permPageOverview");
           if (!isProjectId(pl.mergeId)) return no("projectPages.permMergeUnknown");
           if (Object.hasOwn(p.merges, pl.mergeId)) return no("projectPages.permPageExists");
-          if (!agent && hasAgent(from.tools)) return no("projectPages.permToolAgent");
-          return from.tools.length + into.tools.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
+          if (!agent && hasAgent(sourcePage.tools)) return no("projectPages.permToolAgent");
+          return sourcePage.tools.length + into.tools.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
         }
         case "project.page.unmerged": {
           if (typeof pl.mergeId !== "string" || !Object.hasOwn(p.merges, pl.mergeId)) return no("projectPages.permMergeUnknown");
           const merge = p.merges[pl.mergeId];
-          if (pages.some((x) => x.id === merge.from.id)) return no("projectPages.permPageExists");
+          const sourcePageId = merge.from.id;
+          if (pages.some((x) => x.id === sourcePageId)) return no("projectPages.permPageExists");
           const moved = tools.filter((x) => merge.toolIds.includes(x.id));
           if (!agent && hasAgent(moved)) return no("projectPages.permToolAgent");
           return pages.length < LIMITS.pages && moved.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
@@ -349,6 +350,27 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("projects.permDetailsLong");
       return text(pl.text, 500) ? OK : no("projects.permStepText");
 
+    case "project.step.checklist":
+    case "project.step.commented": {
+      if (!(onTeam || (ev.type === "project.step.commented" && isMe(p.sponsorUserId)))) return no("projectSteps.permStepTeam");
+      if (!live) return no("projectSteps.permClosed");
+      const step = p.steps.find((s) => s.id === pl.stepId);
+      if (!step) return no("projectSteps.permNoStep");
+      if (ev.type === "project.step.commented") {
+        if (!text(pl.text, 2000)) return no("projectSteps.permCommentText");
+        return pl.replyTo == null || step.comments.some((c) => c.id === pl.replyTo) ? OK : no("projectSteps.permReply");
+      }
+      if (!isProjectId(pl.itemId) || !["add", "edit", "toggle", "remove"].includes(pl.op ?? "")) return no("projectSteps.permChecklistOp");
+      const item = step.checklist.find((x) => x.id === pl.itemId);
+      // An edit arriving after another person removed this item is an accepted no-op.
+      if (pl.op !== "add" && !item) return OK;
+      if (pl.op === "add" && item) return OK;
+      if (pl.op === "add" && step.checklist.length >= 30) return no("projectSteps.permChecklistLimit");
+      if ((pl.op === "add" || pl.op === "edit") && !text(pl.text, 200)) return no("projectSteps.permChecklistText");
+      if ((pl.op === "toggle" && typeof pl.done !== "boolean") || (pl.done !== undefined && typeof pl.done !== "boolean")) return no("projectSteps.permChecklistDone");
+      return OK;
+    }
+
     case "project.step.moved": {
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projects.permNoStep");
@@ -358,6 +380,12 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       // F5 (D18): a step goes to Blocked with its reason, whoever moves it.
       const column = pl.to;
       if (column === "blocked" && !text(pl.why, 400)) return no("projectMove.permBlockedWhy");
+      if (column === "blocked" && pl.waitingOn !== undefined) {
+        const w = pl.waitingOn;
+        if (!w || !["person", "outside", "nobody"].includes(w.kind)) return no("projectSteps.permWaitingOn");
+        if (w.kind === "person" && !isProjectId(w.userId)) return no("projectSteps.permWaitingPerson");
+        if (w.kind === "outside" && !text(w.name, 80)) return no("projectSteps.permWaitingOutside");
+      }
       return typeof pl.to === "string" && (STEP_COLUMNS as readonly string[]).includes(pl.to) ? OK : no("projects.permMoveWhere");
     }
 

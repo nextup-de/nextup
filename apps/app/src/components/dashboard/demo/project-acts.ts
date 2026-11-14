@@ -3,7 +3,7 @@
 import { newId, type EventPayload } from "@/features/cases/events";
 import { stopChoice, type StopPick } from "@/features/projects/stop-choice";
 import type { AppendOutcome } from "@/server/actions/events";
-import type { InviteRole, PageIconKey, StepColumn, SyncSystem, ToolKind } from "@/features/projects/types";
+import type { InviteRole, PageIconKey, StepChecklistOp, StepColumn, StepWaitingOnInput, SyncSystem, ToolKind } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import type { TemplateKey } from "@/features/templates/library";
 import type { ActDeps } from "./act-deps";
@@ -40,7 +40,9 @@ export type ProjectAct = {
   start: (projectId: string) => void;
   addStep: (projectId: string, text: string, owner?: string, dueDay?: number, to?: StepColumn, note?: string, ownerUserId?: string | null) => string;
   /** before: the card it lands above; null puts it at the bottom of the column. */
-  moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null) => void;
+  moveStep: (projectId: string, stepId: string, to: StepColumn, why?: string, before?: string | null, waitingOn?: StepWaitingOnInput) => void;
+  stepCheck: (projectId: string, stepId: string, op: StepChecklistOp, itemId: string, text?: string, done?: boolean) => void;
+  stepComment: (projectId: string, stepId: string, text: string, replyTo?: string | null) => void;
   editStep: (projectId: string, stepId: string, change: StepChange) => void;
   link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
   /**
@@ -127,7 +129,9 @@ export function projectActs(d: ActDeps): ProjectAct {
     baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
     start: (id) => emit("project.started", id),
     addStep: (id, text, owner, dueDay, to, note, ownerUserId) => { const stepId = newId("s"); emit("project.step.added", id, { stepId, text, owner, ...(ownerUserId ? { ownerUserId } : {}), dueDay, to, note }); return stepId; },
-    moveStep: (id, stepId, to, why, before) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}) }),
+    moveStep: (id, stepId, to, why, before, waitingOn) => emit("project.step.moved", id, { stepId, to, why, ...(before !== undefined ? { before } : {}), ...(waitingOn !== undefined ? { waitingOn } : {}) }),
+    stepCheck: (id, stepId, op, itemId, text, done) => emit("project.step.checklist", id, { stepId, op, itemId, ...(text !== undefined ? { text } : {}), ...(done !== undefined ? { done } : {}) }),
+    stepComment: (id, stepId, text, replyTo) => emit("project.step.commented", id, { stepId, text, ...(replyTo !== undefined ? { replyTo } : {}) }),
     editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
     link: (id, url, system = "url", key, stepId) => emit("project.linked", id, { url, system, key, stepId }),
     sync: (id, on, system = "jira") => {

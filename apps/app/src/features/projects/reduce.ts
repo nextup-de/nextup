@@ -395,6 +395,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         const id = `t:${key}:${version}:${i}`;
         if (p.steps.some((x) => x.id === id)) return;
         p.steps.push({
+          checklist: [], comments: [], waitingOn: null,
           id, text: t.text, owner: null, ownerUserId: null, dueDay: f.takenDay === null ? null : f.takenDay + t.day, column: "todo", why: "", note: "",
           addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d, startedDay: null, doneDay: null, external: null, role: t.role, dropped: null,
         });
@@ -485,6 +486,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       // A card can start in any column but Blocked (that one needs its reason, so it is a move).
       const column: StepColumn = isColumn(pl.to) && pl.to !== "blocked" ? pl.to : "todo";
       p.steps.push({
+        checklist: [], comments: [], waitingOn: null,
         id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
         column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
         startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
@@ -498,6 +500,13 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       touchedSteps.add(s);
       const changed = s.column !== pl.to;
       s.column = pl.to;
+      if (s.column !== "blocked") s.waitingOn = null;
+      else if (pl.waitingOn) {
+        const w = pl.waitingOn;
+        s.waitingOn = w.kind === "person" ? { kind: w.kind, userId: w.userId ?? null, name: null }
+          : w.kind === "outside" ? { kind: w.kind, userId: null, name: w.name?.trim() ?? null }
+          : { kind: "nobody", userId: null, name: null };
+      } else if (changed) s.waitingOn = null;
       // A reorder inside the column keeps its day (and, without a new one, its reason).
       s.why = pl.why ?? (changed ? "" : s.why);
       if (changed) s.movedDay = d;
@@ -506,6 +515,33 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       // The board's order is the steps' order: a card lands above `before`, or at the bottom of its new
       // column. A move that names no place and keeps the column (a connector repeating a status) stays put.
       if (pl.before !== undefined || changed) placeStep(p, s.id, pl.before ?? null);
+      break;
+    }
+    case "project.step.checklist": {
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      if (!s || !live || p.reward !== null || !pl.itemId) break;
+      const item = s.checklist.find((x) => x.id === pl.itemId);
+      const text = pl.text?.trim();
+      if (pl.op === "add") {
+        if (item || s.checklist.length >= 30 || !text || text.length > 200) break;
+        s.checklist.push({ id: pl.itemId, text, done: pl.done ?? false });
+      } else {
+        if (!item) break;
+        if (pl.op === "edit" && text && text.length <= 200) item.text = text;
+        else if (pl.op === "toggle" && typeof pl.done === "boolean") item.done = pl.done;
+        else if (pl.op === "remove") s.checklist = s.checklist.filter((x) => x !== item);
+        else break;
+      }
+      touchedSteps.add(s);
+      break;
+    }
+    case "project.step.commented": {
+      const s = p.steps.find((x) => x.id === pl.stepId);
+      const text = pl.text?.trim();
+      if (!s || !live || p.reward !== null || !text || text.length > 2000 || s.comments.some((x) => x.id === ev.id)) break;
+      if (pl.replyTo != null && !s.comments.some((x) => x.id === pl.replyTo)) break;
+      s.comments.push({ id: ev.id, text, byUserId: ev.actorUserId ?? null, by: ev.actor, day: d, replyTo: pl.replyTo ?? null });
+      touchedSteps.add(s);
       break;
     }
     case "project.step.edited": {
@@ -551,6 +587,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
             touchedSteps.add(s);
             if (o.end === "done") {
               s.column = "done";
+              s.waitingOn = null;
               s.movedDay = d;
               s.doneDay = d;
               if (s.startedDay === null) s.startedDay = d;
