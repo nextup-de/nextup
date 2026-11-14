@@ -28,7 +28,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("FIL graph upload", () => {
-  it("FIL graph upload: a file up to 4 MB goes in one PUT, named and encoded, and a name that is taken comes back with ' (2)'", async () => {
+  it("FIL graph upload: a file up to 800 KB goes in one PUT, named and encoded, and a name that is taken comes back with ' (2)'", async () => {
     fake({ status: 201, json: item("Report (2).pdf") });
     const answer = await uploadSmall(viewer, SHARE, "Delivery reports/Q3 final", "Report.pdf", new Uint8Array(3));
     expect(answer).toMatchObject({ state: "ok", row: { name: "Report (2).pdf", kind: "pdf" } });
@@ -43,14 +43,14 @@ describe("FIL graph upload", () => {
     expect(calls[0].url).toContain("/root:/a.pdf:/content");
   });
 
-  it("FIL graph upload: a file over 4 MB is refused by the single PUT and never sent", async () => {
+  it("FIL graph upload: a file over 800 KB is refused by the single PUT and never sent", async () => {
     fake({ status: 201, json: item("x") });
-    expect(SMALL_MAX).toBe(4 * 1024 * 1024);
+    expect(SMALL_MAX).toBe(800 * 1024);
     expect(await uploadSmall(viewer, SHARE, "", "big.bin", new Uint8Array(SMALL_MAX + 1))).toEqual({ state: "no-access" });
     expect(calls).toHaveLength(0);
   });
 
-  it("FIL graph upload: a bigger file goes through an upload session in chunks of 5 MiB, the last one answering with the item", async () => {
+  it("FIL graph upload: a bigger file goes through an upload session in chunks of 640 KiB, the last one answering with the item", async () => {
     expect(CHUNK % (320 * 1024)).toBe(0);
     const total = CHUNK * 2 + 10;
     fake({ status: 200, json: { uploadUrl: SESSION } }, { status: 202 }, { status: 202 }, { status: 201, json: item("big.bin") });

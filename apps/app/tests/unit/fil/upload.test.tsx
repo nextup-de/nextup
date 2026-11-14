@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilesActions, FilesState } from "@/components/projects/files/types";
 import { createUploadQueue, isSmall, runUpload, safeName, safePath, splitRelative, uploadQueue, ut, type UploadSteps } from "@/features/files/upload";
-import { CHUNK_SIZE, SMALL } from "@/features/files/upload-limits";
+import { ACTION_BODY_LIMIT, CHUNK_SIZE, SMALL } from "@/features/files/upload-limits";
 import type { ReducedProject } from "@/features/projects/types";
 import { I18nProvider } from "@/i18n/client";
 
@@ -139,5 +139,14 @@ describe("FIL upload", () => {
     expect(landed).toHaveBeenCalledTimes(1);
     uploadQueue.clearFinished();
     resetDemoFiles();
+  });
+
+  it("FIL upload: no server action body passes the default 1 MB limit, a single PUT and a chunk included, with the form overhead counted", () => {
+    const overhead = 64 * 1024; // the other form fields and the multipart framing, generously
+    expect(SMALL + overhead).toBeLessThan(ACTION_BODY_LIMIT);
+    expect(CHUNK_SIZE + overhead).toBeLessThan(ACTION_BODY_LIMIT);
+    expect(CHUNK_SIZE % (320 * 1024)).toBe(0);
+    expect(isSmall(SMALL)).toBe(true);
+    expect(isSmall(SMALL + 1)).toBe(false);
   });
 });

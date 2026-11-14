@@ -1,15 +1,16 @@
-// Putting a file into a project's shared folder as the person who uploads (plan FIL-B1, D5, D6): up to 4 MB in one PUT, bigger
-// ones through an upload session in chunks of 5 MiB. A name that is taken becomes "name (2)" (conflictBehavior rename). Never
+// Putting a file into a project's shared folder as the person who uploads (plan FIL-B1, D5, D6): up to 800 KB in one PUT, bigger
+// ones through an upload session in chunks of 640 KiB (a server action body stays under 1 MB). A name that is taken becomes "name (2)" (conflictBehavior rename). Never
 // throws; counts and timings only in logs, never a name, a path, a session URL or a token.
 //
 // NOT a "use server" module: nothing here checks who is asking. Callers pass the viewer.
 import { rowOf, type FileRow } from "@/features/files/items";
+import { CHUNK_SIZE, SMALL } from "@/features/files/upload-limits";
 import { graphAccessToken } from "@/server/graph-token";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const TIMEOUT_MS = 30_000;
-export const SMALL_MAX = 4 * 1024 * 1024;
-export const CHUNK = 5 * 1024 * 1024; // a multiple of 320 KiB, as Graph asks
+export const SMALL_MAX = SMALL;
+export const CHUNK = CHUNK_SIZE; // a multiple of 320 KiB, as Graph asks
 
 type Viewer = { companyId: string; userId: string };
 type Failure = "not-connected" | "no-access" | "offline";
@@ -40,7 +41,7 @@ async function withToken<T>(v: Viewer, what: string, go: (token: string) => Prom
   }
 }
 
-/** One PUT for a file of up to 4 MB. */
+/** One PUT for a file of up to 800 KB. */
 export async function uploadSmall(v: Viewer, shareId: string, path: string, name: string, bytes: Uint8Array): Promise<UploadAnswer> {
   if (bytes.byteLength > SMALL_MAX) return { state: "no-access" };
   return withToken<UploadAnswer>(v, "upload", async (token) => {
@@ -66,7 +67,7 @@ export async function createSession(v: Viewer, shareId: string, path: string, na
   }, { state: "offline" });
 }
 
-/** One chunk of a session. The session URL carries its own authorization, so no token goes with it. */
+/** One chunk of a session (640 KiB). The session URL carries its own authorization, so no token goes with it. */
 export async function putChunk(uploadUrl: string, start: number, bytes: Uint8Array, total: number): Promise<ChunkAnswer> {
   if (!sessionUrlOk(uploadUrl) || bytes.byteLength === 0 || start + bytes.byteLength > total) return { state: "no-access" };
   const started = Date.now();

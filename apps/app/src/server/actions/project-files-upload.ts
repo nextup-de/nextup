@@ -58,7 +58,7 @@ export async function uploadAccessAction(projectId: string): Promise<AccessAnswe
   return typeof writer === "string" ? { state: writer } : { state: "ok" };
 }
 
-/** A file of up to 4 MB in one PUT. `path` is the open folder below the project's folder; `form` carries `file` and `name`. */
+/** A file of up to 800 KB in one PUT. `path` is the open folder below the project's folder; `form` carries `file` and `name`. */
 export async function uploadSmallAction(projectId: string, path: string, form: FormData): Promise<UploadResult> {
   const name = safeName(String(form.get("name") ?? ""));
   const file = form.get("file");
@@ -77,7 +77,7 @@ export async function startUploadAction(projectId: string, path: string, name: s
   return createSession(writer, writer.shareId, path, clean);
 }
 
-/** One chunk of at most 5 MiB: `form` carries `uploadUrl`, `start`, `total` and `chunk`. */
+/** One chunk of at most 640 KiB: `form` carries `uploadUrl`, `start`, `total` and `chunk`. */
 export async function uploadChunkAction(projectId: string, form: FormData): Promise<ChunkResult> {
   const uploadUrl = String(form.get("uploadUrl") ?? "");
   const start = Number(form.get("start"));
