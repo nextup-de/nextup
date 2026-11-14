@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { datesEdit, dragEdit, timelineRows, TIMELINE_GROUPS, TIMELINE_SCALES, type DateEdit, type TimelineGroup, type TimelineGroupBy, type TimelineRow, type TimelineScale } from "@/features/projects/timeline-view";
+import { datesEdit, dragEdit, fill, timelineRows, timelineText, TIMELINE_GROUPS, TIMELINE_SCALES, type DateEdit, type TimelineGroup, type TimelineGroupBy, type TimelineRow, type TimelineScale } from "@/features/projects/timeline-view";
 import type { ReducedProject, StepColumn } from "@/features/projects/types";
 import { useLocale } from "@/i18n/client";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
@@ -9,7 +9,6 @@ import { useRights, useSend } from "../../parts";
 import { CreateStepDialog } from "../../steps/CreateStepDialog";
 import { StepPanel } from "../../steps/StepPanel";
 import type { JiraRow } from "@/features/projects/views";
-import { fill, timelineText } from "./text";
 import styles from "./Timeline.module.css";
 
 const COLUMN_PX = 96;
