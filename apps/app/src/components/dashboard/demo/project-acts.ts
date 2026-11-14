@@ -3,13 +3,16 @@
 import { newId, type EventPayload } from "@/features/cases/events";
 import { stopChoice, type StopPick } from "@/features/projects/stop-choice";
 import type { AppendOutcome } from "@/server/actions/events";
-import type { InviteRole, PageIconKey, StepChecklistOp, StepColumn, StepWaitingOnInput, SyncSystem, ToolKind } from "@/features/projects/types";
+import type { FormField, InviteRole, PageIconKey, StepChecklistOp, StepColumn, StepWaitingOnInput, SyncSystem, ToolKind } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import type { TemplateKey } from "@/features/templates/library";
 import type { ActDeps } from "./act-deps";
 
 /** A change to a step: only the fields given change. owner "" and dueDay null clear them; removed takes it off the board. */
 export type StepChange = { text?: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; startDay?: number | null; milestoneId?: string | null; note?: string; removed?: boolean };
+
+export type FormInput = { title: string; intro: string; fields: FormField[]; shared: boolean };
+export type RequestStep = { text: string; column: StepColumn; ownerUserId?: string | null; dueDay?: number | null; note?: string };
 
 export type MilestoneInput = { title: string; startDay?: number | null; dueDay: number; note?: string };
 export type MilestoneChange = { title?: string; startDay?: number | null; dueDay?: number; note?: string; shipped?: boolean; removed?: boolean };
@@ -54,6 +57,18 @@ export type ProjectAct = {
   milestone: {
     add: (projectId: string, input: MilestoneInput) => string;
     edit: (projectId: string, milestoneId: string, change: MilestoneChange) => void;
+  };
+  form: {
+    /** Saves a form: `formId` names an existing one (a new revision) or is minted when missing. Returns the id. */
+    save: (projectId: string, input: FormInput, formId?: string) => string;
+    /** Answers the form's current revision; returns the request's id. */
+    answer: (projectId: string, formId: string, formRev: number, answers: Record<string, string>) => string;
+  };
+  request: {
+    /** One event that adds the step and links it; returns the step's id. */
+    step: (projectId: string, requestId: string, step: RequestStep) => string;
+    decline: (projectId: string, requestId: string, why: string) => void;
+    reopen: (projectId: string, requestId: string) => void;
   };
   link: (projectId: string, url: string, system?: string, key?: string, stepId?: string) => void;
   /**
@@ -154,6 +169,15 @@ export function projectActs(d: ActDeps): ProjectAct {
     stepCheck: (id, stepId, op, itemId, text, done) => emit("project.step.checklist", id, { stepId, op, itemId, ...(text !== undefined ? { text } : {}), ...(done !== undefined ? { done } : {}) }),
     stepComment: (id, stepId, text, replyTo) => emit("project.step.commented", id, { stepId, text, ...(replyTo !== undefined ? { replyTo } : {}) }),
     editStep: (id, stepId, change) => emit("project.step.edited", id, { stepId, ...change }),
+    form: {
+      save: (id, input, formId = newId("f")) => { emit("project.form.saved", id, { formId, ...input }); return formId; },
+      answer: (id, formId, formRev, answers) => { const requestId = newId("q"); emit("project.form.answered", id, { formId, formRev, requestId, answers }); return requestId; },
+    },
+    request: {
+      step: (id, requestId, step) => { const stepId = newId("s"); emit("project.request.stepped", id, { requestId, step: { stepId, ...step } }); return stepId; },
+      decline: (id, requestId, why) => emit("project.request.declined", id, { requestId, why }),
+      reopen: (id, requestId) => emit("project.request.reopened", id, { requestId }),
+    },
     milestone: {
       add: (id, input) => { const milestoneId = newId("m"); emit("project.milestone.added", id, { milestoneId, ...input }); return milestoneId; },
       edit: (id, milestoneId, change) => emit("project.milestone.edited", id, { milestoneId, ...change }),
