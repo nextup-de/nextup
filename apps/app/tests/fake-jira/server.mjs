@@ -7,6 +7,7 @@
 //   --project NUP                        the project key
 //   --flavor dc                          speak the Data Center dialect (REST v2, Bearer token; default cloud)
 //   --direct-done                        let To Do go straight to Done (default: it must pass In Progress)
+//   --no-administer                      the account may not create or change versions (no Administer Projects)
 //
 // Point the admin page at it: site http://127.0.0.1:<port>, the email and token above, project NUP,
 // epic type 10000 (Epic), step type 10001 (Task). People's changes without a Jira UI:
@@ -15,6 +16,10 @@
 //   curl -X POST http://127.0.0.1:4010/__fake/comment -d '{"key":"NUP-1","text":"Hello"}'
 //   curl -X POST http://127.0.0.1:4010/__fake/child   -d '{"parent":"NUP-1","summary":"Added in Jira"}'
 //   curl -X POST http://127.0.0.1:4010/__fake/429     -d '{"count":3,"retryAfter":2}'
+//   curl -X POST http://127.0.0.1:4010/__fake/createVersion -d '{"name":"Release 1","releaseDate":"2026-12-01"}'
+//   curl -X POST http://127.0.0.1:4010/__fake/releaseVersion -d '{"id":"20001"}'     (also renameVersion, versionDates, archiveVersion, deleteVersion)
+//   curl -X POST http://127.0.0.1:4010/__fake/fixVersions -d '{"key":"NUP-2","ids":["20001"]}'
+//   curl -X POST http://127.0.0.1:4010/__fake/attach   -d '{"key":"NUP-2","filename":"plan.pdf","size":1200}'
 //   curl http://127.0.0.1:4010/__fake/state
 import { startFakeJira } from "./fake-jira.ts";
 
@@ -32,10 +37,11 @@ const fake = await startFakeJira({
   projectKey: flag("project", "NUP"),
   flavor: flag("flavor", "cloud") === "dc" ? "dc" : "cloud",
   directDone: args.includes("--direct-done"),
+  permissions: args.includes("--no-administer") ? { ADMINISTER_PROJECTS: false } : {},
 });
 
 console.log(`fake Jira on ${fake.url}  project ${fake.projectKey}  email ${fake.email}  token ${fake.token}`);
-console.log("epic type 10000, step type 10001. Controls: POST /__fake/{move,rename,comment,child,429}, GET /__fake/state");
+console.log("epic type 10000, step type 10001. Controls: POST /__fake/{move,rename,comment,child,createVersion,releaseVersion,renameVersion,versionDates,archiveVersion,deleteVersion,fixVersions,attach,429}, GET /__fake/state");
 const stop = async () => { await fake.close(); process.exit(0); };
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
