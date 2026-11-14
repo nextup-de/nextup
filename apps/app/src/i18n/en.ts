@@ -61,6 +61,7 @@ import { projectDraft } from "./messages/projectDraft";
 import { projectPages } from "./messages/projectPages";
 import { projectSteps } from "./messages/projectSteps";
 import { projectCalendar } from "./messages/projectCalendar";
+import { projectMilestones } from "./messages/projectMilestones";
 import { projectPlan } from "./messages/projectPlan";
 import { projectHub } from "./messages/projectHub";
 import { projectRequests } from "./messages/projectRequests";
@@ -137,6 +138,7 @@ export const en = {
   projectPages: projectPages.en,
   projectSteps: projectSteps.en,
   projectCalendar: projectCalendar.en,
+  projectMilestones: projectMilestones.en,
   projectPlan: projectPlan.en,
   projectHub: projectHub.en,
   projectRequests: projectRequests.en,
