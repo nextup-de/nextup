@@ -6,6 +6,9 @@ import type { JiraRow } from "@/features/projects/views";
 import type { MessageKey } from "@/i18n";
 import { filesHead } from "../files/head";
 
+/** The node in the page header where the first tool puts its filter row. */
+export const headRowId = (pageId: string): string => "head-row-" + pageId;
+
 type T = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 /** What a head may use: the project, the company's Jira row, words, the rights, and the page's handlers. */
