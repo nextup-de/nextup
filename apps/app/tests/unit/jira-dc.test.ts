@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import type { SeqEvent } from "@/features/integrations/jira/plan";
+import { DEFAULT_CALENDAR } from "@/features/clock";
 import type { CaseEventType } from "@/features/cases/events";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 import { JIRA_ACTOR } from "@/features/integrations";
@@ -38,7 +39,7 @@ describe("CNX Jira Data Center client", () => {
     expect(await api.project("NUP")).toMatchObject({ key: "NUP", name: "NextUp test" });
     expect(await api.project("NOPE")).toBeNull();
     expect((await api.issueTypes("NUP")).map((t) => t.id)).toEqual([EPIC_TYPE.id, TASK_TYPE.id]);
-    expect(await api.permissions("NUP")).toEqual({ browse: true, create: true, edit: true, transition: true, comment: true, administer: false });
+    expect(await api.permissions("NUP")).toEqual({ browse: true, create: true, edit: true, transition: true, comment: true, administer: true });
   });
 
   it("creates an epic and a child with labels; edits, labels and moves it", async () => {
@@ -146,7 +147,7 @@ describe("CNX Jira flavor dc accepted", () => {
 
   it("the connection test passes every check against the Data Center fake", async () => {
     const r = await testJira(settings, TOKEN);
-    expect(r.checks.map((c) => [c.id, c.ok])).toEqual([["auth", true], ["project", true], ["types", true], ["permissions", true], ["labels", true]]);
+    expect(r.checks.map((c) => [c.id, c.ok])).toEqual([["auth", true], ["project", true], ["types", true], ["permissions", true], ["versions", true], ["labels", true]]);
     expect(r.ok).toBe(true);
     expect(r.account).toEqual({ id: "acc-bot", name: "NextUp Bot" });
   });
@@ -173,7 +174,7 @@ describe("CNX Jira flavor dc accepted", () => {
     add("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p_one", lead: "L. Brandt", title: "Shorter changeover" });
 
     const r = await runRound(jiraApiFor(settings, TOKEN), store, {
-      settings, enabledAt: new Date(Date.now() - 60_000), pushedSeq: 0, pulledAt: null, account: null, reconcile: true, now: new Date(),
+      settings, enabledAt: new Date(Date.now() - 60_000), pushedSeq: 0, pulledAt: null, account: null, reconcile: true, now: new Date(), calendar: DEFAULT_CALENDAR,
     });
     expect(r.warnings).toEqual([]);
     const epics = [...fake.issues.values()].filter((i) => i.typeId === EPIC_TYPE.id);

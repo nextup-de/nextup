@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { JiraApi, JiraAttachment, JiraCheck, JiraDayClock, JiraIssue, JiraPermissions, JiraVersion } from "@/features/integrations/jira/types";
-import { JiraError } from "@/features/integrations/jira/types";
+import type { JiraAttachment, JiraCheck, JiraDayClock, JiraIssue, JiraPermissions, JiraVersion } from "@/features/integrations/jira/types";
 import { translate } from "@/i18n";
 import { projectJsy } from "@/i18n/messages/projectJsy";
 import { createCloudApi } from "@/server/jira/cloud";
 import { createDcApi } from "@/server/jira/dc";
 
 const holders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
-const answerAll = () => Promise.resolve(new Response(JSON.stringify({ permissions: {}, name: "x" }), { status: 200 }));
-const cloud: JiraApi = createCloudApi({ siteUrl: "https://acme.atlassian.net", email: "a@b.c", projectKey: "NUP" }, "t", { fetch: answerAll });
-const dc: JiraApi = createDcApi({ siteUrl: "https://jira.acme.test", projectKey: "NUP" }, "t", { fetch: answerAll });
 
 describe("JSY scaffold strings", () => {
   const en = projectJsy.en as Record<string, string>;
@@ -40,26 +36,11 @@ describe("JSY scaffold strings", () => {
 });
 
 describe("JSY scaffold jira contract", () => {
-  it("the version methods exist on both clients and throw a JiraError until they are built", async () => {
-    for (const api of [cloud, dc]) {
-      for (const call of [
-        () => api.versions("NUP"),
-        () => api.createVersion({ projectKey: "NUP", name: "v", description: "", startDate: null, releaseDate: null, released: true }),
-        () => api.updateVersion("7", { released: true }),
-        () => api.setFixVersions("NUP-1", ["7"]),
-      ]) {
-        const e = await call().then(() => null, (x: unknown) => x);
-        expect(e).toBeInstanceOf(JiraError);
-        expect((e as JiraError).message).toBe("Versions are not built yet.");
-      }
-    }
-  });
-
-  it("permissions answer administer: false until versions are built", async () => {
+  it("permissions answer administer from ADMINISTER_PROJECTS", async () => {
     const allowed = () => Promise.resolve(new Response(JSON.stringify({ permissions: Object.fromEntries(["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "TRANSITION_ISSUES", "ADD_COMMENTS", "ADMINISTER_PROJECTS"].map((n) => [n, { havePermission: true }])) }), { status: 200 }));
     for (const api of [createCloudApi({ siteUrl: "https://a.test", email: "a@b.c", projectKey: "NUP" }, "t", { fetch: allowed }), createDcApi({ siteUrl: "https://a.test", projectKey: "NUP" }, "t", { fetch: allowed })]) {
       const p: JiraPermissions = await api.permissions("NUP");
-      expect(p.administer).toBe(false);
+      expect(p.administer).toBe(true);
       expect(p.browse).toBe(true);
     }
   });
