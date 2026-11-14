@@ -3,17 +3,19 @@ import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { DEFAULT_OVERVIEW_RANGE, overviewFacts, parseOverviewRange, type OverviewRange, type WaitingKey } from "@/features/projects/overview-view";
-import type { ReducedProject, StepColumn } from "@/features/projects/types";
+import type { ProjectPage, ReducedProject, StepColumn, ToolInstance } from "@/features/projects/types";
 import { fmtNumber, timelineOf } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { BaselinePanel } from "../../ProjectMeasure";
 import { useProjectHints } from "../../draft/useProjectHints";
+import { HeadSlot } from "../../tools/HeadSlot";
+import rows from "../../tools/ToolRows.module.css";
 import { RangeMenu } from "./RangeMenu";
 import styles from "./Overview.module.css";
 
 const COLUMNS: StepColumn[] = ["todo", "doing", "blocked", "done"];
 
-export function Overview({ p }: { p: ReducedProject }) {
+export function Overview({ p, page, tool }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance }) {
   const { S, f, actorUserId } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -47,13 +49,13 @@ export function Overview({ p }: { p: ReducedProject }) {
 
   return (
     <div className={styles.overview} aria-label={t("projectHub.overviewAriaLabel")}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>{t("projectHub.overviewTitle")}</h2>
-        <div className={styles.actions}>
+      <h2 className="nh-sr">{t("projectHub.overviewTitle")}</h2>
+      <HeadSlot page={page} tool={tool}>
+        <div className={rows.controls}>
           <RangeMenu value={range} onChange={setRange} />
           <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={copyLink}>{t("projectHub.overviewCopyLink")}</button>
         </div>
-      </div>
+      </HeadSlot>
       <p className={styles.status} role="status">{copied === "ok" ? t("projectHub.overviewLinkCopied") : copied === "failed" ? t("projectHub.overviewCopyFailed") : ""}</p>
 
       <div className={styles.tiles}>
