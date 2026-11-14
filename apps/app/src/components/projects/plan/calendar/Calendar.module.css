@@ -15,11 +15,12 @@
 .cell[data-out] { background: var(--nh-app-ground); color: var(--nh-mute); }
 .cell[data-off] { background: var(--nh-app-ground); }
 .cell[data-today] { background: var(--nh-brand-tint); }
-.cell[data-over] { outline: 2px solid var(--nh-brand); outline-offset: -2px; background: var(--nh-brand-tint); }
+.cell[data-over] { outline: 2px dashed var(--nh-brand); outline-offset: -2px; background: var(--nh-brand-tint); }
 .dayTop { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: var(--nh-fs-xs); }
 .dayNum { color: var(--nh-ink-2); }
-.cell[data-today] .dayNum { color: var(--nh-brand-ink); font-weight: 600; }
-.drop { color: var(--nh-brand-ink); font-size: var(--nh-fs-xs); }
+.cell[data-today] .dayNum { padding: 0 6px; border-radius: var(--radius-xs); background: var(--nh-brand); color: var(--nh-on-brand); font-weight: 600; }
+.todayLabel { margin-right: auto; margin-left: 6px; color: var(--nh-mute); }
+.drop { align-self: flex-start; padding: 2px 8px; border-radius: var(--radius-xs); background: var(--nh-brand); color: var(--nh-on-brand); font-size: var(--nh-fs-xs); font-weight: 600; }
 .addDay, .more { border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--nh-mute); cursor: pointer; font: inherit; padding: 0 6px; }
 .addDay { opacity: 0; }
 .cell:hover .addDay, .addDay:focus-visible { opacity: 1; }
@@ -30,9 +31,17 @@
 .picker, .quick { z-index: 10; display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--nh-line); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-sm); }
 .picker { position: absolute; top: 100%; right: 0; min-width: 200px; }
 .picker label { display: flex; flex-direction: column; gap: 4px; }
-.quickRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.quickRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.quick > strong { color: var(--nh-ink-2); font-size: var(--nh-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
+.moreFields { margin-left: auto; padding: 0; border: 0; background: transparent; color: var(--nh-mute); font: inherit; font-size: var(--nh-fs-xs); cursor: pointer; }
 .drawer { flex: 0 0 280px; max-width: 100%; padding: 12px; border: 1px solid var(--nh-line-soft); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
-.drawer h3 { margin: 0 0 6px; font-size: var(--nh-fs-md); }
+.drawerHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.drawer h3 { margin: 0; font-size: var(--nh-fs-md); }
+.drawerCount { color: var(--nh-mute); font-weight: 400; }
+.card { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 12px; border: 1px solid var(--nh-line-soft); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); color: var(--nh-ink); font: inherit; text-align: left; cursor: pointer; }
+.cardKey { color: var(--nh-mute); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); }
+.cardTitle { font-size: var(--nh-fs-md); line-height: 1.4; }
+.cardMeta { color: var(--nh-mute); font-size: var(--nh-fs-xs); }
 .drawer ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .drawerRow { position: relative; display: flex; align-items: center; gap: 6px; }
 .drawerStep { flex: 1; min-width: 0; display: flex; }

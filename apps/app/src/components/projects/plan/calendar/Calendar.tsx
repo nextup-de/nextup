@@ -6,6 +6,7 @@ import { calendarWeeks, dropOnDay, quickAdd, shiftPeriod, unscheduled, type Cale
 import type { StepColumn } from "@/features/projects/types";
 import { STEP_COLUMNS } from "@/features/projects/types";
 import { columnLabel } from "@/features/projects/views";
+import { stepKey } from "@/features/projects/list-view";
 import { INTL_LOCALE } from "@/i18n";
 import { useLocale, useT } from "@/i18n/client";
 import { formatDate } from "@/i18n/format";
@@ -77,9 +78,10 @@ export function Calendar({ p, jira }: ToolProps) {
             onDrop={(e) => { e.preventDefault(); if (drag) place(drag, cell.day); }}>
             <div className={styles.dayTop}>
               <span className={styles.dayNum}>{Number(cell.date.slice(8))}</span>
-              {over === cell.date && canDrop && <span className={styles.drop}>{c("dropHint", { date: dayName(cell.date) })}</span>}
+              {cell.today && <span className={styles.todayLabel}>{t("projectPlan.calToday")}</span>}
               {canDrop && <button type="button" className={styles.addDay} aria-label={c("addStepOn", { date: dayName(cell.date) })} onClick={() => { setQuick(cell.date); setMenu(null); }}>+</button>}
             </div>
+            {over === cell.date && canDrop && <span className={styles.drop} role="status">{c("dropHint", { date: dayName(cell.date) })}</span>}
             {cell.chips.map((chip) => <div key={chip.stepId} className={styles.chipRow}>
               <button type="button" className={styles.chip} data-late={chip.late || undefined} data-done={chip.done || undefined} draggable={rights.addStep}
                 aria-label={c("openStep", { step: p.steps.find((s) => s.id === chip.stepId)?.text ?? chip.key })}
@@ -100,12 +102,19 @@ export function Calendar({ p, jira }: ToolProps) {
         })}
       </div>
       {drawer && <aside className={styles.drawer} aria-label={c("notScheduled")}>
-        <h3>{c("notScheduled")}</h3>
+        <div className={styles.drawerHead}>
+          <h3>{c("notScheduled")} <span className={styles.drawerCount}>· {loose.length}</span></h3>
+          <button type="button" className={styles.more} aria-label={t("projectPlan.drawerClose")} onClick={() => setDrawer(false)}>×</button>
+        </div>
         <p className={styles.hint}>{c("drawerHint")}</p>
         {loose.length === 0 && <p className={styles.hint}>{c("drawerEmpty")}</p>}
         <ul>{loose.map((step) => <li key={step.id} className={styles.drawerRow}>
           <span className={styles.drawerStep} draggable={rights.addStep} onDragStart={(e) => { setDrag(step.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", step.id); }} onDragEnd={() => { setDrag(null); setOver(null); }}>
-            <button type="button" className={styles.chip} aria-label={c("openStep", { step: step.text })} onClick={() => setOpen(step.id)}>{step.text}</button>
+            <button type="button" className={styles.card} aria-label={c("openStep", { step: step.text })} onClick={() => setOpen(step.id)}>
+              <span className={styles.cardKey}>{stepKey(step)}</span>
+              <span className={styles.cardTitle}>{step.text}</span>
+              <span className={styles.cardMeta}>{step.owner ?? t("projectSteps.noOwner")} · {columnLabel(step.column, locale)}</span>
+            </button>
           </span>
           {rights.addStep && <button type="button" className={styles.control} aria-haspopup="dialog" aria-expanded={menu?.stepId === step.id && menu.from === "drawer"} onClick={() => { setMenu(menu?.stepId === step.id && menu.from === "drawer" ? null : { stepId: step.id, from: "drawer" }); setError(null); }}>{c("schedule")}</button>}
           {menu?.stepId === step.id && menu.from === "drawer" && <DayPicker label={c("schedule")} date={map.today} onClose={() => setMenu(null)} onPick={(date) => { const day = map.dayOf(date); if (day === null) { setError(c("noWorkday")); return; } setMenu(null); place(step.id, day); }} c={c} />}
@@ -152,7 +161,7 @@ function QuickAdd({ date, day, team, me, c, onAdd, onMore, onCancel }: {
     </select>
     <div className={styles.quickRow}>
       <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!title.trim()}>{t("projectPlan.quickAddSubmit")}</button>
-      <button type="button" className={styles.control} onClick={() => onMore({ day, title, column })}>{c("moreFields")}</button>
+      <button type="button" className={styles.moreFields} onClick={() => onMore({ day, title, column })}>{c("moreFields")}</button>
       <button type="button" className={styles.control} onClick={onCancel}>{t("projectPlan.quickAddCancel")}</button>
     </div>
   </form>;
