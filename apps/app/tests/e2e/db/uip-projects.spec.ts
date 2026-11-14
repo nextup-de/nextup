@@ -89,7 +89,7 @@ test("UIP project area", async ({ page }) => {
     await expect(todo.getByRole("article")).toHaveCount(1);
     await todo.getByRole("button", { name: "Add a step to To do" }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(NEW_STEP);
-    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await page.getByRole("textbox", { name: "New step" }).press("Enter");
     await expect(todo.getByRole("article")).toHaveCount(2);
     const sheet = await openStep(page, NEW_STEP);
     await sheet.getByRole("button", { name: /Remove this step/ }).click();
@@ -99,6 +99,6 @@ test("UIP project area", async ({ page }) => {
 });
 
 async function openStep(page: import("@playwright/test").Page, text: string) {
-  await page.getByRole("button", { name: "Open “" + text + "”" }).click();
-  return page.getByRole("dialog", { name: text });
+  await page.getByRole("region", { name: "Board", exact: true }).getByRole("button", { name: "Open step: " + text, exact: true }).click();
+  return page.getByRole("dialog", { name: text, exact: true }).last(); // the Steps page also holds the List
 }

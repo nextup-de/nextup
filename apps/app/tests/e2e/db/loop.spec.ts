@@ -50,6 +50,7 @@ async function openResults(page: Page) {
   await page.goto(`/${SLUG}/projects/${projectId}`);
   await (await projectPages(page)).getByRole("link", { name: /^Results/ }).click();
   await expect(page).toHaveURL(/page=results/);
+  await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
 }
 
 const userId = async (name: string) => (await getDb().user.findFirstOrThrow({ where: { companyId, name }, select: { id: true } })).id;
@@ -217,6 +218,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await expect(page.getByRole("main")).toContainText(/1[ ,.’']?200/); // the CO₂ figure
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.reload();
+    await page.getByRole("button", { name: "Open result", exact: true }).click(); // a reload closes the result drawer
     await expect(vis(page, "measure-source-30")).toBeVisible();
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.context().close();
