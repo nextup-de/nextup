@@ -3,9 +3,9 @@
 // answer means. The glue that reads the Connection row and calls Microsoft is
 // src/server/graph-token.ts.
 
-/** What live search needs, and no more: the files the person can open, and a way to come back. */
+/** What the files features need, and no more: read and change the files the person can open, as that person, and a way to come back. */
 // eslint-disable-next-line -- OAuth scope, not text
-export const GRAPH_SCOPE = "https://graph.microsoft.com/Files.Read.All offline_access";
+export const GRAPH_SCOPE = "https://graph.microsoft.com/Files.ReadWrite.All offline_access";
 
 export function refreshRequestBody(p: { clientId: string; clientSecret: string; refreshToken: string }): URLSearchParams {
   return new URLSearchParams({

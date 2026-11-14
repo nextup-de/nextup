@@ -3,7 +3,7 @@ import { reduce } from "@/features/cases/reducer";
 import { mayAppend } from "@/features/cases/permissions";
 import { meFor } from "@/features/auth/identity";
 import { builderReducer, canSave, canShare, draftJson, FORM_LIMITS, initialBuilder, isDirty, parseDraft, problemsOf, toFormSaved, type BuilderAction, type BuilderState } from "@/features/projects/form-builder";
-import { ev, logOf, SEATS, SEED, startedLog } from "../../../tests/unit/res/project-fixture";
+import { ev, logOf, SEATS, SEED, startedLog } from "./project-fixture";
 
 const run = (s: BuilderState, ...actions: BuilderAction[]): BuilderState => actions.reduce(builderReducer, s);
 const blank = () => initialBuilder(null, "fm");

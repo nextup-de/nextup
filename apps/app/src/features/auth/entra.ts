@@ -56,7 +56,7 @@ export const SIGN_IN_SCOPE = "openid profile email";
  * phase 2): read the files the person can already open, and a refresh token so NextUp can search
  * them later without another sign-in. Files only - no mail, chats, calendars or lists.
  */
-export const M365_SCOPE = SIGN_IN_SCOPE + " offline_access https://graph.microsoft.com/Files.Read.All";
+export const M365_SCOPE = SIGN_IN_SCOPE + " offline_access https://graph.microsoft.com/Files.ReadWrite.All";
 
 export function authorizeUrl(p: {
   tenantId: string;
@@ -301,7 +301,15 @@ export function grantedScopes(scope: unknown): string[] {
  * the access token is good for) and answers it with a refresh_token instead - the caller checks it.
  */
 export function canSearchFiles(scopes: readonly string[]): boolean {
-  return scopes.some((s) => s.toLowerCase() === "files.read.all");
+  return scopes.some((s) => ["files.read.all", "files.readwrite.all"].includes(s.toLowerCase()));
+}
+
+/**
+ * May NextUp upload and delete files as this person (the Files page, plan FIL, D5)? Only the read-write grant says so: a person
+ * who connected before still holds Files.Read.All, can search, and connects again to write.
+ */
+export function canWriteFiles(scopes: readonly string[]): boolean {
+  return scopes.some((s) => s.toLowerCase() === "files.readwrite.all");
 }
 
 /** What a verified Microsoft sign-in leads to. Pure, so every case is a unit test. */
@@ -351,7 +359,7 @@ export const MICROSOFT_ERRORS = {
   // "Connect Microsoft 365" (phase 2): shown on the profile page, not the login page.
   m365off: "Microsoft 365 search is switched off for this company. Your admin can turn it on.",
   otheraccount: "That Microsoft account isn't the one you use for NextUp. Connect with your own work account.",
-  files: "Microsoft didn't give NextUp access to your files. Ask your IT administrator to approve NextUp for Files.Read.All.",
+  files: "Microsoft didn't give NextUp access to your files. Ask your IT administrator to approve NextUp for Files.ReadWrite.All.",
   vault: "This NextUp can't store the connection safely yet. Tell your NextUp admin (CONNECTOR_VAULT_KEY).",
 } as const;
 
