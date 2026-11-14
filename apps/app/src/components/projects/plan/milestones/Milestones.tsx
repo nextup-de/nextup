@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PersonFace } from "@/components/ui/elements";
-import { askDraft, milestoneCards, mt, validMilestone, type MilestoneCard, type MilestoneIssue, type MilestonesKey } from "@/features/projects/milestones-view";
+import { askDraft, milestoneCards, MILESTONE_KEYS, validMilestone, type MilestoneCard, type MilestoneIssue, type MilestonesKey } from "@/features/projects/milestones-view";
 import { stepKey } from "@/features/projects/list-view";
 import { columnLabel } from "@/features/projects/views";
-import { useLocale } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import { useRights, useSend } from "../../parts";
 import { StepPanel } from "../../steps/StepPanel";
 import type { ToolProps } from "../../tools/types";
@@ -16,7 +16,8 @@ import styles from "./Milestones.module.css";
 export function Milestones({ p, jira }: ToolProps) {
   const { act, S, f } = useDemo();
   const locale = useLocale();
-  const tx = (key: MilestonesKey, params?: Record<string, string | number>) => mt(locale, key, params);
+  const t = useT();
+  const tx = (key: MilestonesKey, params?: Record<string, string | number>) => t(MILESTONE_KEYS[key], params);
   const rights = useRights(p);
   const send = useSend(p);
   const [query, setQuery] = useState("");
@@ -98,8 +99,8 @@ export function Milestones({ p, jira }: ToolProps) {
 }
 
 function CreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { title: string; startDay?: number | null; dueDay: number; note?: string }) => unknown }) {
-  const locale = useLocale();
-  const tx = (key: MilestonesKey, params?: Record<string, string | number>) => mt(locale, key, params);
+  const t = useT();
+  const tx = (key: MilestonesKey, params?: Record<string, string | number>) => t(MILESTONE_KEYS[key], params);
   const map = useDayMap();
   const [title, setTitle] = useState("");
   const [start, setStart] = useState("");

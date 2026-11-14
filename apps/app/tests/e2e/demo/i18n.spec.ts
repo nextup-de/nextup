@@ -72,6 +72,7 @@ const ROUTES: Route[] = [
 
 /** Pages not in the table, and why. */
 const LEFT_OUT: Record<string, string> = {
+  "[company]/(app)/forms/[formId]/page.tsx": "needs a form id from the demo log; walked through in tests/e2e/demo/requests.spec.ts",
   "[company]/(app)/settings/page.tsx": "settings need a database and a signed-in manager",
   "[company]/(app)/dashboard/kpis/page.tsx": "the KPI report needs a database and a signed-in manager",
   "[company]/(app)/settings/company/page.tsx": "settings need a database and a signed-in manager",

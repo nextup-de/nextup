@@ -1,8 +1,8 @@
 // The form being built (plan REQ, D4, D8). Pure: a reducer for the draft, its checks and the one event Save sends. The draft itself
 // lives in sessionStorage until Save; `parseDraft` and `draftJson` are its two ends.
-import type { Locale } from "@/i18n";
 import { fitsEvent } from "./pages";
 import type { Form, FormField, FormFieldKind } from "./types";
+import type { MessageKey } from "@/i18n";
 
 export const FORM_LIMITS = { title: 80, intro: 1000, fields: 20, label: 200, optionsMin: 2, optionsMax: 12, option: 80 } as const;
 export const FIELD_KINDS: readonly FormFieldKind[] = ["short", "long", "choice", "date"];
@@ -136,97 +136,50 @@ export function parseDraft(json: string | null, formId: string): BuilderState | 
   } catch { return null; }
 }
 
-// The builder's own words. TODO: move them into i18n/messages/projectRequests.ts once REQ-G1 is merged; the keys stay.
-const en = {
-  back: "‹ Requests",
-  unsaved: "Unsaved changes",
-  saved: "Saved",
-  save: "Save form",
-  preview: "Preview",
-  editing: "Edit",
-  share: "Share link",
-  shareNeedsSave: "Save the form first to get its link.",
-  shareCopied: "Link copied",
-  leaveAsk: "You have unsaved changes. Leave without saving?",
-  kinds: "Add a question",
-  kindsNote: "Every answer becomes a request here.",
-  kindShort: "Short answer",
-  kindLong: "Long answer",
-  kindChoice: "Choose one",
-  kindDate: "Date",
-  titlePlaceholder: "Form title",
-  introPlaceholder: "Tell people why you ask",
-  labelPlaceholder: "Question",
-  required: "Required",
-  duplicate: "Duplicate",
-  remove: "Delete",
-  moveUp: "Move up",
-  moveDown: "Move down",
-  options: "Options",
-  optionPlaceholder: "Option {number}",
-  addOption: "Add option",
-  removeOption: "Remove option",
-  emptyForm: "Add a question from the left.",
-  problemTitle: "Give the form a title.",
-  problemNoQuestion: "Add at least one question.",
-  problemLabel: "Every question needs its words.",
-  problemOptions: "A choice needs at least two options.",
-  problemTooBig: "The form is too big to save. Shorten some questions or options.",
-  answerShort: "Short answer",
-  answerLong: "Long answer",
-  answerDate: "Date",
-  answerChoose: "Choose one",
-  limits: "{count} of {max} questions",
-} as const;
-export type BuilderTextKey = keyof typeof en;
+/** The builder's message keys, by the short name its parts use. */
+export const BUILDER_KEYS = {
+  back: "projectRequests.builderBack",
+  unsaved: "projectRequests.builderUnsaved",
+  saved: "projectRequests.builderSaved",
+  save: "projectRequests.formSave",
+  preview: "projectRequests.builderPreview",
+  editing: "projectRequests.inboxFormEdit",
+  share: "projectRequests.builderShare",
+  shareNeedsSave: "projectRequests.builderShareNeedsSave",
+  shareCopied: "projectRequests.formLinkCopied",
+  leaveAsk: "projectRequests.builderLeaveAsk",
+  kinds: "projectRequests.builderKinds",
+  kindsNote: "projectRequests.builderKindsNote",
+  kindShort: "projectRequests.kindShort",
+  kindLong: "projectRequests.kindLong",
+  kindChoice: "projectRequests.builderKindChoice",
+  kindDate: "projectRequests.kindDate",
+  titlePlaceholder: "projectRequests.formTitle",
+  introPlaceholder: "projectRequests.builderIntroPlaceholder",
+  labelPlaceholder: "projectRequests.fieldLabel",
+  required: "projectRequests.fieldRequired",
+  duplicate: "projectRequests.builderDuplicate",
+  remove: "projectRequests.builderRemove",
+  moveUp: "projectRequests.formMoveUp",
+  moveDown: "projectRequests.formMoveDown",
+  options: "projectRequests.fieldOptions",
+  optionPlaceholder: "projectRequests.builderOptionPlaceholder",
+  addOption: "projectRequests.builderAddOption",
+  removeOption: "projectRequests.builderRemoveOption",
+  emptyForm: "projectRequests.builderEmptyForm",
+  problemTitle: "projectRequests.builderProblemTitle",
+  problemNoQuestion: "projectRequests.builderProblemNoQuestion",
+  problemLabel: "projectRequests.builderProblemLabel",
+  problemOptions: "projectRequests.builderProblemOptions",
+  problemTooBig: "projectRequests.builderProblemTooBig",
+  answerShort: "projectRequests.kindShort",
+  answerLong: "projectRequests.kindLong",
+  answerDate: "projectRequests.kindDate",
+  answerChoose: "projectRequests.builderKindChoice",
+  limits: "projectRequests.builderLimits",
+} as const satisfies Record<string, MessageKey>;
 
-const de: Record<BuilderTextKey, string> = {
-  back: "‹ Anfragen",
-  unsaved: "Ungespeicherte Änderungen",
-  saved: "Gespeichert",
-  save: "Formular speichern",
-  preview: "Vorschau",
-  editing: "Bearbeiten",
-  share: "Link teilen",
-  shareNeedsSave: "Speichern Sie das Formular zuerst, um seinen Link zu erhalten.",
-  shareCopied: "Link kopiert",
-  leaveAsk: "Sie haben ungespeicherte Änderungen. Ohne Speichern verlassen?",
-  kinds: "Frage hinzufügen",
-  kindsNote: "Jede Antwort wird hier zu einer Anfrage.",
-  kindShort: "Kurze Antwort",
-  kindLong: "Lange Antwort",
-  kindChoice: "Eine auswählen",
-  kindDate: "Datum",
-  titlePlaceholder: "Titel des Formulars",
-  introPlaceholder: "Erklären Sie, wofür Sie fragen",
-  labelPlaceholder: "Frage",
-  required: "Pflichtfeld",
-  duplicate: "Duplizieren",
-  remove: "Löschen",
-  moveUp: "Nach oben",
-  moveDown: "Nach unten",
-  options: "Auswahl",
-  optionPlaceholder: "Möglichkeit {number}",
-  addOption: "Möglichkeit hinzufügen",
-  removeOption: "Möglichkeit entfernen",
-  emptyForm: "Fügen Sie links eine Frage hinzu.",
-  problemTitle: "Geben Sie dem Formular einen Titel.",
-  problemNoQuestion: "Fügen Sie mindestens eine Frage hinzu.",
-  problemLabel: "Jede Frage braucht ihren Text.",
-  problemOptions: "Eine Auswahl braucht mindestens zwei Möglichkeiten.",
-  problemTooBig: "Das Formular ist zu gross zum Speichern. Kürzen Sie Fragen oder Möglichkeiten.",
-  answerShort: "Kurze Antwort",
-  answerLong: "Lange Antwort",
-  answerDate: "Datum",
-  answerChoose: "Eine auswählen",
-  limits: "{count} von {max} Fragen",
-};
-
-/** The builder's words in one language: `text("save")`, `text("limits", { count, max })`. */
-export function builderText(locale: Locale) {
-  const table: Record<BuilderTextKey, string> = locale === "de" ? de : en;
-  return (key: BuilderTextKey, params: Record<string, string | number> = {}): string => table[key].replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? ""));
-}
+export type BuilderTextKey = keyof typeof BUILDER_KEYS;
 
 /** Which word names each question kind, what its empty answer box says in the preview, and each Save problem. */
 export const KIND_TEXT: Record<FormFieldKind, BuilderTextKey> = { short: "kindShort", long: "kindLong", choice: "kindChoice", date: "kindDate" };
