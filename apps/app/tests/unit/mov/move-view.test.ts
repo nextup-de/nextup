@@ -17,7 +17,7 @@ const raised: CaseEvent = { id: "r0", ts: 0, type: "case.raised", actor: "R. Rai
 const yes: CaseEvent = { id: "y0", ts: 0, type: "case.decided", actor: "T. Vogel", actorUserId: "u_tv", target: "c_a", payload: { answer: "yes", projectId: "p_one", lead: "L. Lead", leadUserId: "u_lead", title: "Shorter changeover" }, day: 0 };
 
 const step = (id: string, text: string): Step => ({
-  id, text, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, external: null,
+  id, text, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null,
 });
 
 const WHO: Record<string, Actor> = {

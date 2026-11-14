@@ -9,7 +9,7 @@ const NOW = Date.parse("2026-10-29T12:00:00Z");
 
 const step = (id: string, key?: string): ReducedProject["steps"][number] => ({
   id, text: id, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0,
-  startedDay: null, doneDay: null, external: key ? { system: "jira", key } : null,
+  startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: key ? { system: "jira", key } : null,
 });
 
 const project = (over: Partial<Pick<ReducedProject, "sync" | "links" | "steps">> = {}): Pick<ReducedProject, "id" | "sync" | "links" | "steps"> =>

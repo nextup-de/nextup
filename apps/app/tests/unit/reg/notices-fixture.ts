@@ -78,7 +78,7 @@ const project = (id: string, over: Partial<ReducedProject> = {}): ReducedProject
 });
 
 const step = (id: string, text: string, owner: string | null) => ({
-  id, text, owner, ownerUserId: null, dueDay: null, column: "todo" as const, why: "", note: "", addedDay: 0, by: "Lead One", byUserId: "u_lead", movedDay: 0, startedDay: null, doneDay: null, external: null,
+  id, text, owner, ownerUserId: null, dueDay: null, column: "todo" as const, why: "", note: "", addedDay: 0, by: "Lead One", byUserId: "u_lead", movedDay: 0, startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null,
 });
 
 const baseline = { none: false as const, metric: "Changeover", unit: "min", value: 42, better: "down" as const, source: "MES", day: 0, by: "Lead One" };

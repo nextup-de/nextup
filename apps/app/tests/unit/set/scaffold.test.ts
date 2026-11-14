@@ -81,7 +81,7 @@ describe("SET scaffold", () => {
 
   it("the new payload fields and types type-check as fixtures", () => {
     const role: StepRole = "sponsor";
-    const step: Step = { id: "s1", text: "Quote", owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, external: null, role };
+    const step: Step = { id: "s1", text: "Quote", owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null, role };
     const goal: NonNullable<ReducedProject["goal"]> = { goal: "Faster changeover", doneWhen: "Under 30 minutes", doneBy: 40, brief: "Why and what." };
     const invite: Invite = { id: "g1", userId: "u_hs", role: "contributor", state: "lapsed", day: 2, reason: "" };
     const payloads: EventPayload[] = [
