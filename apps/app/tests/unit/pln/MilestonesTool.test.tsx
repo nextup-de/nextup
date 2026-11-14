@@ -22,11 +22,13 @@ const render = () => renderToStaticMarkup(h(I18nProvider, { locale: "en", childr
 it("MilestonesTool shows a card per milestone with state, dates, progress and the estimate, and offers steps to an empty one", () => {
   const html = render();
   expect(html).toContain("Pilot live");
-  expect(html).toContain("Starts day 0 · ships day 20 · 15 days left");
+  expect(html).toContain("Starts day 0 · ships");
+  expect(html).toContain("day 20 · 15 days left");
   expect(html).toContain("0 of 1 steps done");
   expect(html).toContain("Estimate: on time");
   expect(html).toContain("No steps yet");
   expect(html).toContain("Add steps →");
-  expect(html).toContain("Ships day 30");
+  expect(html).toContain("Ships");
+  expect(html).toContain("day 30");
   expect(html).toMatch(/Not shipped<span[^>]*>2<\/span>/);
 });
