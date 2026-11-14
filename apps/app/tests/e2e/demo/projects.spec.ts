@@ -388,7 +388,9 @@ test("a step goes straight into Doing, gets an owner and details in its sheet, a
   await card.dragTo(doing.getByRole("article").first(), { targetPosition: { x: 20, y: 4 } });
   await expect(doing.getByRole("article").first()).toContainText(TYPED);
   await projectPage(page, "overview");
-  await expect(page.getByRole("region", { name: "Where it stands" })).toContainText("1 open without an owner");
+  // The Overview tool (HUB-A1) shows the new owner in its activity and in what happens next.
+  await expect(page.getByRole("region", { name: "Latest activity" })).toContainText("changed “" + TYPED + "”: gave it to L. Brandt");
+  await expect(page.getByRole("region", { name: "What happens next" }).getByRole("listitem").filter({ hasText: TYPED })).toContainText("L. Brandt");
 });
 
 test("the project page shows the idea it came from and its connected tools", async ({ page }) => {

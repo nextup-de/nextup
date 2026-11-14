@@ -5,13 +5,19 @@ import type { JiraRow } from "@/features/projects/views";
 import { DEFAULT_PAGES, isJiraTool } from "@/features/projects/pages";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
+import { PageHead } from "@/components/ui/elements/PageHead";
 import { useRights } from "../parts";
+import { headOf } from "../tools/heads";
 import { useProjectHints } from "../draft/useProjectHints";
 import { CreateStepDialog } from "../steps/CreateStepDialog";
 import { BrowserPagesImport } from "./BrowserPagesImport";
 import { ToolSection } from "./ToolSection";
 import { AddToolMenu } from "./AddToolMenu";
 import styles from "./PageView.module.css";
+
+/** The events the Files page listens for: its page header lives above it, so it asks by event. */
+export const FILES_UPLOAD = "nextup:files-upload";
+export const FILES_SOURCE = "nextup:files-source";
 
 export type PageViewProps = { p: ReducedProject; page: ProjectPage; jira: JiraRow; agent: boolean };
 
@@ -27,19 +33,13 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
   const allSynced = page.tools.length > 0 && page.tools.every((tool) => isJiraTool(tool.kind)) && p.sync?.system === "jira" && p.sync.on;
   const onAddAt = (index: number) => { if (editor) setAddAt(index); };
   return <div className={styles.page}>
-    <header className={styles.head}>
-      <div className={styles.heading}>
-        <h2 className={styles.title}>{title}</h2>
-        {page.tools.length > 0 && <p className={styles.summary}>
-          {t("projectPages.toolsCount", { count: page.tools.length })} · {page.tools.map(name).join(", ")}
-          {allSynced && <> · <span className={styles.sync}>⟳ {t("projectPages.allSyncedWithJira")}</span></>}
-        </p>}
-      </div>
-      {editor && <div className={styles.actions}>
-        <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => onAddAt(page.tools.length)}>+ {t("projectPages.addTool")}</button>
-        <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setStepOpen(true)}>+ {t("projectPages.addStep")}</button>
-      </div>}
-    </header>
+    <PageHead {...headOf(page.tools[0]?.kind, { p, jira, t, editor, title, onAddStep: () => setStepOpen(true), onFilesUpload: () => window.dispatchEvent(new CustomEvent(FILES_UPLOAD)), onFilesSource: () => window.dispatchEvent(new CustomEvent(FILES_SOURCE)) })}>
+      {page.tools.length > 0 && <p className={styles.summary}>
+        {t("projectPages.toolsCount", { count: page.tools.length })} · {page.tools.map(name).join(", ")}
+        {allSynced && <> · <span className={styles.sync}>⟳ {t("projectPages.allSyncedWithJira")}</span></>}
+      </p>}
+      {editor && <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => onAddAt(page.tools.length)}>+ {t("projectPages.addTool")}</button>}
+    </PageHead>
     {page.tools.map((tool, index) => <Fragment key={tool.id}>
       <ToolSection p={p} page={page} tool={tool} jira={jira} editor={editor} hints={stepHints} index={index} count={page.tools.length} onAddAt={onAddAt} />
       {editor && <div className={styles.insert}>
