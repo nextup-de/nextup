@@ -23,7 +23,7 @@ const p = {
   sync: { system: "jira", on: true },
 } as unknown as ReducedProject;
 const tool = { id: "t", kind: "timeline", title: null, collapsed: false, content: null, rev: 0 } as ToolInstance;
-const render = (jira = { state: "off" } as JiraRow, locale: "en" | "de" = "en") => renderToStaticMarkup(h(I18nProvider, { locale, children: h(TimelineTool, { p, tool, page: { id: "pg", title: "P", icon: "calendar", tools: [tool] }, jira, editor: mocks.editor, hints: [] }) }));
+const render = (jira = { state: "off" } as JiraRow, locale: "en" | "de" = "en") => renderToStaticMarkup(h(I18nProvider, { locale, children: h(TimelineTool, { p, tool, page: { id: "pg", title: "P", icon: "calendar", tools: [{ ...tool, id: "first" }, tool] }, jira, editor: mocks.editor, hints: [] }) }));
 
 beforeEach(() => { mocks.editor = true; });
 
