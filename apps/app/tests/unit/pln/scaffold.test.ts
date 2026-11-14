@@ -5,7 +5,7 @@ import { mayAppend } from "@/features/cases/permissions";
 import { projectActs } from "@/components/dashboard/demo/project-acts";
 import type { ActDeps } from "@/components/dashboard/demo/act-deps";
 import { projectPlan } from "@/i18n/messages/projectPlan";
-import { ev, logOf, project, SEATS, SEED, startedLog, step } from "../res/project-fixture";
+import { ev, logOf, project, SEATS, SEED, startedLog } from "../res/project-fixture";
 import { reduce } from "@/features/cases/reducer";
 
 const log = (extra: CaseEvent[]) => startedLog().concat(extra);
