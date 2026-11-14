@@ -1,8 +1,7 @@
 "use client";
-import { TeamPanel } from "../ProjectTeam";
 import type { ToolProps } from "./types";
-import styles from "../Projects.module.css";
+import { Team } from "../hub/team/Team";
 
 export function TeamTool({ p }: ToolProps) {
-  return <div className={styles.tabNarrow}><div className={styles.tabRail}><TeamPanel p={p} /></div></div>;
+  return <Team p={p} />;
 }
