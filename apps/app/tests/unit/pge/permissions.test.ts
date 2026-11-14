@@ -174,7 +174,7 @@ it("PGE page rights: restore uses the 30-day company calendar and checks single 
 
 it("PGE page rights: kicksJira keeps page and tool changes local while case decisions and project work sync", () => {
   const condition = (type: string) => kicksJira(type) || type === "case.decided";
-  for (const type of ["project.page.added", "project.tool.edited", "project.milestone.added", "project.form.added", "case.commented"]) expect(condition(type)).toBe(false);
-  for (const type of ["project.step.added", "project.request.stepped", "project.sync", "case.decided"]) expect(condition(type)).toBe(true);
+  for (const type of ["project.page.added", "project.tool.edited", "project.form.added", "case.commented"]) expect(condition(type)).toBe(false);
+  for (const type of ["project.step.added", "project.request.stepped", "project.sync", "project.milestone.added", "case.decided"]) expect(condition(type)).toBe(true);
   expect(DEFAULT_PAGES).toHaveLength(9);
 });

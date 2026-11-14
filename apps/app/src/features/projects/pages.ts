@@ -6,7 +6,7 @@ export const SINGLE_KINDS: readonly ToolKind[] = ["overview", "agent"];
 export const PAGE_ICON_KEYS = ["home", "board", "list", "calendar", "timeline", "flag", "target", "folder", "link", "inbox", "people", "pulse", "doc", "checklist", "table", "star", "chat", "box"] as const satisfies readonly PageIconKey[];
 export const EVENT_BUDGET = 12_000;
 export const fitsEvent = (payload: unknown): boolean => JSON.stringify(payload).length <= EVENT_BUDGET;
-export const NOT_SYNCED_PREFIXES = ["project.page.", "project.tool.", "project.milestone.", "project.form.", "project.step.checklist", "project.step.commented"] as const;
+export const NOT_SYNCED_PREFIXES = ["project.page.", "project.tool.", "project.form.", "project.step.checklist", "project.step.commented"] as const;
 export const kicksJira = (type: string): boolean => type.startsWith("project.") && !NOT_SYNCED_PREFIXES.some((prefix) => type.startsWith(prefix));
 
 export const TOOL_GROUPS = [

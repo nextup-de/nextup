@@ -53,7 +53,7 @@ it("PGE pages model: measures serialized event length and keeps page changes out
   expect(fitsEvent({ content: "x".repeat(12_001 - overhead) })).toBe(false);
   expect(kicksJira("project.tool.edited")).toBe(false);
   expect(kicksJira("project.page.merged")).toBe(false);
-  expect(kicksJira("project.milestone.added")).toBe(false);
+  expect(kicksJira("project.milestone.added")).toBe(true);
   expect(kicksJira("project.form.added")).toBe(false);
   expect(kicksJira("project.step.moved")).toBe(true);
   expect(kicksJira("project.request.stepped")).toBe(true);

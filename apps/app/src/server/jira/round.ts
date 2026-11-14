@@ -5,13 +5,15 @@
 // lets tests/unit/jira-sync.test.ts run whole rounds against the fake Jira with an in-memory log.
 // Not a "use server" module.
 import type { EventPayload } from "@/features/cases/events";
-import { maySystemAppend, parseInbound } from "@/features/integrations";
+import type { CalendarSpec } from "@/features/clock";
+import { isSystemActor, maySystemAppend, parseInbound, syncIdemKey } from "@/features/integrations";
 import { epicKeyOf, jiraIndex, summaryOf, syncMode } from "@/features/integrations/jira/map";
 import { planPush, type SeqEvent } from "@/features/integrations/jira/plan";
 import { planPull, type PullEvent } from "@/features/integrations/jira/pull";
+import { markerOf, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
 import { jiraIssueUrl, REMOVED_LABEL } from "@/features/integrations/jira/settings";
 import { pickTransition, sameState } from "@/features/integrations/jira/status";
-import { JiraError, type Job, type JiraAccount, type JiraApi, type JiraIssue, type JiraSettings } from "@/features/integrations/jira/types";
+import { JiraError, type Job, type JiraAccount, type JiraApi, type JiraIssue, type JiraSettings, type JiraVersion } from "@/features/integrations/jira/types";
 import type { StepColumn, ReducedProject } from "@/features/projects/types";
 
 /** What a round needs from the company's log. server/jira-sync.ts backs it with the database. */
@@ -35,6 +37,8 @@ export type RoundInput = {
   /** Read every linked issue, not only the recent changes (hourly, and the first round). */
   reconcile: boolean;
   now: Date;
+  /** The company's working-day calendar: milestone days become Jira version dates through it (plan JSY D21). */
+  calendar: CalendarSpec;
 };
 
 export type RoundResult = {
@@ -58,6 +62,7 @@ class Refused extends Error {}
 /** 401 and anything that says Jira is not answering end the round; the rest is about one issue. */
 const endsRound = (e: unknown): boolean => e instanceof JiraError && (e.status === 401 || e.status === 429 || e.status === 0 || e.status >= 500);
 
+const versionUrl = (s: Pick<JiraSettings, "siteUrl" | "projectKey">, id: string) => `${s.siteUrl.replace(/\/+$/, "")}/projects/${s.projectKey}/versions/${id}`;
 const quote = (s: string) => `"${s.replace(/["\\]/g, "")}"`;
 const chunks = <T>(list: readonly T[], n: number): T[][] => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n));
 
@@ -69,7 +74,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
 
   /** Check what the sync wants to append against the same allow-list as an outside connector, then append it. */
   async function append(ev: { type: string; target: string; payload: EventPayload; idemKey: string }, state: { projects: ReducedProject[] }): Promise<boolean> {
-    const parsed = parseInbound({ type: ev.type, target: ev.target, payload: ev.payload }, ev.idemKey);
+    // The round is the sync: it may append what only the sync may (milestone links), and nothing a connector could not otherwise.
+    const parsed = parseInbound({ type: ev.type, target: ev.target, payload: ev.payload }, ev.idemKey, { via: "sync" });
     if (!parsed.ok) throw new Refused(parsed.error);
     const verdict = maySystemAppend(parsed.event, state);
     if (!verdict.ok) throw new Refused(verdict.error);
@@ -173,10 +179,116 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       }
     }
   }
+  // ---- versions (plan JSY): milestones <-> Jira versions, and a step's fix versions -----------------------
+  const enabledAtMs = input.enabledAt ? input.enabledAt.getTime() : null;
+  const windowEvents = first ? [] : events;
+  const syncing = state0.projects.filter((p) => syncMode(p, settings, enabledAtMs) !== "off");
+  const personTouch = (e: SeqEvent) =>
+    syncing.some((p) => p.id === e.target) && !isSystemActor(e.actor) && (e.type.startsWith("project.milestone.") || (e.type === "project.step.edited" && e.payload.milestoneId !== undefined));
+  // Every round reads the versions of a syncing project that has milestones, even when no issue changed: Jira renames and releases
+  // do not touch the issues (D22). Nothing at all for a company or a project that does not sync.
+  const wantVersions = syncing.some((p) => p.milestones.length > 0 || (p.milestoneTombstones?.length ?? 0) > 0) || windowEvents.some(personTouch);
+  let versionsWrote = false;
+  if (wantVersions) {
+    const earliest = (list: readonly SeqEvent[]) => (list.length ? Math.min(...list.map((e) => e.seq)) : Infinity);
+    let versions: JiraVersion[] | null = null;
+    try {
+      versions = await api.versions(settings.projectKey);
+    } catch (e) {
+      if (endsRound(e)) throw e;
+      warnings.push(`versions: ${e instanceof Error ? e.message : String(e)}`);
+      holdAt = Math.min(holdAt, earliest(windowEvents.filter(personTouch)));
+    }
+    if (versions) {
+      let administer = false;
+      try {
+        administer = (await api.permissions(settings.projectKey)).administer;
+      } catch (e) {
+        if (endsRound(e)) throw e;
+        warnings.push(`versions: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      const opts = { enabledAt: input.enabledAt, clock: { mode: "workdays", calendar: input.calendar } as const, administer };
+      let plan = planVersionPush(state0, versions, windowEvents, settings, opts);
+      let stateV = state0;
+      let current = versions;
+      const link = (job: Extract<VersionJob, { kind: "create" | "adopt" }>, id: string) =>
+        append({
+          type: "project.milestone.edited", target: job.projectId,
+          payload: { milestoneId: job.milestoneId, external: { system: "jira", key: id, url: versionUrl(settings, id), mode: "owned" } },
+          idemKey: syncIdemKey("milestone.link", [job.projectId, job.milestoneId]),
+        }, stateV);
+      // Creates and adoptions first. A create that got through but whose link was not appended (a crash, a refused append) is found
+      // again next round by its marker and adopted: never created twice.
+      for (const job of plan.jobs) {
+        if (job.kind !== "create" && job.kind !== "adopt") continue;
+        try {
+          if (job.kind === "create") {
+            const made = await api.createVersion({ projectKey: settings.projectKey, name: job.name, description: job.description, startDate: job.startDate, releaseDate: job.releaseDate, released: job.released });
+            wrote++;
+            versionsWrote = true;
+            await link(job, made.id);
+          } else {
+            await link(job, job.version.id);
+            versionsWrote = true;
+          }
+        } catch (e) {
+          if (endsRound(e)) throw e;
+          warnings.push(`${job.kind} ${job.milestoneId}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      // Fix versions, edits and archives work on what is there now: the linked state and a fresh version list.
+      if (versionsWrote) {
+        stateV = await store.state();
+        current = await api.versions(settings.projectKey);
+        plan = planVersionPush(stateV, current, windowEvents, settings, opts);
+      }
+      for (const w of plan.warnings) if (!warnings.includes(w)) warnings.push(w);
+      if (plan.deferredSeq !== null) holdAt = Math.min(holdAt, plan.deferredSeq);
+
+      const owns = (job: Extract<VersionJob, { kind: "update" | "archive" }>): JiraVersion | null => {
+        const v = current.find((x) => x.id === job.versionId);
+        const mk = v ? markerOf(v.description) : null;
+        // eslint-disable-next-line -- Jira-side warning for the admin, developer error (D9)
+        if (!v || !mk || mk.projectId !== job.projectId || mk.milestoneId !== job.milestoneId) throw new Refused(`Jira version ${job.versionId} is not marked for ${job.milestoneId} any more; nothing is written.`);
+        return v;
+      };
+      for (const job of plan.jobs) {
+        if (job.kind === "create" || job.kind === "adopt") continue;
+        try {
+          if (job.kind === "update") {
+            owns(job);
+            await api.updateVersion(job.versionId, job.patch);
+            wrote++;
+            versionsWrote = true;
+          } else if (job.kind === "archive") {
+            if (owns(job)?.archived) continue;
+            await api.updateVersion(job.versionId, { archived: true });
+            wrote++;
+            versionsWrote = true;
+          } else {
+            const issue = await api.issue(job.issueKey);
+            if (!issue) continue;
+            const have = (issue.fields.fixVersions ?? []).map((v) => v.id);
+            // The issue's other (foreign) versions stay; only this project's mapped ones are swapped for the milestone's.
+            const next = have.filter((id) => !job.mappedVersionIds.includes(id));
+            if (job.versionId !== null && !next.includes(job.versionId)) next.push(job.versionId);
+            if (next.length === have.length && next.every((id) => have.includes(id))) continue;
+            await api.setFixVersions(job.issueKey, next);
+            wrote++;
+          }
+        } catch (e) {
+          if (endsRound(e)) throw e;
+          warnings.push(`${job.kind} ${"stepId" in job ? job.stepId : job.milestoneId}: ${e instanceof Error ? e.message : String(e)}`);
+          // Lost ownership is final; anything else (no permission yet, a field Jira refused today) is retried from the cursor.
+          if (!(e instanceof Refused)) holdAt = Math.min(holdAt, job.seq);
+        }
+      }
+    }
+  }
   const pushedSeq = Math.max(input.pushedSeq, Number.isFinite(holdAt) ? holdAt - 1 : batchMax);
 
   // ---- pull ---------------------------------------------------------------------------------------
-  const state1 = jobs.length ? await store.state() : state0;
+  const state1 = jobs.length || versionsWrote ? await store.state() : state0;
   const enabledAt = input.enabledAt ? input.enabledAt.getTime() : null;
   const linked = [...jiraIndex(state1)].filter(([, ref]) => {
     const p = state1.projects.find((x) => x.id === ref.projectId);
