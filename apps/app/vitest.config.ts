@@ -9,6 +9,6 @@ export default defineConfig({
   // 30 s: on a PC with five lanes a test that loads ESLint or scans src can pass 5 s without being wrong.
   // tests/load needs Postgres and a build and has its own config (vitest.load.config.ts); only k6.test.ts, which needs
   // neither, runs here, and so does the test of the two configs.
-  test: { include: ["tests/unit/**/*.test.ts", "tests/load/k6.test.ts", "vitest.load.config.test.ts"], env: { TZ: "Europe/Berlin" }, testTimeout: 30_000 },
+  test: { include: ["tests/unit/**/*.test.ts", "src/**/*.test.ts", "tests/load/k6.test.ts", "vitest.load.config.test.ts"], env: { TZ: "Europe/Berlin" }, testTimeout: 30_000 },
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
 });

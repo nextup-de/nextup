@@ -1,6 +1,7 @@
 // The project area's events (plan REG, decision D8): every project.* type, the app list of them, and the payload
 // fields only project events carry. MOV and RES write here; the composer (../events.ts) is closed. A field that more
 // than one file uses (stepId, dueDay, userId, check, source, system, ...) lives in CorePayload in ../events.ts.
+import type { PageIconKey, ToolKind } from "@/features/projects/types";
 import type { MeasureImpact } from "@/features/projects/measure-source";
 
 /** The project.* types the app may append, in the order of APP_EVENT_TYPES. */
@@ -13,6 +14,18 @@ export const PROJECT_EVENT_TYPES = [
   "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated",
   "project.lead.changed",
   "project.measure.questioned", "project.baseline.confirmed", "project.help.asked",
+  "project.page.added", // { pageId, title, icon, tools: [{ toolId, kind, title?, content? }], before? }
+  "project.page.edited", // { pageId, title?, icon? }
+  "project.page.moved", // { pageId, before }  null places it at the end
+  "project.page.removed", // { pageId }  keeps the page and its tools for restoration
+  "project.page.restored", // { pageId }
+  "project.tool.added", // { pageId, toolId, kind, before? }
+  "project.tool.moved", // { toolId, toPageId, before? }
+  "project.tool.edited", // { toolId, title?, collapsed?, content?, baseRev? }  content requires baseRev
+  "project.tool.removed", // { toolId }
+  "project.tool.restored", // { toolId }
+  "project.page.merged", // { mergeId, fromPageId, intoPageId }  moves every tool in order
+  "project.page.unmerged", // { mergeId }
 ] as const;
 
 /** Every project.* type, with the fields it carries. */
@@ -52,7 +65,20 @@ export type ProjectAreaEventType =
   // A result that closes properly (plan RES, D13 to D19).
   | "project.measure.questioned" // { check, why, measureEventId? }  a person who may confirm sends a typed result back (D14); measureEventId names the revision questioned
   | "project.baseline.confirmed" // { baselineEventId? }  a second person confirms the current baseline number (D16); baselineEventId names the revision confirmed
-  | "project.help.asked"; // { stepId, text }  the lead or a member asks the sponsor for help on a step (D19)
+  | "project.help.asked" // { stepId, text }  the lead or a member asks the sponsor for help on a step (D19)
+  // Pages built from tools (plan PGE, D9).
+  | "project.page.added" // { pageId, title, icon, tools: [{ toolId, kind, title?, content? }], before? }
+  | "project.page.edited" // { pageId, title?, icon? }
+  | "project.page.moved" // { pageId, before }  null places it at the end
+  | "project.page.removed" // { pageId }  keeps the page and its tools for restoration
+  | "project.page.restored" // { pageId }
+  | "project.tool.added" // { pageId, toolId, kind, before? }
+  | "project.tool.moved" // { toolId, toPageId, before? }
+  | "project.tool.edited" // { toolId, title?, collapsed?, content?, baseRev? }  content requires baseRev
+  | "project.tool.removed" // { toolId }
+  | "project.tool.restored" // { toolId }
+  | "project.page.merged" // { mergeId, fromPageId, intoPageId }  moves every tool in order
+  | "project.page.unmerged"; // { mergeId }
 
 // Compile-time: every app type is a member of the area's union.
 const _appTypesAreMembers: readonly ProjectAreaEventType[] = PROJECT_EVENT_TYPES;
@@ -86,4 +112,10 @@ export type ProjectAreaPayload = {
   // confirms its replacement B. A missing field (every event stored before RES) names the revision that stood when it was written.
   measureEventId?: string; // project.measure.confirmed, project.measure.questioned, project.measured (a re-entry)
   baselineEventId?: string; // project.baseline.confirmed
+  // Pages built from tools (plan PGE). title, kind and before are shared core fields.
+  pageId?: string; toolId?: string; toPageId?: string;
+  icon?: PageIconKey;
+  tools?: { toolId: string; kind: ToolKind; title?: string; content?: string }[];
+  collapsed?: boolean; content?: string; baseRev?: number;
+  mergeId?: string; fromPageId?: string; intoPageId?: string;
 };
