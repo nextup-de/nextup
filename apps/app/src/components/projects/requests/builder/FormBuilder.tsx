@@ -62,7 +62,7 @@ function BuilderView({ p, id, form }: { p: ReducedProject; id: string; form: Red
   const share = async () => {
     if (!canShare(state) || !save(true)) return;
     try {
-      await navigator.clipboard.writeText(window.location.origin + formLink(href(""), p.id, id));
+      await navigator.clipboard.writeText(window.location.origin + formLink(href(""), id));
       showToast(text("shareCopied"));
     } catch { /* the browser refused the clipboard */ }
   };
