@@ -2,12 +2,12 @@
 // opens with the case.decided yes that names it, and changes only through project.* events.
 // Pure like the case reducer: state in, state out, nothing stored.
 import type { SeatRow } from "@/features/auth/identity";
-import type { CaseEvent, CaseEventType } from "@/features/cases/events";
+import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import { templateSteps } from "@/features/templates/library";
-import type { CheckDue, Invite, InviteRole, ProjectPage, ReducedProject, SeedProject, Step, StepColumn, ToolInstance } from "./types";
+import type { CheckDue, Invite, InviteRole, ProjectPage, ReducedProject, Request, SeedProject, Step, StepColumn, ToolInstance } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
 import { DEFAULT_PAGES, LIMITS, mergePlan, TOOL_KINDS } from "./pages";
@@ -63,7 +63,7 @@ function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | 
     draft: false, leadState: "taken", leadAskedDay: null, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
     goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: null,
     doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null,
-    rewardDueDay: null, helpAsks: [], pages: null, milestones: [], removed: [], merges: {},
+    rewardDueDay: null, helpAsks: [], pages: null, milestones: [], forms: [], requests: [], removed: [], merges: {},
   };
   book.byId[id] = project;
   book.order.push(id);
@@ -260,6 +260,35 @@ function applyPageEvent(p: ReducedProject, ev: CaseEvent): void {
 /** Frees the open steps of a user who left the team or the company: they have no owner now (MOV D22). Done steps keep theirs. */
 function freeSteps(p: ReducedProject, userId: string): void {
   p.steps.forEach((x) => { if (x.column !== "done" && x.ownerUserId === userId) { x.owner = null; x.ownerUserId = null; } });
+}
+
+/** The step a project.step.added (or a stepped request) puts on the board: any column but Blocked, which needs its reason, so it is a move. */
+function newStep(ev: CaseEvent, d: number, a: { stepId: string; text: string; owner?: string; ownerUserId?: string | null; dueDay?: number | null; note?: string; to?: unknown; external?: EventPayload["external"] }): Step {
+  const column: StepColumn = isColumn(a.to) && a.to !== "blocked" ? a.to : "todo";
+  return {
+    checklist: [], comments: [], waitingOn: null,
+    id: a.stepId, text: a.text, owner: a.owner?.trim() || null, ownerUserId: a.ownerUserId ?? null, dueDay: typeof a.dueDay === "number" ? a.dueDay : null,
+    column, why: "", note: a.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
+    startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
+    external: a.external?.system && a.external.key ? { system: a.external.system, key: a.external.key, url: a.external.url } : null, dropped: null,
+  };
+}
+
+/** The events that touch a step after it was made: a move, an edit, a comment, a checklist change, a link, a call for help. */
+const STEP_TOUCH: ReadonlySet<CaseEventType> = new Set<CaseEventType>(["project.step.moved", "project.step.edited", "project.step.commented", "project.step.checklist", "project.linked", "project.help.asked"]);
+
+/**
+ * The step a stepped request made, while nobody has touched it since (REQ D4): still in the column it started in, never edited, moved,
+ * commented or linked, and without a Jira key. Null when the request has no step or the step is no longer untouched.
+ */
+export function untouchedStepOf(p: ReducedProject, request: Request): Step | null {
+  const step = request.stepId === null ? undefined : p.steps.find((x) => x.id === request.stepId);
+  if (!step || step.external !== null || step.dropped || step.comments.length > 0 || step.checklist.length > 0) return null;
+  const at = p.history.findLastIndex((e) => e.type === "project.request.stepped" && e.payload.requestId === request.id);
+  if (at < 0) return null;
+  const made = p.history[at].payload.step;
+  if (typeof made !== "object" || made.column !== step.column) return null;
+  return p.history.slice(at + 1).some((e) => STEP_TOUCH.has(e.type) && e.payload.stepId === step.id) ? null : step;
 }
 
 /** The events that count as the project moving (MOV D12): the quiet and stalled clocks start over after each of them. */
@@ -484,14 +513,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const text = pl.text?.trim();
       if (!stepId || !text || p.steps.some((s) => s.id === stepId)) break;
       // A card can start in any column but Blocked (that one needs its reason, so it is a move).
-      const column: StepColumn = isColumn(pl.to) && pl.to !== "blocked" ? pl.to : "todo";
-      p.steps.push({
-        checklist: [], comments: [], waitingOn: null,
-        id: stepId, text, owner: pl.owner?.trim() || null, ownerUserId: pl.ownerUserId ?? null, dueDay: typeof pl.dueDay === "number" ? pl.dueDay : null,
-        column, why: "", note: pl.note?.trim() ?? "", addedDay: d, by: ev.actor, byUserId: ev.actorUserId ?? null, movedDay: d,
-        startedDay: column === "todo" ? null : d, doneDay: column === "done" ? d : null,
-        external: pl.external?.system && pl.external.key ? { system: pl.external.system, key: pl.external.key, url: pl.external.url } : null, dropped: null,
-      });
+      p.steps.push(newStep(ev, d, { stepId, text, owner: pl.owner, ownerUserId: pl.ownerUserId, dueDay: pl.dueDay, note: pl.note, to: pl.to, external: pl.external }));
       break;
     }
     case "project.step.moved": {
@@ -581,6 +603,55 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (typeof pl.dueDay === "number") m.dueDay = pl.dueDay;
       if (pl.note !== undefined) m.note = pl.note.trim();
       if (typeof pl.shipped === "boolean" && pl.shipped !== m.shipped) { m.shipped = pl.shipped; m.shippedDay = pl.shipped ? d : null; }
+      break;
+    }
+    case "project.form.saved": {
+      const title = pl.title?.trim();
+      if (!pl.formId || !title || !Array.isArray(pl.fields) || pl.fields.length === 0) break;
+      const fields = pl.fields.map((x) => ({ id: x.id, kind: x.kind, label: x.label.trim(), required: x.required === true, ...(x.kind === "choice" && x.options ? { options: x.options.map((o) => o.trim()) } : {}) }));
+      const form = p.forms.find((x) => x.id === pl.formId);
+      const rev = (form?.rev ?? 0) + 1;
+      const next = { id: pl.formId, title, intro: pl.intro?.trim() ?? "", fields, shared: pl.shared === true, rev, revisions: [...(form?.revisions ?? []), { rev, fields }] };
+      if (form) Object.assign(form, next); else p.forms.push(next);
+      break;
+    }
+    case "project.form.answered": {
+      const form = p.forms.find((x) => x.id === pl.formId);
+      if (!form || !form.shared || !live || pl.formRev !== form.rev || !pl.requestId || p.requests.some((x) => x.id === pl.requestId)) break;
+      const answers: Record<string, string> = {};
+      for (const f of form.fields) { const v = pl.answers?.[f.id]; if (typeof v === "string" && v.trim()) answers[f.id] = v.trim(); }
+      p.requests.push({ id: pl.requestId, formId: form.id, formRev: form.rev, answers, byUserId: ev.actorUserId ?? null, day: d, state: "new", stepId: null, why: null });
+      break;
+    }
+    case "project.request.stepped": {
+      const r = p.requests.find((x) => x.id === pl.requestId);
+      const a = typeof pl.step === "object" ? pl.step : undefined;
+      const text = a?.text.trim();
+      if (!r || r.state !== "new" || !a || !text || p.steps.some((s) => s.id === a.stepId)) break;
+      p.steps.push(newStep(ev, d, { stepId: a.stepId, text, ownerUserId: a.ownerUserId, dueDay: a.dueDay, note: a.note, to: a.column }));
+      r.state = "stepped";
+      r.stepId = a.stepId;
+      break;
+    }
+    case "project.request.declined": {
+      const r = p.requests.find((x) => x.id === pl.requestId);
+      const why = pl.why?.trim();
+      if (!r || r.state !== "new" || !why) break;
+      r.state = "declined";
+      r.why = why;
+      break;
+    }
+    case "project.request.reopened": {
+      const r = p.requests.find((x) => x.id === pl.requestId);
+      if (!r || r.state === "new") break;
+      if (r.state === "stepped") {
+        const step = untouchedStepOf(p, r);
+        if (!step) break;
+        p.steps = p.steps.filter((x) => x !== step);
+      }
+      r.state = "new";
+      r.why = null;
+      r.stepId = null;
       break;
     }
     case "project.linked": {
