@@ -1,0 +1,129 @@
+{
+ "value": [
+  {
+   "id": "01ABC4",
+   "name": "Kickoff.pptx",
+   "size": 3100200,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Kickoff.pptx",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-05T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  },
+  {
+   "id": "01ABC5",
+   "name": "Line 3 photo.png",
+   "size": 440120,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Line%203%20photo.png",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-06T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  },
+  {
+   "id": "01ABC6",
+   "name": "Notes.txt",
+   "size": 812,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Notes.txt",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-07T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  },
+  {
+   "id": "01ABC7",
+   "name": "Archive.zip",
+   "size": 9100100,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Archive.zip",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-08T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  },
+  {
+   "id": "01ABC8",
+   "name": "Delivery reports Q3",
+   "size": 0,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Delivery%20reports%20Q3",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-09T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "folder": {
+    "childCount": 4
+   }
+  }
+ ]
+}
