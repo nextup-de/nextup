@@ -1,4 +1,3 @@
-/* eslint-disable nextup/no-inline-strings -- test titles are not user-facing */
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
@@ -7,12 +6,12 @@ import type { JiraRow } from "@/features/projects/views";
 import type { ReducedProject } from "@/features/projects/types";
 import { createT } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
-import { AddToolMenu } from "./AddToolMenu";
+import { AddToolMenu } from "@/components/projects/page/AddToolMenu";
 
 const t = createT("en");
 const rights = vi.hoisted(() => ({ editor: true }));
-vi.mock("./usePageActs", () => ({ usePageActs: () => ({}) }));
-vi.mock("../parts", () => ({ useRights: () => ({ addStep: rights.editor }) }));
+vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({}) }));
+vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ addStep: rights.editor }) }));
 
 const p = { pages: null } as unknown as ReducedProject;
 const page = DEFAULT_PAGES[1];
