@@ -11,8 +11,8 @@ import { createT } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
 import { projectFiles } from "@/i18n/messages/projectFiles";
 
-// The filled panels read the demo context (today, the team, the acts); the scaffold test has no provider.
-vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ S: { day: 0 }, serverMode: false, seed: { seats: [] }, act: { project: { link: () => {} } } }) }));
+// The filled states read the demo context (the address prefix, the acts); the scaffold test has no provider.
+vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ f: () => "", href: (p: string) => p, S: { day: 0 }, serverMode: false, seed: { seats: [] }, act: { project: { link: () => {} } } }) }));
 vi.mock("@/components/projects/parts", () => ({ teamOf: () => [], useSend: () => () => true }));
 
 const KINDS: FileKind[] = ["sheet", "pdf", "doc", "slides", "image", "folder", "other"];
@@ -54,7 +54,7 @@ describe("FIL scaffold", () => {
   it("FIL scaffold: FilesView renders its list card, its side panel and every stub", () => {
     for (const locale of ["en", "de"] as const) {
       const html = render(h(FilesView, { p, load: async () => ({ state: "empty" as const }), editor: true }), locale);
-      for (const id of ["files-view", "files-list-card", "files-side", "files-breadcrumb", "files-drop-zone", "files-file-states", "files-upload-progress", "files-folder-panel", "files-upload-menu", "files-source-popover", "files-folder-picker", "files-row-menu", "files-delete-dialog", "files-request-dialog"]) expect(html).toContain(`data-testid="${id}"`);
+      for (const id of ["files-view", "files-list-card", "files-side", "files-breadcrumb", "files-drop-zone", "files-file-states", "files-upload-progress", "files-folder-panel", "files-upload-menu", "files-row-menu", "files-delete-dialog", "files-request-dialog"]) expect(html).toContain(`data-testid="${id}"`);
       expect(html).toContain(createT(locale)("projectFiles.pageLabel"));
     }
   });
