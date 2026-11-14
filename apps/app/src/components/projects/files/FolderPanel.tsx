@@ -1,6 +1,9 @@
 "use client";
+import { useEffect, useState } from "react";
 import { PersonFace } from "@/components/ui/elements";
 import type { FileRow } from "@/features/files/items";
+import { listDemoFolder } from "@/features/demo/files-demo";
+import { projectFolderAction } from "@/server/actions/project-files";
 import { linkedSteps } from "@/features/files/view";
 import { useLocale, useT } from "@/i18n/client";
 import { teamOf } from "../parts";
@@ -30,27 +33,50 @@ export const whoWhen = (who: string, iso: string, locale: string): string => [wh
 
 const INSIDE = 3;
 
+/** The Inside strip: up to three files as thumbnails, and '+N' for the rest, which opens the folder. */
+export function InsideStrip({ rows, more, onSelect, onMore }: { rows: FileRow[]; more: number; onSelect: (row: FileRow) => void; onMore: () => void }) {
+  const t = useT();
+  return <div className={styles.inside}>
+    <span className={styles.insideHead}>{t("projectFiles.inside")}</span>
+    <div className={styles.thumbs}>
+      {rows.map((row) => <button key={row.id} type="button" className={styles.thumb} aria-label={row.name} title={row.name} onClick={() => onSelect(row)}><FileIcon kind={row.kind} size={28} /></button>)}
+      {more > 0 && <button type="button" className={styles.thumb} data-more="true" aria-label={t("projectFiles.openFolder")} onClick={onMore}>{t("projectFiles.moreInside", { count: more })}</button>}
+    </div>
+  </div>;
+}
+
 /** The folder panel (frame A and the folder option of 'Files · 2 explorations'): the selected folder, or the open one when nothing is selected. */
 export function FolderPanel({ state, actions }: FilesPartProps) {
   const t = useT();
   const locale = useLocale();
-  const { seed } = useDemo();
+  const { seed, serverMode } = useDemo();
   const { p, folder, selected, loaded, path, editor } = state;
   const folderRow: FileRow | null = selected?.isFolder ? selected : null;
   const here = folderRow === null;
+  // A selected folder's own files, for the Inside strip: read from the same place the page reads, keyed by the folder they belong to.
+  const below = folderRow ? [...path, folderRow.name].join("/") : null;
+  const [got, setGot] = useState<{ key: string; rows: FileRow[] } | null>(null);
+  useEffect(() => {
+    if (below === null) return;
+    let stale = false;
+    const answer = serverMode ? projectFolderAction(p.id, below) : Promise.resolve(listDemoFolder(below));
+    void answer.then((a) => { if (!stale) setGot({ key: below, rows: a.state === "ok" ? a.rows : [] }); }).catch(() => { if (!stale) setGot({ key: below, rows: [] }); });
+    return () => { stale = true; };
+  }, [below, serverMode, p.id]);
   // What the panel describes: the selected folder's row, or the open folder's rows as loaded.
-  const inside = here ? loaded : [];
+  const inside = here ? loaded : got && got.key === below ? got.rows : [];
   const total = inside.reduce((n, row) => n + row.size, 0);
-  const name = folderRow?.name ?? (path[path.length - 1] ?? folder?.title ?? t("projectFiles.sourceTitle"));
+  const name = folderRow?.name ?? (path[path.length - 1] ?? (folder?.key || t("projectFiles.sourceTitle")));
   const webUrl = folderRow?.webUrl ?? folder?.url ?? "";
   const files = here ? loaded.filter((row) => !row.isFolder).length : folderRow.childCount;
   const sizeLine = here ? sizeText(total, locale) : sizeText(folderRow.size, locale);
-  const sub = here ? t("projectFiles.folderThis", { count: loaded.length, size: sizeLine }) : `${t("projectFiles.folderFiles", { count: files })} · ${sizeLine}`;
+  const sub = here ? t("projectFiles.folderFooter", { count: loaded.length, size: sizeLine }) : t("projectFiles.folderMeta", { count: files, size: sizeLine });
   const steps = here
     ? [...new Map(loaded.flatMap((row) => linkedSteps(row, p)).map((s) => [s.stepId, s])).values()]
     : linkedSteps(folderRow, p);
-  const peek = (here ? loaded.filter((row) => !row.isFolder) : []).slice(0, INSIDE);
-  const rest = (here ? loaded.length : 0) - peek.length;
+  const insideFiles = inside.filter((row) => !row.isFolder);
+  const peek = insideFiles.slice(0, INSIDE);
+  const rest = (here ? loaded.length : Math.max(folderRow.childCount, inside.length)) - peek.length;
   const team = teamOf(p, seed.seats);
   const changed = folderRow ? whoWhen(folderRow.modifiedBy, folderRow.modifiedAt, locale) : whoWhen(loaded[0]?.modifiedBy ?? "", loaded[0]?.modifiedAt ?? "", locale);
   const created = folderRow ? whoWhen(folderRow.createdBy, folderRow.createdAt, locale) : "";
@@ -73,13 +99,7 @@ export function FolderPanel({ state, actions }: FilesPartProps) {
       {webUrl && <a className={styles.secondary} href={webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.inSharePoint")} ↗</a>}
       {webUrl && <button type="button" className={styles.secondary} data-icon="true" aria-label={t("projectFiles.copyLink")} title={t("projectFiles.copyLink")} onClick={() => void copy()}>⧉</button>}
     </div>
-    {peek.length > 0 && <div className={styles.inside}>
-      <span className={styles.insideHead}>{t("projectFiles.inside")}</span>
-      <div className={styles.thumbs}>
-        {peek.map((row) => <button key={row.id} type="button" className={styles.thumb} aria-label={row.name} title={row.name} onClick={() => actions.select(row)}><FileIcon kind={row.kind} size={28} /></button>)}
-        {rest > 0 && <button type="button" className={styles.thumb} data-more="true" aria-label={t("projectFiles.openFolder")} onClick={() => (folderRow ? actions.open(folderRow) : actions.select(null))}>{t("projectFiles.moreInside", { count: rest })}</button>}
-      </div>
-    </div>}
+    {peek.length > 0 && <InsideStrip rows={peek} more={rest} onSelect={actions.select} onMore={() => (folderRow ? actions.open(folderRow) : actions.select(null))} />}
     <div className={styles.meta}>
       {changed && <div className={styles.metaRow}><span className={styles.metaLabel}>{t("projectFiles.changed")}</span><span className={styles.metaValue}>{changed}</span></div>}
       <div className={styles.metaRow}>

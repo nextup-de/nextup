@@ -15,15 +15,17 @@ export function HistoryPanel({ state, actions }: FilesPartProps) {
   const locale = useLocale();
   const { p, dialog } = state;
   const row = dialog?.kind === "history" ? dialog.row : null;
-  const [answer, setAnswer] = useState<VersionsAnswer | "loading">("loading");
-  const [all, setAll] = useState(false);
   const id = row?.id ?? null;
+  // The answer and the "show all" choice belong to the file they were made for: another file starts over without an effect resetting them.
+  const [got, setGot] = useState<{ id: string; answer: VersionsAnswer } | null>(null);
+  const [allFor, setAllFor] = useState<string | null>(null);
+  const answer: VersionsAnswer | "loading" = got && got.id === id ? got.answer : "loading";
+  const all = allFor === id;
 
   useEffect(() => {
     if (!id) return;
     let stale = false;
-    setAnswer("loading"); setAll(false);
-    void fileVersionsAction(p.id, id).then((a) => { if (!stale) setAnswer(a); }).catch(() => { if (!stale) setAnswer({ state: "offline" }); });
+    void fileVersionsAction(p.id, id).then((a) => { if (!stale) setGot({ id, answer: a }); }).catch(() => { if (!stale) setGot({ id, answer: { state: "offline" } }); });
     return () => { stale = true; };
   }, [p.id, id]);
 
@@ -46,8 +48,8 @@ export function HistoryPanel({ state, actions }: FilesPartProps) {
         <span className={styles.when}>{whoWhen(v.modifiedBy, v.modifiedAt, locale)} · {sizeText(v.size, locale)}</span>
       </li>)}
     </ol>}
-    {!all && versions.length > SHOWN && <button type="button" className={styles.link} onClick={() => setAll(true)}>{t("projectFiles.showOlder", { count: versions.length - SHOWN })}</button>}
-    <p className={styles.note}>{t("projectFiles.restoreHint")}</p>
-    <a className={styles.link} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.restoreInSharePoint")} ↗</a>
+    {!all && versions.length > SHOWN && <button type="button" className={styles.link} onClick={() => setAllFor(id)}>{t("projectFiles.showOlder", { count: versions.length - SHOWN })}</button>}
+    <p className={styles.note}>{t("projectFiles.historyHint")}</p>
+    <a className={styles.link} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.openHistory")} ↗</a>
   </section>;
 }

@@ -22,6 +22,16 @@ export function stepChoices(p: Pick<ReducedProject, "steps" | "links">, row: Pic
 /** The one event that links a file to a step (D7): the file's address, system sharepoint, the step. */
 export const linkEvent = (row: Pick<FileRow, "webUrl">, step: Step) => ({ url: row.webUrl, system: "sharepoint", key: stepKey(step), stepId: step.id });
 
+/** Link the file to the step: asks the rights, then appends project.linked through the project's link act. True when it went through. */
+export function appendLink(
+  send: (type: string, payload: ReturnType<typeof linkEvent>, go: () => void) => boolean,
+  link: (projectId: string, url: string, system: string, key: string, stepId: string) => void,
+  projectId: string, row: Pick<FileRow, "webUrl">, step: Step,
+): boolean {
+  const ev = linkEvent(row, step);
+  return send("project.linked", ev, () => link(projectId, ev.url, ev.system, ev.key, ev.stepId));
+}
+
 /** The dialog of 3.2: pick a step and link the file to it. The link lives in NextUp only; SharePoint is not changed. */
 export function LinkStepDialog({ state, actions }: FilesPartProps) {
   const t = useT();
@@ -43,8 +53,7 @@ export function LinkStepDialog({ state, actions }: FilesPartProps) {
   </div>;
   const link = () => {
     if (!chosen) return;
-    const ev = linkEvent(row, chosen);
-    if (send("project.linked", ev, () => act.project.link(p.id, ev.url, ev.system, ev.key, ev.stepId))) { setPicked(null); setQuery(""); actions.closeDialog(); }
+    if (appendLink(send, act.project.link, p.id, row, chosen)) { setPicked(null); setQuery(""); actions.closeDialog(); }
   };
 
   return <div className={styles.dialog} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) actions.closeDialog(); }} onKeyDown={(e) => { if (e.key === "Escape") actions.closeDialog(); }}>
@@ -53,12 +62,12 @@ export function LinkStepDialog({ state, actions }: FilesPartProps) {
         <h2 className={styles.sheetTitle}>{t("projectFiles.linkStepTitle")}</h2>
         <button type="button" className={styles.link} aria-label={t("projectFiles.close")} onClick={actions.closeDialog}>×</button>
       </div>
-      <input className="nh-input" autoFocus aria-label={t("projectFiles.linkStepSearch")} placeholder={t("projectFiles.linkStepSearch")} value={query} onChange={(e) => setQuery(e.target.value)} />
-      {group(t("projectFiles.linkStepSuggested", { name: row.name }), suggested.filter(match))}
-      {group(t("projectFiles.linkStepOthers"), others.filter(match))}
+      <input className="nh-input" autoFocus aria-label={t("projectFiles.linkSearchSteps")} placeholder={t("projectFiles.linkSearchSteps")} value={query} onChange={(e) => setQuery(e.target.value)} />
+      {group(t("projectFiles.linkSuggested", { name: row.name }), suggested.filter(match))}
+      {group(t("projectFiles.linkOther"), others.filter(match))}
       <div className={styles.actions}>
         <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={actions.closeDialog}>{t("projectFiles.cancel")}</button>
-        <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!chosen} onClick={link}>{chosen ? t("projectFiles.linkStepTo", { key: stepKey(chosen) }) : t("projectFiles.linkStepSave")}</button>
+        <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!chosen} onClick={link}>{chosen ? t("projectFiles.linkTo", { key: stepKey(chosen) }) : t("projectFiles.linkStepSave")}</button>
       </div>
     </section>
   </div>;
