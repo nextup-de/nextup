@@ -44,7 +44,7 @@ export function List({ p, jira, page, tool }: ToolProps) {
     if (!text.trim() || !rights.addStep) return;
     if (send("project.step.added", { stepId: "probe", text: text.trim() }, () => act.project.addStep(p.id, text.trim()))) setText("");
   };
-  return <section className={styles.list} aria-label={t("projectSteps.list")}>
+  return <div className={styles.list}>
     <StepFilterRow search="projectSteps.searchList" filter={filter} onFilter={(next) => { setFilter(next); setAll(false); }} owners={owners} waitingCount={waitingCount} page={page} tool={tool} />
     {active ? <button type="button" className={styles.filterChip} onClick={() => { setFilter({ ...NO_FILTER }); setAll(false); }}>{t("projectSteps.showing", { shown: rows.length, total: p.steps.length })}</button> : null}
     <div className={styles.tableWrap}>
@@ -78,5 +78,5 @@ export function List({ p, jira, page, tool }: ToolProps) {
       </div>
     </div>
     {open && <StepPanel p={p} stepId={open} jira={jira} onClose={() => setOpen(null)} />}
-  </section>;
+  </div>;
 }
