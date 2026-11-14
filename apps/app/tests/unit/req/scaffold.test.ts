@@ -129,12 +129,14 @@ it("REQ scaffold the event budget holds for forms, answers and steps", () => {
   expect(team(log(saved(), answered()), "project.request.stepped", { requestId: "q1", step: { stepId: "s_b", text: "t", column: "todo", note: big } }).ok).toBe(false);
 });
 
-it("REQ scaffold the acts append the five events and return the minted ids", () => {
+it("REQ scaffold the acts append the five events and return the minted ids", async () => {
   const emit = vi.fn<ActDeps["emit"]>().mockResolvedValue({ ok: true });
   const act = projectActs({ emit } as unknown as ActDeps);
   const formId = act.form.save("p", { title: "Ask", intro: "", fields: FIELDS, shared: true });
   const requestId = act.form.answer("p", formId, 1, { f_what: "x" });
-  const stepId = act.request.step("p", requestId, { text: "Do", column: "todo" });
+  const outcome = await act.request.step("p", requestId, { text: "Do", column: "todo" });
+  expect(outcome).toEqual({ ok: true, stepId: expect.any(String) });
+  const stepId = outcome.stepId;
   act.request.decline("p", requestId, "no");
   act.request.reopen("p", requestId);
   expect(emit.mock.calls.map((c) => c[0])).toEqual(["project.form.saved", "project.form.answered", "project.request.stepped", "project.request.declined", "project.request.reopened"]);
