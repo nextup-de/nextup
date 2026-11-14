@@ -26,7 +26,8 @@ export function blockedDays(p: Pick<ReducedProject, "history">, steps: readonly 
     let since: number | null = null;
     const moves = p.history.filter((e) => e.type === "project.step.moved" && e.payload.stepId === step.id);
     for (const e of moves) {
-      if (e.payload.to === "blocked") { since ??= e.day; continue; }
+      const column = e.payload.to;
+      if (column === "blocked") { since ??= e.day; continue; }
       if (since !== null) { for (let d = since; d < e.day; d++) days.add(d); since = null; }
     }
     if (since !== null) for (let d = since; d <= day; d++) days.add(d);
