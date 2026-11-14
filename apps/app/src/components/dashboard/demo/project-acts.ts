@@ -3,7 +3,7 @@
 import { newId, type EventPayload } from "@/features/cases/events";
 import { stopChoice, type StopPick } from "@/features/projects/stop-choice";
 import type { AppendOutcome } from "@/server/actions/events";
-import type { InviteRole, StepColumn, SyncSystem } from "@/features/projects/types";
+import type { InviteRole, PageIconKey, StepColumn, SyncSystem, ToolKind } from "@/features/projects/types";
 import { DEMO_JIRA_KEY, DEMO_JIRA_SITE } from "@/features/projects/views";
 import type { TemplateKey } from "@/features/templates/library";
 import type { ActDeps } from "./act-deps";
@@ -14,7 +14,25 @@ export type StepChange = { text?: string; owner?: string; ownerUserId?: string |
 export type BaselineInput = { metric: string; unit: string; value: number; better: "up" | "down"; source: string } | { none: true; why: string };
 
 // Everything done to a project, each one event (features/projects). Ids are minted here when the caller needs them back.
+export type PageInput = { title: string; icon: PageIconKey; tools: { kind: ToolKind; title?: string; content?: string }[]; before?: string | null };
+export type PageChange = { title?: string; icon?: PageIconKey };
+export type ToolChange = { title?: string; collapsed?: boolean; content?: string; baseRev?: number };
+
 export type ProjectAct = {
+  page: {
+    add: (projectId: string, input: PageInput) => string;
+    edit: (projectId: string, pageId: string, change: PageChange) => void;
+    move: (projectId: string, pageId: string, before: string | null) => void;
+    remove: (projectId: string, pageId: string) => void;
+    restore: (projectId: string, pageId: string) => void;
+    addTool: (projectId: string, pageId: string, kind: ToolKind, before?: string | null) => string;
+    moveTool: (projectId: string, toolId: string, toPageId: string, before?: string | null) => void;
+    editTool: (projectId: string, toolId: string, change: ToolChange) => void;
+    removeTool: (projectId: string, toolId: string) => void;
+    restoreTool: (projectId: string, toolId: string) => void;
+    merge: (projectId: string, fromPageId: string, intoPageId: string) => string;
+    unmerge: (projectId: string, mergeId: string) => void;
+  };
   /** Team changes name the person by user id; the label rides along for the timeline. */
   member: (projectId: string, who: { userId: string; name: string }, on: boolean) => void;
   hand: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
@@ -77,6 +95,32 @@ export type ProjectAct = {
 export function projectActs(d: ActDeps): ProjectAct {
   const { emit, S, serverMode } = d;
   return {
+    page: {
+      add: (id, input) => {
+        const pageId = newId("page");
+        emit("project.page.added", id, { ...input, pageId, tools: input.tools.map((tool) => ({ ...tool, toolId: newId("tool") })) });
+        return pageId;
+      },
+      edit: (id, pageId, change) => emit("project.page.edited", id, { pageId, ...change }),
+      move: (id, pageId, before) => emit("project.page.moved", id, { pageId, before }),
+      remove: (id, pageId) => emit("project.page.removed", id, { pageId }),
+      restore: (id, pageId) => emit("project.page.restored", id, { pageId }),
+      addTool: (id, pageId, kind, before) => {
+        const toolId = newId("tool");
+        emit("project.tool.added", id, { pageId, toolId, kind, ...(before !== undefined ? { before } : {}) });
+        return toolId;
+      },
+      moveTool: (id, toolId, toPageId, before) => emit("project.tool.moved", id, { toolId, toPageId, ...(before !== undefined ? { before } : {}) }),
+      editTool: (id, toolId, change) => emit("project.tool.edited", id, { toolId, ...change }),
+      removeTool: (id, toolId) => emit("project.tool.removed", id, { toolId }),
+      restoreTool: (id, toolId) => emit("project.tool.restored", id, { toolId }),
+      merge: (id, fromPageId, intoPageId) => {
+        const mergeId = newId("merge");
+        emit("project.page.merged", id, { mergeId, fromPageId, intoPageId });
+        return mergeId;
+      },
+      unmerge: (id, mergeId) => emit("project.page.unmerged", id, { mergeId }),
+    },
     // Taking a person off the team also frees their open steps (D22).
     member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on, ...(on ? {} : { unassign: true }) }),
     hand: (id, to, why) => emit("project.handed", id, { to: to.name, toUserId: to.userId, why }),

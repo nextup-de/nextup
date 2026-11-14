@@ -32,6 +32,7 @@ import { entryFor } from "@/server/setup-open";
 import { policyFor } from "@/features/admin/stages";
 import { stampDept, stampEvent, underHandle } from "@/features/cases/stamp";
 import { loadUnitPeople } from "@/lib/db/pseudonymise";
+import { kicksJira } from "@/features/projects/pages";
 import { kickJira } from "@/server/jira-sync";
 import { proposeOnRaise } from "@/server/routing";
 import { getLocale } from "@/i18n/server";
@@ -152,7 +153,7 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
 
   // The mails for this event come from the outbox: server/notify/dispatch.ts plans them from the log.
   // A person's project event (or a yes that opens a project) is Jira's to hear about now, not in a minute.
-  if (type.startsWith("project.") || type === "case.decided") kickJira(slug);
+  if (kicksJira(type) || type === "case.decided") kickJira(slug);
 
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug
