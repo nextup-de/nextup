@@ -49,7 +49,7 @@ beforeEach(() => { mocks.sent.length = 0; mocks.linked.length = 0; });
 it("FIL panels: with nothing selected the folder panel describes the open folder with + Upload here", () => {
   const html = render(h(FolderPanel, part()));
   expect(html).toContain("Supplier data");
-  expect(html).toContain(t("projectFiles.folderFooter", { count: 2, size: "1.4 MB" }));
+  expect(html).toContain(t("projectFiles.folderThis", { count: 2, size: "1.4 MB" }));
   expect(html).toContain(t("projectFiles.uploadHere"));
   expect(html).not.toContain(t("projectFiles.openFolder"));
   expect(html).toContain(t("projectFiles.requestFiles"));
@@ -110,7 +110,7 @@ it("FIL panels: Link to step appends project.linked with the step, the file's ad
   expect(mocks.sent).toEqual([["project.linked", { url: file.webUrl, system: "sharepoint", key: "KAN-17", stepId: "17" }]]);
   expect(mocks.linked).toEqual([["pj2", file.webUrl, "sharepoint", "KAN-17", "17"]]);
   const html = render(h(LinkStepDialog, part({ dialog: { kind: "link-step", row: file } })));
-  expect(html).toContain(t("projectFiles.linkSearchSteps"));
+  expect(html).toContain(t("projectFiles.linkStepSearch"));
   expect(html).toContain("Test the SMS gateway with stock suppliers");
   expect(html).not.toContain("Set alert thresholds per line");
   expect(render(h(LinkStepDialog, part({ dialog: { kind: "link-step", row: file }, editor: false })))).toBe("");

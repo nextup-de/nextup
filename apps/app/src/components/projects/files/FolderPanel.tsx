@@ -70,7 +70,7 @@ export function FolderPanel({ state, actions }: FilesPartProps) {
   const webUrl = folderRow?.webUrl ?? folder?.url ?? "";
   const files = here ? loaded.filter((row) => !row.isFolder).length : folderRow.childCount;
   const sizeLine = here ? sizeText(total, locale) : sizeText(folderRow.size, locale);
-  const sub = here ? t("projectFiles.folderFooter", { count: loaded.length, size: sizeLine }) : t("projectFiles.folderMeta", { count: files, size: sizeLine });
+  const sub = here ? t("projectFiles.folderThis", { count: loaded.length, size: sizeLine }) : t("projectFiles.folderMeta", { count: files, size: sizeLine });
   const steps = here
     ? [...new Map(loaded.flatMap((row) => linkedSteps(row, p)).map((s) => [s.stepId, s])).values()]
     : linkedSteps(folderRow, p);

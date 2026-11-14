@@ -62,12 +62,12 @@ export function LinkStepDialog({ state, actions }: FilesPartProps) {
         <h2 className={styles.sheetTitle}>{t("projectFiles.linkStepTitle")}</h2>
         <button type="button" className={styles.link} aria-label={t("projectFiles.close")} onClick={actions.closeDialog}>×</button>
       </div>
-      <input className="nh-input" autoFocus aria-label={t("projectFiles.linkSearchSteps")} placeholder={t("projectFiles.linkSearchSteps")} value={query} onChange={(e) => setQuery(e.target.value)} />
-      {group(t("projectFiles.linkSuggested", { name: row.name }), suggested.filter(match))}
-      {group(t("projectFiles.linkOther"), others.filter(match))}
+      <input className="nh-input" autoFocus aria-label={t("projectFiles.linkStepSearch")} placeholder={t("projectFiles.linkStepSearch")} value={query} onChange={(e) => setQuery(e.target.value)} />
+      {group(t("projectFiles.linkStepSuggested", { name: row.name }), suggested.filter(match))}
+      {group(t("projectFiles.linkStepOthers"), others.filter(match))}
       <div className={styles.actions}>
         <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={actions.closeDialog}>{t("projectFiles.cancel")}</button>
-        <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!chosen} onClick={link}>{chosen ? t("projectFiles.linkTo", { key: stepKey(chosen) }) : t("projectFiles.linkStepSave")}</button>
+        <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!chosen} onClick={link}>{chosen ? t("projectFiles.linkStepTo", { key: stepKey(chosen) }) : t("projectFiles.linkStepSave")}</button>
       </div>
     </section>
   </div>;

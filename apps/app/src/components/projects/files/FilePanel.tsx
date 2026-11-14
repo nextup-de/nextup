@@ -65,13 +65,13 @@ export function FilePanel({ state, actions }: FilesPartProps) {
     {desktop && app
       ? <a className={styles.primary} href={desktop} onClick={() => setOpening(true)}>{t("projectFiles.openInApp", { app: t(app.name) })} ↗</a>
       : <a className={styles.primary} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.openInBrowser")} ↗</a>}
-    {opening && app && <p className={styles.toast} role="status">{t("projectFiles.opening", { app: t(app.name) })} <a className={styles.link} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.openInBrowserInstead")}</a></p>}
+    {opening && app && <p className={styles.toast} role="status">{t("projectFiles.openingIn", { app: t(app.name) })} <a className={styles.link} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.openInBrowserInstead")}</a></p>}
     <div className={styles.row}>
       <a className={styles.secondary} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.inBrowser")}</a>
       <a className={styles.secondary} href={row.webUrl + (row.webUrl.includes("?") ? "&" : "?") + "download=1"} download={row.name}>{t("projectFiles.download")}</a>
       <button type="button" className={styles.secondary} data-icon="true" aria-label={t("projectFiles.copyLink")} title={t("projectFiles.copyLink")} onClick={() => void copy()}>⧉</button>
     </div>
-    {copied && <p className={styles.toast} role="status"><strong>{t("projectFiles.linkCopied")}</strong> · {t("projectFiles.linkCopiedHint")}</p>}
+    {copied && <p className={styles.toast} role="status"><strong>{t("projectFiles.linkCopied")}</strong> · {t("projectFiles.linkCopiedWho")}</p>}
     <div className={styles.meta}>
       <div className={styles.metaRow}><span className={styles.metaLabel}>{t("projectFiles.changed")}</span><span className={styles.metaValue}>{whoWhen(row.modifiedBy, row.modifiedAt, locale)}</span></div>
       <div className={styles.metaRow}>
