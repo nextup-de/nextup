@@ -1,10 +1,20 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useLocale, useT } from "@/i18n/client";
 import { FileList } from "./FileList";
 import type { FilesPartProps } from "./types";
 import styles from "./States.module.css";
+
+const STEPS = [
+  ["projectFiles.ncStep1Title", "projectFiles.ncStep1Hint"],
+  ["projectFiles.ncStep2Title", "projectFiles.ncStep2Hint"],
+  ["projectFiles.ncStep3Title", "projectFiles.ncStep3Hint"],
+] as const;
+
+/** When each folder was last read well, so the offline banner can say how old the list is. */
+const lastRead = new Map<string, Date>();
+export const lastReadOf = (projectId: string, path: readonly string[]): Date | null => lastRead.get(projectId + "/" + path.join("/")) ?? null;
 
 /** The answers that are not a list (D6): loading, empty, offline over the last list, not connected, no access. */
 export function FileStates({ state, actions }: FilesPartProps) {
@@ -12,9 +22,8 @@ export function FileStates({ state, actions }: FilesPartProps) {
   const locale = useLocale();
   const { href } = useDemo();
   const { answer, folder, p, path, loaded, editor } = state;
-  // When the list was last read, so the offline banner can say how old the list is.
-  const lastOk = useRef<Date | null>(null);
-  useEffect(() => { if (answer !== "loading" && answer.state === "ok") lastOk.current = new Date(); }, [answer]);
+  const key = p.id + "/" + path.join("/");
+  useEffect(() => { if (answer !== "loading" && answer.state === "ok") lastRead.set(key, new Date()); }, [answer, key]);
 
   if (answer === "loading") return <p className={styles.hint} role="status" data-testid="files-file-states">{t("projectFiles.loading")}</p>;
   const name = path[path.length - 1] ?? (folder?.key || t("projectFiles.sourceTitle"));
@@ -33,7 +42,7 @@ export function FileStates({ state, actions }: FilesPartProps) {
   }
 
   if (answer.state === "offline") {
-    const at = lastOk.current;
+    const at = lastRead.get(key) ?? null;
     const time = at ? at.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : "";
     return <div data-testid="files-file-states">
       <div className={styles.banner} role="alert">
@@ -62,10 +71,10 @@ export function FileStates({ state, actions }: FilesPartProps) {
         : <p className={styles.hint}>{t("projectFiles.ncAsk", { name: p.lead })}</p>
       : <div className={styles.actions}><a className="nh-btn nh-btn-primary nh-btn-sm" href={href("/profile")}>{t("projectFiles.m365Connect")}</a></div>}
     {noFolder && <ol className={styles.steps}>
-      {([1, 2, 3] as const).map((n) => <li key={n} className={styles.step}>
-        <span className={styles.stepNo}>{n}</span>
-        <span className={styles.stepTitle}>{t(`projectFiles.ncStep${n}Title`)}</span>
-        <span className={styles.stepHint}>{t(`projectFiles.ncStep${n}Hint`)}</span>
+      {STEPS.map(([title, hint], i) => <li key={title} className={styles.step}>
+        <span className={styles.stepNo}>{i + 1}</span>
+        <span className={styles.stepTitle}>{t(title)}</span>
+        <span className={styles.stepHint}>{t(hint)}</span>
       </li>)}
     </ol>}
   </div>;

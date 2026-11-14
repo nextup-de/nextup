@@ -59,7 +59,7 @@ export function FolderPicker({ state, actions }: FilesPartProps) {
         <button type="button" className={styles.link} aria-label={t("projectFiles.close")} onClick={actions.closeDialog}>×</button>
       </div>
       <label className={styles.field}>{t("projectFiles.pasteLabel")}
-        <input className="nh-input" autoFocus value={link} placeholder="https://…sharepoint.com/…" onChange={(e) => { setLink(e.target.value); setPicked(null); setError(false); }} />
+        <input className="nh-input" autoFocus value={link} onChange={(e) => { setLink(e.target.value); setPicked(null); setError(false); }} />
       </label>
       {error && <p className={styles.error} role="alert">{t("projectFiles.pasteInvalid")}</p>}
       <p className={styles.note}>{t("projectFiles.pickerOr")}</p>

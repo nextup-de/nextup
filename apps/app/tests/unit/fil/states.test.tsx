@@ -8,7 +8,7 @@ import { I18nProvider } from "@/i18n/client";
 
 const mocks = vi.hoisted(() => ({ sent: [] as unknown[], linked: [] as unknown[][], fetched: [] as string[], token: "tok" as string | null, user: true }));
 vi.mock("@/components/dashboard/DemoProvider", () => ({
-  useDemo: () => ({ href: (path: string) => "/acme" + path, act: { project: { link: (...args: unknown[]) => mocks.linked.push(args) } } }),
+  useDemo: () => ({ f: (d: number) => "day" + d, href: (path: string) => "/acme" + path, act: { project: { link: (...args: unknown[]) => mocks.linked.push(args) } } }),
 }));
 vi.mock("@/components/projects/parts", () => ({ useSend: () => (type: string, payload: unknown, go: () => void) => { mocks.sent.push([type, payload]); go(); return true; } }));
 vi.mock("@/components/projects/files/FileList", () => ({ FileList: () => h("div", { "data-testid": "stale-list" }, "LIST") }));
@@ -23,7 +23,7 @@ const { searchFoldersAction, childFoldersAction } = await import("@/server/actio
 const t = createT("en");
 const url = "https://plant.sharepoint.com/sites/Line-stop%20alerts/Shared%20documents";
 const row = (name: string): FileRow => ({ id: name, name, kind: "pdf", ext: "pdf", size: 1, isFolder: false, childCount: 0, modifiedBy: "", modifiedAt: "", createdBy: "", createdAt: "", webUrl: "", parentPath: "" });
-const p = { id: "pj2", title: "Line-stop alerts", lead: "S. Tran", links: [], steps: [] } as unknown as ReducedProject;
+const p = { id: "pj2", title: "Line-stop alerts", lead: "S. Tran", links: [], steps: [], history: [] } as unknown as ReducedProject;
 const link = { system: "sharepoint", url, key: "", stepId: null, day: 0 };
 const actions = { open: vi.fn(), goTo: vi.fn(), select: vi.fn(), setView: vi.fn(), setQuery: vi.fn(), setFilter: vi.fn(), setSort: vi.fn(), showMore: vi.fn(), reload: vi.fn(), openDialog: vi.fn(), closeDialog: vi.fn() };
 const base = { p, folder: link, path: ["Supplier data", "Pilot photos"], answer: "loading" as unknown, loaded: [] as FileRow[], rows: [], next: null, selected: null, view: "list" as const, query: "", filter: "all" as const, sort: { field: "name" as const, direction: "asc" as const }, dialog: null as unknown, busy: false, editor: true };
@@ -35,7 +35,7 @@ beforeEach(() => { mocks.sent.length = 0; mocks.linked.length = 0; mocks.fetched
 it("FIL states: an empty folder offers upload and asking the team", () => {
   const html = render(h(FileStates, part({ answer: { state: "empty" } })));
   expect(html).toContain(t("projectFiles.emptyFolderTitle", { folder: "Pilot photos" }));
-  expect(html).toContain(t("projectFiles.emptyFolderHint"));
+  expect(html).toContain("Drag files here or upload them.");
   expect(html).toContain(t("projectFiles.askTeamForFiles"));
   expect(html).toContain("+ " + t("projectFiles.upload"));
   expect(render(h(FileStates, part({ answer: { state: "empty" }, editor: false })))).not.toContain(t("projectFiles.askTeamForFiles"));
@@ -101,6 +101,7 @@ it("FIL states: the pill's popover shows the folder, how fresh the list is, Sync
   const html = render(h(SourcePopover, part({ dialog: { kind: "source" }, answer: { state: "ok", rows: [], next: null }, loaded: [row("a.pdf"), row("b.pdf")] })));
   expect(html).toContain(t("projectFiles.popoverTitle"));
   expect(html).toContain("plant.sharepoint.com › Line-stop alerts › Shared documents");
+  expect(html).toContain(t("projectFiles.popoverNote", { name: "S. Tran", date: "day0" }));
   expect(html).toContain(t("projectFiles.syncNow"));
   expect(html).toContain(t("projectFiles.changeFolderMore"));
   expect(html).toContain(t("projectFiles.pickerFiles", { count: 2 }));

@@ -1,6 +1,8 @@
 "use client";
-import { useRef } from "react";
+import { useState } from "react";
+import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useLocale, useT } from "@/i18n/client";
+import { lastReadOf } from "./FileStates";
 import type { FilesPartProps } from "./types";
 import styles from "./States.module.css";
 
@@ -22,15 +24,21 @@ export function agoText(from: Date, now: Date, locale: string): string {
 }
 
 /** The popover of the SharePoint pill (5.1): which folder is connected, how fresh the list is, sync now, change folder and open in SharePoint. */
-export function SourcePopover({ state, actions }: FilesPartProps) {
+export function SourcePopover(props: FilesPartProps) {
+  return props.state.dialog?.kind === "source" && props.state.folder ? <Open {...props} /> : null;
+}
+
+function Open({ state, actions }: FilesPartProps) {
   const t = useT();
   const locale = useLocale();
-  const { dialog, folder, loaded, editor, answer } = state;
-  // The last time the list was read, noted when the popover opens.
-  const seen = useRef<Date | null>(null);
-  if (dialog?.kind !== "source" || !folder) return null;
-  if (seen.current === null) seen.current = new Date();
-  const synced = answer !== "loading" && answer.state === "ok" ? t("projectFiles.synced", { ago: agoText(seen.current, new Date(), locale) }) : t("projectFiles.outOfDate");
+  const { f } = useDemo();
+  const { folder, loaded, editor, answer, p } = state;
+  // The moment the popover opened stands for the last read.
+  const [seen] = useState(() => new Date());
+  if (!folder) return null;
+  // Who connected the folder and when: the project.linked that named it, read from the project's own log.
+  const by = [...p.history].reverse().find((e) => e.type === "project.linked" && e.payload.url === folder.url && !e.payload.stepId);
+  const synced = answer !== "loading" && answer.state === "ok" ? t("projectFiles.synced", { ago: agoText(lastReadOf(p.id, state.path) ?? seen, seen, locale) }) : t("projectFiles.outOfDate");
 
   return <div className={styles.popover} role="dialog" aria-label={t("projectFiles.popoverTitle")} onKeyDown={(e) => { if (e.key === "Escape") actions.closeDialog(); }} data-testid="files-source-popover">
     <h2 className={styles.popTitle}>{t("projectFiles.popoverTitle")}</h2>
@@ -40,7 +48,7 @@ export function SourcePopover({ state, actions }: FilesPartProps) {
       <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => { actions.reload(); actions.closeDialog(); }}>{t("projectFiles.syncNow")}</button>
       {editor && <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => actions.openDialog({ kind: "picker" })}>{t("projectFiles.changeFolderMore")}</button>}
     </div>
-    <span className={styles.note}>{t("projectFiles.popoverNote")}</span>
+    <span className={styles.note}>{t("projectFiles.popoverNote", { name: by?.actor ?? p.lead, date: f(by?.day ?? folder.day) })}</span>
     <a className={styles.link} href={folder.url} target="_blank" rel="noopener noreferrer">{t("projectFiles.openInSharePoint")} ↗</a>
   </div>;
 }
