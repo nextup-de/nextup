@@ -82,7 +82,7 @@ export function Board({ p, hints, jira }: ToolProps) {
     setTarget({ column: cell.dataset.boardColumn as StepColumn, ...(groupBy === "person" ? { ownerUserId: cell.dataset.owner || null } : {}), before });
   };
 
-  return <section className={styles.board} aria-label={t("projectSteps.board")}>
+  return <div className={styles.board}>
     <div className={styles.toolbar}>
       <input className={`nh-input ${styles.search}`} type="search" aria-label={t("projectSteps.searchBoard")} placeholder={t("projectSteps.searchBoard")} value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} />
       <div className={styles.faces} role="group" aria-label={t("projectSteps.owner")}>
@@ -140,7 +140,7 @@ export function Board({ p, hints, jira }: ToolProps) {
     {blocked && <div className={styles.blocked}><MarkBlockedForm key={blocked.step.id} p={p} step={blocked.step} onCancel={() => setBlocked(null)} onDone={() => { reassign(blocked.step, blocked.target); setBlocked(null); }} /></div>}
     {ghost && <div className={styles.ghost} style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">{p.steps.find((s) => s.id === drag)?.text}</div>}
     {open && <StepPanel p={p} stepId={open} jira={jira} onClose={() => setOpen(null)} />}
-  </section>;
+  </div>;
 }
 
 function Composer({ p, column, team, ownerUserId, onCancel, onBlocked }: {

@@ -54,7 +54,7 @@ export const projectRequests = defineMessages({
     requestFrom: "From {name} on {date}",
     requestOldRevision: "Answered on revision {rev}",
     requestNoAnswer: "No answer",
-    requestMakeStep: "Make a step",
+    requestMakeStep: "Make it a step",
     requestDecline: "Decline",
     requestDeclineWhy: "Why are you declining?",
     requestDeclineConfirm: "Decline request",
