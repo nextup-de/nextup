@@ -400,7 +400,27 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.ownerUserId !== undefined && pl.ownerUserId !== null && typeof pl.ownerUserId !== "string") return no("projects.permStepOwnerWho");
       if (pl.dueDay !== undefined && pl.dueDay !== null && !(typeof pl.dueDay === "number" && Number.isFinite(pl.dueDay))) return no("projects.permStepDue");
       if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 2000)) return no("projects.permDetailsLong");
+      if (pl.startDay !== undefined && pl.startDay !== null && !whole(pl.startDay)) return no("projectPlan.permStepStart");
+      if (pl.milestoneId !== undefined && pl.milestoneId !== null && !p.milestones.some((m) => m.id === pl.milestoneId)) return no("projectPlan.permNoMilestone");
       return OK;
+    }
+
+    case "project.milestone.added":
+    case "project.milestone.edited": {
+      if (!onTeam) return no("projectPlan.permMilestoneTeam");
+      if (!live) return no("projectPlan.permClosed");
+      const added = ev.type === "project.milestone.added";
+      const current = p.milestones.find((m) => m.id === pl.milestoneId);
+      if (added ? !isProjectId(pl.milestoneId) || current : !current) return no(added ? "projectPlan.permMilestoneIdUnusable" : "projectPlan.permNoMilestone");
+      if (!added && pl.removed) return OK;
+      if ((added || pl.title !== undefined) && !text(pl.title, 80)) return no("projectPlan.permMilestoneTitle");
+      if (pl.note !== undefined && (typeof pl.note !== "string" || pl.note.length > 1000)) return no("projectPlan.permMilestoneNote");
+      if (pl.startDay !== undefined && pl.startDay !== null && !whole(pl.startDay)) return no("projectPlan.permMilestoneDates");
+      if ((added || pl.dueDay !== undefined) && !whole(pl.dueDay)) return no("projectPlan.permMilestoneDates");
+      if (!added && pl.shipped !== undefined && typeof pl.shipped !== "boolean") return no("projectPlan.permMilestoneShipped");
+      const start = pl.startDay !== undefined ? pl.startDay : current?.startDay ?? null;
+      const due = whole(pl.dueDay) ? pl.dueDay : current?.dueDay;
+      return start !== null && due !== undefined && start > due ? no("projectPlan.permMilestoneDates") : OK;
     }
 
     case "project.linked":
