@@ -8,7 +8,7 @@ const tool = (id: string, kind: ToolInstance["kind"]): ToolInstance => ({ id, ki
 const page = (id: string, tools: ToolInstance[]): ProjectPage => ({ id, title: id, icon: "doc", tools });
 
 it("PGE pages model: keeps legacy defaults isolated and filters Agent wherever it was moved", () => {
-  const defaults = pagesOf({}, { agent: true });
+  const defaults = pagesOf({ pages: null }, { agent: true });
   expect(defaults.map((p) => p.id)).toEqual(["overview", "steps", "plan", "results", "files", "requests", "team", "activity", "agent"]);
   expect(defaults.find((p) => p.id === "steps")?.tools.map((t) => t.id)).toEqual(["steps.board", "steps.list"]);
   const steps = defaults[1];
@@ -24,7 +24,7 @@ it("PGE pages model: keeps legacy defaults isolated and filters Agent wherever i
 });
 
 it("PGE pages model: allows repeated tools and enforces singleton, Agent and capacity limits", () => {
-  const pages = pagesOf({}, { agent: false });
+  const pages = pagesOf({ pages: null }, { agent: false });
   const steps = pages[1];
   expect(canAddTool(pages, steps, "list", { agent: false })).toBe(true);
   expect(canAddTool(pages, steps, "overview", { agent: true })).toBe(false);
@@ -35,7 +35,7 @@ it("PGE pages model: allows repeated tools and enforces singleton, Agent and cap
 });
 
 it("PGE pages model: merges every instance in order with content and revision intact or refuses the whole merge", () => {
-  const into = pagesOf({}, { agent: true })[1];
+  const into = pagesOf({ pages: null }, { agent: true })[1];
   const from = page("notes", [{ ...tool("second-list", "list"), title: "Parts", collapsed: true, content: "[]", rev: 3 }, tool("notes.doc", "doc")]);
   const result = mergePlan(into, from);
   expect(result).toEqual({ moved: from.tools, refused: null });

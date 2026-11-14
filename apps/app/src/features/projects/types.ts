@@ -133,11 +133,10 @@ export type ProjectEscalation = {
   toUserId?: string | null };
 
 export type ReducedProject = {
-  // Optional until PGE-A1 initializes these fields in the reducer.
-  /** null (or absent on a legacy constructor): no page event yet; use the default pages. */
-  pages?: ProjectPage[] | null;
-  removed?: RemovedItem[];
-  merges?: Record<string, MergeRecord>;
+  /** null: no page event yet; use the default pages. */
+  pages: ProjectPage[] | null;
+  removed: RemovedItem[];
+  merges: Record<string, MergeRecord>;
   id: string;
   /** P-1, P-2, ...: the order the projects opened in. */
   number: number;

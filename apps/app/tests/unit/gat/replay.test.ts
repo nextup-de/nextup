@@ -63,7 +63,7 @@ const GAT_CASE_FIELDS = ["review", "cost", "approvals", "approvalRuns", "opening
 const GAT_PROJECT_FIELDS = ["waitsForApproval"] as const;
 const without = (o: object, keys: readonly string[]) => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k)));
 export const beforeCase = (c: ReducedCase) => without(c, GAT_CASE_FIELDS);
-export const beforeProject = (p: ReducedProject) => without(p, GAT_PROJECT_FIELDS);
+export const beforeProject = (p: ReducedProject) => without(p, [...GAT_PROJECT_FIELDS, "pages", "removed", "merges"]);
 
 const state = reduce(SEED, logFromRows(ROWS, 14));
 
