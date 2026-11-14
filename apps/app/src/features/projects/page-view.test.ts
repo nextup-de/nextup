@@ -53,3 +53,16 @@ it("PGB add tool: greys overview and agent when the project has them and hides a
   const hidden = addToolOptions([has], has, { query: "", jiraOn: false, agent: false });
   expect(hidden.some((o) => o.kind === "agent")).toBe(false);
 });
+
+it("PGB tool menu: drop and step targets name the tool to go before", async () => {
+  const { dropBefore, stepBefore } = await import("./page-view");
+  expect(dropBefore(three, "a", "c", false)).toBeNull();
+  expect(dropBefore(three, "c", "a", true)).toBe("a");
+  expect(dropBefore(three, "a", "b", false)).toBe("c");
+  expect(dropBefore(three, "b", "a", false)).toBeUndefined();
+  expect(dropBefore(three, "a", "a", true)).toBeUndefined();
+  expect(stepBefore(three, "b", "up")).toBe("a");
+  expect(stepBefore(three, "a", "down")).toBe("c");
+  expect(stepBefore(three, "b", "down")).toBeNull();
+  expect(stepBefore(three, "a", "up")).toBeUndefined();
+});

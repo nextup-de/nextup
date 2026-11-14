@@ -54,3 +54,30 @@ export function toolCount(p: Pick<ReducedProject, "steps" | "links">, kind: Tool
     default: return null;
   }
 }
+
+/** The small glyph in front of a tool's name (Paper 03, 04). */
+export const TOOL_GLYPH: Record<ToolKind, string> = {
+  overview: "⌂", board: "▥", list: "☰", calendar: "▦", timeline: "≡", milestones: "⚑", results: "◎", files: "▣",
+  doc: "▤", checklist: "☑", table: "▦", links: "↗", requests: "✉", team: "☺", activity: "∿", agent: "✦",
+};
+
+/**
+ * Where a dragged section lands when dropped on another: the id of the tool it goes before (null: the end), or undefined when
+ * nothing would change. Dropped on the upper half it goes before the target, on the lower half before the target's next sibling.
+ */
+export function dropBefore(page: ProjectPage, draggedId: string, overId: string, upperHalf: boolean): string | null | undefined {
+  const from = page.tools.findIndex((tool) => tool.id === draggedId);
+  const over = page.tools.findIndex((tool) => tool.id === overId);
+  if (from < 0 || over < 0 || draggedId === overId) return undefined;
+  const slot = upperHalf ? over : over + 1;
+  if (slot === from || slot === from + 1) return undefined;
+  return page.tools[slot]?.id ?? null;
+}
+
+/** Move up / Move down: the id of the tool the section goes before (null: the end). */
+export function stepBefore(page: ProjectPage, toolId: string, direction: "up" | "down"): string | null | undefined {
+  const at = page.tools.findIndex((tool) => tool.id === toolId);
+  if (at < 0) return undefined;
+  if (direction === "up") return at > 0 ? page.tools[at - 1].id : undefined;
+  return at < page.tools.length - 1 ? page.tools[at + 2]?.id ?? null : undefined;
+}
