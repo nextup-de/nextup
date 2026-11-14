@@ -50,10 +50,10 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
     if (!s) return;
     const ok = send("project.step.edited", { stepId: id, ...change.edit }, () => act.project.editStep(p.id, id, change.edit));
     if (!ok) return;
-    const after = { ...s, ...change.edit };
-    const bar = timelineRows({ steps: [after], milestones: [] }, { groupBy: "none", scale, day: S.day }).groups[0].rows[0].bar;
+    const text = change.edit.dueDay !== undefined && change.edit.dueDay !== null ? fill(x.dueMoved, { date: f(change.edit.dueDay) })
+      : change.edit.startDay !== undefined && change.edit.startDay !== null ? fill(x.startMoved, { date: f(change.edit.startDay) }) : s.text;
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    setToast({ text: fill(x.moved, { step: s.text, from: f(bar.start), to: f(bar.end) }), undo: () => { send("project.step.edited", { stepId: id, ...change.undo }, () => act.project.editStep(p.id, id, change.undo)); setToast(null); } });
+    setToast({ text, undo: () => { send("project.step.edited", { stepId: id, ...change.undo }, () => act.project.editStep(p.id, id, change.undo)); setToast(null); } });
     toastTimer.current = window.setTimeout(() => setToast(null), 8000);
   };
 
@@ -123,7 +123,7 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
                     {editable && <span className={styles.handle} data-side="start" role="presentation" aria-label={fill(x.dragStart, { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "start"); }} onPointerMove={move} onPointerUp={end} />}
                     <button type="button" className={styles.barOpen} aria-label={fill(x.openStep, { step: line.row.text })} onClick={() => setOpen(line.row.stepId)}>{line.row.text}</button>
                     {editable && <span className={styles.handle} data-side="end" role="presentation" aria-label={fill(x.dragEnd, { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "end"); }} onPointerMove={move} onPointerUp={end} />}
-                    {dragging && <span className={styles.dragLabel} role="status">{f(bar.start)} – {f(bar.end)}</span>}
+                    {dragging && <span className={styles.dragLabel} role="status">{fill(x.span, { from: f(bar.start), to: f(bar.end), days: bar.end - bar.start, was: line.row.bar.end - line.row.bar.start })}</span>}
                   </div>;
                 })()}
               </div>)}
