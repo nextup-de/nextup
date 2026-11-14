@@ -4,6 +4,13 @@
 import type { CaseEvent, SeedEvent } from "@/features/cases/events";
 import type { MeasureImpact, MeasureSource } from "./measure-source";
 
+export type ToolKind = "overview" | "board" | "list" | "calendar" | "timeline" | "milestones" | "results" | "files" | "doc" | "checklist" | "table" | "links" | "requests" | "team" | "activity" | "agent";
+export type PageIconKey = "home" | "board" | "list" | "calendar" | "timeline" | "flag" | "target" | "folder" | "link" | "inbox" | "people" | "pulse" | "doc" | "checklist" | "table" | "star" | "chat" | "box";
+export type ToolInstance = { id: string; kind: ToolKind; title: string | null; collapsed: boolean; content: string | null; rev: number };
+export type ProjectPage = { id: string; title: string; icon: PageIconKey; tools: ToolInstance[] };
+export type RemovedItem = { page: ProjectPage | null; tool: ToolInstance | null; pageId: string; before: string | null; day: number };
+export type MergeRecord = { from: { id: string; title: string; icon: PageIconKey; before: string | null }; toolIds: string[] };
+
 export type StepColumn = "todo" | "doing" | "blocked" | "done";
 export const STEP_COLUMNS: readonly StepColumn[] = ["todo", "doing", "blocked", "done"];
 
@@ -126,6 +133,11 @@ export type ProjectEscalation = {
   toUserId?: string | null };
 
 export type ReducedProject = {
+  // Optional until PGE-A1 initializes these fields in the reducer.
+  /** null (or absent on a legacy constructor): no page event yet; use the default pages. */
+  pages?: ProjectPage[] | null;
+  removed?: RemovedItem[];
+  merges?: Record<string, MergeRecord>;
   id: string;
   /** P-1, P-2, ...: the order the projects opened in. */
   number: number;

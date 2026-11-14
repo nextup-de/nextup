@@ -3,6 +3,7 @@
 // Every event may also carry actorUserId (the person behind `actor`; null for system actors) and
 // the id fields next to the label fields above (docs/IDENTITY.md). Labels are for display only.
 // Never store display text as state: store who / which day / which route; build sentences at render.
+import type { ToolKind } from "@/features/projects/types";
 import type { DueKind } from "@/features/clock/due";
 import type { MeasureSource } from "@/features/projects/measure-source";
 import type { AgentAreaEventType, AgentAreaPayload } from "./events/agent";
@@ -43,7 +44,7 @@ export type RouteProposal = {
 // The fields that core events carry, and every field more than one file uses (an area file declares only the fields
 // that its own events carry). Which ones apply is documented per type in the area files.
 export type CorePayload = {
-  title?: string; routeId?: string | null; kind?: CaseKind | DueKind; reason?: string;
+  title?: string; routeId?: string | null; kind?: CaseKind | DueKind | ToolKind; reason?: string;
   note?: string;
   to?: string; why?: string;
   text?: string;

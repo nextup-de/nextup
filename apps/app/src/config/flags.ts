@@ -58,6 +58,13 @@ export const FLAGS = {
     added: "2026-11-12",
     removeBy: "2027-06-30",
   },
+  projectPages: {
+    description: "Project pages built from tools, in the Jira look (plan PAGES). Off: the tab view of pilot-rc1",
+    owner: "Kevin",
+    defaults: { demo: true, sandbox: true, pilot: false, live: false },
+    added: "2026-11-13",
+    removeBy: "2027-03-31",
+  },
   // server/scheduler/life.ts: the generated demo company keeps living (features/demo/life)
   musterwerkLife: {
     description: "Musterwerk only: each working day new ideas come in, colleagues decide them around the promise and yes ideas become projects that move. Nobody gets mail from it",

@@ -58,6 +58,11 @@ import { settingsSignIn } from "./messages/settingsSignIn";
 import { ssoLogin } from "./messages/ssoLogin";
 import { inbox } from "./messages/inbox";
 import { projectDraft } from "./messages/projectDraft";
+import { projectPages } from "./messages/projectPages";
+import { projectSteps } from "./messages/projectSteps";
+import { projectPlan } from "./messages/projectPlan";
+import { projectHub } from "./messages/projectHub";
+import { projectRequests } from "./messages/projectRequests";
 import { projectMove } from "./messages/projectMove";
 import { caseNo } from "./messages/caseNo";
 import { caseSee } from "./messages/caseSee";
@@ -128,6 +133,11 @@ export const de = {
   projectDraft: projectDraft.de,
   // Composer: a phase adds keys only to its own namespace, never here.
   projectMove: projectMove.de,
+  projectPages: projectPages.de,
+  projectSteps: projectSteps.de,
+  projectPlan: projectPlan.de,
+  projectHub: projectHub.de,
+  projectRequests: projectRequests.de,
   caseNo: caseNo.de,
   caseSee: caseSee.de,
   projectResult: projectResult.de,
