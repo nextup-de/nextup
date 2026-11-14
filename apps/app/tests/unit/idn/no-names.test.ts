@@ -36,7 +36,7 @@ const EXCEPTIONS: { file: string; line: string; reason: string }[] = [
   { file: "features/projects/reduce.ts", line: "if (!have.authors.includes(source.from)) have.authors.push(source.from);", reason: "de-duplicates the shown author labels; the ids are authorUserIds" },
   { file: "features/projects/reduce.ts", line: "if (name) p.members = p.members.filter((m) => m !== name); // the shown list only", reason: "de-duplicates the shown member labels; the ids are memberUserIds" },
   { file: "features/projects/reduce.ts", line: "if (to) p.members = p.members.filter((m) => m !== to);", reason: "de-duplicates the shown member labels; the ids are memberUserIds" },
-  { file: "features/projects/reduce.ts", line: "const column: StepColumn = isColumn(pl.to) && pl.to !== \"blocked\" ? pl.to : \"todo\";", reason: "`to` is a step column here, not a person" },
+  { file: "features/projects/reduce.ts", line: "const column: StepColumn = isColumn(a.to) && a.to !== \"blocked\" ? a.to : \"todo\";", reason: "`to` is a step column here, not a person" },
   { file: "features/projects/reduce.ts", line: "const changed = s.column !== pl.to;", reason: "`to` is a step column here, not a person" },
   { file: "features/projects/reduce.ts", line: "if (pl.to !== \"todo\" && s.startedDay === null) s.startedDay = d;", reason: "`to` is a step column here, not a person" },
   { file: "features/projects/reduce.ts", line: "s.doneDay = pl.to === \"done\" ? (changed || s.doneDay === null ? d : s.doneDay) : null;", reason: "`to` is a step column here, not a person" },

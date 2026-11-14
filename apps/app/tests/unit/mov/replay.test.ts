@@ -64,7 +64,7 @@ const without = <T extends object>(o: T, keys: readonly string[]): T => Object.f
 /** Every field the project had before MOV, as plain data: the history as its event ids. */
 const before = (p: ReducedProject) => {
   const { history, ...rest } = p;
-  for (const k of [...MOV_FIELDS, ...RES_FIELDS, "pages", "removed", "merges"] as const) delete (rest as Partial<ReducedProject>)[k];
+  for (const k of [...MOV_FIELDS, ...RES_FIELDS, "pages", "milestones", "forms", "requests", "removed", "merges"] as const) delete (rest as Partial<ReducedProject>)[k];
   return {
     ...rest,
     baseline: rest.baseline === null ? null : without(rest.baseline, ["byUserId", "eventId", "confirmed"]),

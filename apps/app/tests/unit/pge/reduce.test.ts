@@ -195,7 +195,7 @@ it("PGE pages reduce: replays the recorded pre-PGE demo sample unchanged with pa
   expect(projects).toHaveLength(9);
   for (const p of projects) expect(model(p)).toEqual({ pages: null, removed: [], merges: {} });
   const legacy = projects.map((p) => Object.fromEntries(Object.entries(p)
-    .filter(([key]) => !["pages", "removed", "merges"].includes(key))
+    .filter(([key]) => !["pages", "milestones", "forms", "requests", "removed", "merges"].includes(key))
     .map(([key, value]) => [key, key === "steps" ? p.steps.map((step) => {
       expect(step).toMatchObject({ checklist: [], comments: [], waitingOn: null });
       return Object.fromEntries(Object.entries(step).filter(([field]) => !["checklist", "comments", "waitingOn"].includes(field)));
