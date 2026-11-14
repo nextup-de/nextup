@@ -48,6 +48,20 @@ async function deputyConfirmsBaseline(page: Page) {
 const head = (page: Page) => page.getByRole("main");
 
 /** Open the page by its stable id; navigation is covered separately by the sidebar task. */
+/** The Results tool keeps its measure checks in the drawer behind the result card (HUB, #888). */
+async function openResult(page: Page) {
+  const drawer = page.getByRole("dialog", { name: "Results", exact: true });
+  if (!(await drawer.isVisible())) await page.getByRole("button", { name: "Open result", exact: true }).click();
+  await expect(drawer).toBeVisible();
+}
+
+/** The open drawer makes the rest of the page inert, so the Dev panel is used with it closed. */
+async function plus30WithResult(page: Page, times = 1) {
+  await page.getByRole("button", { name: "Close result", exact: true }).click();
+  await plus30(page, times);
+  await openResult(page);
+}
+
 async function projectPage(page: Page, id: "overview" | "steps" | "team" | "results" | "activity" | "files") {
   const url = new URL(page.url());
   url.search = "";
@@ -137,9 +151,10 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.getByRole("button", { name: "Mark it done" }).click();
     await expect(head(page)).toContainText("P-4 · Measuring");
     await projectPage(page, "results");
+    await openResult(page);
     const check30 = page.getByRole("group", { name: "30-day check" });
     await expect(check30).toContainText("Opens");
-    await plus30(page);
+    await plus30WithResult(page);
     await check30.getByLabel(/The number now/).fill("12");
     await expect(check30.getByRole("status")).toContainText("better");
     await check30.getByRole("button", { name: "Record the measure" }).click();
@@ -148,7 +163,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("records the 90-day check, worse than the 30-day one but still better than before", async () => {
-    await plus30(page, 2);
+    await plus30WithResult(page, 2);
     const check90 = page.getByRole("group", { name: "90-day check" });
     await check90.getByLabel(/The number now/).fill("14");
     await check90.getByRole("button", { name: "Record the measure" }).click();
@@ -156,6 +171,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await expect(head(page)).toContainText("P-4 · Measured");
     // The lead does not record a reward: that is the manager's.
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
+    // The drawer makes the page inert; the next step switches the person from the Dev panel.
+    await page.getByRole("button", { name: "Close result", exact: true }).click();
   });
 
   await test.step("a typed measure does not make the reward due until a second person confirms it (LOOP/D18)", async () => {
@@ -163,6 +180,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await viewAs(page, "Manager");
     await page.goto("/acme/projects/pj4?page=results");
     await expect(head(page)).toContainText("P-4 · Measured");
+    await openResult(page);
     await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });

@@ -19,7 +19,7 @@ const beforeStp = (s: ReducedProject["steps"][number]) => {
 const without = <T extends object>(o: T, keys: readonly string[]): T => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k))) as T;
 /** The project as it was before RES: the RES fields off, the history as its event ids, as plain data. */
 const asBefore = (p: ReducedProject) => JSON.parse(JSON.stringify({
-  ...without(p, [...RES_PROJECT, "pages", "milestones", "removed", "merges"]),
+  ...without(p, [...RES_PROJECT, "pages", "milestones", "forms", "requests", "removed", "merges"]),
   baseline: p.baseline === null ? null : without(p.baseline, ["byUserId", "eventId", "confirmed"]),
   steps: p.steps.map((s) => without(beforeStp(s), ["dropped", "checklist", "comments", "waitingOn"])),
   measures: p.measures.map((m) => without(m, RES_MEASURE)),

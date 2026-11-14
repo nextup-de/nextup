@@ -16,6 +16,7 @@ import { TEMPLATES } from "@/features/templates/library";
 import { mayConfirm, unconfirmedOf } from "./confirm";
 import { baselineNeedsConfirm, DROP_WHY_MAX, HELP_TEXT_MAX, openStepsOf, QUESTION_WHY_MAX, revisionMatches } from "./result";
 import { isMeasureSource, readImpact } from "./measure-source";
+import { untouchedStepOf } from "./reduce";
 import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
 import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject, type ToolKind, type ToolInstance } from "./types";
 
@@ -30,6 +31,7 @@ const webUrl = (v: unknown): v is string => typeof v === "string" && v.length <=
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 /** The columns a new step may start in: Blocked needs its reason, so a step only moves there. */
 const STARTS: readonly string[] = ["todo", "doing", "done"];
+const FIELD_KINDS = ["short", "long", "choice", "date"] as const;
 
 const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
 /** A line of `min` to `max` characters once trimmed (the goal and its done-when, D17). */
@@ -421,6 +423,80 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       const start = pl.startDay !== undefined ? pl.startDay : current?.startDay ?? null;
       const due = whole(pl.dueDay) ? pl.dueDay : current?.dueDay;
       return start !== null && due !== undefined && start > due ? no("projectPlan.permMilestoneDates") : OK;
+    }
+
+    case "project.form.saved": {
+      if (!onTeam) return no("projectRequests.permTeam");
+      if (!live) return no("projectRequests.permClosed");
+      if (!fitsEvent(pl)) return no("projectRequests.permEventTooLong");
+      if (!isProjectId(pl.formId)) return no("projectRequests.permFormId");
+      if (!text(pl.title, 80)) return no("projectRequests.permFormTitle");
+      if (pl.intro !== undefined && (typeof pl.intro !== "string" || pl.intro.length > 1000)) return no("projectRequests.permFormIntro");
+      if (typeof pl.shared !== "boolean") return no("projectRequests.permFormShared");
+      const fields = pl.fields;
+      if (!Array.isArray(fields) || fields.length < 1 || fields.length > 20) return no("projectRequests.permFormFields");
+      const seen = new Set<string>();
+      for (const x of fields) {
+        if (x === null || typeof x !== "object" || !isProjectId(x.id) || seen.has(x.id)) return no("projectRequests.permFieldId");
+        seen.add(x.id);
+        if (!(FIELD_KINDS as readonly unknown[]).includes(x.kind)) return no("projectRequests.permFieldKind");
+        if (!text(x.label, 200)) return no("projectRequests.permFieldLabel");
+        if (typeof x.required !== "boolean") return no("projectRequests.permFieldRequired");
+        if (x.kind === "choice" && !(Array.isArray(x.options) && x.options.length >= 2 && x.options.length <= 12 && x.options.every((o) => text(o, 80)))) return no("projectRequests.permFieldOptions");
+      }
+      return OK;
+    }
+
+    case "project.form.answered": {
+      // Anyone signed in to the company may answer a shared form (REQ D3); the server takes who from the session. Nothing else of the project opens up.
+      if (actor.userId === null || actor.userId === undefined) return no("projectRequests.permAnswerWho");
+      if (!live) return no("projectRequests.permClosed");
+      if (!fitsEvent(pl)) return no("projectRequests.permEventTooLong");
+      const form = p.forms.find((x) => x.id === pl.formId);
+      if (!form || !form.shared) return no("projectRequests.permNoForm");
+      if (pl.formRev !== form.rev) return no("projectRequests.permFormChanged");
+      if (!isProjectId(pl.requestId) || p.requests.some((x) => x.id === pl.requestId)) return no("projectRequests.permRequestId");
+      const answers = pl.answers;
+      if (answers === null || typeof answers !== "object" || Array.isArray(answers)) return no("projectRequests.permAnswerShape");
+      if (Object.keys(answers).some((k) => !form.fields.some((f) => f.id === k))) return no("projectRequests.permAnswerUnknown");
+      for (const f of form.fields) {
+        const v = answers[f.id];
+        if (v === undefined || (typeof v === "string" && v.trim() === "")) {
+          if (f.required) return no("projectRequests.permAnswerRequired", { label: f.label });
+          continue;
+        }
+        if (typeof v !== "string") return no("projectRequests.permAnswerShape");
+        if (f.kind === "short" && v.length > 300) return no("projectRequests.permAnswerShort");
+        if (f.kind === "long" && v.length > 4000) return no("projectRequests.permAnswerLong");
+        if (f.kind === "choice" && !(f.options ?? []).includes(v)) return no("projectRequests.permAnswerChoice");
+        if (f.kind === "date" && !/^-?\d{1,7}$/.test(v)) return no("projectRequests.permAnswerDate");
+      }
+      return OK;
+    }
+
+    case "project.request.stepped":
+    case "project.request.declined":
+    case "project.request.reopened": {
+      if (!onTeam) return no("projectRequests.permTeam");
+      if (!live) return no("projectRequests.permClosed");
+      if (!fitsEvent(pl)) return no("projectRequests.permEventTooLong");
+      const request = p.requests.find((x) => x.id === pl.requestId);
+      if (!request) return no("projectRequests.permNoRequest");
+      if (ev.type === "project.request.reopened") {
+        if (request.state === "new") return no("projectRequests.permRequestIsNew");
+        return request.state === "stepped" && untouchedStepOf(p, request) === null ? no("projectRequests.permRequestStepMoved") : OK;
+      }
+      if (request.state !== "new") return no("projectRequests.permRequestNotNew");
+      if (ev.type === "project.request.declined") return text(pl.why, 400) ? OK : no("projectRequests.permDeclineWhy");
+      const s = pl.step;
+      if (s === null || typeof s !== "object") return no("projectRequests.permRequestStep");
+      if (!isProjectId(s.stepId) || p.steps.some((x) => x.id === s.stepId)) return no("projects.permStepIdUnusable");
+      if (!text(s.text, 500)) return no("projects.permStepText");
+      if (typeof s.column !== "string" || !STARTS.includes(s.column)) return no("projects.permStepStart");
+      if (s.note !== undefined && (typeof s.note !== "string" || s.note.length > 2000)) return no("projects.permDetailsLong");
+      if (s.ownerUserId !== undefined && s.ownerUserId !== null && typeof s.ownerUserId !== "string") return no("projects.permStepOwnerWho");
+      if (s.dueDay !== undefined && s.dueDay !== null && !(typeof s.dueDay === "number" && Number.isFinite(s.dueDay))) return no("projects.permStepDue");
+      return OK;
     }
 
     case "project.linked":
