@@ -3,7 +3,7 @@
 // starts it; the board is worked and the project done; the clock moves 30 days at a time to each
 // measure check; then the manager finds no reward due on the unconfirmed typed measures. Demo mode: one browser
 // plays every person via the dev panel, on acme's seeded P-4 (T. Vogel's, from c9's yes).
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../helpers";
 
 const FIRST = "Move the spare bench from line 1 next to the press for two weeks";
@@ -63,10 +63,16 @@ async function about(page: Page) {
   return page.getByRole("dialog", { name: "About this project" });
 }
 
+/** Find a board card by its title; the List tool shows the same steps. */
+function stepCard(scope: Page | Locator, text: string) {
+  return scope.getByRole("article").filter({ hasText: text });
+}
+
 /** Open a card's sheet - where its moves, owner, due day and details are. */
 async function openStep(page: Page, text: string) {
-  await page.getByRole("button", { name: "Open “" + text + "”" }).click();
-  return page.getByRole("dialog", { name: text });
+  await page.getByRole("region", { name: "Board", exact: true }).getByRole("button", { name: "Open step: " + text, exact: true }).click();
+  // Stacked tools share ?step=; act on the sheet rendered above the others.
+  return page.getByRole("dialog", { name: text, exact: true }).last();
 }
 
 test("a lead plans, runs and measures a project; no reward is due on unconfirmed measures", async ({ page }) => {
@@ -86,8 +92,9 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await test.step("adds a step the brief suggests and one of their own", async () => {
     await projectPage(page, "steps");
     await page.getByRole("button", { name: "Add step: " + FIRST }).click();
+    await page.getByRole("button", { name: "Add a step to To do" }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
-    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await page.getByRole("group", { name: "To do" }).getByRole("button", { name: "Add", exact: true }).click();
     const todo = page.getByRole("group", { name: "To do" });
     await expect(todo.getByRole("article")).toHaveCount(2);
     await expect(page.getByRole("button", { name: "Add step: " + FIRST })).toHaveCount(0);
@@ -112,14 +119,15 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await test.step("works the board from the card sheets: blocked asks why, then both steps are done", async () => {
     await projectPage(page, "steps");
     let sheet = await openStep(page, TYPED);
-    await sheet.getByRole("button", { name: "Move “" + TYPED + "” to Blocked" }).click();
-    await sheet.getByRole("textbox", { name: "What blocks it?" }).fill("Stopwatch is at the other site");
-    await sheet.getByRole("button", { name: "Mark blocked" }).click();
-    await expect(page.getByRole("group", { name: "Blocked" })).toContainText("Stopwatch is at the other site");
-    await sheet.getByRole("button", { name: "Move “" + TYPED + "” to Done" }).click();
+    await sheet.getByRole("button", { name: "Mark blocked", exact: true }).click();
+    await sheet.getByRole("textbox", { name: "Question or reason" }).fill("Stopwatch is at the other site");
+    await sheet.getByRole("form", { name: "What is it waiting for?" }).getByRole("button", { name: "Mark blocked" }).click();
+    await expect(page.getByRole("group", { name: "Blocked" })).toContainText(TYPED);
+    await expect(sheet).toContainText("Stopwatch is at the other site");
+    await sheet.getByRole("button", { name: "Mark done", exact: true }).click();
     await page.keyboard.press("Escape");
     sheet = await openStep(page, FIRST);
-    await sheet.getByRole("button", { name: "Move “" + FIRST + "” to Done" }).click();
+    await sheet.getByRole("button", { name: "Mark done", exact: true }).click();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("group", { name: "Done" }).getByRole("article")).toHaveCount(2);
   });
@@ -170,8 +178,9 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   await test.step("the lead starts P-4 with two steps still open", async () => {
     await projectPage(page, "steps");
     await page.getByRole("button", { name: "Add step: " + FIRST }).click();
+    await page.getByRole("button", { name: "Add a step to To do" }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
-    await page.getByRole("button", { name: "Add step", exact: true }).click();
+    await page.getByRole("group", { name: "To do" }).getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByRole("group", { name: "To do" }).getByRole("article")).toHaveCount(2);
     await projectPage(page, "overview");
     await page.getByLabel("What is measured").fill("Deburring queue");
@@ -320,19 +329,21 @@ test("a step is dragged to another column; a drop on Blocked asks why", async ({
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await page.goto("/acme/projects/pj4?page=steps");
+  await page.getByRole("button", { name: "Add a step to To do" }).click();
   await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
-  await page.getByRole("button", { name: "Add step", exact: true }).click();
+  await page.getByRole("group", { name: "To do" }).getByRole("button", { name: "Add", exact: true }).click();
   const todo = page.getByRole("group", { name: "To do" });
-  const card = todo.getByRole("article", { name: TYPED });
+  const card = stepCard(todo, TYPED);
   await card.dragTo(page.getByRole("group", { name: "Doing" }));
-  await expect(page.getByRole("group", { name: "Doing" }).getByRole("article", { name: TYPED })).toBeVisible();
-  await page.getByRole("group", { name: "Doing" }).getByRole("article", { name: TYPED }).dragTo(page.getByRole("group", { name: "Blocked" }));
-  const why = page.getByRole("textbox", { name: "What blocks it?" });
+  await expect(stepCard(page.getByRole("group", { name: "Doing" }), TYPED)).toBeVisible();
+  await stepCard(page.getByRole("group", { name: "Doing" }), TYPED).dragTo(page.getByRole("group", { name: "Blocked" }));
+  const why = page.getByRole("textbox", { name: "Question or reason" });
   await expect(why).toBeVisible();
-  await expect(page.getByRole("group", { name: "Doing" }).getByRole("article", { name: TYPED })).toBeVisible(); // not moved until the reason is given
+  await expect(stepCard(page.getByRole("group", { name: "Doing" }), TYPED)).toBeVisible(); // not moved until the reason is given
   await why.fill("Waiting for the stopwatch");
   await page.getByRole("button", { name: "Mark blocked" }).click();
-  await expect(page.getByRole("group", { name: "Blocked" }).getByRole("article", { name: TYPED })).toContainText("Waiting for the stopwatch");
+  await expect(page.getByRole("group", { name: "Blocked" }).getByRole("article").filter({ hasText: TYPED })).toBeVisible();
+  await expect(await openStep(page, TYPED)).toContainText("Waiting for the stopwatch");
 });
 
 test("a step goes straight into Doing, gets an owner and details in its sheet, and is dragged to the top", async ({ page }) => {
@@ -344,20 +355,20 @@ test("a step goes straight into Doing, gets an owner and details in its sheet, a
   await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
   await page.getByRole("textbox", { name: "New step" }).press("Enter");
   await expect(doing.getByRole("article")).toHaveCount(3);
-  await expect(doing.getByRole("article").last()).toHaveAccessibleName(TYPED);
+  await expect(doing.getByRole("article").last()).toContainText(TYPED);
 
   const sheet = await openStep(page, TYPED);
-  await sheet.getByRole("combobox", { name: "Owner" }).selectOption("L. Brandt");
+  await sheet.getByRole("combobox", { name: "Owner" }).selectOption({ label: "L. Brandt" });
   await sheet.getByRole("button", { name: "+1 week" }).click();
   await sheet.getByLabel("Details").fill("Five shift starts, stopwatch from the Ulm depot");
-  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await sheet.getByLabel("Details").blur();
   await expect(sheet).toContainText("changed “" + TYPED + "”: updated the details");
   await page.keyboard.press("Escape");
-  const card = doing.getByRole("article", { name: TYPED });
+  const card = stepCard(doing, TYPED);
   await expect(card).toContainText("L. Brandt");
 
   await card.dragTo(doing.getByRole("article").first(), { targetPosition: { x: 20, y: 4 } });
-  await expect(doing.getByRole("article").first()).toHaveAccessibleName(TYPED);
+  await expect(doing.getByRole("article").first()).toContainText(TYPED);
   await projectPage(page, "overview");
   await expect(page.getByRole("region", { name: "Where it stands" })).toContainText("1 open without an owner");
 });
@@ -386,7 +397,7 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
   const tools = page.getByRole("region", { name: "Connected tools" });
 
   await test.step("a project that is not sent offers Send to Jira, and says what it will create", async () => {
-    await expect(page.getByRole("article", { name: FIRST })).not.toContainText("waiting for Jira");
+    await expect(stepCard(page, FIRST)).not.toContainText("waiting for Jira");
     await projectPage(page, "files");
     await expect(tools).toContainText("Two-way sync");
     await expect(tools).toContainText("Creates an epic in NUP and 1 issue");
@@ -399,15 +410,15 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
     await page.keyboard.press("Escape");
     await expect(tools.getByRole("button", { name: "Send to Jira" })).toHaveCount(0);
     await projectPage(page, "steps");
-    await expect(page.getByRole("article", { name: FIRST })).toContainText("NUP-2");
+    await expect(stepCard(page, FIRST)).toContainText("NUP-2");
   });
 
   await test.step("a step added after the send waits for Jira", async () => {
     // Back on the board after the page change, the To do composer is closed again.
     await page.getByRole("button", { name: "Add a step to To do" }).click();
     await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
-    await page.getByRole("button", { name: "Add step", exact: true }).click();
-    await expect(page.getByRole("article", { name: TYPED })).toContainText("waiting for Jira");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(stepCard(page, TYPED)).toContainText("waiting for Jira");
   });
 
   await test.step("an existing issue is linked to a step by its key", async () => {
@@ -420,8 +431,8 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
     await form.getByLabel("For which step").selectOption({ label: TYPED });
     await form.getByRole("button", { name: "Link the issue" }).click();
     await projectPage(page, "steps");
-    await expect(page.getByRole("article", { name: TYPED })).toContainText("NUP-77");
-    await expect(page.getByRole("article", { name: TYPED })).not.toContainText("waiting for Jira");
+    await expect(stepCard(page, TYPED)).toContainText("NUP-77");
+    await expect(stepCard(page, TYPED)).not.toContainText("waiting for Jira");
   });
 
   await test.step("Stop syncing takes the project off Jira and offers Send again", async () => {
@@ -429,7 +440,7 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
     await tools.getByRole("button", { name: "Stop syncing" }).click();
     await expect(tools.getByRole("button", { name: "Send to Jira" })).toBeVisible();
     await projectPage(page, "steps");
-    await expect(page.getByRole("article", { name: TYPED })).not.toContainText("waiting for Jira");
+    await expect(stepCard(page, TYPED)).not.toContainText("waiting for Jira");
   });
 });
 
