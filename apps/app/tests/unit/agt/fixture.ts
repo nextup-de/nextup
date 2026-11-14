@@ -36,4 +36,4 @@ export const stateOf = (events: CaseEvent[], day = 0): State => reduce(SEED, log
 export const project = (s: State): ReducedProject => s.projects.find((p) => p.id === "p_one")!;
 
 export const step = (id: string, patch: Partial<Step> = {}): Step =>
-  ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 10, by: "L. Brandt", movedDay: 10, startedDay: 10, doneDay: null, external: null, ...patch });
+  ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 10, by: "L. Brandt", movedDay: 10, startedDay: 10, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null, ...patch });

@@ -34,7 +34,7 @@ const yes = ev("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p
 const fact = (payload: EventPayload, id?: string): CaseEvent => ({ ...ev("clock.due", "system:clock", "p_one", payload), ...(id ? { id } : {}) });
 
 const step = (id: string, patch: Partial<Step> = {}): Step =>
-  ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 1, by: "L. Brandt", movedDay: 1, startedDay: 1, doneDay: null, external: null, ...patch });
+  ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 1, by: "L. Brandt", movedDay: 1, startedDay: 1, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null, ...patch });
 
 /** A started project of the real reducer (legacy: no draft), then the values a test needs set on it. Started on day 10, last active on day 20. */
 function running(patch: Partial<ReducedProject> = {}, extra: CaseEvent[] = [], rules: Partial<State["rules"]> = {}): State {

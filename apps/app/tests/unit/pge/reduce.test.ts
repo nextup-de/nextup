@@ -194,7 +194,12 @@ it("PGE pages reduce: replays the recorded pre-PGE demo sample unchanged with pa
   const projects = reduce(seed, { events: [], day: 0 }).projects;
   expect(projects).toHaveLength(9);
   for (const p of projects) expect(model(p)).toEqual({ pages: null, removed: [], merges: {} });
-  const legacy = projects.map((p) => Object.fromEntries(Object.entries(p).filter(([key]) => !["pages", "removed", "merges"].includes(key))));
+  const legacy = projects.map((p) => Object.fromEntries(Object.entries(p)
+    .filter(([key]) => !["pages", "removed", "merges"].includes(key))
+    .map(([key, value]) => [key, key === "steps" ? p.steps.map((step) => {
+      expect(step).toMatchObject({ checklist: [], comments: [], waitingOn: null });
+      return Object.fromEntries(Object.entries(step).filter(([field]) => !["checklist", "comments", "waitingOn"].includes(field)));
+    }) : value])));
   // Captured from this sample with the reducer before PGE-A1; covers every existing project field and its history.
   expect(createHash("sha256").update(JSON.stringify(legacy)).digest("hex")).toBe("7b6d013d117a15fc9c3a782461b29b1a77946f838c00d96d2a6177555616aa9e");
 });

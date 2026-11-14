@@ -174,7 +174,7 @@ describe("SET notices", () => {
   it("the kickoff tells team, sponsor and followers the goal and first steps, and the raiser today's started mail", () => {
     const steps = [
       { id: "t1", text: "Try it at one station", owner: "H. Sander" }, { id: "t2", text: "Make it the standard", owner: null },
-    ].map((s) => ({ ...s, ownerUserId: null, dueDay: null, column: "todo" as const, why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, external: null }));
+    ].map((s) => ({ ...s, ownerUserId: null, dueDay: null, column: "todo" as const, why: "", note: "", addedDay: 0, by: "x", movedDay: 0, startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null }));
     const start = P("project.started", "L. Brandt", {}, 4);
     const log = [draftYes(), P("project.baseline", "L. Brandt", { metric: "m", unit: "min", value: 42, better: "down" }), start];
     const out = mails(start, log, draft({

@@ -63,7 +63,7 @@ describe("RES scaffold", () => {
   const number: Baseline = { none: false, metric: "m", unit: "min", value: 42, better: "down", source: "", day: 1, by: "L", byUserId: "u_lb", eventId: "b1", confirmed: null };
   const noNumber: Baseline = { none: true, why: "nothing to measure", day: 1, by: "L" };
   const step = (id: string, patch: Partial<Step> = {}): Step =>
-    ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 1, by: "L", movedDay: 1, startedDay: 1, doneDay: null, external: null, dropped: null, ...patch });
+    ({ id, text: id, owner: null, ownerUserId: null, dueDay: null, column: "doing", why: "", note: "", addedDay: 1, by: "L", movedDay: 1, startedDay: 1, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null, dropped: null, ...patch });
 
   it("project.done carries openSteps: a typed payload of the decided shape", () => {
     const payload: EventPayload = { note: "Live", openSteps: [{ stepId: "s1", end: "done" }, { stepId: "s2", end: "dropped", why: "no longer needed" }] };

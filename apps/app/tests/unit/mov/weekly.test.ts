@@ -16,7 +16,7 @@ const moved = (stepId: string, to: string, day: number, why?: string) => ev("pro
 
 const step = (id: string, text: string): Step => ({
   id, text, owner: null, dueDay: null, column: "todo", why: "", note: "", addedDay: 0, by: "L. Brandt", movedDay: 0,
-  startedDay: null, doneDay: null, external: null,
+  startedDay: null, doneDay: null, checklist: [], comments: [], waitingOn: null, external: null,
 });
 const board = (history: CaseEvent[], steps: Step[]) => ({ number: 7, title: "Changeover cart", history, steps });
 
