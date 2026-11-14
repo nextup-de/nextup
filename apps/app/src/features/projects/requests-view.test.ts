@@ -3,7 +3,7 @@ import { reduce } from "@/features/cases/reducer";
 import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/events";
 import { formSummaries, requestCounts, requestList, stepDraft, undoOf } from "@/features/projects/requests-view";
 import type { FormFieldInput } from "@/features/projects/types";
-import { ev, logOf, project, SEED, startedLog } from "../../../tests/unit/res/project-fixture";
+import { ev, logOf, project, SEED, startedLog } from "./project-fixture";
 
 const FIELDS: FormFieldInput[] = [
   { id: "f_what", kind: "short", label: "What do you need?", required: true },
@@ -45,7 +45,7 @@ it("REQ inbox prefills the step title from the form's first short answer, quotin
 it("REQ inbox Make it a step sends one event: a stepped request is no longer new, so a retry is refused", () => {
   const events = [saved(), answered("q1", { f_what: "Cart" }), as("project.request.stepped", { requestId: "q1", step: { stepId: "s_1", text: "Cart", column: "todo" } })];
   const p = proj(...events, as("project.request.stepped", { requestId: "q1", step: { stepId: "s_2", text: "Cart again", column: "todo" } }, 14));
-  expect(p.steps.filter((s) => s.id.startsWith("s_"))).toHaveLength(1);
+  expect(p.steps.filter((s: { id: string }) => s.id.startsWith("s_"))).toHaveLength(1);
   expect(p.requests[0].stepId).toBe("s_1");
 });
 
