@@ -18,6 +18,6 @@ export function EmptyTool() {
 }
 
 export function ToolComing() {
-  // PGE-G1 must supply projectPages.toolComing before this stand-in can use its final copy.
-  return <EmptyTool />;
+  const t = useT();
+  return <p className={styles.empty}>{t("projectPages.toolComing")}</p>;
 }
