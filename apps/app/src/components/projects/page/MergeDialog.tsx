@@ -52,7 +52,7 @@ export function MergeDialog({ p, fromPageId, intoPageId, open, onClose, onMerged
       if (result.ok) { setDone(null); onClose(); } else setError(result.error);
     };
     return <div className={s.toast} role="status">
-      <span>{t("projectPages.mergedToast", { from: done.from, into: done.into })}</span> · <button type="button" disabled={busy} onClick={() => void undo()}>{t("projectPages.undo")}</button>
+      <span>{t("projectPages.mergedToast", { from: done.from, into: done.into })}</span><button type="button" disabled={busy} onClick={() => void undo()}>{t("projectPages.undo")}</button>
       {error && <span className={s.error} role="alert"> {error}</span>}
     </div>;
   }
@@ -73,14 +73,14 @@ export function MergeDialog({ p, fromPageId, intoPageId, open, onClose, onMerged
   };
   return <div className={s.scrim}>
     <div ref={panel} className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="merge-title" tabIndex={-1} onKeyDown={(event) => { if (event.key === "Escape" && !busy) onClose(); }}>
-      <div className={s.head}><h2 id="merge-title">{t("projectPages.mergeTitle", { from: name(from), into: name(into) })}</h2></div>
+      <div className={s.head}><h2 id="merge-title">{t("projectPages.mergeTitle", { from: name(from), into: name(into) })}</h2><button type="button" className={s.close} disabled={busy} aria-label={t("projectPages.close")} onClick={onClose}>×</button></div>
       <div className={s.body}>
         <p className={s.hint}>{t("projectPages.mergeOrderHint", { page: name(into) })}</p>
         <ol className={s.rows}>
           {rows.map((row, index) => <li key={index} data-mark={row.mark}>
             <span className={s.name}>{row.title || t(toolKey(row.kind))}</span>
-            <span className={s.mark}>{row.mark === "on" ? t("projectPages.onPage", { page: name(into) }) : row.mark === "second" ? `${t("projectPages.fromPage", { page: name(from) })} · ${t("projectPages.secondTool", { tool: t(toolKey(row.kind)) })}` : t("projectPages.fromPage", { page: name(from) })}</span>
             {tag(row.kind)}
+            <span className={s.mark}>{row.mark === "on" ? t("projectPages.onPage", { page: name(into) }) : row.mark === "second" ? `${t("projectPages.fromPage", { page: name(from) })} · ${t("projectPages.secondTool", { tool: t(toolKey(row.kind)) })}` : t("projectPages.fromPage", { page: name(from) })}</span>
           </li>)}
         </ol>
         <p className={s.hint}>{t("projectPages.mergeKeepsAll")}</p>
