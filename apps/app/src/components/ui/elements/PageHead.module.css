@@ -1,0 +1,23 @@
+.head { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.title { margin: 0; font-family: var(--nh-font); font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: var(--nh-ink); }
+.source { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; max-width: 100%; padding: 3px 10px 3px 4px; border: 1px solid var(--nh-line); border-radius: var(--radius-full); background: var(--nh-card); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); line-height: 18px; }
+button.source { cursor: pointer; }
+button.source:hover { background: var(--nh-brand-tint); }
+.mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-full); background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-xs); font-weight: 600; }
+.sourceName { font-weight: 600; color: var(--nh-ink); }
+.key { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); color: var(--nh-mute); }
+.dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--nh-brand); }
+.dot[data-state="problem"] { background: var(--nh-danger); }
+.dot[data-state="syncing"] { background: var(--nh-warn); }
+.synced { color: var(--nh-mute); white-space: nowrap; }
+.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.open { color: var(--nh-brand-ink); font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; }
+.open:hover { text-decoration: underline; }
+.primary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 0; border-radius: var(--radius-sm); background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
+.primary:hover { background: var(--nh-brand-hover); }
+.primary:disabled { opacity: .45; cursor: default; }
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.head :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+@media (width < 760px) { .top { flex-direction: column; align-items: stretch; } .actions { justify-content: space-between; } .title { font-size: var(--nh-fs-2xl); } }
