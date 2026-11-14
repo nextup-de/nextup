@@ -62,6 +62,11 @@ test("REQ acceptance: a member answers a form and the lead makes it a step", asy
     await page.getByRole("textbox", { name: QUESTION }).fill(FIRST_ANSWER);
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await expect(page.getByText("Your answer was sent")).toBeVisible();
+    // A second answer from the same person, for the lead to decline below.
+    await page.getByRole("textbox", { name: QUESTION }).fill(SECOND_ANSWER);
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText("Your answer was sent")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Your requests" })).toContainText("New");
   });
 
   await test.step("the lead makes the answer a step that shows on the board", async () => {
@@ -90,6 +95,7 @@ test("REQ acceptance: a member answers a form and the lead makes it a step", asy
 
   await test.step("the member sees 'Made into a step' on their requests page", async () => {
     await viewAs(page, "Employee");
-    await expect(page.getByText("Made into a step")).toBeVisible();
+    await page.goto("/acme/forms/" + formId);
+    await expect(page.getByRole("region", { name: "Your requests" })).toContainText("Made into a step");
   });
 });
