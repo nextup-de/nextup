@@ -27,10 +27,10 @@ it("Add page dialog renders the numbered selection, preview, groups and single-i
   expect(html).not.toContain("Help with the next step");
 });
 
-it("Add page dialog shows Jira tags only for a configured connector and only four kinds are Jira tools", () => {
+it("Add page dialog shows Jira tags only for a configured connector and only five kinds are Jira tools", () => {
   const jira = jiraRowOf(p, demoJiraView(0), 0, "en");
   const html = render({ jira });
-  expect(html.match(/data-jira="true"/g)).toHaveLength(4);
+  expect(html.match(/data-jira="true"/g)).toHaveLength(5);
   expect(html).toContain("NextUp only");
   expect(html).toContain("Jira project NUP");
   expect(render({ jira: { ...jira, projectKey: null } })).not.toContain("NextUp only");

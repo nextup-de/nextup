@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import type { Milestone } from "@/features/projects/types";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PersonFace } from "@/components/ui/elements";
 import { askDraft, milestoneCards, MILESTONE_KEYS, validMilestone, type MilestoneCard, type MilestoneIssue, type MilestonesKey } from "@/features/projects/milestones-view";
@@ -31,6 +32,8 @@ export function Milestones({ p, jira }: ToolProps) {
   const shown = cards.filter((card) => (!needle || card.milestone.title.toLowerCase().includes(needle)) && (only === null || (only === "shipped") === (card.state === "shipped")));
   const openCount = cards.filter((card) => card.state !== "shipped").length;
   const editor = rights.addStep;
+  // A Jira chip only while the company's Jira and the project's sync are both on (D5, D24).
+  const syncing = jira.state === "synced" && p.sync?.system === "jira" && p.sync.on;
 
   const ship = (card: MilestoneCard) => {
     setMenu(null);
@@ -55,6 +58,7 @@ export function Milestones({ p, jira }: ToolProps) {
         <header className={styles.head}>
           <h3>{m.title}</h3>
           <span className={styles.state} data-state={card.state}>{tx(`state${card.state[0].toUpperCase()}${card.state.slice(1)}` as MilestonesKey)}</span>
+          {syncing && <VersionChips m={m} />}
           <span className={styles.spacer} />
           <PersonFace name={p.lead} size="sm" />
           {editor && <span className={styles.menuWrap}>
@@ -96,6 +100,19 @@ export function Milestones({ p, jira }: ToolProps) {
     {creating && <CreateDialog onClose={() => setCreating(false)} onCreate={(input) => send("project.milestone.added", { milestoneId: "probe", ...input }, () => act.project.milestone.add(p.id, input))} />}
     {panel && <StepPanel p={p} stepId={panel.stepId} jira={jira} draftComment={panel.draft} onClose={() => setPanel(null)} />}
   </section>;
+}
+
+/** The milestone's Jira version (D9): a link while it exists, 'waiting' only for one NextUp will create, and the write's own state. An imported one is read-only and never waits. */
+function VersionChips({ m }: { m: Milestone }) {
+  const t = useT();
+  const ext = m.external ?? null;
+  const write = m.sync ?? null;
+  return <>
+    {ext && <a className={styles.version} data-mode={ext.mode} href={ext.url} target="_blank" rel="noopener noreferrer" aria-label={`${t("projectJsy.versionOpen")}: ${m.title}`} title={ext.mode === "imported" ? t("projectJsy.importedHint") : t("projectJsy.versionOpen")}>{t("projectJsy.versionChip", { key: ext.key })}</a>}
+    {!ext && !write && <span className={styles.version} data-waiting title={t("projectJsy.versionWaitingTitle")}>{t("projectJsy.versionWaiting")}</span>}
+    {write?.state === "pending" && <span className={styles.version} data-waiting title={t("projectJsy.writePendingTitle")}>{t("projectJsy.writePending")}</span>}
+    {write?.state === "failed" && <span className={styles.version} data-problem title={t("projectJsy.writeFailedTitle", { why: write.why ?? "" })}>{t("projectJsy.writeFailed")}</span>}
+  </>;
 }
 
 function CreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { title: string; startDay?: number | null; dueDay: number; note?: string }) => unknown }) {
