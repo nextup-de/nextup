@@ -95,7 +95,7 @@
 .pageToast { background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-xs, 6px); }
 .pageToast button { padding: 0; border: none; background: transparent; color: var(--nh-brand); cursor: pointer; }
 .loggedMenu .rename { width: 100%; margin: 0; }
-.loggedMenu { max-height: calc(100vh - 16px); overflow-y: auto; }
+.loggedMenu { max-height: calc(var(--nh-screen-h) - 16px); overflow-y: auto; }
 .loggedMenu .item:disabled, .loggedMenu .iconPick:disabled { opacity: .5; cursor: default; }
 /* On hover a page's icon turns into the grip (team members only: the grip is only rendered for them). */
 .icon, .grip { display: flex; align-items: center; justify-content: center; }
