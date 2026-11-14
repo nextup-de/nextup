@@ -1,0 +1,80 @@
+{
+ "value": [
+  {
+   "id": "01ABC1",
+   "name": "Delivery report Q3.xlsx",
+   "size": 48211,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Delivery%20report%20Q3.xlsx",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-02T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  },
+  {
+   "id": "01ABC2",
+   "name": "Supplier scorecard.pdf",
+   "size": 912004,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Supplier%20scorecard.pdf",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-03T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  },
+  {
+   "id": "01ABC3",
+   "name": "Contract terms.docx",
+   "size": 20311,
+   "webUrl": "https://t.sharepoint.com/sites/a/Shared%20Documents/Supplier/Contract%20terms.docx",
+   "createdDateTime": "2026-10-01T08:00:00Z",
+   "lastModifiedDateTime": "2026-11-04T08:00:00Z",
+   "createdBy": {
+    "user": {
+     "displayName": "H. Sander"
+    }
+   },
+   "lastModifiedBy": {
+    "user": {
+     "displayName": "L. Brandt"
+    }
+   },
+   "parentReference": {
+    "driveId": "b!drive1",
+    "path": "/drives/b!drive1/root:/Supplier"
+   },
+   "file": {
+    "mimeType": "application/octet-stream"
+   }
+  }
+ ],
+ "@odata.nextLink": "https://graph.microsoft.com/v1.0/shares/u!x/driveItem/children?$top=200&$skiptoken=PAGE2"
+}
