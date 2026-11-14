@@ -5,6 +5,7 @@ import type { Actor, Verdict } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
 import { translate, DEFAULT_LOCALE, type Locale, type MessageKey } from "@/i18n";
+import { maySeeAgentTab } from "@/features/agent/permissions";
 import { holdsRole, seatsOfRole, type Me } from "@/features/auth/identity";
 import type { Route } from "@/features/demo/types";
 import { unmetApprovals } from "@/features/approvals/rights";
@@ -16,7 +17,9 @@ import { mayConfirm, unconfirmedOf } from "./confirm";
 import { baselineNeedsConfirm, DROP_WHY_MAX, HELP_TEXT_MAX, openStepsOf, QUESTION_WHY_MAX, revisionMatches } from "./result";
 import { isMeasureSource, readImpact } from "./measure-source";
 import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
-import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject } from "./types";
+import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject, type ToolKind, type ToolInstance } from "./types";
+
+import { canAddTool, fitsEvent, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, TOOL_KINDS } from "./pages";
 
 const OK: Verdict = { ok: true };
 
@@ -103,6 +106,140 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   const whole = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
 
   switch (ev.type) {
+    case "project.page.added":
+    case "project.page.edited":
+    case "project.page.moved":
+    case "project.page.removed":
+    case "project.page.restored":
+    case "project.tool.added":
+    case "project.tool.moved":
+    case "project.tool.edited":
+    case "project.tool.removed":
+    case "project.tool.restored":
+    case "project.page.merged":
+    case "project.page.unmerged": {
+      if (!onTeam) return no("projectPages.permPageWho");
+      if (!live) return no("projectPages.permPageClosed");
+      if (!fitsEvent(pl)) return no("projectPages.permEventTooLong");
+      // Defaults and hidden Agent tools count towards every limit before the first page event too.
+      const pages = pagesOf(p, { agent: true });
+      const tools = pages.flatMap((page) => page.tools);
+      const removed = p.removed.filter((item) => state.day - item.day <= LIMITS.removedDays);
+      const agent = maySeeAgentTab({ userId: uid, role: actor.role, me: actor.me }, p).ok;
+      const page = pages.find((x) => x.id === pl.pageId);
+      const tool = tools.find((x) => x.id === pl.toolId);
+      const validTitle = (v: unknown) => lineOf(v, LIMITS.titleMin, LIMITS.titleMax);
+      const validKind = (v: unknown): v is ToolKind => (TOOL_KINDS as readonly unknown[]).includes(v);
+      const hasAgent = (items: readonly Pick<ToolInstance, "kind">[]) => items.some((x) => x.kind === "agent");
+      const idExists = (id: string) => pages.some((x) => x.id === id) || tools.some((x) => x.id === id)
+        || removed.some((x) => x.page?.id === id || x.tool?.id === id || x.page?.tools.some((t) => t.id === id))
+        || Object.values(p.merges).some((x) => x.from.id === id || x.toolIds.includes(id));
+      const beforePage = () => pl.before === undefined || pl.before === null || pages.some((x) => x.id === pl.before);
+      const beforeTool = (items: readonly ToolInstance[]) => pl.before === undefined || pl.before === null || items.some((x) => x.id === pl.before);
+      const checkTools = (items: readonly Pick<ToolInstance, "kind">[]): Verdict => {
+        if (!agent && hasAgent(items)) return no("projectPages.permToolAgent");
+        if (SINGLE_KINDS.some((kind) => items.filter((x) => x.kind === kind).length + tools.filter((x) => x.kind === kind).length > 1)) return no("projectPages.permToolOnce");
+        return OK;
+      };
+      switch (ev.type) {
+        case "project.page.added": {
+          if (!isProjectId(pl.pageId)) return no("projectPages.permPageUnknown");
+          if (idExists(pl.pageId)) return no("projectPages.permPageExists");
+          if (!validTitle(pl.title)) return no("projectPages.permPageTitle");
+          if (!(PAGE_ICON_KEYS as readonly unknown[]).includes(pl.icon)) return no("projectPages.permPageIcon");
+          if (!Array.isArray(pl.tools) || pl.tools.some((x) => !x || !validKind(x.kind))) return no("projectPages.permToolKind");
+          if (pages.length >= LIMITS.pages || pl.tools.length > LIMITS.tools) return no("projectPages.permPageLimit");
+          const ids = new Set([pl.pageId]);
+          for (const item of pl.tools) {
+            if (ids.has(item.toolId) || idExists(item.toolId)) return no("projectPages.permPageExists");
+            if (!isProjectId(item.toolId)) return no("projectPages.permToolUnknown");
+            ids.add(item.toolId);
+            if (item.title !== undefined && !validTitle(item.title)) return no("projectPages.permPageTitle");
+            if (item.content !== undefined && typeof item.content !== "string") return no("projectPages.permToolUnknown");
+          }
+          if (!beforePage()) return no("projectPages.permPageUnknown");
+          return checkTools(pl.tools);
+        }
+        case "project.page.edited":
+          if (!page) return no("projectPages.permPageUnknown");
+          if (pl.title !== undefined && !validTitle(pl.title)) return no("projectPages.permPageTitle");
+          return pl.icon === undefined || (PAGE_ICON_KEYS as readonly unknown[]).includes(pl.icon) ? OK : no("projectPages.permPageIcon");
+        case "project.page.moved":
+          if (!page || pl.before === undefined || !beforePage()) return no("projectPages.permPageUnknown");
+          return !agent && hasAgent(page.tools) ? no("projectPages.permToolAgent") : OK;
+        case "project.page.removed":
+          if (!page) return no("projectPages.permPageUnknown");
+          if (page.id === "overview") return no("projectPages.permPageOverview");
+          if (pages.length <= 1) return no("projectPages.permPageLast");
+          return !agent && hasAgent(page.tools) ? no("projectPages.permToolAgent") : OK;
+        case "project.page.restored": {
+          const item = removed.find((x) => x.page?.id === pl.pageId)?.page;
+          if (!item) return no("projectPages.permPageUnknown");
+          if (page || item.tools.some((x) => tools.some((t) => t.id === x.id))) return no("projectPages.permPageExists");
+          if (pages.length >= LIMITS.pages || item.tools.length > LIMITS.tools) return no("projectPages.permPageLimit");
+          return checkTools(item.tools);
+        }
+        case "project.tool.added": {
+          if (!page) return no("projectPages.permPageUnknown");
+          if (typeof pl.toolId === "string" && idExists(pl.toolId)) return no("projectPages.permPageExists");
+          if (!isProjectId(pl.toolId)) return no("projectPages.permToolUnknown");
+          if (!validKind(pl.kind)) return no("projectPages.permToolKind");
+          if (!beforeTool(page.tools)) return no("projectPages.permToolUnknown");
+          const rights = checkTools([{ kind: pl.kind }]);
+          if (!rights.ok) return rights;
+          return canAddTool(pages, page, pl.kind, { agent }) ? OK : no("projectPages.permPageLimit");
+        }
+        case "project.tool.moved": {
+          if (!tool) return no("projectPages.permToolUnknown");
+          const into = pages.find((x) => x.id === pl.toPageId);
+          if (!into) return no("projectPages.permPageUnknown");
+          if (!beforeTool(into.tools)) return no("projectPages.permToolUnknown");
+          if (!agent && tool.kind === "agent") return no("projectPages.permToolAgent");
+          return into.tools.some((x) => x.id === tool.id) || into.tools.length < LIMITS.tools ? OK : no("projectPages.permPageLimit");
+        }
+        case "project.tool.edited":
+          if (!tool) return no("projectPages.permToolUnknown");
+          if (pl.title !== undefined && !validTitle(pl.title)) return no("projectPages.permPageTitle");
+          if (pl.collapsed !== undefined && typeof pl.collapsed !== "boolean") return no("projectPages.permToolUnknown");
+          if (pl.content !== undefined) {
+            if (typeof pl.content !== "string") return no("projectPages.permToolUnknown");
+            if (pl.baseRev !== tool.rev) return no("projectPages.permToolStale");
+          }
+          return OK;
+        case "project.tool.removed":
+          if (!tool) return no("projectPages.permToolUnknown");
+          return !agent && tool.kind === "agent" ? no("projectPages.permToolAgent") : OK;
+        case "project.tool.restored": {
+          const item = removed.find((x) => x.tool?.id === pl.toolId);
+          if (!item?.tool) return no("projectPages.permToolUnknown");
+          const into = pages.find((x) => x.id === item.pageId);
+          if (!into) return no("projectPages.permPageUnknown");
+          if (tool) return no("projectPages.permPageExists");
+          if (into.tools.length >= LIMITS.tools) return no("projectPages.permPageLimit");
+          return checkTools([item.tool]);
+        }
+        case "project.page.merged": {
+          const from = pages.find((x) => x.id === pl.fromPageId);
+          const into = pages.find((x) => x.id === pl.intoPageId);
+          if (!from || !into || from === into) return no("projectPages.permPageUnknown");
+          if (from.id === "overview") return no("projectPages.permPageOverview");
+          if (!isProjectId(pl.mergeId)) return no("projectPages.permMergeUnknown");
+          if (Object.hasOwn(p.merges, pl.mergeId)) return no("projectPages.permPageExists");
+          if (!agent && hasAgent(from.tools)) return no("projectPages.permToolAgent");
+          return from.tools.length + into.tools.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
+        }
+        case "project.page.unmerged": {
+          if (typeof pl.mergeId !== "string" || !Object.hasOwn(p.merges, pl.mergeId)) return no("projectPages.permMergeUnknown");
+          const merge = p.merges[pl.mergeId];
+          if (pages.some((x) => x.id === merge.from.id)) return no("projectPages.permPageExists");
+          const moved = tools.filter((x) => merge.toolIds.includes(x.id));
+          if (!agent && hasAgent(moved)) return no("projectPages.permToolAgent");
+          return pages.length < LIMITS.pages && moved.length <= LIMITS.tools ? OK : no("projectPages.permPageLimit");
+        }
+      }
+      return no("projectPages.permPageUnknown");
+    }
+
     case "project.commented":
       // A draft in planning is read by the others; the raiser of its case may still comment (Q5.15, D20).
       if (draft && planning && !(onTeam || isMe(p.sponsorUserId) || p.followerUserIds.some(isMe) || p.authorUserIds.some(isMe))) return no("projects.permDraftCommentWho");
