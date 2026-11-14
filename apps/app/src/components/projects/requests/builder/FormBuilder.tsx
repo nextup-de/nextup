@@ -84,6 +84,7 @@ function BuilderView({ p, id, form }: { p: ReducedProject; id: string; form: Red
           <div className={styles.kinds}>
             <h2>{text("kinds")}</h2>
             {FIELD_KINDS.map((kind) => <button key={kind} type="button" className={styles.kind} disabled={state.fields.length >= FORM_LIMITS.fields} onClick={() => add(kind)}>{text(KIND_TEXT[kind])}</button>)}
+            <span className={styles.count}>{text("kindsNote")}</span>
             <span className={styles.count}>{text("limits", { count: state.fields.length, max: FORM_LIMITS.fields })}</span>
           </div>
         )}
