@@ -25,10 +25,10 @@ test("on a phone a card is dragged by its grip: up its column, then across into 
   await page.getByRole("button", { name: "Dev" }).click();
   await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: "Manager", exact: true }).click();
   await page.keyboard.press("Escape");
-  await page.goto("/acme/projects/pj2?page=steps");
+  await page.goto("/acme/projects/pj2?tab=board");
   const todo = page.getByRole("group", { name: "To do" });
   const card = "Retire the paper job sheet at Ulm";
-  const grip = page.getByRole("button", { name: "Move step: " + card });
+  const grip = page.getByRole("button", { name: "Move step: " + card, exact: true });
   await expect(grip).toBeVisible();
   await todo.scrollIntoViewIfNeeded(); // the mouse works in screen coordinates: the column has to be on screen
 
@@ -41,16 +41,16 @@ test("on a phone a card is dragged by its grip: up its column, then across into 
   await page.mouse.up();
   await expect(todo.getByRole("article").first()).toContainText(card);
 
-  // Across: on a phone the columns stack. Held on the grip, the page scrolls with the wheel until Doing is under the finger.
-  await grip.scrollIntoViewIfNeeded();
+  // Into Doing: on a phone the columns stack, so the card is held and the page scrolled until Doing is under the finger.
+  const doing = page.getByRole("group", { name: "Doing" });
+  await grip.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const g = (await grip.boundingBox())!;
   await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
   await page.mouse.down();
   const height = page.viewportSize()!.height;
-  const doing = page.getByRole("group", { name: "Doing" });
-  for (let k = 0; k < 30 && ((await doing.boundingBox())?.y ?? height) > height - 160; k++) { await page.mouse.wheel(0, 240); await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2 + (k % 2)); }
-  const target = (await doing.boundingBox())!;
-  await page.mouse.move(Math.max(target.x + 40, 30), target.y + 40, { steps: 4 });
+  for (let k = 0; k < 20 && ((await doing.boundingBox())?.y ?? height) > height / 2; k++) await page.mouse.wheel(0, 200);
+  const target = (await doing.boundingBox())!; // anywhere on the column drops into it
+  await page.mouse.move(target.x + 40, Math.max(target.y + 20, 140), { steps: 8 });
   await page.mouse.up();
   await expect(page.getByRole("group", { name: "Doing" }).getByRole("article").filter({ hasText: card })).toHaveCount(1);
 });

@@ -387,8 +387,10 @@ test("a step goes straight into Doing, gets an owner and details in its sheet, a
 
   await card.dragTo(doing.getByRole("article").first(), { targetPosition: { x: 20, y: 4 } });
   await expect(doing.getByRole("article").first()).toContainText(TYPED);
-  // One open step has no owner left (the page's Overview tool no longer counts them): its card says so on the Board.
-  await expect(page.getByRole("region", { name: "Board", exact: true }).getByRole("article").filter({ hasText: "No owner yet" })).toHaveCount(1);
+  await projectPage(page, "overview");
+  // The Overview tool (HUB-A1) shows the new owner in its activity and in what happens next.
+  await expect(page.getByRole("region", { name: "Latest activity" })).toContainText("changed “" + TYPED + "”: gave it to L. Brandt");
+  await expect(page.getByRole("region", { name: "What happens next" }).getByRole("listitem").filter({ hasText: TYPED })).toContainText("L. Brandt");
 });
 
 test("the project page shows the idea it came from and its connected tools", async ({ page }) => {
