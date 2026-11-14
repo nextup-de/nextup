@@ -23,7 +23,7 @@ const steps = [
   step("f", { column: "todo", dueDay: 9 }),
   step("g", { column: "done", doneDay: -1, dropped: { why: "no", day: 0, byUserId: null } }),
 ];
-const history = [move("d", -8, "blocked", { waitingOn: { kind: "person", userId: "u3" } }), move("x", -30, "blocked", { waitingOn: { kind: "outside", name: "Vendor" } }), move("x", -27, "doing")];
+const history = [move("x", -30, "blocked", { waitingOn: { kind: "outside", name: "Vendor" } }), move("x", -27, "doing"), move("d", -8, "blocked", { waitingOn: { kind: "person", userId: "u3" } })];
 const p = project([...steps, step("x", { column: "doing" })], history);
 
 it("HUB overview HUB-A1 tiles and the column bar follow the range", () => {
