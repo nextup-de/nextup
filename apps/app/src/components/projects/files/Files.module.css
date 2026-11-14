@@ -1,0 +1,18 @@
+/* The Files page (plan FIL). The icon colours are local to this module (D3), not new global tokens. */
+.files { --files-sheet: #1f7a3a; --files-pdf: #d70015; --files-doc: var(--nh-brand); --files-slides: #c25a00; --files-image: #6f42c1; --files-other: #6e6e73; --files-folder-back: var(--nh-brand-line); --files-folder-front: var(--nh-brand); display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 16px; align-items: start; min-width: 0; }
+.list { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+.files :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.icon { flex-shrink: 0; }
+.page { fill: var(--nh-card); stroke: var(--nh-line); stroke-width: 1; }
+.corner { fill: var(--nh-fill-2); stroke: var(--nh-line); stroke-width: 1; }
+.icon[data-kind="sheet"] .markBand { fill: var(--files-sheet); }
+.icon[data-kind="pdf"] .markBand { fill: var(--files-pdf); }
+.icon[data-kind="doc"] .markBand { fill: var(--files-doc); }
+.icon[data-kind="slides"] .markBand { fill: var(--files-slides); }
+.icon[data-kind="other"] .markBand { fill: var(--files-other); }
+.icon[data-kind="image"] .mark { fill: var(--files-image); }
+.markText { fill: var(--nh-card); font-family: var(--nh-font); font-weight: 700; }
+.folderBack { fill: var(--files-folder-back); }
+.folderFront { fill: var(--files-folder-front); }
+@media (width < 900px) { .files { grid-template-columns: minmax(0, 1fr); } }

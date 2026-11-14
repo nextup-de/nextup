@@ -2,7 +2,8 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { datesEdit, dragEdit, timelineRows, TIMELINE_GROUPS, TIMELINE_SCALES, type DateEdit, type TimelineGroup, type TimelineGroupBy, type TimelineRow, type TimelineScale } from "@/features/projects/timeline-view";
-import type { ReducedProject, StepColumn } from "@/features/projects/types";
+import type { ProjectPage, ReducedProject, StepColumn, ToolInstance } from "@/features/projects/types";
+import { HeadSlot } from "../../tools/HeadSlot";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { useRights, useSend } from "../../parts";
 import { CreateStepDialog } from "../../steps/CreateStepDialog";
@@ -16,7 +17,7 @@ const UNIT: Record<TimelineScale, number> = { weeks: 7, months: 30, quarters: 91
 type Drag = { stepId: string; part: "move" | "start" | "end"; x: number; days: number };
 type Line = { kind: "group"; group: TimelineGroup } | { kind: "row"; row: TimelineRow };
 
-export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: JiraRow; page: ProjectPage; tool: ToolInstance }) {
   const { S, f, seed, act } = useDemo();
   const t = useT();
   const rights = useRights(p);
@@ -80,8 +81,8 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
 
   return <div className={styles.timeline}>
     <div className={styles.head}>
-      <h2 className={styles.title}>{t("projectPlan.timeline")}</h2>
-      <div className={styles.controls}>
+      <h2 className="nh-sr">{t("projectPlan.timeline")}</h2>
+      <HeadSlot page={page} tool={tool}><div className={styles.controls}>
         <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, dayLeft(S.day) - COLUMN_PX * 2), behavior: "smooth" })}>{t("projectPlan.calToday")}</button>
         <label className={styles.group}>{t("projectPlan.timelineGroupBy")}:
           <select className="nh-input nh-select" value={groupBy} onChange={(e) => setGroupBy(TIMELINE_GROUPS.find((g) => g === e.target.value) ?? "milestone")}>
@@ -91,8 +92,8 @@ export function Timeline({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
         <div className={styles.scale} role="radiogroup" aria-label={t("projectPlan.scaleLabel")}>
           {TIMELINE_SCALES.map((sc) => <button key={sc} type="button" role="radio" aria-checked={scale === sc} data-on={scale === sc ? "true" : undefined} onClick={() => setScale(sc)}>{sc === "weeks" ? t("projectPlan.scaleWeeks") : sc === "months" ? t("projectPlan.scaleMonths") : t("projectPlan.scaleQuarters")}</button>)}
         </div>
-        {rights.addStep && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setAdding(true)}>+ {t("projectPlan.timelineAddStep")}</button>}
-      </div>
+        {rights.addStep && page.tools[0]?.id !== tool.id && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setAdding(true)}>+ {t("projectPlan.timelineAddStep")}</button>}
+      </div></HeadSlot>
     </div>
     {syncing && jira.state === "synced" && <p className={styles.note}>{t("projectPlan.timelineSyncNote")}</p>}
     {view.empty ? <p className={styles.note}>{t("projectPlan.timelineEmpty")}</p> : <div className={styles.frame}>
