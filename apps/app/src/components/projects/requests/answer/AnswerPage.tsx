@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { answerFormAction } from "@/app/[company]/(app)/forms/[formId]/actions";
+import { answerFormAction, type AnswerOutcome } from "@/app/[company]/(app)/forms/[formId]/actions";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { EVENT_BUDGET } from "@/features/projects/pages";
 import type { FormField } from "@/features/projects/types";
@@ -15,10 +15,14 @@ const NEAR = 0.8;
 /** The event around the answers: ids and keys, counted so the whole answer is known to fit before it is sent. */
 const ENVELOPE = JSON.stringify({ formId: "x".repeat(64), formRev: 999, requestId: "req_" + "x".repeat(12), answers: {} }).length;
 
-export function AnswerPage({ formId, initial, requests }: { formId: string; initial: AnswerForm; requests: MyRequest[] }) {
+/** How an answer is sent: the server action by default; the demo plays it through its own acts (no database there). */
+export type AnswerSender = (rev: number, answers: Record<string, string>) => Promise<AnswerOutcome>;
+
+export function AnswerPage({ formId, initial, requests, send }: { formId: string; initial: AnswerForm; requests: MyRequest[]; send?: AnswerSender }) {
   const x = answerText(useLocale());
   const { f } = useDemo();
   const [data, setData] = useState(initial);
+  // Demo mode: the form is read from the demo store, so a later revision arrives as a new `initial`.
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [fresh, setFresh] = useState<string[]>([]);
   const [gone, setGone] = useState<string[]>([]);
@@ -40,7 +44,7 @@ export function AnswerPage({ formId, initial, requests }: { formId: string; init
     setError(null);
     const clean = Object.fromEntries(form.fields.filter((field) => trimmed(field.id) !== "").map((field) => [field.id, trimmed(field.id)]));
     try {
-      const result = await answerFormAction({ formId, formRev: form.rev, answers: clean });
+      const result = await (send ? send(form.rev, clean) : answerFormAction({ formId, formRev: form.rev, answers: clean }));
       if (result.ok) { setSent(true); setAnswers({}); setChanged(false); return; }
       setError(result.error);
       if (result.changed) {
