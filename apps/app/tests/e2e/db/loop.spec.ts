@@ -49,7 +49,7 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 async function openResults(page: Page) {
   await page.goto(`/${SLUG}/projects/${projectId}`);
   await (await projectPages(page)).getByRole("link", { name: /^Results/ }).click();
-  await expect(page).toHaveURL(/tab=results/);
+  await expect(page).toHaveURL(/page=results/);
 }
 
 const userId = async (name: string) => (await getDb().user.findFirstOrThrow({ where: { companyId, name }, select: { id: true } })).id;

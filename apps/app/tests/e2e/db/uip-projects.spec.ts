@@ -13,6 +13,8 @@ const SLUG = "uip-projects";
 const PROJECT = "pj-uip";
 const CASE = "c-uip";
 const TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const; // agent: the manager sees the Agent tab (plan AGT, D15)
+// The sidebar's pages since PGB-B1: the default set, Agent included for a manager.
+const PAGES = ["overview", "steps", "plan", "results", "files", "requests", "team", "activity", "agent"] as const;
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL");
 
 const MANAGER = { name: "Mara Sweep", email: `mara@${SLUG}.test`, role: "manager" as const };
@@ -67,16 +69,17 @@ test("UIP project area", async ({ page }) => {
   await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-area", title: false }); // the sidebar names the page
   await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
 
-  await test.step("the pages are the Overview, Board, Team, Results, Activity, Files and, for a manager, Agent (AGT D15)", async () => {
+  await test.step("the pages are Overview, Steps, Plan, Results, Files, Requests, Team, Activity and, for a manager, Agent (PGB, AGT D15)", async () => {
     // The sweep ends at phone width, and a phone has no sidebar: its pages are read on a laptop.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(base);
     const tabs = await projectPages(page); // the sidebar carries the project's pages
-    await expect(tabs.getByRole("link")).toHaveCount(TABS.length);
+    await expect(tabs.getByRole("link")).toHaveCount(PAGES.length);
     await expect(tabs.getByRole("link", { name: "Agent", exact: true })).toHaveCount(1); // the lead, the sponsor and managers see it (D15)
-    for (const name of ["Overview", "Board", "Team", "Results"]) {
-      await tabs.getByRole("link", { name: new RegExp("^" + name) }).click();
-      await expect(tabs.getByRole("link", { name: new RegExp("^" + name) })).toHaveAttribute("aria-current", "page");
+    for (const name of ["Overview", "Steps", "Team", "Results"]) {
+      const link = tabs.getByRole("link", { name: new RegExp("(^|⠿ )" + name + "$") }); // an editor's rows carry a drag grip
+      await link.click();
+      await expect(link).toHaveAttribute("aria-current", "page");
     }
   });
 
