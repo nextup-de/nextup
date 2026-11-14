@@ -1,0 +1,17 @@
+/* The row menu and the delete dialog of the Files page (plan FIL-B2, frames 3.1 and 6.1). */
+.scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgb(0 0 0 / 18%); }
+.menu { display: flex; flex-direction: column; min-width: 220px; max-width: 100%; padding: 6px; border: 1px solid var(--nh-line); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+.menu button { border: 0; border-radius: var(--radius-sm); padding: 9px 12px; background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); text-align: left; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: var(--nh-brand-tint); color: var(--nh-brand-ink); outline: none; }
+.menu button[data-danger] { color: var(--nh-danger); }
+.menu button[data-danger]:hover, .menu button[data-danger]:focus-visible { background: var(--nh-danger-tint); color: var(--nh-danger); }
+.dialog { display: flex; flex-direction: column; gap: 12px; width: min(440px, 100%); padding: 24px; border-radius: 16px; background: var(--nh-card); color: var(--nh-ink); box-shadow: 0 24px 64px -16px rgb(0 0 0 / 35%); font-size: var(--nh-fs-sm); }
+.dialog h2 { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; overflow-wrap: anywhere; }
+.dialog p { margin: 0; line-height: 1.5; }
+.note { color: var(--nh-mute); }
+.error { color: var(--nh-danger); }
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.danger { border-color: var(--nh-danger); background: var(--nh-danger); color: var(--nh-on-brand); }
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 70; display: flex; align-items: center; gap: 16px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 14px 18px; border-radius: 12px; background: var(--nh-brand-deep); color: var(--nh-on-brand); box-shadow: 0 12px 32px -8px rgb(0 0 0 / 35%); font-size: var(--nh-fs-sm); }
+.toast a { color: var(--nh-brand-line); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.dialog :focus-visible, .toast a:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
