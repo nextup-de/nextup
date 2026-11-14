@@ -1,6 +1,6 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { FilesActions, FilesState } from "@/components/projects/files/types";
 import { createUploadQueue, isSmall, runUpload, safeName, safePath, splitRelative, uploadQueue, ut, type UploadSteps } from "@/features/files/upload";
 import { ACTION_BODY_LIMIT, CHUNK_SIZE, SMALL } from "@/features/files/upload-limits";
