@@ -24,6 +24,8 @@ const COMPARES = [
 
 /** Comparisons that are not about a person. Each one: file, the line as written (trimmed), why. */
 const EXCEPTIONS: { file: string; line: string; reason: string }[] = [
+  { file: "features/projects/permissions.ts", line: 'if (!from || !into || from === into) return no("projectPages.permPageUnknown");', reason: "`from` and `into` are project pages, compared to refuse merging a page into itself" },
+  { file: "features/projects/permissions.ts", line: 'if (pages.some((x) => x.id === merge.from.id)) return no("projectPages.permPageExists");', reason: "`merge.from.id` is the source page id, checked against active page ids before undoing a merge" },
   { file: "features/cases/discussion.ts", line: "const seat = [...seats].sort((a, b) => a.sort - b.sort).find((s) => s.userId !== null && s.label === head.name);", reason: "the org chart (OrgPerson) has no ids: its head is bound to a seat once, here, to show a suggestion (D14)" },
   { file: "features/cases/discussion.ts", line: "const raiser = raiserSeat ? people.find((p) => p.name === raiserSeat.label) : undefined;", reason: "finds the raiser on the org chart (no ids there) from their own seat, to show their department (D14)" },
   { file: "features/cases/discussion.ts", line: "return inDept.find((p) => !inDept.some((q) => q.name === p.reportsTo)) ?? null;", reason: "org chart reportsTo is a directory label; reads the chart, decides nothing about who someone is (D14)" },
