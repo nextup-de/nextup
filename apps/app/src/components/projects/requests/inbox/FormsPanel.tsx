@@ -8,8 +8,8 @@ import { useRights } from "../../parts";
 import { useText } from "./useText";
 import styles from "./Inbox.module.css";
 
-/** Where a shared form is answered (REQ-C1 builds the page). TODO: align with its route once it lands. */
-export const formLink = (prefix: string, projectId: string, formId: string): string => `${prefix}/ask/${projectId}/${formId}`;
+/** Where a shared form is answered: REQ-C1's page, app/[company]/(app)/forms/[formId]. `prefix` is the company's URL prefix (href("")). */
+export const formLink = (prefix: string, formId: string): string => `${prefix}/forms/${formId}`;
 export function FormsPanel({ p, forms }: { p: ReducedProject; forms: ReturnType<typeof formSummaries> }) {
   const { href } = useDemo();
   const t = useT();
@@ -18,7 +18,7 @@ export function FormsPanel({ p, forms }: { p: ReducedProject; forms: ReturnType<
   const [copied, setCopied] = useState<string | null>(null);
   const copy = async (formId: string) => {
     try {
-      await navigator.clipboard.writeText(window.location.origin + formLink(href(""), p.id, formId));
+      await navigator.clipboard.writeText(window.location.origin + formLink(href(""), formId));
       setCopied(formId);
       setTimeout(() => setCopied((now) => (now === formId ? null : now)), 2000);
     } catch { /* the browser refused the clipboard: nothing to show */ }
