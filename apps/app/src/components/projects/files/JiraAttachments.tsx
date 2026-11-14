@@ -23,8 +23,6 @@ export const syncsWithJira = (p: ReducedProject): boolean => (p.sync ? p.sync.on
  * offers Try again; not-connected and no-access show nothing and clear what was shown.
  */
 export function JiraAttachments({ p }: { p: ReducedProject }) {
-  const t = useT();
-  const locale = useLocale();
   const { serverMode } = useDemo();
   const [round, setRound] = useState(0);
   const key = `${p.id}:${round}`;
