@@ -20,7 +20,7 @@ export function FileIcon({ kind, size = 28 }: { kind: FileKind; size?: FileIconS
       ? <path className={s.mark} d="M7 22l4-5 3 3 3-4 4 6z" />
       : <>
         <rect className={s.markBand} x="4" y="14" width="14" height="8" rx="1.5" />
-        {mark && <text className={s.markText} x="11" y="20.2" textAnchor="middle">{mark}</text>}
+        {mark && <text className={s.markText} x="11" y="20.2" textAnchor="middle" fontSize="6">{mark}</text>}
       </>}
   </svg>;
 }

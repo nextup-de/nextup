@@ -26,7 +26,7 @@ export type PageHeadProps = {
 
 export function PageHead({ title, source, open, primary, children }: PageHeadProps) {
   const pill = source && <>
-    <span className={s.mark} data-system={source.system} aria-hidden="true">{source.label.slice(0, 1)}</span>
+    <span className={s.mark} data-system={source.system} aria-hidden="true">{source.system === "sharepoint" ? "☁" : source.system === "jira" ? "⇄" : source.label.slice(0, 1)}</span>
     <span className={s.sourceName}>{source.label}</span>
     {source.key && <span className={s.key}>{source.key}</span>}
     <span className={s.dot} data-state={source.state} aria-hidden="true" />
