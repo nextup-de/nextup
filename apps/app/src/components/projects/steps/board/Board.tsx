@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PersonFace } from "@/components/ui/elements";
 import { boardLanes, dropOutcome, type BoardTarget } from "@/features/projects/board-view";
@@ -8,7 +8,6 @@ import { NO_FILTER, olderDoneCount, stepFilter, type StepFilter } from "@/featur
 import { STEP_COLUMNS, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { teamOf, useRights, useSend, withIds } from "../../parts";
 import type { ToolProps } from "../../tools/types";
 import { MarkBlockedForm } from "../MarkBlockedForm";
@@ -25,8 +24,15 @@ export function Board({ p, hints, jira }: ToolProps) {
   const [filter, setFilter] = useState<StepFilter>({ ...NO_FILTER, hideOldDone: true });
   const [groupBy, setGroupBy] = useState<"status" | "person">("status");
   const [folded, setFolded] = useState<string[]>([]);
-  const [open, setOpen] = useState<string | null>(useUrlId("step"));
-  useIdInUrl(open, setOpen, "step");
+  // Local state only: the Steps page also holds the List, which owns ?step=; two panels would overlap and repeat field ids.
+  const [open, setOpen] = useState<string | null>(null);
+  // The sheet closes on Escape even when focus fell to the page (a field that blurred, a button that went away); the sheet's own Escape handling runs first and prevents this one.
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) setOpen(null); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
   const [adding, setAdding] = useState<{ column: StepColumn; lane: string } | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [spot, setSpot] = useState<BoardTarget | null>(null);
@@ -91,7 +97,7 @@ export function Board({ p, hints, jira }: ToolProps) {
     </div>
     {hints.length > 0 && rights.addStep && <div className={styles.hints} role="group" aria-label={t("projects.suggestedSteps")}>
       <strong>{t("projects.suggestedSteps")}</strong>
-      {hints.map((hint) => <div className={styles.hint} key={hint.text}><span>{hint.label} · {hint.text}</span><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => send("project.step.added", { stepId: "probe", text: hint.text }, () => act.project.addStep(p.id, hint.text))}>{t("projectSteps.add")}</button></div>)}
+      {hints.map((hint) => <div className={styles.hint} key={hint.text}><span>{hint.label} · {hint.text}</span><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" aria-label={t("projects.addStepNamed", { text: hint.text })} onClick={() => send("project.step.added", { stepId: "probe", text: hint.text }, () => act.project.addStep(p.id, hint.text))}>{t("projectSteps.add")}</button></div>)}
     </div>}
     {!rights.addStep && !p.steps.some((s) => rights.moveStep(s)) && <p>{t("projects.readOnly")}</p>}
     {shown.length === 0 && <p>{t(p.steps.length ? "projectSteps.emptyFilter" : "projectSteps.emptyBoard")}</p>}
@@ -115,7 +121,7 @@ export function Board({ p, hints, jira }: ToolProps) {
             onClick={(e) => { if (!(e.target as Element).closest("button")) setOpen(step.id); }}
             onDragStart={(e) => { dragRef.current = step.id; setDrag(step.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", step.id); }} onDragEnd={end}
             onDragOver={(e) => { if (!dragged) return; e.preventDefault(); e.stopPropagation(); const box = e.currentTarget.getBoundingClientRect(); setTarget({ ...target, before: e.clientY < box.top + box.height / 2 ? step.id : list[index + 1]?.id ?? null }); }}>
-            <div className={styles.cardTop}><span className={styles.key}>{step.external?.key}</span>{step.ownerUserId && <PersonFace name={step.owner ?? ""} size="sm" />}</div>
+            <div className={styles.cardTop}><span className={styles.key}>{step.external?.key ?? (jira.waiting ? <span title={t("projects.waitKeyTitle")}>{t("projects.waitKey")}</span> : null)}</span>{step.ownerUserId && <PersonFace name={step.owner ?? ""} size="sm" />}</div>
             <button type="button" className={styles.cardOpen} onClick={() => setOpen(step.id)} aria-label={t("projectSteps.openStep", { text: step.text })}>{step.text}</button>
             {step.checklist.length > 0 && <div className={styles.progress}><progress max={step.checklist.length} value={step.checklist.filter((item) => item.done).length} aria-label={t("projectSteps.checklistProgress", { done: step.checklist.filter((item) => item.done).length, total: step.checklist.length })} /><span>{step.checklist.filter((item) => item.done).length}/{step.checklist.length}</span></div>}
             {step.waitingOn && <div className={styles.waiting}>{t("projectSteps.waitingFor", { name: step.waitingOn.name ?? t("projectSteps.waitingNobody") })}</div>}
@@ -126,7 +132,7 @@ export function Board({ p, hints, jira }: ToolProps) {
           </article></div>)}
           {line(null)}
           {column === "done" && older > 0 && filter.hideOldDone && groupBy === "status" && <button type="button" className={styles.quiet} onClick={() => setFilter({ ...filter, hideOldDone: false })}>{t("projectSteps.olderDone", { count: older })}</button>}
-          {composer ? <Composer key={`${lane.id}-${column}`} {...{ p, column, team }} ownerUserId={groupBy === "person" ? lane.ownerUserId : null} onCancel={() => setAdding(null)} onBlocked={(step) => { setBlocked({ step, target }); setAdding(null); }} /> : rights.addStep && <button type="button" className={styles.add} onClick={() => setAdding({ column, lane: lane.id })}>+ {t("projectSteps.addStep")}</button>}
+          {composer ? <Composer key={`${lane.id}-${column}`} {...{ p, column, team }} ownerUserId={groupBy === "person" ? lane.ownerUserId : null} onCancel={() => setAdding(null)} onBlocked={(step) => { setBlocked({ step, target }); setAdding(null); }} /> : rights.addStep && <button type="button" className={styles.add} aria-label={t("projects.addStepTo", { column: columnLabel(column, locale) })} onClick={() => setAdding({ column, lane: lane.id })}>+ {t("projectSteps.addStep")}</button>}
         </div>;
       })}</div>}
     </div>)}
@@ -160,7 +166,7 @@ function Composer({ p, column, team, ownerUserId, onCancel, onBlocked }: {
     });
   };
   return <form className={styles.composer} onSubmit={(e) => { e.preventDefault(); submit(); }} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onCancel(); } }}>
-    <textarea className="nh-input" autoFocus aria-label={t("projectSteps.stepTitle")} placeholder={t("projectSteps.stepTitle")} maxLength={500} rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
+    <textarea className="nh-input" autoFocus aria-label={t("projects.newStep")} placeholder={t("projectSteps.stepTitle")} maxLength={500} rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
     <div className={styles.composerRow}><select className="nh-input" aria-label={t("projectSteps.owner")} value={owner} onChange={(e) => setOwner(e.target.value)}><option value="">{t("projectSteps.noOwner")}</option>{team.map((person) => <option key={person.userId} value={person.userId}>{person.name}</option>)}</select><input className="nh-input" type="number" min={0} max={365} aria-label={t("projects.dueInDays")} placeholder={t("projectSteps.due")} value={due} onChange={(e) => setDue(e.target.value)} /></div>
     <div className={styles.composerRow}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!text.trim()}>{t("projectSteps.add")}</button><button type="button" className={styles.quiet} onClick={onCancel}>{t("projectSteps.cancel")}</button></div><small>{t("projectSteps.enterAdd")}</small>
   </form>;
