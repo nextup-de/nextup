@@ -31,7 +31,7 @@ export const DAY = 14;
 
 // PGE and STP add explicit empty page and step state; leave the pre-OVL golden unchanged.
 const beforePages = (p: ReducedProject) => Object.fromEntries(Object.entries(p)
-  .filter(([key]) => !["pages", "milestones", "removed", "merges"].includes(key))
+  .filter(([key]) => !["pages", "milestones", "forms", "requests", "removed", "merges"].includes(key))
   .map(([key, value]) => [key, key === "steps" ? p.steps.map((step) => {
     expect(step).toMatchObject({ checklist: [], comments: [], waitingOn: null });
     return Object.fromEntries(Object.entries(step).filter(([field]) => !["checklist", "comments", "waitingOn"].includes(field)));
