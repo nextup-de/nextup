@@ -7,7 +7,7 @@ import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { PageHead } from "@/components/ui/elements/PageHead";
 import { useRights } from "../parts";
-import { headOf } from "../tools/heads";
+import { headOf, headRowId } from "../tools/heads";
 import { useProjectHints } from "../draft/useProjectHints";
 import { CreateStepDialog } from "../steps/CreateStepDialog";
 import { BrowserPagesImport } from "./BrowserPagesImport";
@@ -39,6 +39,7 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
         {allSynced && <> · <span className={styles.sync}>⟳ {t("projectPages.allSyncedWithJira")}</span></>}
       </p>}
       {editor && <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => onAddAt(page.tools.length)}>+ {t("projectPages.addTool")}</button>}
+      <div id={headRowId(page.id)} />
     </PageHead>
     {page.tools.map((tool, index) => <Fragment key={tool.id}>
       <ToolSection p={p} page={page} tool={tool} jira={jira} editor={editor} hints={stepHints} index={index} count={page.tools.length} onAddAt={onAddAt} />

@@ -1,0 +1,4 @@
+/* The controls row a tool puts under the page title (FIL-H3): one spacing for every tool, whether it sits in the page header or above the tool. */
+.controls { display: flex; align-items: center; flex-wrap: wrap; gap: calc(var(--nh-space) * 1.25); min-width: 0; }
+.chip { padding: var(--nh-space) var(--nh-gap); border: 1px solid var(--nh-line); border-radius: var(--radius-sm); background: var(--nh-card); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); border-color: var(--nh-brand-line); }
