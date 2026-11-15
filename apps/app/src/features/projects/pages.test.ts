@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { canAddTool, DEFAULT_PAGES, fitsEvent, READY_PAGES, kicksJira, mergePlan, pagesOf, suggestPageName, tabToPage, TOOL_KINDS } from "@/features/projects/pages";
+import { addablePages, canAddTool, DEFAULT_PAGES, hasDefaultTitle, fitsEvent, READY_PAGES, kicksJira, mergePlan, pagesOf, suggestPageName, tabToPage, TOOL_KINDS } from "@/features/projects/pages";
 import type { MergeRecord, ProjectPage, RemovedItem, ToolInstance } from "@/features/projects/types";
 import { de } from "@/i18n/de";
 import { en } from "@/i18n/en";
@@ -77,4 +77,18 @@ it("PGE pages model: measures serialized event length and keeps page changes out
     expect(en.projectPages).toHaveProperty(key);
     expect(de.projectPages).toHaveProperty(key);
   }
+});
+
+it("Add page offers the old pages ready-made, under their old ids, until they are there", () => {
+  const start = pagesOf({ pages: null }, { agent: true });
+  expect(addablePages(start, [], { agent: true }).map((p) => p.id)).toEqual(["project-overview", "steps", "plan", "results", "requests", "team", "activity", "agent"]);
+  expect(addablePages(start, [], { agent: false }).map((p) => p.id)).not.toContain("agent");
+  // Added, recently removed, or a single tool already elsewhere: not offered again.
+  const added = [...start, page("steps", [tool("t1", "board")]), page("mine", [tool("t2", "overview")])];
+  const offered = addablePages(added, ["plan"], { agent: true }).map((p) => p.id);
+  expect(offered).not.toContain("steps");
+  expect(offered).not.toContain("plan");
+  expect(offered).not.toContain("project-overview");
+  // Their titles stay message keys, translated like the defaults.
+  for (const ready of addablePages(start, [], { agent: true })) expect(hasDefaultTitle(ready)).toBe(true);
 });

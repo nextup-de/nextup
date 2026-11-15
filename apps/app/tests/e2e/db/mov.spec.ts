@@ -17,6 +17,7 @@
 // like set.spec.ts and loop.spec.ts. Run on any weekday: every day below is a working-day number counted from today.
 import type { Browser, Page } from "@playwright/test";
 import { expect, passSecondFactor, test } from "../helpers";
+import { readyPage } from "./ready-pages";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
 import { dateOfWorkday, workdayOf } from "../../../src/features/clock/calendar";
 import { reduce } from "../../../src/features/cases/reducer";
@@ -236,13 +237,15 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
     const quiet = await runningProject("quiet", "Crane queue at the changeover", lead, { sponsor: true, step: true });
     const paused = await runningProject("paused", "Pallet labels at goods out", lead, { sponsor: true });
     const weekly = await runningProject("weekly", "Spare gauge for line 5", lead, { sponsor: true, step: true });
+    // The weekly update sits in the Overview tool: the lead added the Overview page.
+    await append("project.page.added", LEAD, id.lead, weekly.projectId, readyPage(weekly.projectId, "project-overview"));
     const left = await runningProject("left", "Torque tool at station 4", { name: LEAVER, id: id.leaver }, { sponsor: true });
     const vacant = await runningProject("vacant", "Barcode scanner at goods in", { name: LEAVER2, id: id.leaver2 });
 
     // ── the weekly update ───────────────────────────────────────────────────────────────────────────────────────────
     await test.step("the lead sends the weekly update from the draft; the sponsor and the raiser get it, the lead does not", async () => {
       const page = await signIn(browser, LEAD);
-      await page.goto(`/${SLUG}/projects/${weekly.projectId}`);
+      await page.goto(`/${SLUG}/projects/${weekly.projectId}?page=project-overview`);
       const block = page.getByTestId("weekly-update");
       await expect(block).toBeVisible();
       const text = block.getByRole("textbox", { name: "The update" });

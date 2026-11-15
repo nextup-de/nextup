@@ -110,12 +110,12 @@ describe("HUB content on the server", () => {
     expect(docOf(await project(lead, RUNNING), doc).rev).toBe(2);
   });
 
-  it("HUB content: a planning project's Overview data still holds the baseline", async () => {
+  it("HUB content: a planning project's data still holds the baseline, and it opens on its Idea", async () => {
     for (const who of [lead, member]) {
       const p = await project(who, PLANNING);
       expect(p.status).toBe("planning");
       expect(p.baseline).toMatchObject({ metric: "Changeover time", unit: "min", value: 42, better: "down" });
-      expect(pagesOf(p, { agent: false })[0].tools.map((tool) => tool.kind)).toEqual(["overview"]);
+      expect(pagesOf(p, { agent: false })[0].tools.map((tool) => tool.kind)).toEqual(["idea"]);
     }
   });
 });

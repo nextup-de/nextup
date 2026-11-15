@@ -34,6 +34,7 @@ import { loadLogFor } from "../../../src/lib/db/viewer-log";
 import { dispatchOnce } from "../../../src/server/notify/dispatch";
 import { runClockOnce } from "../../../src/server/scheduler/clock";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
+import { readyPage } from "./ready-pages";
 
 const STAMP = Date.now().toString(36);
 const SLUG = `res-${STAMP}`;
@@ -299,6 +300,8 @@ test.describe("RES acceptance: a result that closes properly", () => {
     // ── two steps, and the Done sheet ──────────────────────────────────────────────────────────────────────────────────
     await append("project.step.added", LEAD, id.lead, projectId, { stepId: "s_done", text: STEP_DONE, owner: MEMBER, ownerUserId: id.member });
     await append("project.step.added", LEAD, id.lead, projectId, { stepId: "s_drop", text: STEP_DROP, owner: LEAD, ownerUserId: id.lead });
+    // The project starts with its Idea and Files; the lead added the Overview, Steps and Results pages.
+    for (const pageId of ["project-overview", "steps", "results"]) await append("project.page.added", LEAD, id.lead, projectId, readyPage(projectId, pageId));
 
     await test.step("Done is refused until one step is finished and the other dropped with a reason: in the sheet and on the server", async () => {
       const lead = { name: LEAD, id: id.lead, role: "leader" as const };
@@ -326,7 +329,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
         actorUserId: id.lead, payload: { openSteps: [{ stepId: "s_done", end: "done" }, { stepId: "s_drop", end: "dropped", why: DROP_WHY }] },
       });
       // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else.
-      await page.goto(`/${SLUG}/projects/${projectId}`);
+      await page.goto(`/${SLUG}/projects/${projectId}?page=project-overview`);
       await expect(page.getByRole("region", { name: "Where the steps are" }).getByRole("listitem")).toHaveText([/To do\s*0/, /Doing\s*0/, /Blocked\s*0/, /Done\s*1/]);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
       const board = page.getByRole("region", { name: "Board", exact: true });

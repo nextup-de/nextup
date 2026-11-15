@@ -1,7 +1,7 @@
 // Acceptance for the Files page and the page headers (plan FIL), in demo mode: a manager works through the folder of P-2,
 // then Board, List and Files are looked at again at phone width. The demo tree lives in memory (D11); nothing leaves the browser.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 const UPLOAD = "Spec upload.txt";
 
@@ -23,6 +23,7 @@ test("FIL acceptance: open Files, grid, folder, search, link, upload, request an
 
   await page.goto("/acme");
   await viewAs(page, "Manager");
+  await addPages(page, "/acme/projects/pj2", ["Steps"]);
   await page.goto("/acme/projects/pj2?page=files");
   const head = page.getByTestId("page-head");
   const files = page.getByTestId("files-view");
