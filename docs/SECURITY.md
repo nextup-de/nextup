@@ -140,12 +140,19 @@ static files by their extension, not every path with a dot, so a person's page
    `AuditEvent` in the same transaction, readable by company admins in Settings → Audit log and as CSV, kept 24 months.
    See [PRIVACY.md](PRIVACY.md).
 4b. **Microsoft 365 connections** (phase 2 of `docs/plans/2026-10-22_sso-and-data-access.md`). A
-   person's refresh token for their own files (`Files.Read.All` + `offline_access`, nothing else)
+   person's refresh token for their own files (`Files.ReadWrite.All` + `offline_access`, nothing else)
    is stored sealed: AES-256-GCM with `CONNECTOR_VAULT_KEY`, bound to company and person, so a
    database dump or a token copied into another row opens nothing. Off per company until its
    admin turns it on; the Microsoft account must be the signed-in person's own; disconnecting
    deletes the row, and "disconnect everyone" is one click in `/admin/assistant`. Losing the key
    disconnects everyone - back it up with the other stack secrets.
+   **Who may write.** `Files.ReadWrite.All` is delegated: upload and delete in a project's folder
+   run as the signed-in person with their own access token, so SharePoint decides what they may
+   change and NextUp never holds more than that person. NextUp also reads the stored scopes
+   (`m365CanWrite`): a person whose grant still says `Files.Read.All` can search but sees the write
+   buttons disabled until they connect again. No `Sites.*` permission is requested; sign-in
+   without connecting (`SIGN_IN_SCOPE`) asks for none of this. To move a company over, its admin
+   replaces the permission in Entra and consents again (see `docs/customer/ENTRA_SETUP.md`).
 5. **Shared rate-limit store.** The throttle counts in process memory: right for one Hetzner box,
    per-instance on Vercel. Move the `Map` to a Postgres table when there is more than one process.
 6. **Role-scoped data.** The whole case log goes to every signed-in browser; roles only choose

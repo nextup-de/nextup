@@ -163,7 +163,6 @@ const FIELDS = ["title", "note", "startDay", "dueDay", "shipped"] as const;
 type Field = (typeof FIELDS)[number];
 const ownedLink = (m: Milestone) => (m.external?.mode === "owned" ? m.external : null);
 
-const pushable = (p: ReducedProject, settings: JiraSettings, enabledAt: number | null) => syncMode(p, settings, enabledAt) !== "off" && isOpenProject(p);
 
 export function planVersionPush(state: Projects, versions: readonly JiraVersion[], events: readonly SeqEvent[], settings: JiraSettings, opts: PushOpts): VersionPushPlan {
   const clock = clockOf(opts);
@@ -189,13 +188,18 @@ export function planVersionPush(state: Projects, versions: readonly JiraVersion[
   for (const e of events) if (e.target && e.type.startsWith("project.")) (byProject.get(e.target) ?? byProject.set(e.target, []).get(e.target)!).push(e);
 
   for (const p of state.projects) {
-    if (!pushable(p, settings, enabledAt)) continue;
+    // "sync" creates and adopts versions for its milestones. "linked" (the default for a project that does not sync, seed projects
+    // included) creates nothing (map.ts): only milestones that already carry an owned link are updated or archived, and a step is
+    // tagged only with a version that is already linked. "off" writes nothing at all.
+    const mode = syncMode(p, settings, enabledAt);
+    if (mode === "off" || !isOpenProject(p)) continue;
+    const creating = mode === "sync";
     const mine = byProject.get(p.id) ?? [];
     const mappedVersionIds = p.milestones.flatMap((m) => (m.external ? [m.external.key] : []));
 
     // ---- creates and adoptions: from the state, so a lost create response is found again by its marker
     for (const m of p.milestones) {
-      if (m.external) continue;
+      if (m.external || !creating) continue;
       const marked = versions.filter((v) => { const k = markerOf(v.description); return k?.projectId === p.id && k.milestoneId === m.id; });
       const free = marked.filter((v) => !claimed.has(v.id));
       if (marked.length > 1) warn(`Milestone "${m.title}" of ${p.id}: more than one Jira version carries its marker; the first is used.`);
@@ -276,6 +280,8 @@ export function planVersionPush(state: Projects, versions: readonly JiraVersion[
       const issueKey = issueKeyOf(p, stepId);
       const target = e.payload.milestoneId === null || e.payload.milestoneId === undefined ? null : p.milestones.find((m) => m.id === e.payload.milestoneId) ?? undefined;
       if (target === undefined) continue; // the milestone is gone: its removal cleared the step
+      // Without a create to wait for (a linked project), an unlinked milestone never gets a version: nothing to hold for.
+      if (target && !target.external && !creating) continue;
       if (!issueKey || (target && !target.external)) { pendingSteps.add(stepId); deferred.push(e.seq); continue; }
       let versionId: string | null = null;
       if (target?.external) {
