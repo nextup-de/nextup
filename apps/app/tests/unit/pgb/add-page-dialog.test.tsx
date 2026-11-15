@@ -31,6 +31,7 @@ it("Add page dialog shows Jira tags only for a configured connector and only fiv
   const jira = jiraRowOf(p, demoJiraView(0), 0, "en");
   const html = render({ jira });
   expect(html.match(/data-jira="true"/g)).toHaveLength(5);
+  expect(html.match(/title="Milestones come from Jira versions when the project is synced with Jira."/g)).toHaveLength(1);
   expect(html).toContain("NextUp only");
   expect(html).toContain("Jira project NUP");
   expect(render({ jira: { ...jira, projectKey: null } })).not.toContain("NextUp only");

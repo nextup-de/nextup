@@ -60,7 +60,7 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
   const pages = pagesOf(p, { agent: flag("agent") });
   const hasJira = jira !== undefined && jira.projectKey !== null;
   const nameOf = (kind: ToolKind) => t(toolKey(kind));
-  const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
+  const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined} title={kind === "milestones" ? t("projectJsy.tagMilestonesTitle") : undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
   const reorder = (from: number, to: number) => dispatch({ type: "reorder", from, to });
   const suggestions = suggestPageName(state.picks.map((pick) => pick.kind));
   const create = async () => {
