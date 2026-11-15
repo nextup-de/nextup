@@ -29,6 +29,14 @@ export const SYSTEM_EVENT_TYPES = [
 ] as const;
 export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
 
+/**
+ * What only the in-app Jira sync may append (plan JSY, D20): the milestone events, which carry the link to a Jira version
+ * and the pending write. The public API and n8n never reach them: `mayAppend` stays false, so a token cannot forge a link
+ * or take a milestone over. `maySyncAppend` is the sync's own allow-list: the public one plus these two.
+ */
+export const SYNC_ONLY_EVENT_TYPES = ["project.milestone.added", "project.milestone.edited"] as const;
+export type SyncOnlyEventType = (typeof SYNC_ONLY_EVENT_TYPES)[number];
+
 /** The tools a project can link to (docs/plans/2026-10-15_idea-to-project.md, step 6). */
 export const LINK_SYSTEMS = ["jira", "azure", "planner", "teams", "sharepoint", "polarion", "codebeamer", "url"] as const;
 
@@ -46,6 +54,10 @@ export const DEFAULT_LIMIT = 200;
 
 export function mayAppend(type: string): type is SystemEventType {
   return (SYSTEM_EVENT_TYPES as readonly string[]).includes(type);
+}
+
+export function maySyncAppend(type: string): type is SystemEventType | SyncOnlyEventType {
+  return mayAppend(type) || (SYNC_ONLY_EVENT_TYPES as readonly string[]).includes(type);
 }
 
 export function hasScope(scopes: readonly string[], needed: Scope): boolean {
@@ -74,7 +86,7 @@ export function bearerFrom(header: string | null | undefined): string | null {
 }
 
 export type Inbound = {
-  type: SystemEventType;
+  type: SystemEventType | SyncOnlyEventType;
   target: string | null;
   payload: EventPayload;
   idempotencyKey: string | null;
@@ -84,18 +96,25 @@ export type ParseResult = { ok: true; event: Inbound } | { ok: false; error: str
 
 const MAX_PAYLOAD_BYTES = 16 * 1024;
 
-/** Validates a POST body. Refuses anything not on the allow-list, by name, so the reason is clear. */
-export function parseInbound(body: unknown, idempotencyKey?: string | null): ParseResult {
+/**
+ * Validates a POST body. Refuses anything not on the allow-list, by name, so the reason is clear.
+ *
+ * `opts.via` says who is asking and is only ever set by server code: "sync" for the in-app Jira sync, which may also append
+ * the milestone events and change a step's milestone. A `via` in the request body is ignored, so the public API cannot
+ * forge it. Default: "api".
+ */
+export function parseInbound(body: unknown, idempotencyKey?: string | null, opts?: { via?: "api" | "sync" }): ParseResult {
+  const via = opts?.via === "sync" ? "sync" : "api";
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, error: "Body must be a JSON object." };
   }
   const b = body as Record<string, unknown>;
 
   if (typeof b.type !== "string") return { ok: false, error: "type is required." };
-  if (!mayAppend(b.type)) {
+  if (via === "sync" ? !maySyncAppend(b.type) : !mayAppend(b.type)) {
     return {
       ok: false,
-      error: `A system actor may not append "${b.type}". Allowed: ${SYSTEM_EVENT_TYPES.join(", ")}.`,
+      error: `A system actor may not append "${b.type}". Allowed: ${(via === "sync" ? [...SYSTEM_EVENT_TYPES, ...SYNC_ONLY_EVENT_TYPES] : SYSTEM_EVENT_TYPES).join(", ")}.`,
     };
   }
 
@@ -134,7 +153,7 @@ export function parseInbound(body: unknown, idempotencyKey?: string | null): Par
     return { ok: false, error: "case.commented needs payload.text." };
   }
   if (b.type.startsWith("project.")) {
-    const problem = projectPayloadProblem(b.type, payload as Record<string, unknown>);
+    const problem = projectPayloadProblem(b.type, payload as Record<string, unknown>, via);
     if (problem) return { ok: false, error: problem };
   }
 
@@ -145,7 +164,7 @@ export function parseInbound(body: unknown, idempotencyKey?: string | null): Par
 
   return {
     ok: true,
-    event: { type: b.type, target: b.target, payload: payload as EventPayload, idempotencyKey: key },
+    event: { type: b.type as Inbound["type"], target: b.target, payload: payload as EventPayload, idempotencyKey: key },
   };
 }
 
@@ -154,7 +173,7 @@ const words = (v: unknown, max: number): v is string => typeof v === "string" &&
 const webUrl = (v: unknown): v is string => typeof v === "string" && v.length <= 1000 && /^https?:\/\/[^\s]+$/i.test(v);
 
 /** What is wrong with a project event's payload, or null. The facts each sentence is built from. */
-function projectPayloadProblem(type: string, p: Record<string, unknown>): string | null {
+function projectPayloadProblem(type: string, p: Record<string, unknown>, via: "api" | "sync"): string | null {
   switch (type) {
     case "project.step.added": {
       if (!isProjectId(p.stepId)) return "project.step.added needs payload.stepId (letters, digits, - and _).";
@@ -175,8 +194,14 @@ function projectPayloadProblem(type: string, p: Record<string, unknown>): string
     case "project.step.edited": {
       if (!isProjectId(p.stepId)) return "project.step.edited needs payload.stepId.";
       // Text only. Owner, due day, details and removal are people's: a connector never reassigns or deletes.
-      const extra = Object.keys(p).filter((k) => k !== "stepId" && k !== "text");
-      if (extra.length) return `A system actor may only change a step's text, not ${extra.join(", ")}.`;
+      // The Jira sync may also set the step's milestone (plan JSY D12): a fix version changed in Jira.
+      const allowed = via === "sync" ? ["stepId", "text", "milestoneId"] : ["stepId", "text"];
+      const extra = Object.keys(p).filter((k) => !allowed.includes(k));
+      if (extra.length) return `A system actor may only change a step's ${via === "sync" ? "text and milestone" : "text"}, not ${extra.join(", ")}.`;
+      if (via === "sync" && p.milestoneId !== undefined) {
+        if (p.milestoneId !== null && !isProjectId(p.milestoneId)) return "payload.milestoneId must be a milestone id or null.";
+        if (p.text === undefined) return null;
+      }
       return words(p.text, 500) ? null : "project.step.edited needs payload.text (up to 500 characters).";
     }
     case "project.linked":
@@ -184,11 +209,79 @@ function projectPayloadProblem(type: string, p: Record<string, unknown>): string
       if (!webUrl(p.url)) return "project.linked needs payload.url, an http(s) address.";
       if (p.key !== undefined && !words(p.key, 100)) return "payload.key must be text.";
       return p.stepId === undefined || isProjectId(p.stepId) ? null : "payload.stepId is not a step id.";
+    case "project.milestone.added":
+    case "project.milestone.edited":
+      return milestoneProblem(type, p);
     case "project.commented":
       return words(p.text, 2000) ? null : "project.commented needs payload.text (up to 2000 characters).";
     default:
       return null;
   }
+}
+
+const FIELDS_ADDED = ["milestoneId", "title", "startDay", "dueDay", "note", "external", "sync"];
+const FIELDS_EDITED = ["milestoneId", "title", "startDay", "dueDay", "note", "shipped", "removed", "external", "sync"];
+
+/** What is wrong with a milestone event the sync sends (plan JSY D20), or null. Shape only; the state is checked in maySystemAppend. */
+function milestoneProblem(type: string, p: Record<string, unknown>): string | null {
+  const added = type === "project.milestone.added";
+  const extra = Object.keys(p).filter((k) => !(added ? FIELDS_ADDED : FIELDS_EDITED).includes(k));
+  if (extra.length) return `${type} may not carry ${extra.join(", ")}.`;
+  if (!isProjectId(p.milestoneId)) return `${type} needs payload.milestoneId (letters, digits, - and _, up to 64).`;
+  if (added ? !words(p.title, 80) : p.title !== undefined && !words(p.title, 80)) return "payload.title must be 1-80 characters.";
+  if (added ? !Number.isInteger(p.dueDay) : p.dueDay !== undefined && !Number.isInteger(p.dueDay)) return "payload.dueDay must be a whole day number.";
+  if (p.startDay !== undefined && p.startDay !== null && !Number.isInteger(p.startDay)) return "payload.startDay must be a whole day number or null.";
+  if (typeof p.startDay === "number" && typeof p.dueDay === "number" && p.startDay > p.dueDay) return "payload.startDay may not be after payload.dueDay.";
+  if (p.note !== undefined && (typeof p.note !== "string" || p.note.length > 1000)) return "payload.note must be text of up to 1000 characters.";
+  if (p.shipped !== undefined && typeof p.shipped !== "boolean") return "payload.shipped must be true or false.";
+  if (p.removed !== undefined && typeof p.removed !== "boolean") return "payload.removed must be true or false.";
+  if (p.external !== undefined) {
+    const x = p.external as Record<string, unknown> | null;
+    if (typeof x !== "object" || x === null || Array.isArray(x) || x.system !== "jira" || !words(x.key, 100) || !webUrl(x.url) || (x.mode !== "owned" && x.mode !== "imported")) {
+      return 'payload.external must be { system: "jira", key, url, mode: "owned" | "imported" }.';
+    }
+  }
+  if (p.sync !== undefined && p.sync !== null) {
+    const y = p.sync as Record<string, unknown>;
+    if (typeof y !== "object" || Array.isArray(y) || (y.state !== "pending" && y.state !== "failed") || !(["create", "update", "archive", "fixVersion"] as unknown[]).includes(y.op) || (y.why !== undefined && !words(y.why, 300))) {
+      return 'payload.sync must be { state: "pending" | "failed", op, why? } or null.';
+    }
+  }
+  return null;
+}
+
+/**
+ * Deterministic ids of what the sync creates (plan JSY D22), so a retried or doubled round makes the same milestone and the
+ * same event, never a second one. Both fit the 64-character id limit: a long or odd part is cut and a short hash of the whole
+ * input is added, so two long ids that share a start stay apart. Two projects with the same Jira version get two ids (the
+ * project id is part of it).
+ */
+export function jiraMilestoneId(projectId: string, versionId: string): string {
+  return boundedId("jv", [projectId, versionId]);
+}
+
+/** The idempotency key of a sync event. Up to 200 characters (parseInbound's limit); `what` is e.g. "milestone.added". */
+export function syncIdemKey(what: string, parts: readonly string[]): string {
+  const k = ["jira", what, ...parts.map((x) => x.replace(/[^A-Za-z0-9_-]/g, "_"))].join(":");
+  return k.length <= 200 ? k : `${k.slice(0, 180)}:${hash36(k)}`;
+}
+
+function boundedId(prefix: string, parts: readonly string[]): string {
+  const clean = parts.map((x) => x.replace(/[^A-Za-z0-9_-]/g, "_"));
+  const plain = [prefix, ...clean].join("_");
+  // Plain when it fits and nothing was altered; otherwise cut, with a hash of the raw parts (so "a b" and "a_b" differ).
+  if (plain.length <= 64 && clean.every((c, i) => c === parts[i])) return plain;
+  const h = hash36(parts.join("\u0000"));
+  const room = 64 - prefix.length - h.length - 3;
+  const per = Math.max(1, Math.floor(room / clean.length));
+  return [prefix, ...clean.map((c) => c.slice(0, per)), h].join("_").slice(0, 64);
+}
+
+/** A short, stable, non-cryptographic hash (FNV-1a, 32 bit) in base 36. */
+function hash36(v: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < v.length; i++) h = Math.imul(h ^ v.charCodeAt(i), 0x01000193) >>> 0;
+  return h.toString(36);
 }
 
 /**
@@ -207,8 +300,29 @@ export function maySystemAppend(ev: Pick<Inbound, "type" | "target" | "payload">
       if (p.status === "stopped" || p.status === "recognised") return { ok: false, error: "This project is closed." };
       return hasStep(pl.stepId) ? { ok: false, error: "That step id is already used." } : { ok: true };
     case "project.step.moved":
-    case "project.step.edited":
       return hasStep(pl.stepId) ? { ok: true } : { ok: false, error: "No such step." };
+    case "project.step.edited":
+      if (!hasStep(pl.stepId)) return { ok: false, error: "No such step." };
+      // The sync sets a step's milestone (plan JSY D12): an existing milestone of this project, or none.
+      if (pl.milestoneId !== undefined && pl.milestoneId !== null && !p.milestones.some((m) => m.id === pl.milestoneId)) return { ok: false, error: "No such milestone." };
+      return { ok: true };
+    case "project.milestone.added": {
+      if (p.status === "stopped" || p.status === "recognised") return { ok: false, error: "This project is closed." };
+      // Never a used id, and never a removed one: a tombstone keeps the sync from bringing the version back (D22).
+      if (p.milestones.some((m) => m.id === pl.milestoneId) || (p.milestoneTombstones ?? []).some((t) => t.id === pl.milestoneId)) return { ok: false, error: "That milestone id is already used." };
+      return typeof pl.startDay === "number" && typeof pl.dueDay === "number" && pl.startDay > pl.dueDay ? { ok: false, error: "The start day is after the due day." } : { ok: true };
+    }
+    case "project.milestone.edited": {
+      const m = p.milestones.find((x) => x.id === pl.milestoneId);
+      if (!m) return { ok: false, error: "No such milestone." };
+      // The order is checked on the values as they would be after this edit, not on the payload alone.
+      const startDay = pl.startDay === undefined ? m.startDay : pl.startDay;
+      const dueDay = pl.dueDay === undefined ? m.dueDay : pl.dueDay;
+      if (typeof startDay === "number" && typeof dueDay === "number" && startDay > dueDay) return { ok: false, error: "The start day is after the due day." };
+      // A link is set once: another version or another mode never replaces it.
+      if (pl.external && m.external) return { ok: false, error: "This milestone already has a Jira link." };
+      return { ok: true };
+    }
     case "project.linked":
       return pl.stepId === undefined || hasStep(pl.stepId) ? { ok: true } : { ok: false, error: "No such step." };
     default:

@@ -38,7 +38,7 @@ describe("CNX Jira Data Center client", () => {
     expect(await api.project("NUP")).toMatchObject({ key: "NUP", name: "NextUp test" });
     expect(await api.project("NOPE")).toBeNull();
     expect((await api.issueTypes("NUP")).map((t) => t.id)).toEqual([EPIC_TYPE.id, TASK_TYPE.id]);
-    expect(await api.permissions("NUP")).toEqual({ browse: true, create: true, edit: true, transition: true, comment: true });
+    expect(await api.permissions("NUP")).toEqual({ browse: true, create: true, edit: true, transition: true, comment: true, administer: true });
   });
 
   it("creates an epic and a child with labels; edits, labels and moves it", async () => {
@@ -146,7 +146,7 @@ describe("CNX Jira flavor dc accepted", () => {
 
   it("the connection test passes every check against the Data Center fake", async () => {
     const r = await testJira(settings, TOKEN);
-    expect(r.checks.map((c) => [c.id, c.ok])).toEqual([["auth", true], ["project", true], ["types", true], ["permissions", true], ["labels", true]]);
+    expect(r.checks.map((c) => [c.id, c.ok])).toEqual([["auth", true], ["project", true], ["types", true], ["permissions", true], ["versions", true], ["labels", true]]);
     expect(r.ok).toBe(true);
     expect(r.account).toEqual({ id: "acc-bot", name: "NextUp Bot" });
   });

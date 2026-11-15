@@ -14,14 +14,16 @@ import {
   type JiraPermissions,
   type JiraProjectInfo,
   type JiraTransition,
+  type JiraVersion,
 } from "@/features/integrations/jira/types";
 
 const TIMEOUT_MS = 20_000;
 /** A 429 that asks for a short wait is waited out once; a longer one ends the round (the runner backs off). */
 const MAX_INLINE_WAIT_MS = 5_000;
 const PAGE = 100;
+const VERSION_PAGE = 50;
 const MAX_PAGES = 20;
-const FIELDS = ["summary", "status", "issuetype", "parent", "labels", "updated"];
+const FIELDS = ["summary", "status", "issuetype", "parent", "labels", "updated", "fixVersions", "attachment"];
 
 type Fetch = typeof fetch;
 type Opts = { fetch?: Fetch; sleep?: (ms: number) => Promise<void> };
@@ -41,6 +43,18 @@ function retryAfterOf(res: Response): number | null {
   const raw = res.headers.get("retry-after");
   const s = raw === null ? NaN : Number(raw);
   return Number.isFinite(s) && s >= 0 ? Math.ceil(s * 1000) : null;
+}
+
+/** A Jira version as the contract has it: dates stay `YYYY-MM-DD`, a missing or empty one is undefined. */
+function versionOf(raw: unknown): JiraVersion {
+  const v = record(raw);
+  const date = (x: unknown): string | undefined => (typeof x === "string" && /^\d{4}-\d{2}-\d{2}/.test(x) ? x.slice(0, 10) : undefined);
+  if (typeof v.id !== "string" && typeof v.id !== "number") throw new JiraError("502 Jira did not return the version's id", 502);
+  return {
+    id: String(v.id), name: typeof v.name === "string" ? v.name : "", ...(typeof v.description === "string" && v.description ? { description: v.description } : {}),
+    ...(date(v.startDate) ? { startDate: date(v.startDate) } : {}), ...(date(v.releaseDate) ? { releaseDate: date(v.releaseDate) } : {}),
+    released: v.released === true, archived: v.archived === true,
+  };
 }
 
 export function createCloudApi(
@@ -125,10 +139,40 @@ export function createCloudApi(
     },
 
     async permissions(projectKey): Promise<JiraPermissions> {
-      const names = ["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "TRANSITION_ISSUES", "ADD_COMMENTS"];
+      const names = ["BROWSE_PROJECTS", "CREATE_ISSUES", "EDIT_ISSUES", "TRANSITION_ISSUES", "ADD_COMMENTS", "ADMINISTER_PROJECTS"];
       const r = record(record(await call("GET", `/mypermissions?projectKey=${enc(projectKey)}&permissions=${names.join(",")}`)).permissions);
       const has = (n: string) => record(r[n]).havePermission === true;
-      return { browse: has(names[0]), create: has(names[1]), edit: has(names[2]), transition: has(names[3]), comment: has(names[4]) };
+      return { browse: has(names[0]), create: has(names[1]), edit: has(names[2]), transition: has(names[3]), comment: has(names[4]), administer: has(names[5]) };
+    },
+
+    // ---- Versions (plan JSY): writing needs the Administer Projects permission; a refusal is a JiraError with the status first ----
+    async versions(projectKey) {
+      // Jira Cloud pages a project's versions; every page is read (archived versions included).
+      const out: JiraVersion[] = [];
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const r = record(await call("GET", `/project/${enc(projectKey)}/version?startAt=${page * VERSION_PAGE}&maxResults=${VERSION_PAGE}`));
+        const values = Array.isArray(r.values) ? r.values : [];
+        for (const v of values) out.push(versionOf(v));
+        if (r.isLast === true || values.length === 0) break;
+      }
+      return out;
+    },
+    async createVersion(p) {
+      return versionOf(await call("POST", "/version", {
+        name: p.name, project: p.projectKey, released: p.released === true,
+        ...(p.description ? { description: p.description } : {}),
+        ...(p.startDate ? { startDate: p.startDate } : {}),
+        ...(p.releaseDate ? { releaseDate: p.releaseDate } : {}),
+      }));
+    },
+    async updateVersion(id, patch) {
+      // Only the keys present are sent; a date of null is sent as null, which clears it in Jira.
+      const body: Record<string, unknown> = {};
+      for (const k of ["name", "description", "startDate", "releaseDate", "released", "archived"] as const) if (patch[k] !== undefined) body[k] = patch[k];
+      await call("PUT", `/version/${enc(id)}`, body);
+    },
+    async setFixVersions(issueKey, versionIds) {
+      await call("PUT", `/issue/${enc(issueKey)}`, { fields: { fixVersions: versionIds.map((id) => ({ id })) } });
     },
 
     async search(jql, o) {

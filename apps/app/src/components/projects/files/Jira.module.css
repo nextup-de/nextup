@@ -1,0 +1,17 @@
+/* The read-only Jira attachments group under the SharePoint list (plan JSY-D1). No Paper frame: the rows of the Files list and its tokens. */
+.group { display: flex; flex-direction: column; gap: var(--nh-gap); min-width: 0; padding-top: var(--nh-pad-card); border-top: 1px solid var(--nh-line-soft); }
+.title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; }
+.hint, .state { margin: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+.note { margin: 0; padding: var(--nh-space) var(--nh-gap); border-radius: var(--nh-r-sm); background: var(--nh-danger-tint); color: var(--nh-ink); font-size: var(--nh-fs-sm); }
+.list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.row { display: flex; align-items: center; gap: var(--nh-gap); min-width: 0; padding: var(--nh-space) 0; border-bottom: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm); }
+.text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.name { color: var(--nh-ink); overflow-wrap: anywhere; }
+.meta { color: var(--nh-mute); font-size: var(--nh-fs-xs); }
+.chip { flex: none; padding: 1px var(--nh-space); border-radius: var(--nh-r-sm); background: var(--nh-fill); color: var(--nh-ink-2); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); }
+.open { flex: none; color: var(--nh-brand-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.open:hover { text-decoration: underline; }
+.open:focus-visible, .retry:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.retry { align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--nh-brand-ink); font: inherit; font-weight: 600; cursor: pointer; }
+.more { margin: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+@media (max-width: 760px) { .row { flex-wrap: wrap; } .text { flex-basis: calc(100% - var(--nh-space) * 8); } }

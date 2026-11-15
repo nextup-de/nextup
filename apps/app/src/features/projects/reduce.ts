@@ -7,7 +7,7 @@ import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
 import { templateSteps } from "@/features/templates/library";
-import type { CheckDue, Invite, InviteRole, ProjectPage, ReducedProject, Request, SeedProject, Step, StepColumn, ToolInstance } from "./types";
+import type { CheckDue, Invite, InviteRole, Milestone, MilestoneExternal, MilestoneSync, ProjectPage, ReducedProject, Request, SeedProject, Step, StepColumn, ToolInstance } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
 import { DEFAULT_PAGES, LIMITS, mergePlan, TOOL_KINDS } from "./pages";
@@ -335,6 +335,25 @@ function takeLead(p: ReducedProject, f: DraftFacts, d: number): void {
   });
 }
 
+/** The Jira link of a milestone event, or null when it is not a well-formed one (plan JSY D9). */
+function milestoneExternal(v: unknown): MilestoneExternal | null {
+  if (typeof v !== "object" || v === null) return null;
+  const x = v as Record<string, unknown>;
+  const ok = x.system === "jira" && typeof x.key === "string" && x.key.length > 0 && x.key.length <= 100
+    && typeof x.url === "string" && x.url.length <= 1000 && /^https?:\/\/[^\s]+$/i.test(x.url) && (x.mode === "owned" || x.mode === "imported");
+  return ok ? { system: "jira", key: x.key as string, url: x.url as string, mode: x.mode as "owned" | "imported" } : null;
+}
+
+const SYNC_OPS: readonly string[] = ["create", "update", "archive", "fixVersion"];
+/** A pending or failed write to Jira of a milestone event, or null (plan JSY D22). */
+function milestoneSync(v: unknown): MilestoneSync | null {
+  if (typeof v !== "object" || v === null) return null;
+  const x = v as Record<string, unknown>;
+  if ((x.state !== "pending" && x.state !== "failed") || typeof x.op !== "string" || !SYNC_OPS.includes(x.op)) return null;
+  const why = typeof x.why === "string" && x.why.trim() ? x.why.trim().slice(0, 300) : undefined;
+  return { state: x.state, op: x.op as MilestoneSync["op"], ...(why ? { why } : {}) };
+}
+
 /** One project.* event. Returns false when the event is not a project event at all. */
 export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopRules): boolean {
   const isFact = ev.type === "clock.due"; // a stored due fact (CLK/D10) on a project; on a case the case reducer takes it
@@ -344,6 +363,8 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
   const pl = ev.payload ?? {};
   const d = ev.day | 0;
   const live = p.stopped === null;
+  /** Only the Jira sync may link a milestone to a version or mark a write pending (plan JSY D9). */
+  const bySync = ev.actor.startsWith("system:");
   if (ev.type.startsWith("project.page.") || ev.type.startsWith("project.tool.")) {
     applyPageEvent(p, ev);
     p.history.push(ev);
@@ -586,17 +607,36 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const title = pl.title?.trim();
       if (!id || !title || typeof pl.dueDay !== "number" || p.milestones.some((m) => m.id === id)) break;
       const startDay = typeof pl.startDay === "number" ? pl.startDay : null;
-      p.milestones.push({ id, title, startDay, dueDay: pl.dueDay, note: pl.note?.trim() ?? "", shipped: false, shippedDay: null });
+      const m: Milestone = { id, title, startDay, dueDay: pl.dueDay, note: pl.note?.trim() ?? "", shipped: false, shippedDay: null };
+      // The Jira link and the pending write are the sync's alone (plan JSY D9, D20): from a person they are ignored.
+      if (bySync) {
+        const external = milestoneExternal(pl.external);
+        if (external) m.external = external;
+        const sync = milestoneSync(pl.sync);
+        if (sync) m.sync = sync;
+      }
+      p.milestones.push(m);
       break;
     }
     case "project.milestone.edited": {
       const m = p.milestones.find((x) => x.id === pl.milestoneId);
       if (!m) break;
       if (pl.removed) {
+        // A removed milestone leaves a tombstone: the sync archives an owned version from it and never imports it again (D22).
+        p.milestoneTombstones = [...(p.milestoneTombstones ?? []), { id: m.id, title: m.title, external: m.external ?? null, day: d }];
         p.milestones = p.milestones.filter((x) => x !== m);
         p.steps.forEach((s) => { if (s.milestoneId === m.id) s.milestoneId = null; });
         break;
       }
+      if (bySync) {
+        // The link is set once and never replaced by another version or another mode (D20: lost ownership is never claimed back).
+        const external = milestoneExternal(pl.external);
+        if (external && !m.external) m.external = external;
+        if (pl.sync === null) m.sync = null;
+        else { const sync = milestoneSync(pl.sync); if (sync) m.sync = sync; }
+      }
+      // An imported milestone is a read-only view of a Jira version: a person's field edits are ignored (their steps are not).
+      if (m.external?.mode === "imported" && !bySync) break;
       const title = pl.title?.trim();
       if (title) m.title = title;
       if (pl.startDay !== undefined) m.startDay = typeof pl.startDay === "number" ? pl.startDay : null;

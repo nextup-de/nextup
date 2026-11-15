@@ -26,8 +26,8 @@ export const PROJECT_EVENT_TYPES = [
   "project.tool.restored", // { toolId }
   "project.page.merged", // { mergeId, fromPageId, intoPageId }  moves every tool in order
   "project.page.unmerged", // { mergeId }
-  "project.milestone.added", // { milestoneId, title, startDay?, dueDay, note? }
-  "project.milestone.edited", // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }
+  "project.milestone.added", // { milestoneId, title, startDay?, dueDay, note?, external?, sync? }  external and sync: the Jira sync only (plan JSY)
+  "project.milestone.edited", // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed?, external?, sync? }  external and sync: the Jira sync only (plan JSY)
   "project.form.saved", // { formId, title, intro, fields, shared }
   "project.form.answered", // { formId, formRev, requestId, answers }
   "project.request.stepped", // { requestId, step: { stepId, text, column, ownerUserId?, dueDay?, note? } }
@@ -89,8 +89,8 @@ export type ProjectAreaEventType =
   | "project.page.merged" // { mergeId, fromPageId, intoPageId }  moves every tool in order
   | "project.page.unmerged" // { mergeId }
   // Plan tools (plan PLN, D3).
-  | "project.milestone.added" // { milestoneId, title, startDay?, dueDay, note? }  title 1-80, note up to 1000, dueDay not before startDay
-  | "project.milestone.edited" // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed? }  only the fields sent change; startDay null clears; removed clears milestoneId on its steps
+  | "project.milestone.added" // { milestoneId, title, startDay?, dueDay, note?, external?, sync? }  title 1-80, note up to 1000, dueDay not before startDay; external and sync only from the Jira sync
+  | "project.milestone.edited" // { milestoneId, title?, startDay?, dueDay?, note?, shipped?, removed?, external?, sync? }  only the fields sent change; external and sync only from the Jira sync (sync null clears); an imported milestone's fields change only by the sync; startDay null clears; removed clears milestoneId on its steps
   // Requests and forms (plan REQ, D4). Every payload fits EVENT_BUDGET.
   | "project.form.saved" // { formId, title, intro, fields: [{ id, kind, label, required, options? }], shared }  title 1-80, intro up to 1000, 1-20 fields; every save counts the form's rev up
   | "project.form.answered" // { formId, formRev, requestId, answers: { [fieldId]: string } }  formRev is the form's current rev; by any signed-in person of the company while the form is shared
@@ -110,7 +110,8 @@ export type ProjectAreaPayload = {
   metric?: string; unit?: string; value?: number; better?: "up" | "down"; none?: boolean; // project.baseline, project.measured (value)
   owner?: string; // project.step.added, project.step.edited
   before?: string | null; removed?: boolean; // project.step.moved (before), project.step.edited (removed)
-  external?: { system: string; key: string; url?: string }; // project.step.added from a connector
+  external?: { system: string; key: string; url?: string; mode?: "owned" | "imported" }; // project.step.added from a connector; project.milestone.added/edited from the Jira sync only (mode: who may write the version, plan JSY D9, D20)
+  sync?: { state: "pending" | "failed"; op: "create" | "update" | "archive" | "fixVersion"; why?: string } | null; // project.milestone.added/edited from the Jira sync only: an unfinished write to Jira (null clears, D22)
   impact?: MeasureImpact; // project.measured (LOOP/D20)
   rule?: string; amount?: number; // project.rewarded
   ownerUserId?: string | null; // project.step.added, project.step.edited (null clears)
