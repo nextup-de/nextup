@@ -112,7 +112,7 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 
 /**
  * `inPage`: the idea drawn as one page of its project (tools/IdeaTool): the idea alone, at its own height, with no
- * close button, no chats column and no phone sheet - the project page around it brings the way back.
+ * close button, no chats column and no small-screen sheet - the project page around it brings the way back.
  */
 export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean } = {}) {
   const t = useT();
