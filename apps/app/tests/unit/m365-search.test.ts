@@ -141,7 +141,7 @@ describe("refresh token", () => {
     expect(b.get("grant_type")).toBe("refresh_token");
     expect(b.get("refresh_token")).toBe("r");
     expect(b.get("scope")).toBe(GRAPH_SCOPE);
-    expect(GRAPH_SCOPE).toBe("https://graph.microsoft.com/Files.ReadWrite.All offline_access");
+    expect(GRAPH_SCOPE).toBe("https://graph.microsoft.com/.default offline_access");
   });
 
   it("reads a good answer, with or without a rotated token", () => {
