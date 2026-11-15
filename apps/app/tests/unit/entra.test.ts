@@ -290,7 +290,7 @@ describe("Connect Microsoft 365", () => {
 
   it("asks for files and a refresh token, and nothing else, when connecting", () => {
     const scope = new URL(authorizeUrl({ ...base, scope: M365_SCOPE })).searchParams.get("scope")!;
-    expect(scope.split(" ").sort()).toEqual(["email", "https://graph.microsoft.com/Files.Read.All", "offline_access", "openid", "profile"]);
+    expect(scope.split(" ").sort()).toEqual(["email", "https://graph.microsoft.com/Files.ReadWrite.All", "offline_access", "openid", "profile"]);
     expect(tokenRequestBody({ clientId: "a", clientSecret: "b", code: "c", redirectUri: "r", verifier: "v", scope: M365_SCOPE }).get("scope")).toBe(M365_SCOPE);
   });
 
@@ -301,11 +301,12 @@ describe("Connect Microsoft 365", () => {
     expect(grantedScopes(42)).toEqual([]);
   });
 
-  it("needs Files.Read.All; offline access comes as the refresh token, not in scope", () => {
+  it("needs Files.Read.All or Files.ReadWrite.All; offline access comes as the refresh token, not in scope", () => {
     // What Microsoft's token response carries: Graph scopes only, never offline_access.
     expect(canSearchFiles(grantedScopes("https://graph.microsoft.com/Files.Read.All https://graph.microsoft.com/User.Read"))).toBe(true);
     expect(canSearchFiles(["Files.Read.All", "offline_access"])).toBe(true);
     expect(canSearchFiles(["files.read.all"])).toBe(true);
+    expect(canSearchFiles(["Files.ReadWrite.All"])).toBe(true);
     expect(canSearchFiles(["offline_access", "Files.Read"])).toBe(false);
     expect(canSearchFiles([])).toBe(false);
   });
