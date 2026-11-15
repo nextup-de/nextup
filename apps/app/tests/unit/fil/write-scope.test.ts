@@ -7,10 +7,13 @@ const WRITE = "https://graph.microsoft.com/Files.ReadWrite.All";
 const findFirst = vi.fn();
 vi.mock("@/lib/db/client", () => ({ getDb: () => ({ connection: { findFirst } }) }));
 
-it("FIL write scope the connect flow and the refresh ask for Files.ReadWrite.All, never Files.Read.All", () => {
+it("FIL write scope the connect flow asks for Files.ReadWrite.All; the refresh asks for nothing new", () => {
   expect(M365_SCOPE.split(" ")).toContain(WRITE);
   expect(M365_SCOPE.split(" ")).not.toContain(READ);
-  expect(GRAPH_SCOPE.split(" ").sort()).toEqual([WRITE, "offline_access"]);
+  // A refresh token granted Files.Read.All before FIL-P1 would be refused (consent_required) if the refresh named
+  // Files.ReadWrite.All; .default returns what is already granted, so old connections keep searching.
+  expect(GRAPH_SCOPE.split(" ").sort()).toEqual(["https://graph.microsoft.com/.default", "offline_access"]);
+  expect(GRAPH_SCOPE).not.toMatch(/Files\./);
   expect(refreshRequestBody({ clientId: "a", clientSecret: "b", refreshToken: "r" }).get("scope")).toBe(GRAPH_SCOPE);
   expect(SIGN_IN_SCOPE).not.toMatch(/Files/);
 });
@@ -34,7 +37,7 @@ it("FIL write scope m365CanWrite reads the stored scopes of the person's connect
   const { m365CanWrite } = await import("@/lib/db/connections");
   findFirst.mockResolvedValueOnce({ scopes: ["Files.ReadWrite.All", "offline_access"] });
   expect(await m365CanWrite("c1", "u1")).toBe(true);
-  expect(findFirst).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: "c1", userId: "u1" }) }));
+  expect(findFirst).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: "c1", userId: "u1", lastError: null }) }));
   findFirst.mockResolvedValueOnce({ scopes: ["Files.Read.All"] });
   expect(await m365CanWrite("c1", "u1")).toBe(false);
   findFirst.mockResolvedValueOnce(null);
