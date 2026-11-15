@@ -1,6 +1,7 @@
 // People's own connections to sources NextUp reads on their behalf (Connection rows) and the company
 // switch that allows them. docs/plans/2026-10-22_sso-and-data-access.md, phase 2. Every query is
 // scoped by company; tokens go in sealed (features/connectors/vault.ts) and never come back out here.
+import { canWriteFiles } from "@/features/auth/entra";
 import { getDb, type Db } from "@/lib/db/client";
 import type { Tx } from "@/lib/db/integrations";
 
@@ -64,6 +65,12 @@ export async function sealedRefreshToken(companyId: string, userId: string): Pro
     select: { refreshTokenSealed: true },
   });
   return row?.refreshTokenSealed ?? null;
+}
+
+/** Did this person's grant include Files.ReadWrite.All? From the stored scopes; false when they are not connected or connected before it was asked for. */
+export async function m365CanWrite(companyId: string, userId: string): Promise<boolean> {
+  const row = await getDb().connection.findFirst({ where: { companyId, userId, provider: M365 }, select: { scopes: true } });
+  return row !== null && canWriteFiles(row.scopes);
 }
 
 /** After a redeem: the rotated token (when Microsoft sent one) goes in, and the use is noted. */

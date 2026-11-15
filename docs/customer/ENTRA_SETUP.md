@@ -140,10 +140,20 @@ Only if you want it, and only after your works council and data-protection offic
 decides for themselves with **Connect Microsoft 365** on their NextUp profile; nothing happens until
 your NextUp admin turns it on in `/admin/assistant`.
 
-- NextUp then asks Microsoft for **Files.Read.All** (delegated: read the files *that person* can
-  open) and **offline_access** (search later without signing in again). Not mail, chats, calendars
-  or lists. Grant admin consent for these two under **Permissions** (step 5) if your policy
-  requires it.
+- NextUp then asks Microsoft for **Files.ReadWrite.All** (delegated: read, upload and delete the
+  files *that person* can open or change, for example in a project's folder on the Files page) and
+  **offline_access** (act later without signing in again). Not mail, chats, calendars or lists. No
+  `Sites.*` permission. Grant admin consent for these two under **Permissions** (step 5) if your
+  policy requires it.
+- The permission is delegated, so NextUp can only do what the signed-in person can do in
+  SharePoint; SharePoint's own rights decide every read, upload and delete. There is no
+  application-level access to your files.
+- **Upgrading from Files.Read.All.** Earlier versions asked for read-only access. Until an admin
+  consents again, people who connected before keep working for search, but the Files page shows
+  upload and delete disabled with "Connect again to upload". To switch: in Entra, open the NextUp
+  app registration, replace **Files.Read.All** with **Files.ReadWrite.All** under API permissions
+  (Microsoft Graph, delegated) and choose **Grant admin consent**. Each person then connects again
+  on their NextUp profile.
 - NextUp searches as that person, so it never sees more than they do, and copies nothing. Results
   are masked (names, emails, secrets) before the assistant's model reads them.
 - Anyone can disconnect on their profile; your NextUp admin can disconnect everyone at once; and
