@@ -359,7 +359,7 @@ describe("jira sync: the connection test", () => {
   it("passes against a good site", async () => {
     const r = await testJira(settings, "tok");
     expect(r.ok).toBe(true);
-    expect(r.checks.map((c) => c.id)).toEqual(["auth", "project", "types", "permissions", "labels"]);
+    expect(r.checks.map((c) => c.id)).toEqual(["auth", "project", "types", "permissions", "versions", "labels"]);
     expect(r.account).toMatchObject({ id: fake.accountId });
     expect(r.issueTypes.map((t) => t.id)).toEqual(["10000", "10001"]);
   });

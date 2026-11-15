@@ -44,7 +44,7 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
     await wizard.getByRole("textbox", { name: "Page name" }).fill("Dates");
     await wizard.getByRole("button", { name: "Create page" }).click();
     await expect(wizard).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Dates", level: 2 }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dates", level: 1 }).first()).toBeVisible();
     await expect(row("Dates")).toBeVisible();
     await expect.poll(sectionNames).toEqual(["Calendar", "Timeline"]);
   });

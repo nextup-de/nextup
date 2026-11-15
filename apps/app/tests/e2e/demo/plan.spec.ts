@@ -33,7 +33,7 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
 
   await test.step("two steps without a due day are added with the dialog", async () => {
     for (const title of [DRAGGED, KEYED]) {
-      await page.getByRole("button", { name: "+ Add step", exact: true }).first().click();
+      await page.getByRole("button", { name: /^\+\s*Add step$/ }).first().click();
       const dialog = page.getByRole("dialog", { name: "New step" });
       await dialog.getByRole("textbox", { name: "What needs doing?" }).fill(title);
       await dialog.getByRole("button", { name: "Add step" }).click();
@@ -42,7 +42,8 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
   });
 
   await test.step("the Not scheduled drawer lists both; dragging one onto a day gives it a chip there", async () => {
-    await calendar.getByRole("button", { name: /^Not scheduled/ }).click();
+    // The Calendar's controls sit in the page header, outside its region.
+    await page.getByRole("button", { name: /^Not scheduled/ }).click();
     const drawer = calendar.getByRole("complementary", { name: "Not scheduled" });
     await expect(drawer.getByRole("button", { name: "Open step: " + DRAGGED })).toBeVisible();
     await expect(drawer.getByRole("button", { name: "Open step: " + KEYED })).toBeVisible();
