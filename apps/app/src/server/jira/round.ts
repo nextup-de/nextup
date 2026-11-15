@@ -192,6 +192,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   // What the pull needs from the push half: the version list, and what a person changed that is not in Jira yet (never overwritten).
   let versionList: JiraVersion[] | null = null;
   let versionPending: { milestones: string[]; steps: string[] } = { milestones: [], steps: [] };
+  // The push half could not read the versions, so it does not know what a person changed that Jira has not got yet.
+  let versionsUnread = false;
   if (wantVersions) {
     const earliest = (list: readonly SeqEvent[]) => (list.length ? Math.min(...list.map((e) => e.seq)) : Infinity);
     let versions: JiraVersion[] | null = null;
@@ -201,6 +203,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       if (endsRound(e)) throw e;
       warnings.push(`versions: ${e instanceof Error ? e.message : String(e)}`);
       holdAt = Math.min(holdAt, earliest(windowEvents.filter(personTouch)));
+      versionsUnread = true;
     }
     if (versions) {
       versionList = versions;
@@ -350,7 +353,9 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   // ---- versions: read again after our own writes, so the pull sees Jira as the push left it
   const namesFixVersion = [...seen.values()].some((i) => (i.fields.fixVersions?.length ?? 0) > 0);
   let versionsNow: JiraVersion[] | null = null;
-  if (wantVersions || namesFixVersion) {
+  // Without the push half's version list its pending set is empty, so reconciling now could overwrite a person's unpushed milestone
+  // or step edit: the pull skips versions this round (issues, comments and the rest still pull) and the held cursor retries.
+  if ((wantVersions || namesFixVersion) && !versionsUnread) {
     try {
       versionsNow = versionList && !versionsWrote ? versionList : await api.versions(settings.projectKey);
     } catch (e) {

@@ -7,7 +7,7 @@ import { DEFAULT_CALENDAR } from "@/features/clock";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 import { JIRA_ACTOR } from "@/features/integrations";
 import type { SeqEvent } from "@/features/integrations/jira/plan";
-import type { JiraAccount, JiraSettings } from "@/features/integrations/jira/types";
+import { JiraError, type JiraAccount, type JiraSettings } from "@/features/integrations/jira/types";
 import { dateOfDay, versionMarker } from "@/features/integrations/jira/versions";
 import { jiraApiFor } from "@/server/jira/flavors";
 import { runRound, type RoundResult, type RoundStore } from "@/server/jira/round";
@@ -69,7 +69,7 @@ async function setup(flavor: "cloud" | "dc" = "cloud", permissions?: Parameters<
   const versionWrites = () => f.writes().filter((r) => /\/version/.test(r.path));
   const ids = (id: string) => log.project().milestones.find((m) => m.id === id)?.external?.key ?? "";
   const version = (id: string) => f.versions.get(ids(id))!;
-  return { f, log, round, cur, ms, versionWrites, ids, version, settings };
+  return { f, log, round, cur, ms, versionWrites, ids, version, settings, api };
 }
 
 
@@ -136,14 +136,14 @@ describe.each(["cloud", "dc"] as const)("JSY pull %s", (flavor) => {
     expect(milestone(c, "m1").startDay).toBe(90);
   });
 
-  it("a fix version set on a step's issue becomes its milestone, and clearing it gives null", async () => {
+  it("a fix version set on a step's issue becomes its milestone; removing it in Jira does not clear the step", async () => {
     const c = await linked();
     c.f.human.setFixVersions(issueOf(c, "s1").key, [c.ids("m1")]);
     await c.round();
     expect(c.log.project().steps[0].milestoneId).toBe("m1");
     c.f.human.setFixVersions(issueOf(c, "s1").key, []);
     await c.round();
-    expect(c.log.project().steps[0].milestoneId).toBeNull();
+    expect(c.log.project().steps[0].milestoneId).toBe("m1");
     await quiet(c);
   });
 
@@ -261,6 +261,29 @@ describe("JSY both ways", () => {
     expect(c.f.versions.get(c.ids("m1"))?.name).toBe("Mine");
     expect(milestone(c, "m1")).toMatchObject({ title: "Mine", shipped: true });
     await quiet(c);
+  });
+
+  it("when the push half cannot read the versions, the pull leaves milestones alone that round and issues still pull", async () => {
+    const c = await setup("cloud");
+    c.log.human("project.step.added", { stepId: "s1", text: "Step one" });
+    c.ms("m1");
+    await c.round();
+    await c.round();
+    const read = c.api.versions;
+    let calls = 0;
+    c.api.versions = async (key) => (++calls === 1 ? Promise.reject(new JiraError("Jira 403: no access to versions", 403)) : read(key));
+    const edit = c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Mine" });
+    c.f.human.renameVersion(c.ids("m1"), "Theirs");
+    c.f.human.move(issueOf(c, "s1").key, "Done");
+    const r = await c.round();
+    expect(r.warnings.join(" ")).toMatch(/versions: Jira 403/);
+    expect(milestone(c, "m1").title).toBe("Mine");
+    expect(c.log.project().steps[0].column).toBe("done");
+    expect(c.cur.pushedSeq).toBeLessThan(edit.seq);
+    c.api.versions = read;
+    await c.round();
+    expect(c.f.versions.get(c.ids("m1"))?.name).toBe("Mine");
+    expect(milestone(c, "m1").title).toBe("Mine");
   });
 
   it("a person's edit that is not in Jira yet is never pulled over", async () => {
