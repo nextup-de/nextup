@@ -3,6 +3,7 @@
 import { expect, projectPages, test } from "../helpers";
 import { createTestCompany, deleteTestCompany, type TestCompany } from "../../db/test-company";
 import { signIn, sweepPages } from "./fixtures/page-sweep";
+import { readyPage } from "./ready-pages";
 import type { CaseEventType } from "../../../src/features/cases/events";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { getDb } from "../../../src/lib/db/client";
@@ -13,8 +14,9 @@ const SLUG = "uip-projects";
 const PROJECT = "pj-uip";
 const CASE = "c-uip";
 const TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const; // agent: the manager sees the Agent tab (plan AGT, D15)
-// The sidebar's pages since PGB-B1: the default set, Agent included for a manager.
-const PAGES = ["overview", "steps", "plan", "results", "files", "requests", "team", "activity", "agent"] as const;
+// The sidebar's pages: Idea and Files, then the ready-made pages the lead added, Agent included for a manager.
+const READY = ["project-overview", "steps", "plan", "results", "requests", "team", "activity", "agent"] as const;
+const PAGES = ["overview", "files", ...READY] as const;
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL");
 
 const MANAGER = { name: "Mara Sweep", email: `mara@${SLUG}.test`, role: "manager" as const };
@@ -40,6 +42,7 @@ function events(today: number, leadId: string, memberId: string): Ev[] {
     lead("project.step.added", 30, { stepId: "s3", text: "Sync the form when the van has signal", owner: MEMBER.name, ownerUserId: memberId }),
     lead("project.step.added", 29, { stepId: "s4", text: "Retire the paper sheet" }),
     lead("project.started", 28),
+    ...READY.map((pageId) => lead("project.page.added", 28, readyPage(PROJECT, pageId))),
     lead("project.step.moved", 20, { stepId: "s1", to: "done" }),
     member("project.step.moved", 15, { stepId: "s2", to: "doing" }),
     member("project.step.moved", 6, { stepId: "s3", to: "blocked", why: "Waiting for the VPN profile" }),
@@ -67,9 +70,13 @@ test("UIP project area", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   const base = `/${SLUG}/projects/${PROJECT}`;
   await sweepPages(page, [`/${SLUG}/projects`], { marker: "projects-area", title: false }); // the sidebar names the page
-  await sweepPages(page, TABS.map((tab) => `${base}?tab=${tab}`), { marker: "page-header" });
+  // The project's head is on its Idea page; every other page has the page head of its first tool.
+  await sweepPages(page, [`${base}?tab=overview`], { marker: "page-header" });
+  const pages = TABS.filter((tab) => tab !== "overview").map((tab) => `${base}?tab=${tab}`);
+  await sweepPages(page, pages, { marker: "page-head", viewports: [1440] });
+  await sweepPages(page, pages, { marker: "page-head", viewports: [375], title: false }); // the page head's title steps down below 760 px
 
-  await test.step("the pages are Overview, Steps, Plan, Results, Files, Requests, Team, Activity and, for a manager, Agent (PGB, AGT D15)", async () => {
+  await test.step("the pages are Idea, Files and the added Overview, Steps, Plan, Results, Requests, Team, Activity and, for a manager, Agent (PGB, AGT D15)", async () => {
     // The sweep ends at phone width, and a phone has no sidebar: its pages are read on a laptop.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(base);
