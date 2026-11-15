@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import type { SeqEvent } from "@/features/integrations/jira/plan";
+import { DEFAULT_CALENDAR } from "@/features/clock";
 import type { CaseEventType } from "@/features/cases/events";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 import { JIRA_ACTOR } from "@/features/integrations";
@@ -173,7 +174,7 @@ describe("CNX Jira flavor dc accepted", () => {
     add("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p_one", lead: "L. Brandt", title: "Shorter changeover" });
 
     const r = await runRound(jiraApiFor(settings, TOKEN), store, {
-      settings, enabledAt: new Date(Date.now() - 60_000), pushedSeq: 0, pulledAt: null, account: null, reconcile: true, now: new Date(),
+      settings, enabledAt: new Date(Date.now() - 60_000), pushedSeq: 0, pulledAt: null, account: null, reconcile: true, now: new Date(), calendar: DEFAULT_CALENDAR,
     });
     expect(r.warnings).toEqual([]);
     const epics = [...fake.issues.values()].filter((i) => i.typeId === EPIC_TYPE.id);

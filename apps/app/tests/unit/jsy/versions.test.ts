@@ -121,6 +121,26 @@ describe("JSY versions equal", () => {
 });
 
 describe("JSY versions plan", () => {
+  it("a linked project (decided before Jira was on) creates no version for its milestones; an owned link still updates and archives", () => {
+    const linkedOpen = [
+      ev("case.raised", "Anonymous #4471", "c_a", { kind: "idea", title: "Idea c_a", body: "text", routeId: "r1", assignee: "T. Vogel" }),
+      ev("case.decided", "T. Vogel", "c_a", { answer: "yes", projectId: "p_one", lead: LEAD, title: "Shorter changeover" }, ENABLED.getTime() - 1),
+    ];
+    const log = [...linkedOpen, add("s1"), link("s1", "NUP-2"), MS("m1"), MS("m2"), MS("m3", { external: OWN("7") }, BOT)];
+    const assign = P("project.step.edited", { stepId: "s1", milestoneId: "m1" });
+    const rename = P("project.milestone.edited", { milestoneId: "m3", title: "Renamed" });
+    const all = [...log, assign, rename];
+    const plan = push(all, [marked("7", "p_one", "m3")]);
+    expect(plan.jobs.filter((j) => j.kind === "create" || j.kind === "adopt")).toEqual([]);
+    expect(plan.jobs).toEqual([{ kind: "update", seq: rename.seq, milestoneId: "m3", projectId: "p_one", versionId: "7", patch: { name: "Renamed" } }]);
+    // The step on an unlinked milestone waits for nothing: no fix version job and no held cursor.
+    expect(plan.deferredSeq).toBeNull();
+    // Even a version marked for one of its milestones is not adopted: a linked project does not take over versions.
+    expect(push(log, [marked("8", "p_one", "m1")]).jobs).toEqual([]);
+    const rm = P("project.milestone.edited", { milestoneId: "m3", removed: true });
+    expect(push([...log, rm], [marked("7", "p_one", "m3")], [rm]).jobs).toEqual([{ kind: "archive", seq: rm.seq, projectId: "p_one", milestoneId: "m3", versionId: "7" }]);
+  });
+
   it("creates a version for an unlinked milestone, with marker, dates and released; and never twice (adopt by marker)", () => {
     const log = [...open(), MS("m1", { startDay: 90, note: "Why", shipped: undefined }), P("project.milestone.edited", { milestoneId: "m1", shipped: true })];
     const jobs = push(log, []).jobs;

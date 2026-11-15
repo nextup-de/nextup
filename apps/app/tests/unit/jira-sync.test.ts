@@ -1,6 +1,7 @@
 // Whole sync rounds (server/jira/round.ts) against the fake Jira over real HTTP, with the company's
 // log in memory: create, push, pull, and - the point - that rounds with nothing to do do nothing.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { DEFAULT_CALENDAR } from "@/features/clock";
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import { reduce, type ReduceSeed } from "@/features/cases/reducer";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
@@ -77,7 +78,7 @@ function company(over: { enabledAt?: Date; settings?: Partial<JiraSettings> } = 
   const round = async (reconcile = false): Promise<RoundResult> => {
     const r = await runRound(api, log.store, {
       settings: { ...settings, ...over.settings }, enabledAt, pushedSeq: cur.pushedSeq, pulledAt: cur.pulledAt, account: cur.account,
-      reconcile: reconcile || cur.pulledAt === null, now: new Date(),
+      reconcile: reconcile || cur.pulledAt === null, now: new Date(), calendar: DEFAULT_CALENDAR,
     });
     cur.pushedSeq = r.pushedSeq;
     cur.pulledAt = r.pulledAt;

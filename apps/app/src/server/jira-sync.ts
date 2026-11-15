@@ -18,6 +18,7 @@ import { seedFor } from "@/features/demo";
 import { JIRA_ACTOR, JIRA_SOURCE } from "@/features/integrations";
 import { parseJiraSettings } from "@/features/integrations/jira/settings";
 import { JiraError, type JiraAccount } from "@/features/integrations/jira/types";
+import { loadCalendar } from "@/lib/db/calendar";
 import { getDb, hasDatabase } from "@/lib/db/client";
 import { appendEventRow, loadLog } from "@/lib/db/events";
 import {
@@ -99,7 +100,7 @@ export async function syncCompany(company: { id: string; slug: string }, now = n
       const reconcile = row.pulledAt === null || now.getTime() - (lastReconcile.get(company.id) ?? 0) >= RECONCILE_EVERY_MS;
       const r = await runRound(api, dbStore(company), {
         settings: parsed.settings, enabledAt: row.enabledAt, pushedSeq: row.pushedSeq, pulledAt: row.pulledAt,
-        account: accountOf(row.account), reconcile, now,
+        account: accountOf(row.account), reconcile, now, calendar: await loadCalendar(company.id),
       });
       if (reconcile) lastReconcile.set(company.id, now.getTime());
       backoffUntil.delete(company.id);
