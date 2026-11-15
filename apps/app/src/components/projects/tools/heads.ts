@@ -40,6 +40,7 @@ function jiraHead({ jira, t, title, editor, onAddStep }: HeadProps): PageHeadPro
 }
 
 export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProps>> = {
+  idea: ({ title }) => ({ title }),
   overview: ({ title }) => ({ title }),
   board: jiraHead,
   list: jiraHead,

@@ -108,6 +108,26 @@ export async function projectPages(page: Page): Promise<Locator> {
   return nav;
 }
 
+/**
+ * A project starts with its Idea and Files; a test adds the ready-made pages it works on ("Steps", "Plan", "Results",
+ * "Overview", "Requests", "Team", "Activity", "Agent") through Add page, as a person would. A page that is there is
+ * left alone. The viewer must be one who may change the project's pages. Ends on the project's address.
+ */
+export async function addPages(page: Page, path: string, titles: string[]) {
+  await page.goto(path);
+  const nav = (await projectPages(page)).first();
+  for (const title of titles) {
+    const link = nav.getByRole("link", { name: new RegExp(`^${title}( New)?$`) }); // a page just added carries a New tag
+    if (await link.count()) continue;
+    await nav.getByRole("button", { name: /Add page/ }).click();
+    const wizard = page.getByRole("dialog", { name: "New page" });
+    await wizard.getByRole("region", { name: "Ready-made pages" }).getByRole("button", { name: new RegExp("^" + title) }).click();
+    await expect(wizard).toHaveCount(0);
+    await expect(link).toBeVisible();
+  }
+  await page.goto(path);
+}
+
 /** A project draft's setup step ("Lead", "Template", "Team", "Goal", "Baseline", "Start"): the page shows one step at a time. */
 export async function setupStep(page: Page, name: "Lead" | "Template" | "Team" | "Goal" | "Baseline" | "Start") {
   const line = page.getByTestId("draft-progress").getByRole("button", { name: new RegExp("^" + name) });

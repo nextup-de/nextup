@@ -249,14 +249,15 @@ describe("projects: who may", () => {
     expect(mayAppend(actor("T. Vogel"), d({ answer: "yes", projectId: "p_new", lead: "L. Brandt" }), decided).ok).toBe(false);
   });
 
-  it("the lead (or a manager) runs it; the team adds steps; anyone comments", () => {
+  it("the lead (or a manager) runs it; whoever works on it adds steps; anyone comments", () => {
     expect(mayAppend(actor("L. Brandt"), q("project.baseline", { metric: "m", value: 1, better: "down" }), planning).ok).toBe(true);
     expect(mayAppend(actor("M. Roth"), q("project.baseline", { metric: "m", value: 1, better: "down" }), planning).ok).toBe(false);
     expect(mayAppend(actor("B. Hartmann", "manager"), q("project.baseline", { none: true, why: "No metric" }), planning).ok).toBe(true);
     expect(mayAppend(actor("L. Brandt"), q("project.baseline", { none: true }), planning).ok).toBe(false);
     expect(mayAppend(actor("L. Brandt"), q("project.started"), planning).ok).toBe(false);
     expect(mayAppend(actor("M. Roth"), q("project.step.added", { stepId: "s_1", text: "Cart" }), planning).ok).toBe(true);
-    expect(mayAppend(actor("H. Sander"), q("project.step.added", { stepId: "s_1", text: "Cart" }), planning).ok).toBe(false);
+    expect(mayAppend(actor("H. Sander"), q("project.step.added", { stepId: "s_1", text: "Cart" }), planning).ok).toBe(true); // a team lead off the team
+    expect(mayAppend(actor("H. Sander", "member"), q("project.step.added", { stepId: "s_1", text: "Cart" }), planning).ok).toBe(false); // an employee neither on it nor its raiser
     expect(mayAppend(actor("J. Schmidt", "member", AUTHOR), q("project.commented", { text: "Thanks!" }), planning).ok).toBe(true);
     expect(mayAppend(actor("L. Brandt"), q("project.started", {}, "p_none"), planning).ok).toBe(false);
   });

@@ -608,3 +608,7 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
   /* The chats have their own page in the sidebar (Chats): the idea's overview is the idea alone. */
   :global([data-psb="open"]) .root[data-view="idea"] .div72 { display: none; }
 }
+/* The idea as one page of its project (tools/IdeaTool): it grows with its content and the project page scrolls. */
+.root[data-in-page="true"] { width: auto; height: auto; min-height: 0; margin: 0; }
+.root[data-in-page="true"] .div20 { height: auto; padding: 0; max-width: none; }
+.root[data-in-page="true"] .div21 { height: auto; overflow: visible; }

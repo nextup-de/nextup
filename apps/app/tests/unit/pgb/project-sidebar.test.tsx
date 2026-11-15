@@ -2,7 +2,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import { LoggedProjectPages, PageGlyph, ProjectsSidebar } from "@/components/projects/ProjectsSidebar";
-import { DEFAULT_PAGES, PAGE_ICON_KEYS } from "@/features/projects/pages";
+import { READY_PAGES, PAGE_ICON_KEYS } from "@/features/projects/pages";
 import { reduce } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
 import { I18nProvider } from "@/i18n/client";
@@ -15,7 +15,7 @@ vi.mock("@/components/projects/agent/useAgentTab", () => ({ useAgentTab: () => (
 vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({}) }));
 
 const state = reduce(LOCAL_SEED, { events: [], day: 0 });
-const project = { ...state.projects[0], pages: DEFAULT_PAGES, removed: [] };
+const project = { ...state.projects[0], pages: READY_PAGES, removed: [] };
 const render = (node: React.ReactNode, locale: "en" | "de" = "en") => renderToStaticMarkup(h(I18nProvider, { locale, children: node }));
 const layer = (p = project, editor = true, agent = false, locale: "en" | "de" = "en") => render(h(LoggedProjectPages, { p, editor, agent, onBack: vi.fn() }), locale);
 
@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 
 it("Project sidebar renders event pages in their order, translates defaults and preserves team-written titles", () => {
-  const p = { ...project, pages: [DEFAULT_PAGES[2], { ...DEFAULT_PAGES[1], title: "Supplier notes" }, DEFAULT_PAGES[0]] };
+  const p = { ...project, pages: [READY_PAGES[2], { ...READY_PAGES[1], title: "Supplier notes" }, READY_PAGES[0]] };
   const html = layer(p);
   expect(html.indexOf('data-page-id="plan"')).toBeLessThan(html.indexOf('data-page-id="steps"'));
   expect(html).toContain("Supplier notes");

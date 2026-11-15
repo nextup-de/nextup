@@ -31,6 +31,7 @@ import { runAgentForCompany } from "../../../src/server/agent/daily";
 import { dispatchOnce } from "../../../src/server/notify/dispatch";
 import { runClockOnce } from "../../../src/server/scheduler/clock";
 import { recordedBrainFetch } from "../../helpers/recorded-brain";
+import { readyPage } from "./ready-pages";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
 const STAMP = Date.now().toString(36);
@@ -198,6 +199,8 @@ test.describe("AGT acceptance: the project agent", () => {
     await append("project.step.added", LEAD, id.lead, PROJECT_ID, { stepId: "s1", text: "Measure today's changeover on line 3", owner: LEAD, ownerUserId: id.lead });
     await append("project.step.added", LEAD, id.lead, PROJECT_ID, { stepId: "s2", text: UNBLOCK_TITLE, owner: MEMBER, ownerUserId: id.member });
     await append("project.step.added", LEAD, id.lead, PROJECT_ID, { stepId: "s3", text: "Trial the cart for one week" });
+    // The project starts with its Idea and Files; the lead added the Agent and Steps pages.
+    for (const pageId of ["agent", "steps"]) await append("project.page.added", LEAD, id.lead, PROJECT_ID, readyPage(PROJECT_ID, pageId));
     await dispatchOnce();
 
     // ── the lead switches the agent on ──────────────────────────────────────────────────────────────────────────────────────────────────────

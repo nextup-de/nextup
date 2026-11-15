@@ -6,7 +6,7 @@ import { DemoProvider } from "@/components/dashboard/DemoProvider";
 import { I18nProvider } from "@/i18n/client";
 import { LOCAL_SEED } from "@/features/demo";
 import { reduce } from "@/features/cases/reducer";
-import { TOOL_KINDS, DEFAULT_PAGES } from "@/features/projects/pages";
+import { TOOL_KINDS, READY_PAGES } from "@/features/projects/pages";
 import { demoJiraView, jiraRowOf } from "@/features/projects/views";
 import type { ToolKind } from "@/features/projects/types";
 import type { ToolProps } from "@/components/projects/tools/types";
@@ -24,7 +24,7 @@ vi.mock("next/navigation", () => ({
 const state = reduce(LOCAL_SEED, { events: [], day: 0 });
 const p = state.projects[0];
 const jira = jiraRowOf(p, demoJiraView(0), 0, "en");
-const page = DEFAULT_PAGES[0];
+const page = READY_PAGES[0];
 const propsFor = (kind: ToolKind, content: unknown = null): ToolProps => ({
   p, page, jira, editor: true, hints: [],
   tool: { id: `test.${kind}`, kind, title: null, content: content === null ? null : JSON.stringify(content), collapsed: false, rev: 0 },

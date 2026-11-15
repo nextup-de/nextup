@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { canAddTool, DEFAULT_PAGES, fitsEvent, kicksJira, mergePlan, pagesOf, suggestPageName, tabToPage, TOOL_KINDS } from "@/features/projects/pages";
+import { addablePages, canAddTool, DEFAULT_PAGES, hasDefaultTitle, fitsEvent, READY_PAGES, kicksJira, mergePlan, pagesOf, suggestPageName, tabToPage, TOOL_KINDS } from "@/features/projects/pages";
 import type { MergeRecord, ProjectPage, RemovedItem, ToolInstance } from "@/features/projects/types";
 import { de } from "@/i18n/de";
 import { en } from "@/i18n/en";
@@ -7,14 +7,24 @@ import { en } from "@/i18n/en";
 const tool = (id: string, kind: ToolInstance["kind"]): ToolInstance => ({ id, kind, title: null, collapsed: false, content: null, rev: 0 });
 const page = (id: string, tools: ToolInstance[]): ProjectPage => ({ id, title: id, icon: "doc", tools });
 
-it("PGE pages model: keeps legacy defaults isolated and filters Agent wherever it was moved", () => {
+it("PGE pages model: a project starts with its Idea and Files", () => {
   const defaults = pagesOf({ pages: null }, { agent: true });
+  expect(defaults.map((p) => p.id)).toEqual(["overview", "files"]);
+  expect(defaults.map((p) => p.title)).toEqual(["projectPages.pageIdea", "projectPages.pageFiles"]);
+  expect(defaults[0].tools.map((t) => t.kind)).toEqual(["idea"]);
+  expect(defaults[1].tools.map((t) => t.kind)).toEqual(["files", "links"]);
+  defaults[0].tools[0].content = "local draft";
+  expect(DEFAULT_PAGES[0].tools[0].content).toBeNull();
+});
+
+it("PGE pages model: keeps the ready-made pages isolated and filters Agent wherever it was moved", () => {
+  const defaults = pagesOf({ pages: READY_PAGES }, { agent: true });
   expect(defaults.map((p) => p.id)).toEqual(["overview", "steps", "plan", "results", "files", "requests", "team", "activity", "agent"]);
   expect(defaults.find((p) => p.id === "steps")?.tools.map((t) => t.id)).toEqual(["steps.board", "steps.list"]);
   const steps = defaults[1];
   steps.tools.push(tool("moved-agent", "agent"));
   steps.tools[0].content = "local draft";
-  expect(DEFAULT_PAGES[1].tools[0].content).toBeNull();
+  expect(READY_PAGES[1].tools[0].content).toBeNull();
   const visible = pagesOf({ pages: defaults }, { agent: false });
   expect(visible.some((p) => p.id === "agent")).toBe(false);
   expect(visible[1].tools.map((t) => t.kind)).toEqual(["board", "list"]);
@@ -24,10 +34,11 @@ it("PGE pages model: keeps legacy defaults isolated and filters Agent wherever i
 });
 
 it("PGE pages model: allows repeated tools and enforces singleton, Agent and capacity limits", () => {
-  const pages = pagesOf({ pages: null }, { agent: false });
+  const pages = pagesOf({ pages: READY_PAGES }, { agent: false });
   const steps = pages[1];
   expect(canAddTool(pages, steps, "list", { agent: false })).toBe(true);
   expect(canAddTool(pages, steps, "overview", { agent: true })).toBe(false);
+  expect(canAddTool(pagesOf({ pages: null }, { agent: false }), steps, "idea", { agent: false })).toBe(false); // one Idea per project
   expect(canAddTool(pages, steps, "agent", { agent: false })).toBe(false);
   expect(canAddTool(pages, steps, "agent", { agent: true })).toBe(true);
   const full = page("full", Array.from({ length: 24 }, (_, i) => tool(String(i), "list")));
@@ -35,7 +46,7 @@ it("PGE pages model: allows repeated tools and enforces singleton, Agent and cap
 });
 
 it("PGE pages model: merges every instance in order with content and revision intact or refuses the whole merge", () => {
-  const into = pagesOf({ pages: null }, { agent: true })[1];
+  const into = pagesOf({ pages: READY_PAGES }, { agent: true })[1];
   const from = page("notes", [{ ...tool("second-list", "list"), title: "Parts", collapsed: true, content: "[]", rev: 3 }, tool("notes.doc", "doc")]);
   const result = mergePlan(into, from);
   expect(result).toEqual({ moved: from.tools, refused: null });
@@ -66,4 +77,18 @@ it("PGE pages model: measures serialized event length and keeps page changes out
     expect(en.projectPages).toHaveProperty(key);
     expect(de.projectPages).toHaveProperty(key);
   }
+});
+
+it("Add page offers the old pages ready-made, under their old ids, until they are there", () => {
+  const start = pagesOf({ pages: null }, { agent: true });
+  expect(addablePages(start, [], { agent: true }).map((p) => p.id)).toEqual(["project-overview", "steps", "plan", "results", "requests", "team", "activity", "agent"]);
+  expect(addablePages(start, [], { agent: false }).map((p) => p.id)).not.toContain("agent");
+  // Added, recently removed, or a single tool already elsewhere: not offered again.
+  const added = [...start, page("steps", [tool("t1", "board")]), page("mine", [tool("t2", "overview")])];
+  const offered = addablePages(added, ["plan"], { agent: true }).map((p) => p.id);
+  expect(offered).not.toContain("steps");
+  expect(offered).not.toContain("plan");
+  expect(offered).not.toContain("project-overview");
+  // Their titles stay message keys, translated like the defaults.
+  for (const ready of addablePages(start, [], { agent: true })) expect(hasDefaultTitle(ready)).toBe(true);
 });

@@ -4,7 +4,7 @@
 // measure check; then the manager finds no reward due on the unconfirmed typed measures. Demo mode: one browser
 // plays every person via the dev panel, on acme's seeded P-4 (T. Vogel's, from c9's yes).
 import type { Locator, Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 const FIRST = "Move the spare bench from line 1 next to the press for two weeks";
 const TYPED = "Time the queue at five shift starts";
@@ -36,12 +36,13 @@ async function actAs(page: Page, seat: string) {
  */
 async function deputyConfirmsBaseline(page: Page) {
   // Switching the desk sends the leader to their inbox: come back to the project page (the demo's log stays in this browser).
+  // The baseline sits in the Overview tool; the project's head, with Start, shows on that page too.
   await actAs(page, "M. Roth");
-  await page.goto("/acme/projects/pj4");
+  await page.goto("/acme/projects/pj4?page=project-overview");
   await page.getByRole("button", { name: "Confirm the baseline" }).click();
   await expect(page.getByTestId("baseline-confirmed")).toContainText("Confirmed by M. Roth");
   await actAs(page, "T. Vogel");
-  await page.goto("/acme/projects/pj4");
+  await page.goto("/acme/projects/pj4?page=project-overview");
 }
 
 // The project page; its state ("P-4 · Running") is in the header, the baseline in its section and the summary.
@@ -62,10 +63,14 @@ async function plus30WithResult(page: Page, times = 1) {
   await openResult(page);
 }
 
-async function projectPage(page: Page, id: "overview" | "steps" | "team" | "results" | "activity" | "files") {
+const TITLES = { overview: "Overview", steps: "Steps", team: "Team", results: "Results", activity: "Activity" } as const;
+
+/** A project starts with its Idea and Files: a page the story needs is added first (the project Overview's id is its own). */
+async function projectPage(page: Page, id: keyof typeof TITLES | "files") {
   const url = new URL(page.url());
   url.search = "";
-  url.searchParams.set("page", id);
+  if (id !== "files") await addPages(page, url.pathname, [TITLES[id]]);
+  url.searchParams.set("page", id === "overview" ? "project-overview" : id);
   await page.goto(url.pathname + url.search);
   await expect(page.getByRole("navigation", { name: "Project sections" })).toHaveCount(0);
 }
@@ -115,8 +120,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("Start stays locked until the baseline is taken", async () => {
-    await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
     await projectPage(page, "overview");
+    await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
@@ -147,6 +152,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("marks it done; the 30-day check opens 30 days later", async () => {
+    await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("button", { name: "Mark it done" }).click();
     await expect(head(page)).toContainText("P-4 · Measuring");
@@ -168,7 +174,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await check90.getByLabel(/The number now/).fill("14");
     await check90.getByRole("button", { name: "Record the measure" }).click();
     await expect(check90).toContainText("25 → 14 minutes");
-    await expect(head(page)).toContainText("P-4 · Measured");
+    await expect(head(page)).toContainText(/4-series\s*Measured/); // the sidebar's status under the title; the head is on the Idea page
     // The lead does not record a reward: that is the manager's.
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
     // The drawer makes the page inert; the next step switches the person from the Dev panel.
@@ -179,7 +185,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     // The manager sees no reward offered on an unconfirmed measure; the panel says when one will be due (LOOP-U1).
     await viewAs(page, "Manager");
     await page.goto("/acme/projects/pj4?page=results");
-    await expect(head(page)).toContainText("P-4 · Measured");
+    await expect(head(page)).toContainText(/4-series\s*Measured/);
     await openResult(page);
     await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
@@ -232,6 +238,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 
   await test.step("a stop with 'Return the idea to its desk' puts the idea back in the inbox", async () => {
+    await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
     await page.getByRole("button", { name: "Stop the project" }).click();
     const form = page.getByRole("form", { name: "Stop the project" });
     await form.getByRole("textbox", { name: "Why does it stop?" }).fill("The queue went away by itself");
@@ -346,6 +353,7 @@ test("Back out of the Projects page goes to the page before it", async ({ page }
 test("a step is dragged to another column; a drop on Blocked asks why", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
+  await addPages(page, "/acme/projects/pj4", ["Steps"]);
   await page.goto("/acme/projects/pj4?page=steps");
   await page.getByRole("button", { name: "Add a step to To do" }).click();
   await page.getByRole("textbox", { name: "New step" }).fill(TYPED);
@@ -367,6 +375,7 @@ test("a step is dragged to another column; a drop on Blocked asks why", async ({
 test("a step goes straight into Doing, gets an owner and details in its sheet, and is dragged to the top", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
+  await addPages(page, "/acme/projects/pj2", ["Steps"]);
   await page.goto("/acme/projects/pj2?page=steps");
   const doing = page.getByRole("group", { name: "Doing" });
   await page.getByRole("button", { name: "Add a step to Doing" }).click();
@@ -405,13 +414,15 @@ test("the project page shows the idea it came from and its connected tools", asy
   await expect(tools.getByRole("link", { name: "FS-9" })).toBeVisible();
   await expect(tools).toContainText("Microsoft Teams");
   await expect(tools).toContainText("SharePoint");
-  // The tools in use also sit behind the (i) next to the title.
+  // The tools in use also sit behind the (i) next to the title, in the header on the project's Idea page.
+  await page.goto("/acme/projects/pj2?page=overview");
   await expect((await about(page)).getByLabel("Tools in use").getByRole("link", { name: /Jira FS-9/ })).toBeVisible();
 });
 
 test("the lead sends a project to Jira, links an issue and stops the sync - all simulated, no network", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
+  await addPages(page, "/acme/projects/pj4", ["Steps"]);
   await page.goto("/acme/projects/pj4?page=steps");
   await page.getByRole("button", { name: "Add step: " + FIRST }).click();
   const tools = page.getByRole("region", { name: "Connected tools" });
@@ -426,9 +437,10 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
   await test.step("Send to Jira shows the epic and the issue keys, with the sync chip", async () => {
     await tools.getByRole("button", { name: "Send to Jira" }).click();
     await expect(tools.getByRole("status")).toContainText(/Synced · NUP-1 · checked (just now|1 min ago)/);
+    await expect(tools.getByRole("button", { name: "Send to Jira" })).toHaveCount(0);
+    await page.goto("/acme/projects/pj4?page=overview"); // the (i) is in the head, on the Idea page
     await expect((await about(page)).getByLabel("Tools in use")).toContainText("Sync");
     await page.keyboard.press("Escape");
-    await expect(tools.getByRole("button", { name: "Send to Jira" })).toHaveCount(0);
     await projectPage(page, "steps");
     await expect(stepCard(page, FIRST)).toContainText("NUP-2");
   });
@@ -468,8 +480,7 @@ test("only the lead (or a manager) gets the Jira buttons", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Employee");
   await page.goto("/acme/projects/pj2?page=files");
-  // The Employee raised the idea behind P-2 and is not on its team: after the start they see how it is going (RES D21), not the tools.
-  await expect(page.getByTestId("raiser-panel")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Connected tools" })).toHaveCount(0);
+  // The Employee raised the idea behind P-2 and is not on its team: they work on its pages like the team, but the Jira link stays the lead's.
+  await expect(page.getByRole("region", { name: "Connected tools" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);
 });

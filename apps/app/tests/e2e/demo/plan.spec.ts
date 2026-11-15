@@ -3,7 +3,7 @@
 // two days and undo it once, then create a milestone, add a step to it and mark it shipped. One browser plays
 // the person through the dev panel; the steps the test adds carry no due day, so the seeded steps do not matter.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 const DRAGGED = "Acceptance: paint the floor marks";
 const KEYED = "Acceptance: order the labels";
@@ -26,6 +26,7 @@ function isoIn(days: number): string {
 test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in a milestone", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
+  await addPages(page, "/acme/projects/pj2", ["Plan"]);
   await page.goto("/acme/projects/pj2?page=plan");
   const calendar = page.getByRole("region", { name: "Calendar of steps" });
   // The tool section and the milestones list are both regions of that name; the list is the inner one.

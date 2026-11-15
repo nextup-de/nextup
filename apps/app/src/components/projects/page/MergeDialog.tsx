@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_PAGES, isJiraTool, mergePlan, pagesOf } from "@/features/projects/pages";
+import { hasDefaultTitle, isJiraTool, mergePlan, pagesOf } from "@/features/projects/pages";
 import { mergeRows } from "@/features/projects/page-undo";
 import type { ProjectPage, ReducedProject, ToolKind } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
@@ -41,7 +41,7 @@ export function MergeDialog({ p, fromPageId, intoPageId, open, onClose, onMerged
     const timer = setTimeout(() => close.current(), UNDO_MS);
     return () => clearTimeout(timer);
   }, [done, busy]);
-  const name = (page: ProjectPage) => DEFAULT_PAGES.some((entry) => entry.id === page.id && entry.title === page.title) ? t(page.title as MessageKey) : page.title;
+  const name = (page: ProjectPage) => hasDefaultTitle(page) ? t(page.title as MessageKey) : page.title;
 
   if (!open) return null;
   if (done) {

@@ -2,7 +2,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { MilestonesTool } from "@/components/projects/tools/MilestonesTool";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import type { ReducedProject, Step } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
 import { I18nProvider } from "@/i18n/client";
@@ -17,7 +17,7 @@ const p = {
   milestones: [{ id: "m1", title: "Pilot live", startDay: 0, dueDay: 20, note: "", shipped: false, shippedDay: null }, { id: "m2", title: "Empty one", startDay: null, dueDay: 30, note: "", shipped: false, shippedDay: null }],
   steps: [step("a", { milestoneId: "m1", dueDay: 18, column: "doing" }), step("loose", {})],
 } as unknown as ReducedProject;
-const render = () => renderToStaticMarkup(h(I18nProvider, { locale: "en", children: h(MilestonesTool, { p, tool: DEFAULT_PAGES[2].tools[2], page: DEFAULT_PAGES[2], jira: {} as JiraRow, editor: true, hints: [] }) }));
+const render = () => renderToStaticMarkup(h(I18nProvider, { locale: "en", children: h(MilestonesTool, { p, tool: READY_PAGES[2].tools[2], page: READY_PAGES[2], jira: {} as JiraRow, editor: true, hints: [] }) }));
 
 it("MilestonesTool shows a card per milestone with state, dates, progress and the estimate, and offers steps to an empty one", () => {
   const html = render();

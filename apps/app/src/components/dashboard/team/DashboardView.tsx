@@ -39,10 +39,12 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { avatarTone } from "@/lib/avatar";
 import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
-import { CustomPageView, FilesCard } from "@/components/projects/CustomPageView";
+import { CustomPageView } from "@/components/projects/CustomPageView";
+import { IdeaFilesView } from "@/components/projects/files/IdeaFilesView";
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
-import { holdsRole } from "@/features/auth/identity";
-import { mayEditIdeaPages } from "@/features/projects/sidebar";
+import { mayEditIdeaPages, mayReviseIdea } from "@/features/projects/sidebar";
+import { visibleProjectsFor } from "@/features/projects/views";
+import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
 
@@ -108,7 +110,11 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
   );
 }
 
-export function DashboardView({ caseId, linkCases = false, embedded = false, title }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode } = {}) {
+/**
+ * `inPage`: the idea drawn as one page of its project (tools/IdeaTool): the idea alone, at its own height, with no
+ * close button, no chats column and no small-screen sheet - the project page around it brings the way back.
+ */
+export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean } = {}) {
   const t = useT();
   const ctx = useDemo();
   const { seed, D, log, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
@@ -144,11 +150,20 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (menu) setMenu(null);
-      else if (sel && !isTyping(e.target)) closeCase();
+      else if (sel && !inPage && !isTyping(e.target)) closeCase(); // as a project's page, the idea is not closed
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, sel, closeCase]);
+  }, [menu, sel, closeCase, inPage]);
+
+  // An idea and its project are one thing with one address: an idea that got its yes opens as its project, whose
+  // first page is this idea. Only for who may see the project; anyone else keeps the idea where it is.
+  const grewInto = (() => {
+    if (inPage || !flag("projects") || !sel) return null;
+    const id = D.cases.find((x) => x.id === sel)?.decided?.projectId ?? null;
+    return id && visibleProjectsFor(ctx.S, idViewerOf(ctx), ctx.demo).some((x) => x.id === id) ? id : null;
+  })();
+  useEffect(() => { if (grewInto) router.replace(href("/projects/" + grewInto)); }, [grewInto, router, href]);
 
   // Opening or switching: the pane scrolls to its top and rises in (the design's componentDidUpdate).
   useEffect(() => {
@@ -243,10 +258,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || t("team.dashFile") })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: t("team.dashScreenshot") }))],
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
-      mode, onMode: setMode, onClose: closeCase,
-      // Who raised it edits it until it is decided (features/cases/permissions.ts: only the raiser revises): the
-      // title and text go out as the next version (case.revised); Affects and Context stay in this browser for now.
-      edit: !c.decided && !c.withdrawn && c.fromUserId !== null && c.fromUserId === me.userId ? {
+      mode, onMode: setMode, onClose: inPage ? undefined : closeCase,
+      // Everyone who can open it edits it, open or after its yes (features/cases/permissions.ts, case.revised): the
+      // title and text go out as the next version; Affects and Context stay in this browser for now.
+      edit: mayReviseIdea(c, me.userId) ? {
         onSave: (ch) => {
           if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
           if (ch.title !== undefined || ch.body !== undefined) {
@@ -288,7 +303,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             onComment={(text) => act.comment(c.id, text)}
             profileOf={profileOf} />
     );
-    if (phone) {
+    if (phone && !inPage) {
       const ids = shown.map((r) => r.id), at = ids.indexOf(c.id);
       phoneCase = (
         <OverviewPhone key={c.id} idea={ideaProps} chats={chats} yourMove={yourMove(row)}
@@ -297,18 +312,19 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     } else {
       const addedPage = pageParam ? ideaPages.pages.find((x) => x.id === pageParam) : undefined;
       const view = addedPage ? "added" : pageParam === "files" || pageParam === "chats" ? pageParam : "idea";
-      const editsPages = mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) });
+      const editsPages = mayEditIdeaPages({ userId: me.userId });
       return (
-        <div className={s.root} data-open="true" data-view={view}>
+        <div className={s.root} data-open="true" data-view={view} data-in-page={inPage || undefined}>
           <div className={s.div20}>
             {view !== "chats" && (
               <div className={s.div21} ref={paneRef}>
                 {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
-                {view === "files" && <FilesCard title={t("projects.idea_files")} files={ideaProps.files} empty={t("team.ideaNoAttachments")} />}
+                {view === "files" && <IdeaFilesView items={ideaProps.files} />}
                 {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}
               </div>
             )}
-            {chats}
+            {/* In the projects frame Chats is a page of its own that people add; elsewhere it stays beside the idea. */}
+            {!inPage && (view === "chats" || !flag("projects")) && chats}
           </div>
           {pop}
         </div>

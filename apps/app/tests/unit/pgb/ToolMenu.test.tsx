@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import type { JiraRow } from "@/features/projects/views";
 import type { ReducedProject } from "@/features/projects/types";
 import { createT } from "@/i18n";
@@ -12,7 +12,7 @@ vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({
 vi.mock("@/components/projects/page/AddPageDialog", () => ({ AddPageDialog: () => null }));
 
 const t = createT("en");
-const page = DEFAULT_PAGES[2];
+const page = READY_PAGES[2];
 const p = { pages: null, sync: null } as unknown as ReducedProject;
 const jira = { state: "off", siteUrl: null, projectKey: null } as JiraRow;
 const render = (editor: boolean, locale: "en" | "de" = "en") => renderToStaticMarkup(h(I18nProvider, { locale, children: h(ToolMenu, { p, page, tool: page.tools[0], jira, editor, name: "Calendar", onRename: vi.fn() }) }));

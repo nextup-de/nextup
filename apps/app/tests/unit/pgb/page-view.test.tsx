@@ -3,7 +3,7 @@ import { renderToStaticMarkup as html } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import { reduce } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
-import { DEFAULT_PAGES, pagesOf } from "@/features/projects/pages";
+import { READY_PAGES, pagesOf } from "@/features/projects/pages";
 import { demoJiraView, jiraRowOf } from "@/features/projects/views";
 import { I18nProvider } from "@/i18n/client";
 import { PageView, type PageViewProps } from "@/components/projects/page/PageView";
@@ -18,7 +18,7 @@ vi.mock("@/components/projects/page/ToolSection", () => ({ ToolSection: (props: 
 vi.mock("@/components/projects/page/BrowserPagesImport", () => ({ BrowserPagesImport: (props: unknown) => { mocks.imported(props); return null; } }));
 const p = reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0];
 const jira = jiraRowOf(p, demoJiraView(0), 0, "en");
-const props: PageViewProps = { p, jira, page: DEFAULT_PAGES[1], agent: false };
+const props: PageViewProps = { p, jira, page: READY_PAGES[1], agent: false };
 const render = (value = props) => html(h(I18nProvider, { locale: "en", children: h(PageView, value) }));
 beforeEach(() => { mocks.editor = true; vi.clearAllMocks(); });
 
@@ -51,7 +51,7 @@ it("PGB stacked page: Jira summary requires every tool to be a Jira tool on a sy
   const syncing = { ...p, sync: { system: "jira" as const, on: true, day: 0, by: "lead" } };
   expect(render({ ...props, p: syncing })).toContain("All synced with Jira");
   expect(render({ ...props, p: { ...syncing, sync: { ...syncing.sync, on: false } } })).not.toContain("All synced with Jira");
-  expect(render({ ...props, p: syncing, page: { ...props.page, tools: [...props.page.tools, DEFAULT_PAGES[2].tools[2]] } })).not.toContain("All synced with Jira");
+  expect(render({ ...props, p: syncing, page: { ...props.page, tools: [...props.page.tools, READY_PAGES[2].tools[2]] } })).not.toContain("All synced with Jira");
   expect(render({ ...props, p: syncing, page: { ...props.page, tools: [] } })).not.toContain("All synced with Jira");
 });
 
@@ -67,6 +67,6 @@ it("PGB add points: shared picker hides Agent, disables a singleton and allows a
   const out = html(h(I18nProvider, { locale: "en", children: h(AddToolMenu, { ...props, index: 1, onClose: () => {} }) }));
   expect(out).not.toMatch(/>Agent</);
   expect(out).toContain("Already in this project");
-  expect(out).toMatch(/data-taken="true" disabled=""><span[^>]*>[^<]*<\/span><span[^>]*>Overview/);
+  expect(out).toMatch(/data-taken="true" disabled=""><span[^>]*>[^<]*<\/span><span[^>]*>Idea/); // every project has its Idea
   expect(out).toMatch(/<button(?![^>]*disabled)[^>]*><span[^>]*>[^<]*<\/span><span[^>]*>Doc/);
 });
