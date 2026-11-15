@@ -337,7 +337,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       }
       case "case.revised": {
         const c = cases[target];
-        if (!c || c.decided || !pl.body?.trim()) break;
+        // An idea that got its yes is its project's Idea page and keeps being written; a no closes it.
+        if (!c || (c.decided && c.decided.answer !== "yes") || !pl.body?.trim()) break;
         const title = pl.title?.trim() || c.title;
         c.versions.push({ version: c.versions.length + 1, day: d, by: ev.actor, byUserId: uid, title, body: pl.body, overall: typeof pl.overall === "number" ? pl.overall : null });
         c.title = title;

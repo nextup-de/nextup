@@ -4,14 +4,14 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { reduce } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
 import { I18nProvider } from "@/i18n/client";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import { tabQuery } from "@/features/projects/tabs";
 import type { ProjectPage } from "@/features/projects/types";
 import { ProjectView } from "@/components/projects/ProjectView";
 
 const mocks = vi.hoisted(() => ({ ctx: {} as Record<string, unknown>, query: "", panel: false, browserReads: vi.fn() }));
 vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => mocks.ctx }));
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(mocks.query) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(mocks.query), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/demo/projects" }));
 vi.mock("@/components/projects/agent/useAgentTab", () => ({ useAgentTab: () => ({ view: null, failed: false }) }));
 vi.mock("@/components/projects/page/PageView", () => ({ PageView: ({ page }: { page: ProjectPage }) => h("div", { "data-page": page.id }, page.title) }));
 vi.mock("@/components/projects/draft/useProjectHints", () => ({ useProjectHints: () => ({ stepHints: [], baseHint: null }) }));
@@ -36,7 +36,8 @@ vi.mock("@/components/projects/ProjectMeasure", () => ({ BaselinePanel: () => h(
 vi.mock("@/components/projects/ProjectOrigin", () => ({ OriginPanel: () => h("div", null, "Origin body"), FilesPanel: () => h("div", null, "Files body") }));
 
 const state = reduce(LOCAL_SEED, { events: [], day: 0 });
-const p = { ...state.projects[0], draft: null };
+// A project whose team added the ready-made pages (a new one starts with Idea and Files only).
+const p = { ...state.projects[0], draft: null, pages: READY_PAGES };
 const render = (tab: "overview" | "board" | "team" | "results" | "activity" | "files" | "agent" = "overview", id = p.id) => html(h(I18nProvider, { locale: "en", children: h(ProjectView, { projectId: id, jira: null, tab }) }));
 
 beforeEach(() => {
@@ -50,14 +51,15 @@ it("PGB page shell: flag on removes tabs, resolves the page and never reads brow
   mocks.query = "page=plan";
   const out = render("board");
   expect(out).toContain('data-page="plan"');
-  expect(out).toContain(p.title);
+  expect(out).not.toContain(p.title); // a page other than the Idea or Overview carries its own title, not the project head
   expect(out).not.toContain('aria-label="Project sections"');
   expect(mocks.browserReads).not.toHaveBeenCalled();
   mocks.query = "page=agent";
   expect(render()).toContain('data-page="overview"');
+  expect(render()).toContain(p.title); // the project head sits on the Overview (and on the Idea)
   mocks.ctx.S = { ...state, projects: [{ ...p, pages: [
-    { id: "plan", title: "Plan first", icon: "calendar", tools: DEFAULT_PAGES[2].tools },
-    { id: "overview", title: "Overview second", icon: "home", tools: DEFAULT_PAGES[0].tools },
+    { id: "plan", title: "Plan first", icon: "calendar", tools: READY_PAGES[2].tools },
+    { id: "overview", title: "Overview second", icon: "home", tools: READY_PAGES[0].tools },
   ] }] };
   mocks.query = "";
   expect(render()).toContain('data-page="plan"');
@@ -93,12 +95,19 @@ it("PGB page shell: keeps loading, flag, missing project, draft and raiser guard
   expect(render()).not.toContain("data-page=");
   mocks.ctx.flag = () => true;
   expect(render("overview", "missing")).not.toContain("data-page=");
+  // An open draft opens on its setup; its other pages open when asked for.
   mocks.ctx.S = { ...state, projects: [{ ...p, status: "planning", draft: { template: null } }] };
   expect(render()).toContain("Draft setup");
+  mocks.query = "page=setup";
+  expect(render()).toContain("Draft setup");
+  mocks.query = "page=files";
+  expect(render()).toContain('data-page="files"');
+  expect(render()).not.toContain("Draft setup");
+  // Who raised the idea works on its project like the team: the pages, not a narrowed progress panel.
+  mocks.query = "";
   mocks.ctx.S = { ...state, projects: [p] };
   mocks.panel = true;
   const out = render();
-  expect(out).toContain("Raiser progress");
-  expect(out).not.toContain("data-page=");
-  expect(out).not.toContain('aria-label="Project sections"');
+  expect(out).not.toContain("Raiser progress");
+  expect(out).toContain("data-page=");
 });

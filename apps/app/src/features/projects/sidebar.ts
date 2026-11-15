@@ -53,10 +53,17 @@ export function sidebarIdeas(rows: readonly IdeaRowFacts[], yourMove: (id: strin
     .map((i) => ({ id: i.id, title: i.title, stage: i.stage, late: i.late, yourMove: i.yourMove }));
 }
 
-/** May this person add and edit an idea's pages? Anyone added to it who is not only a viewer: who raised it, who has it, who was invited to talk it over, and a manager. */
-export function mayEditIdeaPages(c: { fromUserId: string | null; discussion?: { invitedUserIds: string[] } | null }, who: { userId: string | null; manager: boolean; holdsDesk: boolean }): boolean {
-  if (who.manager || who.holdsDesk) return true;
-  return who.userId !== null && (c.fromUserId === who.userId || (c.discussion?.invitedUserIds ?? []).includes(who.userId));
+/**
+ * May this person add and edit an idea's pages? Everyone signed in who can open it: an employee as much as the team
+ * lead who has it on their desk (the list only shows ideas the viewer may open).
+ */
+export function mayEditIdeaPages(who: { userId: string | null }): boolean {
+  return who.userId !== null;
+}
+
+/** May this person write the idea's next version (case.revised)? Everyone signed in who can open it, while it is open and after its yes. */
+export function mayReviseIdea(c: { decided: { answer: "yes" | "no" } | null; withdrawn: unknown }, userId: string | null): boolean {
+  return userId !== null && !c.withdrawn && (c.decided === null || c.decided.answer === "yes");
 }
 
 // ── The pages of one project or idea ────────────────────────────────────────────────────────────────────────
@@ -70,13 +77,37 @@ const ICON_OF: Record<PageKind, PageIcon> = { page: "doc", checklist: "checklist
 export type CheckItem = { id: string; text: string; done: boolean };
 /** A page the team added. `body` (page), `items` (checklist), `rows` (table, first row = the header), `url` (link). */
 export type CustomPage = { id: string; kind: PageKind; title: string; icon: PageIcon; body: string; items: CheckItem[]; rows: string[][]; url: string };
-/** One project's pages: the custom ones and the order of everything (standard tab keys and custom ids mixed). */
-export type PagesState = { order: string[]; pages: CustomPage[] };
+/**
+ * One project's pages: the custom ones and the order of everything (standard tab keys and custom ids mixed).
+ * `tabs`: the standard pages the team added on top of the ones every idea has (Chats).
+ */
+export type PagesState = { order: string[]; pages: CustomPage[]; tabs?: string[] };
 export const NO_PAGES: PagesState = { order: [], pages: [] };
 
-/** An idea's standard pages (D2). A project's are its six tabs (PROJECT_TABS). */
-export const IDEA_TABS = ["overview", "files", "chats"] as const;
-export type IdeaTab = (typeof IDEA_TABS)[number];
+/**
+ * An idea's standard pages: its Idea ("overview", the key old links use) and its Files, the same two a project starts
+ * with. The rest its people add themselves: IDEA_EXTRA_TABS, and pages of their own.
+ */
+export const IDEA_TABS = ["overview", "files"] as const;
+export const IDEA_EXTRA_TABS = ["chats"] as const;
+export type IdeaTab = (typeof IDEA_TABS)[number] | (typeof IDEA_EXTRA_TABS)[number];
+
+/** The standard pages shown: the ones every idea has, then the extra ones its people added. */
+export function shownTabs(s: PagesState, base: readonly string[], extra: readonly string[]): string[] {
+  return [...base, ...extra.filter((k) => s.tabs?.includes(k))];
+}
+
+/** Add one of the extra standard pages (Chats) at the end; nothing when it is there already. */
+export function addTab(s: PagesState, key: string, tabs: readonly string[]): PagesState {
+  if (s.tabs?.includes(key)) return s;
+  return { ...s, order: [...pageList(s, tabs).map(keyOf), key], tabs: [...(s.tabs ?? []), key] };
+}
+
+/** Take an added standard page away again; its content (the chats) stays where it lives. */
+export function removeTab(s: PagesState, key: string): PagesState {
+  if (!s.tabs?.includes(key)) return s;
+  return { ...s, order: s.order.filter((k) => k !== key), tabs: s.tabs.filter((k) => k !== key) };
+}
 
 /** One entry of layer 2's list: a standard page by its key, or one the team added. */
 export type PageEntry = { kind: "tab"; key: string } | { kind: "custom"; page: CustomPage };

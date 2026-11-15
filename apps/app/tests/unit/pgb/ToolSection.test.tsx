@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import type { JiraRow } from "@/features/projects/views";
 import type { ReducedProject, ToolInstance } from "@/features/projects/types";
 import { createT } from "@/i18n";
@@ -14,7 +14,7 @@ vi.mock("@/components/projects/tools/registry", () => ({ TOOL_REGISTRY: new Prox
 
 const t = createT("en");
 const jira = { state: "synced", siteUrl: "https://j.example", projectKey: "NUP" } as JiraRow;
-const page = DEFAULT_PAGES[2];
+const page = READY_PAGES[2];
 const base = { steps: [{ id: "s", dueDay: 3 }, { id: "t", dueDay: null }], links: [], sync: { system: "jira", on: true }, pages: null } as unknown as ReducedProject;
 const render = (tool: ToolInstance, { editor = true, p = base } = {}) => renderToStaticMarkup(h(I18nProvider, { locale: "en", children: h(ToolSection, { p, page, tool, jira, editor, hints: [], index: 0, count: page.tools.length, onAddAt: vi.fn() }) }));
 

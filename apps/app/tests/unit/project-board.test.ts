@@ -95,10 +95,11 @@ const q = (type: string, payload: Record<string, unknown> = {}) => ({ type, targ
 describe("board: who may", () => {
   const S = reduce(SEED, logAt(0, ...open, add("s1", "Mine", { owner: "M. Roth", ownerUserId: "u_mr" }), add("s2", "Nobody's"), add("s3", "The lead's", { owner: "L. Brandt", ownerUserId: "u_lb" }, 0, "M. Roth")));
 
-  it("the team moves an unowned step; an owned one moves by its owner or the lead", () => {
+  it("whoever works on it moves an unowned step; an owned one moves by its owner or the lead", () => {
     expect(mayAppend(actor("M. Roth"), q("project.step.moved", { stepId: "s2", to: "doing" }), S).ok).toBe(true);
     expect(mayAppend(actor("M. Roth"), q("project.step.moved", { stepId: "s3", to: "doing" }), S).ok).toBe(false);
-    expect(mayAppend(actor("H. Sander"), q("project.step.moved", { stepId: "s2", to: "doing" }), S).ok).toBe(false);
+    expect(mayAppend(actor("H. Sander"), q("project.step.moved", { stepId: "s2", to: "doing" }), S).ok).toBe(true); // a team lead off the team
+    expect(mayAppend(actor("H. Sander", "member"), q("project.step.moved", { stepId: "s2", to: "doing" }), S).ok).toBe(false); // an employee neither on it nor its raiser
     expect(mayAppend(actor("L. Brandt"), q("project.step.moved", { stepId: "s1", to: "todo", before: "s2" }), S).ok).toBe(true);
     expect(mayAppend(actor("L. Brandt"), q("project.step.moved", { stepId: "s1", to: "todo", before: "nope" }), S).ok).toBe(false);
   });
@@ -108,10 +109,11 @@ describe("board: who may", () => {
     expect(mayAppend(actor("M. Roth"), q("project.step.added", { stepId: "s_9", text: "X", to: "blocked" }), S).ok).toBe(false);
   });
 
-  it("the team edits a card; the lead or whoever added it removes it", () => {
+  it("whoever works on it edits a card; the lead or whoever added it removes it", () => {
     expect(mayAppend(actor("M. Roth"), q("project.step.edited", { stepId: "s1", owner: "L. Brandt", dueDay: 4 }), S).ok).toBe(true);
     expect(mayAppend(actor("M. Roth"), q("project.step.edited", { stepId: "s1", text: " " }), S).ok).toBe(false);
-    expect(mayAppend(actor("J. Schmidt", "member"), q("project.step.edited", { stepId: "s1", note: "hi" }), S).ok).toBe(false);
+    expect(mayAppend(actor("J. Schmidt", "member"), q("project.step.edited", { stepId: "s1", note: "hi" }), S).ok).toBe(true); // the employee who raised it
+    expect(mayAppend(actor("H. Sander", "member"), q("project.step.edited", { stepId: "s1", note: "hi" }), S).ok).toBe(false);
     expect(mayAppend(actor("M. Roth"), q("project.step.edited", { stepId: "s1", removed: true }), S).ok).toBe(false);
     expect(mayAppend(actor("M. Roth"), q("project.step.edited", { stepId: "s3", removed: true }), S).ok).toBe(true);
     expect(mayAppend(actor("L. Brandt"), q("project.step.edited", { stepId: "s1", removed: true }), S).ok).toBe(true);

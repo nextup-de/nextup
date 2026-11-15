@@ -9,7 +9,7 @@ import { reduce } from "@/features/cases/reducer";
 import { DEFAULT_CALENDAR, type ClockSpec } from "@/features/clock";
 import { dateOfWorkday } from "@/features/clock/calendar";
 import { LOCAL_SEED } from "@/features/demo";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import type { Step } from "@/features/projects/types";
 import { demoJiraView, jiraRowOf } from "@/features/projects/views";
 import { I18nProvider } from "@/i18n/client";
@@ -34,7 +34,7 @@ function render(children: ReactNode, locale: "en" | "de" = "en") {
 }
 function list(steps: Step[], locale: "en" | "de" = "en") {
   return render(h(ListTool, {
-    p: project(steps), hints: [], jira, page: DEFAULT_PAGES[0],
+    p: project(steps), hints: [], jira, page: READY_PAGES[0],
     tool: { id: "list", kind: "list", title: null, content: null, collapsed: false, rev: 0 }, editor: true,
   }), locale);
 }

@@ -34,7 +34,8 @@ export type OverviewIdeaProps = {
   versions: { n: number; when: string; title: string }[]; // the raiser's revisions, oldest first; empty with one
   mode: IdeaMode;
   onMode: (m: IdeaMode) => void;
-  onClose: () => void;
+  /** None: the idea is a page of its project and has no close button. */
+  onClose?: () => void;
   // On a phone (OverviewPhone) the same page without the close button (the bar has back), and the
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).
   variant?: "desk" | "phone";
@@ -124,7 +125,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
         <div className={s.div24}>
           <div className={s.div25}>
             <span className={s.raised}>{t("team.ideaRaised", { raised: p.raised, dept: p.dept })}</span>
-            {!phone && (
+            {!phone && p.onClose && (
               <button type="button" className={s.closeOverview2} onClick={p.onClose} title={t("team.ideaCloseOverview")} aria-label={t("team.ideaBackOverview")}>
                 <svg className={s.svg} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>

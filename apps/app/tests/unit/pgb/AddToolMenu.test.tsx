@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import type { JiraRow } from "@/features/projects/views";
 import type { ReducedProject } from "@/features/projects/types";
 import { createT } from "@/i18n";
@@ -14,7 +14,7 @@ vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({
 vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ addStep: rights.editor }) }));
 
 const p = { pages: null } as unknown as ReducedProject;
-const page = DEFAULT_PAGES[1];
+const page = READY_PAGES[1];
 const render = (jiraOn: boolean, agent: boolean, index = 1) => renderToStaticMarkup(h(I18nProvider, { locale: "en", children: h(AddToolMenu, { p, page, jira: { state: jiraOn ? "ready" : "off" } as JiraRow, agent, index, onClose: vi.fn() }) }));
 
 it("AddToolMenu names where the tool goes, tags kinds with Jira, greys what the project has and hides Agent", () => {

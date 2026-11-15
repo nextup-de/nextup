@@ -1,8 +1,8 @@
 // Pages are named stacks of tool instances. Pure facts and checks shared by the reducer, rights and UI.
 import type { PageIconKey, ProjectPage, ReducedProject, ToolInstance, ToolKind } from "./types";
 
-export const TOOL_KINDS = ["overview", "board", "list", "calendar", "timeline", "milestones", "results", "files", "doc", "checklist", "table", "links", "requests", "team", "activity", "agent"] as const satisfies readonly ToolKind[];
-export const SINGLE_KINDS: readonly ToolKind[] = ["overview", "agent"];
+export const TOOL_KINDS = ["idea", "overview", "board", "list", "calendar", "timeline", "milestones", "results", "files", "doc", "checklist", "table", "links", "requests", "team", "activity", "agent"] as const satisfies readonly ToolKind[];
+export const SINGLE_KINDS: readonly ToolKind[] = ["idea", "overview", "agent"];
 export const PAGE_ICON_KEYS = ["home", "board", "list", "calendar", "timeline", "flag", "target", "folder", "link", "inbox", "people", "pulse", "doc", "checklist", "table", "star", "chat", "box"] as const satisfies readonly PageIconKey[];
 export const EVENT_BUDGET = 12_000;
 export const fitsEvent = (payload: unknown): boolean => JSON.stringify(payload).length <= EVENT_BUDGET;
@@ -13,7 +13,7 @@ export const TOOL_GROUPS = [
   { title: "projectPages.groupSteps", kinds: ["board", "list", "calendar", "timeline", "milestones"] },
   { title: "projectPages.groupWrite", kinds: ["doc", "files", "links", "checklist", "table"] },
   { title: "projectPages.groupCollect", kinds: ["requests", "results"] },
-  { title: "projectPages.groupProject", kinds: ["overview", "team", "activity", "agent"] },
+  { title: "projectPages.groupProject", kinds: ["idea", "overview", "team", "activity", "agent"] },
 ] as const satisfies readonly { title: string; kinds: readonly ToolKind[] }[];
 
 export const isJiraTool = (kind: ToolKind): boolean => (["board", "list", "calendar", "timeline"] as readonly ToolKind[]).includes(kind);
@@ -24,8 +24,18 @@ const defaultPage = (id: string, title: string, icon: PageIconKey, kinds: ToolKi
   tools: kinds.map((kind) => ({ id: `${id}.${kind}`, kind, title: null, collapsed: false, content: null, rev: 0 })),
 });
 
-/** Default titles are message keys; a title written by a page event is the team's own text. */
-export const DEFAULT_PAGES: ProjectPage[] = [
+/**
+ * Default titles are message keys; a title written by a page event is the team's own text. An idea and a project
+ * are one thing to the people working on it: every project starts with its Idea (the idea it grew from, as the
+ * idea page shows it) and its Files. The first page keeps the id "overview" so old links (?tab=overview) and
+ * page events still find it; it is the one page that cannot be removed. The rest - steps, plan, results, team,
+ * the project overview - the team adds itself (Add page).
+ */
+/**
+ * The ready-made pages a team adds from: the pages every project had before its Idea and Files became the start.
+ * Tests use them as a project with many pages; titles here are message keys too.
+ */
+export const READY_PAGES: ProjectPage[] = [
   defaultPage("overview", "projectPages.pageOverview", "home", ["overview"]),
   defaultPage("steps", "projectPages.pageSteps", "board", ["board", "list"]),
   defaultPage("plan", "projectPages.pagePlan", "calendar", ["calendar", "timeline", "milestones"]),
@@ -36,6 +46,15 @@ export const DEFAULT_PAGES: ProjectPage[] = [
   defaultPage("activity", "projectPages.pageActivity", "pulse", ["activity"]),
   defaultPage("agent", "projectPages.pageAgent", "chat", ["agent"]),
 ];
+
+export const DEFAULT_PAGES: ProjectPage[] = [
+  defaultPage("overview", "projectPages.pageIdea", "star", ["idea"]),
+  defaultPage("files", "projectPages.pageFiles", "folder", ["files", "links"]),
+];
+
+/** Is this page's title one of the message keys a default or ready-made page carries (translate it), or the team's own text? */
+export const hasDefaultTitle = (page: Pick<ProjectPage, "id" | "title">): boolean =>
+  [...DEFAULT_PAGES, ...READY_PAGES].some((entry) => entry.id === page.id && entry.title === page.title);
 
 /** Removed items live in p.removed, outside this active list. Return fresh objects so defaults stay reusable. */
 export function pagesOf(p: Pick<ReducedProject, "pages">, { agent }: { agent: boolean }): ProjectPage[] {

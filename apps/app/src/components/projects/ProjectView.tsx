@@ -11,11 +11,12 @@ import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
-import { connectionsOf, demoJiraView, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
+import { connectionsOf, demoJiraView, isOpenDraft, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import { pagesOf } from "@/features/projects/pages";
-import { pageIdFor } from "@/features/projects/page-route";
+import { pageIdFor, showsSetup } from "@/features/projects/page-route";
+import { IdeaTool } from "./tools/IdeaTool";
 import { PageView } from "./page/PageView";
 import { AgentTab } from "./agent/AgentTab";
 import { PlanDraftLink } from "./agent/PlanDraftLink";
@@ -37,7 +38,6 @@ import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } fr
 import { CustomPageView } from "./CustomPageView";
 import { ideaPagesId, useProjectPages } from "./projectPagesPreview";
 import { DoneSheet } from "./result/DoneSheet";
-import { RaiserPanel } from "./result/RaiserPanel";
 import { StopChoice } from "./result/StopChoice";
 import { resultView } from "@/features/projects/result-view";
 import styles from "./Projects.module.css";
@@ -47,6 +47,7 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
   const ctx = useDemo();
   const t = useT();
   const { S, ready, demo, flag, href } = ctx;
+  const page = useSearchParams().get("page");
   if (!ready) return <PageSkeleton kind="list" />;
   if (!flag("projects")) return <ProjectsOff />;
   const p = visibleProjectsFor(S, idViewerOf(ctx), demo).find((x) => x.id === projectId);
@@ -58,48 +59,52 @@ export function ProjectView({ projectId, jira, tab }: { projectId: string; jira:
       </div>
     );
   }
-  // A draft that has not started is set up on its own page (plan SET); the board comes with the start.
-  if (p.draft && p.status === "planning") return <><PlanDraftLink p={p} /><DraftView p={p} /></>;
+  // A draft that has not started opens on its setup ("Getting ready"); its Idea and Files are pages like any project's.
+  if (showsSetup(isOpenDraft(p), page)) return <><PlanDraftLink p={p} /><DraftView p={p} /></>;
   return <Project p={p} jira={jira} tab={tab} />;
 }
 
 function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusView | null; tab: ProjectTab }) {
   const ctx = useDemo();
   const locale = useLocale();
-  const { S } = ctx;
   const [now] = useState(() => Date.now());
   const row = jiraRowOf(p, jira ?? (ctx.serverMode ? null : demoJiraView(now)), now, locale);
-  // A raiser who is not on the team sees how it is going and nothing else (plan RES, D21).
-  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
-  if (view.panel) {
-    return (
-      <div className={styles.projectPage} data-wide="true">
-        <RaiserHeader p={p} />
-        <RaiserPanel panel={view.panel} />
-      </div>
-    );
-  }
-
+  // Whoever raised the idea works on its project like the team (an idea and its project are one thing), so the
+  // narrowed view for a raiser who is not on the team (plan RES, D21) is no longer shown.
   return (
     <div className={styles.projectPage} data-wide="true">
-      {ctx.flag("projectPages") ? <>
-        <div className={styles.top}><Header p={p} jira={row} /></div>
-        <ProjectPageView p={p} jira={row} />
-      </> : <TabView p={p} jira={row} asked={asked} />}
+      {ctx.flag("projectPages") ? <ProjectPageView p={p} jira={row} /> : <TabView p={p} jira={row} asked={asked} />}
     </div>
   );
 }
 
+/** The project head (title, (i), start/stop) sits only on the page that carries the overview or the idea;
+ *  every other page has its own title, so it keeps a link back to all projects. */
 function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+  const { href } = useDemo();
+  const t = useT();
   const query = useSearchParams();
   const agent = useAgentTab(p, false);
   const pages = pagesOf(p, { agent: agent.view !== null });
   const pageId = pageIdFor(pages, { page: query.get("page"), tab: query.get("tab") });
   const page = pages.find((page) => page.id === pageId);
-  return page ? <>
-    {page.tools.some((tool) => tool.kind === "overview") && <PageMove p={p} />}
-    <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} />
-  </> : null;
+  // The Idea page on its own is the idea itself, as the idea's page shows it: no tool frame around it.
+  const ideaOnly = page?.tools.length === 1 && page.tools[0].kind === "idea";
+  // An open draft starts and stops from its setup (Getting ready), so its other pages carry the title alone.
+  const draft = isOpenDraft(p);
+  const home = !draft && (page?.tools.some((tool) => tool.kind === "overview" || tool.kind === "idea") ?? false);
+  return <>
+    <div className={styles.top}>
+      {home ? <Header p={p} jira={jira} />
+        : draft ? <div className={styles.hero}><PageHeader title={p.title} /></div>
+          : <div className={styles.hero}><Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link></div>}
+    </div>
+    {page && <>
+      {home && <PageMove p={p} />}
+      {ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
+        : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} />}
+    </>}
+  </>;
 }
 
 /** Keep the viewer's next move visible on pages that contain the overview tool. */
@@ -294,22 +299,6 @@ function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
         <ToolChips p={p} jira={jira} />
       </div>
     </details>
-  );
-}
-
-/** The raiser's page head: where to go back to, the status and the title; nothing else of the project is on it. */
-function RaiserHeader({ p }: { p: ReducedProject }) {
-  const { href } = useDemo();
-  const t = useT();
-  return (
-    <div className={styles.hero}>
-      <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
-      <div className={styles.heroTop}>
-        <span className={styles.status}><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
-        <span className={styles.chips}><VerdictChip verdict={p.verdict} /></span>
-      </div>
-      <PageHeader title={p.title} />
-    </div>
   );
 }
 

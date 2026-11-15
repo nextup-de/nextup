@@ -2,7 +2,7 @@
 import { Fragment, useState } from "react";
 import type { ProjectPage, ReducedProject } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
-import { DEFAULT_PAGES, isJiraTool } from "@/features/projects/pages";
+import { hasDefaultTitle, isJiraTool } from "@/features/projects/pages";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { PageHead } from "@/components/ui/elements/PageHead";
@@ -29,7 +29,7 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
   const [addAt, setAddAt] = useState<number | null>(null);
   const name = (tool: ProjectPage["tools"][number]) => tool.title ?? t(`projectPages.tool${tool.kind[0].toUpperCase()}${tool.kind.slice(1)}` as MessageKey);
   // Only the reserved defaults carry message keys; a team's title is always literal text.
-  const title = DEFAULT_PAGES.some((item) => item.id === page.id && item.title === page.title) ? t(page.title as MessageKey) : page.title;
+  const title = hasDefaultTitle(page) ? t(page.title as MessageKey) : page.title;
   const allSynced = page.tools.length > 0 && page.tools.every((tool) => isJiraTool(tool.kind)) && p.sync?.system === "jira" && p.sync.on;
   const onAddAt = (index: number) => { if (editor) setAddAt(index); };
   return <div className={styles.page}>
