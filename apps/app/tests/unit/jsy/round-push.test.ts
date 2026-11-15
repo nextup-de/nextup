@@ -8,7 +8,7 @@ import { DEFAULT_CALENDAR } from "@/features/clock";
 import { CASES, IDEAS, PROBLEMS, PROMISE_DAYS, ROUTES } from "@/features/demo/seed";
 import { JIRA_ACTOR } from "@/features/integrations";
 import type { SeqEvent } from "@/features/integrations/jira/plan";
-import type { JiraAccount, JiraSettings } from "@/features/integrations/jira/types";
+import { JiraError, type JiraAccount, type JiraSettings } from "@/features/integrations/jira/types";
 import { dateOfDay, MAX_VERSION_WRITES, versionMarker, withMarker } from "@/features/integrations/jira/versions";
 import { kicksJira } from "@/features/projects/pages";
 import { jiraApiFor } from "@/server/jira/flavors";
@@ -71,7 +71,7 @@ async function setup(flavor: "cloud" | "dc" = "cloud", permissions?: Parameters<
   const versionWrites = () => f.writes().filter((r) => /\/version/.test(r.path));
   const ids = (id: string) => log.project().milestones.find((m) => m.id === id)?.external?.key ?? "";
   const version = (id: string) => f.versions.get(ids(id))!;
-  return { f, log, round, cur, ms, versionWrites, ids, version, settings };
+  return { f, log, round, cur, ms, versionWrites, ids, version, settings, api };
 }
 
 describe.each(["cloud", "dc"] as const)("JSY push %s", (flavor) => {
@@ -284,6 +284,60 @@ describe("JSY push retry and cursor", () => {
     expect(second.warnings).toEqual([]);
     expect(issue.fixVersions).toEqual([c.ids("m1")]);
     expect(c.cur.pushedSeq).toBeGreaterThanOrEqual(assign.seq);
+  });
+
+  it("a permanent 4xx on a version update or a fix-version write is warned and dropped: the cursor moves on", async () => {
+    const c = await setup("cloud");
+    c.log.human("project.step.added", { stepId: "s1", text: "Step one" });
+    c.ms("m1");
+    await c.round();
+    // 400 on the version update
+    const update = c.api.updateVersion;
+    c.api.updateVersion = async () => { throw new JiraError("Jira 400: the field is not valid", 400); };
+    const edit = c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Renamed" });
+    const r1 = await c.round();
+    expect(r1.warnings.join(" ")).toMatch(/update m1: Jira 400/);
+    expect(c.cur.pushedSeq).toBeGreaterThanOrEqual(edit.seq);
+    c.api.updateVersion = update;
+    const writes = c.versionWrites().length;
+    await c.round(); // the stale edit is not pushed again
+    expect(c.versionWrites().length).toBe(writes);
+    // 403 on the fix-version write
+    c.f.setPermissions({ EDIT_ISSUES: false });
+    const assign = c.log.human("project.step.edited", { stepId: "s1", milestoneId: "m1" });
+    const r2 = await c.round();
+    expect(r2.warnings.join(" ")).toMatch(/fixVersion s1/);
+    expect(c.cur.pushedSeq).toBeGreaterThanOrEqual(assign.seq);
+  });
+
+  it("a 429 on a version update ends the round and the cursor stays before the edit", async () => {
+    const c = await setup("cloud");
+    c.ms("m1");
+    await c.round();
+    const update = c.api.updateVersion;
+    c.api.updateVersion = async () => { throw new JiraError("Jira 429: too many requests", 429); };
+    const edit = c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Renamed" });
+    await expect(c.round()).rejects.toThrow(/429/);
+    expect(c.cur.pushedSeq).toBeLessThan(edit.seq);
+    c.api.updateVersion = update;
+    await c.round();
+    expect(c.version("m1").name).toBe("Renamed");
+  });
+
+  it("creates and edits share one write budget per round", async () => {
+    const c = await setup("cloud");
+    for (let i = 0; i < 10; i++) c.ms("a" + i, { title: "A" + i });
+    await c.round();
+    expect(c.f.versions.size).toBe(10);
+    for (let i = 0; i < 10; i++) c.log.human("project.milestone.edited", { milestoneId: "a" + i, title: "A" + i + " new" });
+    for (let i = 0; i < 15; i++) c.ms("b" + i, { title: "B" + i });
+    const before = c.versionWrites().length;
+    await c.round();
+    expect(c.versionWrites().length - before).toBe(MAX_VERSION_WRITES);
+    expect(c.f.versions.size).toBe(25);
+    await c.round();
+    const renamed = Array.from({ length: 10 }, (_, i) => c.version("a" + i).name === "A" + i + " new").filter(Boolean).length;
+    expect(renamed).toBe(10);
   });
 
   it("a version someone else owns by marker is never updated", async () => {

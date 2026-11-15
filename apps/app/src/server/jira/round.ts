@@ -10,7 +10,7 @@ import { isSystemActor, maySystemAppend, parseInbound, syncIdemKey } from "@/fea
 import { epicKeyOf, jiraIndex, summaryOf, syncMode } from "@/features/integrations/jira/map";
 import { planPush, type SeqEvent } from "@/features/integrations/jira/plan";
 import { planPull, type PullEvent } from "@/features/integrations/jira/pull";
-import { markerOf, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
+import { markerOf, MAX_VERSION_WRITES, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
 import { jiraIssueUrl, REMOVED_LABEL } from "@/features/integrations/jira/settings";
 import { pickTransition, sameState } from "@/features/integrations/jira/status";
 import { JiraError, type Job, type JiraAccount, type JiraApi, type JiraIssue, type JiraSettings, type JiraVersion } from "@/features/integrations/jira/types";
@@ -219,10 +219,12 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         }, stateV);
       // Creates and adoptions first. A create that got through but whose link was not appended (a crash, a refused append) is found
       // again next round by its marker and adopted: never created twice.
+      let created = 0;
       for (const job of plan.jobs) {
         if (job.kind !== "create" && job.kind !== "adopt") continue;
         try {
           if (job.kind === "create") {
+            created++;
             const made = await api.createVersion({ projectKey: settings.projectKey, name: job.name, description: job.description, startDate: job.startDate, releaseDate: job.releaseDate, released: job.released });
             wrote++;
             versionsWrote = true;
@@ -240,7 +242,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       if (versionsWrote) {
         stateV = await store.state();
         current = await api.versions(settings.projectKey);
-        plan = planVersionPush(stateV, current, windowEvents, settings, opts);
+        // One write budget per round (D11): the creates above already spent part of it.
+        plan = planVersionPush(stateV, current, windowEvents, settings, { ...opts, maxWrites: Math.max(0, MAX_VERSION_WRITES - created) });
       }
       for (const w of plan.warnings) if (!warnings.includes(w)) warnings.push(w);
       if (plan.deferredSeq !== null) holdAt = Math.min(holdAt, plan.deferredSeq);
@@ -279,8 +282,11 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         } catch (e) {
           if (endsRound(e)) throw e;
           warnings.push(`${job.kind} ${"stepId" in job ? job.stepId : job.milestoneId}: ${e instanceof Error ? e.message : String(e)}`);
-          // Lost ownership is final; anything else (no permission yet, a field Jira refused today) is retried from the cursor.
-          if (!(e instanceof Refused)) holdAt = Math.min(holdAt, job.seq);
+          // Lost ownership and a permanent 4xx (a field or a version Jira refuses for good) are final, as for the issue jobs: warned and
+          // dropped, so one bad edit never holds the cursor. 429, 5xx and a lost connection end the round above; anything else
+          // (not a Jira answer at all) is retried from the cursor.
+          const permanent = e instanceof Refused || (e instanceof JiraError && e.status >= 400 && e.status < 500 && e.status !== 429);
+          if (!permanent) holdAt = Math.min(holdAt, job.seq);
         }
       }
     }
