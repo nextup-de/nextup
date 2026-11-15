@@ -67,9 +67,9 @@ export async function sealedRefreshToken(companyId: string, userId: string): Pro
   return row?.refreshTokenSealed ?? null;
 }
 
-/** Did this person's grant include Files.ReadWrite.All? From the stored scopes; false when they are not connected or connected before it was asked for. */
+/** Did this person's grant include Files.ReadWrite.All? From the stored scopes; false when they are not connected, connected before it was asked for, or Microsoft refused the token. */
 export async function m365CanWrite(companyId: string, userId: string): Promise<boolean> {
-  const row = await getDb().connection.findFirst({ where: { companyId, userId, provider: M365 }, select: { scopes: true } });
+  const row = await getDb().connection.findFirst({ where: { companyId, userId, provider: M365, lastError: null }, select: { scopes: true } });
   return row !== null && canWriteFiles(row.scopes);
 }
 
