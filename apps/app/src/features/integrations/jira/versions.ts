@@ -419,7 +419,7 @@ export function planVersionPull(state: Projects, versions: readonly JiraVersion[
     }
   }
 
-  // ---- steps: the issue's first fix version that maps to a milestone of the same project
+  // ---- steps: the issue's first fix version that maps to a milestone of the same project (never a clear, see below)
   for (const issue of issues) {
     const ref = index.get(issue.key);
     const p = ref ? projects.get(ref.projectId) : undefined;
@@ -429,12 +429,16 @@ export function planVersionPull(state: Projects, versions: readonly JiraVersion[
     const fvs = issue.fields.fixVersions;
     // A version the round is only now importing is not yet a milestone: wait for the next round rather than clear.
     if (fvs.some((fv) => importing.has(`${p.id}:${fv.id}`))) continue;
-    const hit = fvs.map((fv) => p.milestones.find((m) => m.external?.key === fv.id)).find((m) => m !== undefined);
-    const want = hit?.id ?? null;
-    if ((step.milestoneId ?? null) === want) continue;
+    // Data-preserving: the pull only ever moves a step to another milestone of its project that the issue's fix version maps to.
+    // It never clears a step's milestone because the issue lacks a matching fix version: the milestone may have no Jira version
+    // (an unlinked or linked-mode milestone), the step may have been assigned before Jira was on, or the assignment may be older
+    // than the cursor. So a fix version removed in Jira does not clear the step in NextUp; a person clears it here.
+    const mapped = fvs.map((fv) => p.milestones.find((m) => m.external?.key === fv.id)).filter((m): m is Milestone => m !== undefined);
+    if (!mapped.length || mapped.some((m) => m.id === step.milestoneId)) continue;
+    const want = mapped[0].id;
     events.push({
       type: "project.step.edited", target: p.id, payload: { stepId: step.id, milestoneId: want },
-      idemKey: syncIdemKey("version", [p.id, step.id, "step", String(p.history.length), want ?? "none"]),
+      idemKey: syncIdemKey("version", [p.id, step.id, "step", String(p.history.length), want]),
     });
   }
   return { events, warnings };

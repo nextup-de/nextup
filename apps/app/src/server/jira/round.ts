@@ -10,7 +10,7 @@ import { isSystemActor, maySystemAppend, parseInbound, syncIdemKey } from "@/fea
 import { epicKeyOf, jiraIndex, summaryOf, syncMode } from "@/features/integrations/jira/map";
 import { planPush, type SeqEvent } from "@/features/integrations/jira/plan";
 import { planPull, type PullEvent } from "@/features/integrations/jira/pull";
-import { markerOf, MAX_VERSION_WRITES, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
+import { markerOf, MAX_VERSION_WRITES, planVersionPull, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
 import { jiraIssueUrl, REMOVED_LABEL } from "@/features/integrations/jira/settings";
 import { pickTransition, sameState } from "@/features/integrations/jira/status";
 import { JiraError, type Job, type JiraAccount, type JiraApi, type JiraIssue, type JiraSettings, type JiraVersion } from "@/features/integrations/jira/types";
@@ -189,6 +189,11 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   // do not touch the issues (D22). Nothing at all for a company or a project that does not sync.
   const wantVersions = syncing.some((p) => p.milestones.length > 0 || (p.milestoneTombstones?.length ?? 0) > 0) || windowEvents.some(personTouch);
   let versionsWrote = false;
+  // What the pull needs from the push half: the version list, and what a person changed that is not in Jira yet (never overwritten).
+  let versionList: JiraVersion[] | null = null;
+  let versionPending: { milestones: string[]; steps: string[] } = { milestones: [], steps: [] };
+  // The push half could not read the versions, so it does not know what a person changed that Jira has not got yet.
+  let versionsUnread = false;
   if (wantVersions) {
     const earliest = (list: readonly SeqEvent[]) => (list.length ? Math.min(...list.map((e) => e.seq)) : Infinity);
     let versions: JiraVersion[] | null = null;
@@ -198,8 +203,10 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       if (endsRound(e)) throw e;
       warnings.push(`versions: ${e instanceof Error ? e.message : String(e)}`);
       holdAt = Math.min(holdAt, earliest(windowEvents.filter(personTouch)));
+      versionsUnread = true;
     }
     if (versions) {
+      versionList = versions;
       let administer = false;
       try {
         administer = (await api.permissions(settings.projectKey)).administer;
@@ -245,6 +252,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         // One write budget per round (D11): the creates above already spent part of it.
         plan = planVersionPush(stateV, current, windowEvents, settings, { ...opts, maxWrites: Math.max(0, MAX_VERSION_WRITES - created) });
       }
+      versionList = current;
+      versionPending = plan.pending;
       for (const w of plan.warnings) if (!warnings.includes(w)) warnings.push(w);
       if (plan.deferredSeq !== null) holdAt = Math.min(holdAt, plan.deferredSeq);
 
@@ -255,6 +264,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         if (!v || !mk || mk.projectId !== job.projectId || mk.milestoneId !== job.milestoneId) throw new Refused(`Jira version ${job.versionId} is not marked for ${job.milestoneId} any more; nothing is written.`);
         return v;
       };
+      const doneM = new Set<string>();
+      const doneS = new Set<string>();
       for (const job of plan.jobs) {
         if (job.kind === "create" || job.kind === "adopt") continue;
         try {
@@ -263,6 +274,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
             await api.updateVersion(job.versionId, job.patch);
             wrote++;
             versionsWrote = true;
+            doneM.add(job.milestoneId);
           } else if (job.kind === "archive") {
             if (owns(job)?.archived) continue;
             await api.updateVersion(job.versionId, { archived: true });
@@ -279,6 +291,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
             await api.setFixVersions(job.issueKey, next);
             wrote++;
           }
+          if (job.kind === "fixVersion") doneS.add(job.stepId);
         } catch (e) {
           if (endsRound(e)) throw e;
           warnings.push(`${job.kind} ${"stepId" in job ? job.stepId : job.milestoneId}: ${e instanceof Error ? e.message : String(e)}`);
@@ -289,6 +302,11 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
           if (!permanent) holdAt = Math.min(holdAt, job.seq);
         }
       }
+      // What reached Jira (or was already there) is not pending any more; what is deferred or failed stays protected from the pull.
+      versionPending = {
+        milestones: versionPending.milestones.filter((id) => !doneM.has(id)),
+        steps: versionPending.steps.filter((id) => !doneS.has(id)),
+      };
     }
   }
   const pushedSeq = Math.max(input.pushedSeq, Number.isFinite(holdAt) ? holdAt - 1 : batchMax);
@@ -332,6 +350,20 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
     }
   }
 
+  // ---- versions: read again after our own writes, so the pull sees Jira as the push left it
+  const namesFixVersion = [...seen.values()].some((i) => (i.fields.fixVersions?.length ?? 0) > 0);
+  let versionsNow: JiraVersion[] | null = null;
+  // Without the push half's version list its pending set is empty, so reconciling now could overwrite a person's unpushed milestone
+  // or step edit: the pull skips versions this round (issues, comments and the rest still pull) and the held cursor retries.
+  if ((wantVersions || namesFixVersion) && !versionsUnread) {
+    try {
+      versionsNow = versionList && !versionsWrote ? versionList : await api.versions(settings.projectKey);
+    } catch (e) {
+      if (endsRound(e)) throw e;
+      warnings.push(`versions: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   const planned: PullEvent[] = planPull({
     state: state1, settings, account, enabledAt: input.enabledAt, issues: [...seen.values()], comments, commentsSince,
   });
@@ -341,6 +373,23 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
     } catch (e) {
       if (!(e instanceof Refused)) throw e;
       warnings.push(`${ev.type} ${ev.target}: ${e.message}`);
+    }
+  }
+
+  if (versionsNow) {
+    // Every mapped milestone is compared with its version, whether or not an issue changed; what a person changed and Jira has not
+    // got yet (versionPending) is left alone. A new milestone must be in the state before the events that name it are checked.
+    const out = planVersionPull(state1, versionsNow, [...seen.values()], settings, { enabledAt: input.enabledAt, clock: { mode: "workdays", calendar: input.calendar }, pending: versionPending });
+    for (const w of out.warnings) if (!warnings.includes(w)) warnings.push(w);
+    let stateP = state1;
+    for (const ev of out.events) {
+      try {
+        const added = await append(ev, stateP);
+        if (added && ev.type === "project.milestone.added") stateP = await store.state();
+      } catch (e) {
+        if (!(e instanceof Refused)) throw e;
+        warnings.push(`${ev.type} ${ev.target}: ${e.message}`);
+      }
     }
   }
 

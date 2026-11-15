@@ -261,17 +261,35 @@ describe("JSY versions plan", () => {
     expect(del.warnings.join(" ")).toMatch(/gone from Jira/);
   });
 
-  it("steps follow the first mapped fix version, clear when none maps, keep foreign ones, and never clear on an absent field", () => {
+  it("steps follow the first mapped fix version, keep foreign ones, and never clear: not when none maps, not on an absent field", () => {
     const log = [...base(), MS("m1", { external: OWN("7") }, BOT)];
     const v = [marked("7")];
     const set = pull(log, v, [issue("NUP-2", [{ id: "99", name: "Foreign" }, { id: "7", name: "Pilot" }])]);
     expect(set.events).toEqual([expect.objectContaining({ type: "project.step.edited", payload: { stepId: "s1", milestoneId: "m1" } })]);
     const assigned = [...log, ev("project.step.edited", BOT, "p_one", { stepId: "s1", milestoneId: "m1" })];
     expect(pull(assigned, v, [issue("NUP-2", [{ id: "7", name: "Pilot" }])]).events).toEqual([]);
-    const cleared = pull(assigned, v, [issue("NUP-2", [{ id: "99", name: "Foreign" }])]);
-    expect(cleared.events[0].payload).toEqual({ stepId: "s1", milestoneId: null });
+    expect(pull(assigned, v, [issue("NUP-2", [{ id: "99", name: "Foreign" }])]).events).toEqual([]);
     expect(pull(assigned, v, [issue("NUP-2")]).events).toEqual([]);
     expect(pull(assigned, v, [issue("NUP-2", [{ id: "99", name: "Foreign" }])], { steps: ["s1"] }).events).toEqual([]);
+  });
+
+  it("the pull never clears a step's milestone: no Jira version, assigned before Jira was on, or assigned before the cursor", () => {
+    // The step's milestone has no Jira version at all.
+    const unlinked = [...base(), MS("m1"), MS("m2", { external: OWN("7") }, BOT), P("project.step.edited", { stepId: "s1", milestoneId: "m1" })];
+    expect(pull(unlinked, [marked("7", "p_one", "m2")], [issue("NUP-2", [])]).events).toEqual([]);
+    // Assigned by a person before Jira was switched on: the issue never got the fix version.
+    const before = [...base(), MS("m1", { external: OWN("7") }, BOT), ev("project.step.edited", LEAD, "p_one", { stepId: "s1", milestoneId: "m1" }, ENABLED.getTime() - 1)];
+    expect(pull(before, [marked("7")], [issue("NUP-2", [])]).events).toEqual([]);
+    // Assigned long ago (older than the cursor, not in this round's events); the issue carries only an unmapped version.
+    const old = [...base(), MS("m1", { external: OWN("7") }, BOT), P("project.step.edited", { stepId: "s1", milestoneId: "m1" })];
+    expect(pull(old, [marked("7"), marked("99", "p_two", "mX")], [issue("NUP-2", [{ id: "99", name: "Other" }])]).events).toEqual([]);
+    expect(pull(old, [marked("7")], [issue("NUP-2", [])]).events).toEqual([]);
+    // A fix version that maps to a different milestone of the same project still moves the step.
+    const moved = [...old, MS("m2", { external: OWN("8") }, BOT)];
+    const out = pull(moved, [marked("7"), marked("8", "p_one", "m2")], [issue("NUP-2", [{ id: "8", name: "Pilot" }])]);
+    expect(out.events.map((e) => e.payload)).toEqual([{ stepId: "s1", milestoneId: "m2" }]);
+    // The step's own milestone among several mapped fix versions keeps it.
+    expect(pull(moved, [marked("7"), marked("8", "p_one", "m2")], [issue("NUP-2", [{ id: "8", name: "Pilot" }, { id: "7", name: "Pilot" }])]).events).toEqual([]);
   });
 
   it("a person's milestone choice sets the fix version once both are linked; before that it stays pending and holds the cursor", () => {
