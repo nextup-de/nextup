@@ -2,6 +2,7 @@
 // Uploading into a project's SharePoint folder (plan FIL-B1, D5): as the signed-in person, through their own Microsoft token.
 // Every call re-checks the viewer: the company, the project, project.linked rights (who may change the folder's files) and a grant
 // that can write. A path or name that would leave the folder is refused. Never throws.
+import { canWriteFiles } from "@/features/auth/entra";
 import { meFor, type Actor } from "@/features/auth/identity";
 import { getViewer } from "@/features/auth/session";
 import { reduce } from "@/features/cases/reducer";
@@ -19,9 +20,6 @@ export type AccessAnswer = { state: "ok" } | { state: Refusal };
 export type UploadResult = { state: "ok"; row: FileRow } | { state: Refusal };
 export type SessionResult = { state: "ok"; uploadUrl: string } | { state: Refusal };
 export type ChunkResult = { state: "more"; next: number } | { state: "ok"; row: FileRow } | { state: Refusal };
-
-/** True when the person's grant can write files. TODO(FIL-P1): switch to canWriteFiles from features/m365/token once FIL-P1 merges. */
-const mayWrite = (scopes: readonly string[]): boolean => scopes.some((scope) => /(^|\/)Files\.ReadWrite(\.All)?$/i.test(scope.trim()));
 
 type Writer = { companyId: string; userId: string; shareId: string };
 
@@ -44,7 +42,7 @@ async function writerFor(projectId: string): Promise<Writer | Refusal> {
     if (!mayAppendProject(actor, { type: "project.linked", target: projectId, payload: { system: "sharepoint", url: link.url } }, state).ok) return "no-access";
     const connection = await getDb().connection.findFirst({ where: { companyId: viewer.companyId, userId: viewer.userId, provider: "m365" }, select: { scopes: true } });
     if (!connection) return "not-connected";
-    if (!mayWrite(connection.scopes)) return "read-only";
+    if (!canWriteFiles(connection.scopes)) return "read-only";
     return { companyId: viewer.companyId, userId: viewer.userId, shareId };
   } catch (err) {
     console.warn("[files] upload check failed:", err instanceof Error ? err.name : "error");
