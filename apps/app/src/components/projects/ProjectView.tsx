@@ -14,6 +14,7 @@ import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, demoJiraView, isOpenDraft, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
+import { pendingInviteOf } from "@/features/projects/draft";
 import { pagesOf } from "@/features/projects/pages";
 import { pageIdFor, showsSetup } from "@/features/projects/page-route";
 import { IdeaTool } from "./tools/IdeaTool";
@@ -21,6 +22,7 @@ import { PageView } from "./page/PageView";
 import { AgentTab } from "./agent/AgentTab";
 import { PlanDraftLink } from "./agent/PlanDraftLink";
 import { useAgentTab } from "./agent/useAgentTab";
+import { InvitePanel } from "./draft/DraftInvites";
 import { DraftView } from "./draft/DraftView";
 import { DoneByLine } from "./move/DoneByLine";
 import { HowWeWork } from "./move/HowWeWork";
@@ -81,7 +83,7 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
 /** The project head (title, (i), start/stop) sits only on the page that carries the overview or the idea;
  *  every other page has its own title, so it keeps a link back to all projects. */
 function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
-  const { href } = useDemo();
+  const { href, actorUserId } = useDemo();
   const t = useT();
   const query = useSearchParams();
   const agent = useAgentTab(p, false);
@@ -93,6 +95,8 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   // An open draft starts and stops from its setup (Getting ready), so its other pages carry the title alone.
   const draft = isOpenDraft(p);
   const home = !draft && (page?.tools.some((tool) => tool.kind === "overview" || tool.kind === "idea") ?? false);
+  // An invitation is answered in the Team tool; a project without one answers it on its home page (the inbox link lands there).
+  const answerHere = home && pendingInviteOf(p, actorUserId) !== null && !pages.some((x) => x.tools.some((tool) => tool.kind === "team"));
   return <>
     <div className={styles.top}>
       {home ? <Header p={p} jira={jira} />
@@ -101,6 +105,7 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
     </div>
     {page && <>
       {home && <PageMove p={p} />}
+      {answerHere && <InvitePanel p={p} />}
       {ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
         : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} />}
     </>}

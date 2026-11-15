@@ -24,6 +24,7 @@ import { addRole, addSeat, addUnit, saveRoute } from "../../../src/lib/db/org-ed
 import { dispatchOnce } from "../../../src/server/notify/dispatch";
 import { runClockOnce } from "../../../src/server/scheduler/clock";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
+import { readyPage } from "./ready-pages";
 
 const STAMP = Date.now().toString(36);
 const SLUG = `set-${STAMP}`;
@@ -402,6 +403,8 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
 
     // ── a sponsor, after the start ──────────────────────────────────────────────────────────────────────────────────
     await test.step("after the kickoff the lead invites Sven as sponsor on the Team tab; he accepts through /inbox", async () => {
+      // The project starts with its Idea and Files; the lead added the Team page.
+      await append("project.page.added", LEAD, id.lead, projectA, readyPage(projectA, "team"));
       const lead = await signIn(browser, LEAD);
       await lead.goto(`/${SLUG}/projects/${projectA}?tab=team`);
       const invite = lead.getByRole("form", { name: "Invite" });

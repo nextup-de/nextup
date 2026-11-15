@@ -43,7 +43,7 @@ import { CustomPageView } from "@/components/projects/CustomPageView";
 import { IdeaFilesView } from "@/components/projects/files/IdeaFilesView";
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { mayEditIdeaPages, mayReviseIdea } from "@/features/projects/sidebar";
-import { visibleProjectsFor } from "@/features/projects/views";
+import { isOpenDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
 import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
@@ -161,7 +161,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const grewInto = (() => {
     if (inPage || !flag("projects") || !sel) return null;
     const id = D.cases.find((x) => x.id === sel)?.decided?.projectId ?? null;
-    return id && visibleProjectsFor(ctx.S, idViewerOf(ctx), ctx.demo).some((x) => x.id === id) ? id : null;
+    // While its project is still being set up, the idea stays where the raiser and readers outside the draft follow it.
+    const viewer = idViewerOf(ctx);
+    const p = id ? visibleProjectsFor(ctx.S, viewer, ctx.demo).find((x) => x.id === id) : undefined;
+    return p && (!isOpenDraft(p) || onDraft(p, viewer.userId)) ? p.id : null;
   })();
   useEffect(() => { if (grewInto) router.replace(href("/projects/" + grewInto)); }, [grewInto, router, href]);
 
