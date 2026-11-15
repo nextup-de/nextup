@@ -9,6 +9,11 @@
 //   - a yes opens the idea's project, which is planned, started, worked step by step, finished and measured over the weeks.
 // Desks and projects of real people (anyone who ever acted in the app) are never touched: those decisions stay theirs. The
 // generator's own old cases are cleared out regardless, since nobody is waiting for them.
+//
+// The people the team demos from (`focus`: Kevin Schmid and Julia Rossi) get something to click every working day: the
+// first idea of the day lands on a desk they hold, they are invited to discuss one of the colleagues' new ideas, and they
+// join new projects (at most two running at a time) with a step of their own, which waits five working days for them
+// before the lead moves it. Every project the simulation opens is planned with dated steps and two milestones.
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
 import type { NoCategory } from "@/features/cases/no";
 import type { State } from "@/features/cases/reducer";
@@ -29,6 +34,8 @@ export type LifeInput = {
   people: readonly LifePerson[];
   /** People who acted in the app themselves: their desks and projects are theirs. */
   humans: ReadonlySet<string>;
+  /** The demo accounts that should always have something to do (see above). Absent: nobody. */
+  focus?: ReadonlySet<string>;
 };
 export type LifeEvent = { id: string; idemKey: string; type: CaseEventType; actor: string; actorUserId: string; targetId: string; payload: EventPayload };
 
@@ -61,6 +68,10 @@ const NO_REASONS: readonly (readonly [NoCategory, string, string])[] = [
 /** The day's events, in the order they should be written. */
 export function lifeDay(input: LifeInput): LifeEvent[] {
   const { slug, iso, today, state, promiseDays, routes, people, humans } = input;
+  const focus = input.focus ?? new Set<string>();
+  const focusPeople = people.filter((p) => focus.has(p.id));
+  // Running simulated projects each focus person is in, counted up as they join today's.
+  const joined = new Map(focusPeople.map((f) => [f.id, state.projects.filter((p) => p.id.includes("-lp-") && !p.closed && !p.stopped && (p.memberUserIds.includes(f.id) || p.leadUserId === f.id)).length]));
   const out: LifeEvent[] = [];
   const at = (key: string, type: CaseEventType, by: LifePerson, targetId: string, payload: EventPayload = {}) => {
     const idemKey = `life:${iso}:${key}`;
@@ -92,6 +103,11 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
       const pj = idea.project;
       const base = Math.round((pj.base[0] + r.next() * (pj.base[1] - pj.base[0])) * 10) / 10;
       at(`${c.id}:baseline`, "project.baseline", owner, projectId, { metric: pj.metric, unit: pj.unit, value: base, better: pj.better, source: "manual" });
+      for (const f of focusPeople) {
+        if (f.id === owner.id || (joined.get(f.id) ?? 0) >= 2) continue;
+        joined.set(f.id, (joined.get(f.id) ?? 0) + 1);
+        at(`${c.id}:member:${f.id}`, "project.member", owner, projectId, { name: f.name, userId: f.id, on: true });
+      }
     } else if (old && r.chance(0.7)) {
       at(`${c.id}:yes`, "case.decided", owner, c.id, { answer: "yes", note: "Ist erledigt, danke für den Hinweis." });
     } else {
@@ -105,7 +121,7 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
     if (p.stopped || p.closed || p.draft) continue;
     const lead = p.leadUserId ? personById.get(p.leadUserId) ?? null : null;
     if (!lead || (humans.has(lead.id) && !generated.test(p.id))) continue;
-    projectDay(p, lead, rngOf(`${slug}:${iso}:${p.id}`), today, people, at);
+    projectDay(p, lead, rngOf(`${slug}:${iso}:${p.id}`), today, people, focus, at);
   }
 
   // 3. New ideas: 2 to 4 a day, none the same as one still open.
@@ -114,11 +130,14 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
   const staffed = routes.filter((x) => x.owner);
   const weighted = staffed.flatMap((x) => (humans.has(x.owner!.id) ? [x, x, x] : [x]));
   const count = r.int(2, 4);
+  const raised: { id: string; route: LifeRoute }[] = [];
   for (let n = 0; n < count && raisers.length; n++) {
     const fresh = (key: string) => ideasFor(key).filter((i) => !openTitles.has(i.title));
     const candidates = weighted.filter((x) => fresh(x.key).length > 0);
     if (candidates.length === 0) break;
-    const route = r.pick(candidates);
+    // The first idea of the day goes to a desk a focus person holds, so they always have one to decide.
+    const focused = n === 0 ? candidates.filter((x) => focus.has(x.owner!.id)) : [];
+    const route = r.pick(focused.length ? focused : candidates);
     const idea = r.pick(fresh(route.key));
     openTitles.add(idea.title);
     const raiser = r.pick(raisers);
@@ -128,13 +147,26 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
       fromDept: raiser.dept, kind: "idea", reason: "keywords",
       proposal: { routeId: route.key, confidence: r.int(70, 95), source: "keywords", version: "musterwerk-life" },
     });
+    raised.push({ id, route });
+  }
+
+  // 4. A colleague asks the focus people to discuss one of today's ideas on a desk of their own (not one a focus person or a real person holds).
+  const invitees = (x: LifeRoute) => focusPeople.filter((f) => f.id !== x.owner!.id);
+  const talk = raised.filter((x) => !humans.has(x.route.owner!.id) && !focus.has(x.route.owner!.id) && invitees(x.route).length > 0);
+  if (talk.length) {
+    const { id, route } = r.pick(talk);
+    const who = invitees(route);
+    at(`discuss:${id}`, "case.discussion", route.owner!, id, {
+      invited: who.map((f) => f.name), invitedUserIds: who.map((f) => f.id),
+      missing: "Wie seht ihr das aus eurer Sicht? Gibt es etwas, das dagegen spricht oder das wir mitdenken müssen?",
+    });
   }
   return out;
 }
 
 type At = (key: string, type: CaseEventType, by: LifePerson, targetId: string, payload?: EventPayload) => void;
 
-function projectDay(p: ReducedProject, lead: LifePerson, r: Rng, today: number, people: readonly LifePerson[], at: At): void {
+function projectDay(p: ReducedProject, lead: LifePerson, r: Rng, today: number, people: readonly LifePerson[], focus: ReadonlySet<string>, at: At): void {
   const key = (what: string) => `${p.id}:${what}`;
   if (p.status === "planning") {
     if (today - p.openedDay < 1 || !(r.chance(0.6) || today - p.openedDay >= 3)) return;
@@ -142,9 +174,16 @@ function projectDay(p: ReducedProject, lead: LifePerson, r: Rng, today: number, 
     const idea = ideaByTitle(p.title);
     const team = people.filter((x) => x.dept === lead.dept && x.id !== lead.id);
     if (idea && p.steps.length === 0) {
+      const mine = people.find((x) => focus.has(x.id) && p.memberUserIds.includes(x.id)) ?? null;
+      // Two milestones on the plan: the work done, then the effect measured.
+      const m1 = `${p.id}-m1`, m2 = `${p.id}-m2`;
+      at(key("m1"), "project.milestone.added", lead, p.id, { milestoneId: m1, title: "Umgesetzt", startDay: today, dueDay: today + 12 });
+      at(key("m2"), "project.milestone.added", lead, p.id, { milestoneId: m2, title: "Wirkung gemessen", startDay: today + 12, dueDay: today + 32 });
       idea.project.steps.forEach((text, k) => {
-        const owner = k === 0 || team.length === 0 ? lead : r.pick(team);
-        at(key(`step${k}`), "project.step.added", lead, p.id, { stepId: `${p.id}-s${k + 1}`, text, owner: owner.name, ownerUserId: owner.id });
+        const owner = k === 1 && mine ? mine : k === 0 || team.length === 0 ? lead : r.pick(team);
+        const stepId = `${p.id}-s${k + 1}`;
+        at(key(`step${k}`), "project.step.added", lead, p.id, { stepId, text, owner: owner.name, ownerUserId: owner.id, dueDay: today + 3 * (k + 1) });
+        at(key(`step${k}:m`), "project.step.edited", lead, p.id, { stepId, milestoneId: k < 3 ? m1 : m2 });
       });
     }
     at(key("started"), "project.started", lead, p.id);
@@ -156,10 +195,15 @@ function projectDay(p: ReducedProject, lead: LifePerson, r: Rng, today: number, 
     const doing = live.find((s) => s.column === "doing");
     const next = live.find((s) => s.column === "todo");
     if (doing) {
-      if (today - doing.movedDay >= 1 && r.chance(0.45)) {
+      // A focus person's own step waits for them a while; after that the lead finishes it, so the project never stalls.
+      const theirs = !!doing.ownerUserId && focus.has(doing.ownerUserId);
+      if (theirs ? today - doing.movedDay >= 5 : today - doing.movedDay >= 1 && r.chance(0.45)) {
         at(key(`${doing.id}:done`), "project.step.moved", lead, p.id, { stepId: doing.id, to: "done" });
         if (next) at(key(`${next.id}:doing`), "project.step.moved", lead, p.id, { stepId: next.id, to: "doing" });
-        else at(key("done"), "project.done", lead, p.id, { note: "Alle Schritte umgesetzt." });
+        else {
+          at(key("done"), "project.done", lead, p.id, { note: "Alle Schritte umgesetzt." });
+          if (p.milestones.some((m) => m.id === `${p.id}-m1` && !m.shipped)) at(key("m1:shipped"), "project.milestone.edited", lead, p.id, { milestoneId: `${p.id}-m1`, shipped: true });
+        }
       }
     } else if (next) {
       if (r.chance(0.6)) at(key(`${next.id}:doing`), "project.step.moved", lead, p.id, { stepId: next.id, to: "doing" });
@@ -175,5 +219,6 @@ function projectDay(p: ReducedProject, lead: LifePerson, r: Rng, today: number, 
     const gain = (idea?.project.gain ?? 0.25) * (0.6 + r.next() * 0.7);
     const value = Math.round(b.value * (b.better === "down" ? 1 - gain : 1 + gain) * 10) / 10;
     at(key("measured30"), "project.measured", lead, p.id, { check: 30, value, source: "manual", note: "Gemessen wie die Ausgangslage." });
+    if (p.milestones.some((m) => m.id === `${p.id}-m2` && !m.shipped)) at(key("m2:shipped"), "project.milestone.edited", lead, p.id, { milestoneId: `${p.id}-m2`, shipped: true });
   }
 }
