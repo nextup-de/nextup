@@ -17,6 +17,8 @@ import { appendEventRow, loadLog } from "@/lib/db/events";
 import { loadKnowledge } from "@/lib/db/knowledge";
 
 export const LIFE_COMPANY_NAME = "Musterwerk GmbH";
+/** The accounts the team demos Musterwerk from: they get something to click every working day (features/demo/life/plan.ts). */
+export const LIFE_FOCUS_NAMES: readonly string[] = ["Kevin Schmid", "Julia Rossi"];
 const LIFE_HOUR = 7;
 /** Events the people of the company did not write themselves: the generator's, the clock's, this loop's, the directory's, the agent's. */
 const NOT_A_PERSON = ["clock", LIFE_SOURCE, "directory", "agent"];
@@ -56,7 +58,8 @@ export async function runLifeDay(company: { id: string; slug: string; seedJson: 
   });
   const humans = new Set(acted.map((a) => a.actorUserId!));
 
-  const events = lifeDay({ slug: company.slug, iso, today: log.day, state, promiseDays: seed.promiseDays, routes, people, humans });
+  const focus = new Set(people.filter((p) => LIFE_FOCUS_NAMES.includes(p.name)).map((p) => p.id));
+  const events = lifeDay({ slug: company.slug, iso, today: log.day, state, promiseDays: seed.promiseDays, routes, people, humans, focus });
   let written = 0;
   for (const e of events) {
     const r = await appendEventRow(
