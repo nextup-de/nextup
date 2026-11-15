@@ -10,7 +10,7 @@ import { isSystemActor, maySystemAppend, parseInbound, syncIdemKey } from "@/fea
 import { epicKeyOf, jiraIndex, summaryOf, syncMode } from "@/features/integrations/jira/map";
 import { planPush, type SeqEvent } from "@/features/integrations/jira/plan";
 import { planPull, type PullEvent } from "@/features/integrations/jira/pull";
-import { markerOf, planVersionPull, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
+import { markerOf, MAX_VERSION_WRITES, planVersionPull, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
 import { jiraIssueUrl, REMOVED_LABEL } from "@/features/integrations/jira/settings";
 import { pickTransition, sameState } from "@/features/integrations/jira/status";
 import { JiraError, type Job, type JiraAccount, type JiraApi, type JiraIssue, type JiraSettings, type JiraVersion } from "@/features/integrations/jira/types";
@@ -192,6 +192,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   // What the pull needs from the push half: the version list, and what a person changed that is not in Jira yet (never overwritten).
   let versionList: JiraVersion[] | null = null;
   let versionPending: { milestones: string[]; steps: string[] } = { milestones: [], steps: [] };
+  // The push half could not read the versions, so it does not know what a person changed that Jira has not got yet.
+  let versionsUnread = false;
   if (wantVersions) {
     const earliest = (list: readonly SeqEvent[]) => (list.length ? Math.min(...list.map((e) => e.seq)) : Infinity);
     let versions: JiraVersion[] | null = null;
@@ -201,6 +203,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       if (endsRound(e)) throw e;
       warnings.push(`versions: ${e instanceof Error ? e.message : String(e)}`);
       holdAt = Math.min(holdAt, earliest(windowEvents.filter(personTouch)));
+      versionsUnread = true;
     }
     if (versions) {
       versionList = versions;
@@ -223,10 +226,12 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         }, stateV);
       // Creates and adoptions first. A create that got through but whose link was not appended (a crash, a refused append) is found
       // again next round by its marker and adopted: never created twice.
+      let created = 0;
       for (const job of plan.jobs) {
         if (job.kind !== "create" && job.kind !== "adopt") continue;
         try {
           if (job.kind === "create") {
+            created++;
             const made = await api.createVersion({ projectKey: settings.projectKey, name: job.name, description: job.description, startDate: job.startDate, releaseDate: job.releaseDate, released: job.released });
             wrote++;
             versionsWrote = true;
@@ -244,7 +249,8 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       if (versionsWrote) {
         stateV = await store.state();
         current = await api.versions(settings.projectKey);
-        plan = planVersionPush(stateV, current, windowEvents, settings, opts);
+        // One write budget per round (D11): the creates above already spent part of it.
+        plan = planVersionPush(stateV, current, windowEvents, settings, { ...opts, maxWrites: Math.max(0, MAX_VERSION_WRITES - created) });
       }
       versionList = current;
       versionPending = plan.pending;
@@ -289,8 +295,11 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
         } catch (e) {
           if (endsRound(e)) throw e;
           warnings.push(`${job.kind} ${"stepId" in job ? job.stepId : job.milestoneId}: ${e instanceof Error ? e.message : String(e)}`);
-          // Lost ownership is final; anything else (no permission yet, a field Jira refused today) is retried from the cursor.
-          if (!(e instanceof Refused)) holdAt = Math.min(holdAt, job.seq);
+          // Lost ownership and a permanent 4xx (a field or a version Jira refuses for good) are final, as for the issue jobs: warned and
+          // dropped, so one bad edit never holds the cursor. 429, 5xx and a lost connection end the round above; anything else
+          // (not a Jira answer at all) is retried from the cursor.
+          const permanent = e instanceof Refused || (e instanceof JiraError && e.status >= 400 && e.status < 500 && e.status !== 429);
+          if (!permanent) holdAt = Math.min(holdAt, job.seq);
         }
       }
       // What reached Jira (or was already there) is not pending any more; what is deferred or failed stays protected from the pull.
@@ -344,7 +353,9 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   // ---- versions: read again after our own writes, so the pull sees Jira as the push left it
   const namesFixVersion = [...seen.values()].some((i) => (i.fields.fixVersions?.length ?? 0) > 0);
   let versionsNow: JiraVersion[] | null = null;
-  if (wantVersions || namesFixVersion) {
+  // Without the push half's version list its pending set is empty, so reconciling now could overwrite a person's unpushed milestone
+  // or step edit: the pull skips versions this round (issues, comments and the rest still pull) and the held cursor retries.
+  if ((wantVersions || namesFixVersion) && !versionsUnread) {
     try {
       versionsNow = versionList && !versionsWrote ? versionList : await api.versions(settings.projectKey);
     } catch (e) {

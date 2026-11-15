@@ -13,7 +13,7 @@ export function M365Admin({ view: v }: { view: M365AdminView }) {
       <p className="nh-hint">
         People can connect their own Microsoft 365 account on their profile. The assistant then searches the
         SharePoint and OneDrive files that person can open, as that person; nothing is copied into NextUp.
-        Your IT approves NextUp for Files.Read.All once (docs/customer/ENTRA_SETUP.md).
+        Your IT approves NextUp for Files.ReadWrite.All once (docs/customer/ENTRA_SETUP.md); NextUp changes files only as the person who asks, in a project&apos;s folder.
       </p>
       <div className={styles.tableWrap}>
         <table className={styles.table}>
