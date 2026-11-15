@@ -26,13 +26,13 @@ const SEED: ReduceSeed = {
 const isoOf = (day: number) => new Date(Date.UTC(2026, 0, 1) + day * 86_400_000).toISOString().slice(0, 10);
 
 /** Play `days` working days; `humans` own their desks. Returns the final state and every event written. */
-function play(days: number, humans: ReadonlySet<string> = new Set()) {
+function play(days: number, humans: ReadonlySet<string> = new Set(), focus: ReadonlySet<string> = new Set()) {
   const log: CaseEvent[] = [];
   const written: LifeEvent[] = [];
   let state: State = reduce(SEED, { events: [], day: 1 } as EventLog);
   for (let day = 1; day <= days; day++) {
     state = reduce(SEED, { events: log, day } as EventLog);
-    const out = lifeDay({ slug: "mw", iso: isoOf(day), today: day, state, promiseDays: PROMISE, routes, people, humans });
+    const out = lifeDay({ slug: "mw", iso: isoOf(day), today: day, state, promiseDays: PROMISE, routes, people, humans, focus });
     for (const e of out) {
       written.push(e);
       log.push({ id: e.id, ts: 0, day, type: e.type, actor: e.actor, actorUserId: e.actorUserId, target: e.targetId, payload: e.payload } as CaseEvent);
@@ -85,5 +85,40 @@ describe("Musterwerk's working day", () => {
     expect(mine.every((c) => c.open && c.decided === null)).toBe(true);
     expect(new Set(mine.map((c) => c.title)).size).toBe(LIFE_IDEAS.maintenance.length);
     expect(mine.length).toBe(LIFE_IDEAS.maintenance.length);
+  });
+
+  it("gives the demo accounts something to click every day: a desk idea, a discussion, a step in a planned project", () => {
+    // Like Julia Rossi (holds the maintenance desk) and Kevin Schmid (a member without a desk); both acted in the app.
+    const julia = owners[0].id;
+    const kevin = members[1].id;
+    const focus = new Set([julia, kevin]);
+    const { state, written } = play(40, focus, focus);
+    expect(written.filter((e) => e.actorUserId === julia || e.actorUserId === kevin)).toEqual([]);
+    // Julia's desk always has ideas waiting.
+    expect(state.cases.filter((c) => c.assigneeSeatId === "seat_0" && c.open).length).toBeGreaterThan(0);
+    // Kevin is invited to discuss on (nearly) every day, by the desk owner, on an idea that is not his own.
+    const talks = written.filter((e) => e.type === "case.discussion");
+    expect(talks.length).toBeGreaterThan(30);
+    for (const e of talks) expect(e.payload.invitedUserIds).toContain(kevin);
+    expect(state.cases.some((c) => c.open && c.discussion?.invitedUserIds.includes(kevin))).toBe(true);
+    // He is in at most two running simulated projects, with a step of his own; every simulated project has two dated milestones.
+    const sim = state.projects.filter((p) => p.id.includes("-lp-"));
+    const running = sim.filter((p) => !p.closed && !p.stopped && p.memberUserIds.includes(kevin));
+    expect(running.length).toBeGreaterThan(0);
+    expect(running.length).toBeLessThanOrEqual(2);
+    expect(sim.some((p) => p.steps.some((x) => x.ownerUserId === kevin))).toBe(true);
+    const planned = sim.filter((p) => p.steps.length === 4);
+    expect(planned.length).toBeGreaterThan(0);
+    for (const p of planned) {
+      expect(p.milestones.map((m) => m.title)).toEqual(["Umgesetzt", "Wirkung gemessen"]);
+      expect(p.steps.every((x) => x.dueDay !== null && x.milestoneId)).toBe(true);
+    }
+    expect(sim.some((p) => p.milestones.some((m) => m.shipped))).toBe(true);
+    // His own step waits five working days before the lead finishes it.
+    for (const e of written.filter((x) => x.type === "project.step.moved" && x.payload.to === "done")) {
+      const p = sim.find((x) => x.id === e.targetId);
+      const step = p?.steps.find((x) => x.id === e.payload.stepId);
+      if (step?.ownerUserId === kevin) expect(step.doneDay! - step.startedDay!).toBeGreaterThanOrEqual(5);
+    }
   });
 });

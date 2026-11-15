@@ -5,7 +5,7 @@ import { DemoProvider } from "@/components/dashboard/DemoProvider";
 import { I18nProvider } from "@/i18n/client";
 import { LOCAL_SEED } from "@/features/demo";
 import { reduce } from "@/features/cases/reducer";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import { demoJiraView, jiraRowOf } from "@/features/projects/views";
 import type { Step } from "@/features/projects/types";
 import { BoardTool } from "@/components/projects/tools/BoardTool";
@@ -26,7 +26,7 @@ function render(locale: "en" | "de", steps: Step[]) {
   return html(h(I18nProvider, { locale, children: h(DemoProvider, {
     tenant: { slug: "demo", prefix: "/demo", name: "Demo", demoDataDefault: true }, seed: LOCAL_SEED,
     children: h(BoardTool, { p, hints: [], jira: jiraRowOf(p, demoJiraView(20), 20, locale),
-      page: DEFAULT_PAGES[0], tool: { id: "board", kind: "board", title: null, content: null, collapsed: false, rev: 0 }, editor: true }),
+      page: READY_PAGES[0], tool: { id: "board", kind: "board", title: null, content: null, collapsed: false, rev: 0 }, editor: true }),
   }) }));
 }
 

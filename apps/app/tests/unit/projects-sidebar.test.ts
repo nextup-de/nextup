@@ -1,7 +1,7 @@
 // The Projects sidebar (features/projects/sidebar.ts): which projects layer 1 lists, and the editable
 // list of pages in layer 2.
 import { describe, expect, it } from "vitest";
-import { IDEA_TABS, NO_PAGES, addPage, caseIdAt, daysLate, mayEditIdeaPages, movePage, pageList, projectIdAt, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage } from "@/features/projects/sidebar";
+import { IDEA_EXTRA_TABS, IDEA_TABS, NO_PAGES, addPage, addTab, removeTab, shownTabs, mayReviseIdea, caseIdAt, daysLate, mayEditIdeaPages, movePage, pageList, projectIdAt, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage } from "@/features/projects/sidebar";
 import type { ReducedProject } from "@/features/projects/types";
 
 const proj = (number: number, status: ReducedProject["status"], overdue = false, title = "P" + number) =>
@@ -85,20 +85,29 @@ describe("ideas in the sidebar", () => {
     expect(list.find((i) => i.id === "new")?.stage).toBe("lead");
   });
 
-  it("lets everyone added to an idea edit its pages, not a viewer", () => {
-    const c = { fromUserId: "u1", discussion: { invitedUserIds: ["u2"] } };
-    const who = (userId: string | null, o: { manager?: boolean; holdsDesk?: boolean } = {}) => ({ userId, manager: false, holdsDesk: false, ...o });
-    expect(mayEditIdeaPages(c, who("u1"))).toBe(true);
-    expect(mayEditIdeaPages(c, who("u2"))).toBe(true);
-    expect(mayEditIdeaPages(c, who("u3", { holdsDesk: true }))).toBe(true);
-    expect(mayEditIdeaPages(c, who("u4", { manager: true }))).toBe(true);
-    expect(mayEditIdeaPages(c, who("u5"))).toBe(false);
-    expect(mayEditIdeaPages(c, who(null))).toBe(false);
+  it("lets everyone signed in who can open an idea edit its pages, an employee as much as a team lead", () => {
+    expect(mayEditIdeaPages({ userId: "u5" })).toBe(true);
+    expect(mayEditIdeaPages({ userId: null })).toBe(false);
+  });
+
+  it("lets everyone who can open an idea revise it while open and after its yes, never after a no", () => {
+    expect(mayReviseIdea({ decided: null, withdrawn: null }, "u5")).toBe(true);
+    expect(mayReviseIdea({ decided: { answer: "yes" }, withdrawn: null }, "u5")).toBe(true);
+    expect(mayReviseIdea({ decided: { answer: "no" }, withdrawn: null }, "u5")).toBe(false);
+    expect(mayReviseIdea({ decided: null, withdrawn: { day: 1 } }, "u5")).toBe(false);
+    expect(mayReviseIdea({ decided: null, withdrawn: null }, null)).toBe(false);
+  });
+
+  it("gives an idea its Idea and Files, and Chats only once its people add it", () => {
+    const added = addTab(NO_PAGES, "chats", IDEA_TABS);
+    expect(shownTabs(NO_PAGES, IDEA_TABS, IDEA_EXTRA_TABS)).toEqual(["overview", "files"]);
+    expect(shownTabs(added, IDEA_TABS, IDEA_EXTRA_TABS)).toEqual(["overview", "files", "chats"]);
+    expect(shownTabs(removeTab(added, "chats"), IDEA_TABS, IDEA_EXTRA_TABS)).toEqual(["overview", "files"]);
   });
 
   it("gives an idea Overview, Files and Chats, and adds pages after them", () => {
     const s = addPage(NO_PAGES, "page", "n", "Notes", IDEA_TABS);
-    expect(pageList(s, IDEA_TABS).map((e) => (e.kind === "tab" ? e.key : e.page.id))).toEqual(["overview", "files", "chats", "n"]);
-    expect(pageList(movePage(s, "n", "files", IDEA_TABS), IDEA_TABS).map((e) => (e.kind === "tab" ? e.key : e.page.id))).toEqual(["overview", "n", "files", "chats"]);
+    expect(pageList(s, IDEA_TABS).map((e) => (e.kind === "tab" ? e.key : e.page.id))).toEqual(["overview", "files", "n"]);
+    expect(pageList(movePage(s, "n", "files", IDEA_TABS), IDEA_TABS).map((e) => (e.kind === "tab" ? e.key : e.page.id))).toEqual(["overview", "n", "files"]);
   });
 });

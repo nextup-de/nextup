@@ -3,9 +3,13 @@
 // answer means. The glue that reads the Connection row and calls Microsoft is
 // src/server/graph-token.ts.
 
-/** What the files features need, and no more: read and change the files the person can open, as that person, and a way to come back. */
-// eslint-disable-next-line -- OAuth scope, not text
-export const GRAPH_SCOPE = "https://graph.microsoft.com/Files.ReadWrite.All offline_access";
+/**
+ * The refresh asks for exactly what the person (or their IT) already granted, and nothing new: `.default` returns
+ * the Graph rights on the existing grant, so a connection made before Files.ReadWrite.All keeps reading
+ * (Files.Read.All) instead of being refused with consent_required. New rights come only through the connect flow
+ * (M365_SCOPE in features/auth/entra.ts), which stores the granted scopes that m365CanWrite reads.
+ */
+export const GRAPH_SCOPE = "https://graph.microsoft.com/.default offline_access";
 
 export function refreshRequestBody(p: { clientId: string; clientSecret: string; refreshToken: string }): URLSearchParams {
   return new URLSearchParams({

@@ -119,12 +119,16 @@ export function mayAppend(
       return note === undefined || (typeof note === "string" && note.length <= 500) ? OK : no(t, "cases.permWithdrawNote");
     }
 
-    case ev.type === "case.revised":
+    case ev.type === "case.revised": {
+      // Everyone who may open an idea may write its next version, the way its desk can (an employee as much as a team
+      // lead), also after its yes: the idea and its project are one thing, and the Idea page is how the project began.
       if (!kase) return no(t, "cases.permNoCase");
-      if (!isRaiser(kase)) return no(t, "cases.permReviseOwner");
-      if (kase.decided) return no(t, "cases.permIdeaDecided");
+      const viewer = { ...me, userId };
+      if (userId === null || !canOpen(kase, { me: viewer, role: actor.role, unitIds: unitsOf(viewer, access) }, { seats: state.seats, projects: state.projects, ...access })) return no(t, "cases.permNoCase");
+      if (kase.withdrawn || (kase.decided && kase.decided.answer !== "yes")) return no(t, "cases.permIdeaDecided");
       if (afterLastDay(kase, state)) return no(t, "cases.permLastDay");
       return typeof ev.payload.body === "string" && ev.payload.body.trim() ? OK : no(t, "cases.permReviseText");
+    }
 
     case ev.type.startsWith("project."):
       return mayAppendProject(actor, { type: ev.type, target: ev.target, payload: ev.payload as EventPayload }, state);

@@ -89,6 +89,9 @@ it("PGE acceptance: pages and tools replay from the log", async () => {
   const milestones = newId("tool");
   const doc = newId("tool");
   const mergeId = newId("merge");
+  // A project starts with its Idea and Files: the lead adds the ready-made Steps and Results pages first.
+  expect(await send(lead, "project.page.added", { pageId: "steps", title: "projectPages.pageSteps", icon: "board", tools: [{ toolId: newId("tool"), kind: "board" }, { toolId: newId("tool"), kind: "list" }] })).toEqual({ ok: true });
+  expect(await send(lead, "project.page.added", { pageId: "results", title: "projectPages.pageResults", icon: "target", tools: [{ toolId: newId("tool"), kind: "results" }] })).toEqual({ ok: true });
   const content = JSON.stringify({ text: "Prepare the cart before the next shift.\nCheck with the team." });
 
   expect(await send(lead, "project.page.added", { pageId, title: "Shift plan", icon: "calendar", before: "results", tools: [{ toolId: calendar, kind: "calendar" }, { toolId: timeline, kind: "timeline" }] })).toEqual({ ok: true });

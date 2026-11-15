@@ -36,13 +36,16 @@ it("PLN scaffold milestone events reduce: add, edit, ship, and remove clears mil
   expect(p.steps[0].milestoneId).toBeNull();
 });
 
-it("PLN scaffold rights: the team may plan on a live project, others and a closed project are refused", () => {
+it("PLN scaffold rights: whoever works on it may plan on a live project, others and a closed project are refused", () => {
   const events = withStep().concat(ms());
   expect(as("u_lb", "L. Brandt", events, "project.milestone.added", { milestoneId: "m2", title: "Go", dueDay: 40 }).ok).toBe(true);
   expect(as("u_lb", "L. Brandt", events, "project.step.edited", { stepId: "s1", startDay: 14, milestoneId: "m1" }).ok).toBe(true);
   expect(as("u_lb", "L. Brandt", events, "project.milestone.edited", { milestoneId: "m1", removed: true }).ok).toBe(true);
-  expect(as("u_js", "J. Schmidt", events, "project.milestone.added", { milestoneId: "m2", title: "Go", dueDay: 40 }).ok).toBe(false);
-  expect(as("u_js", "J. Schmidt", events, "project.step.edited", { stepId: "s1", startDay: 14 }).ok).toBe(false);
+  // The employee who raised the idea works on it like the team; an employee who is neither is refused.
+  expect(as("u_js", "J. Schmidt", events, "project.milestone.added", { milestoneId: "m2", title: "Go", dueDay: 40 }).ok).toBe(true);
+  expect(as("u_js", "J. Schmidt", events, "project.step.edited", { stepId: "s1", startDay: 14 }).ok).toBe(true);
+  expect(as("u_xx", "X. Other", events, "project.milestone.added", { milestoneId: "m2", title: "Go", dueDay: 40 }).ok).toBe(false);
+  expect(as("u_xx", "X. Other", events, "project.step.edited", { stepId: "s1", startDay: 14 }).ok).toBe(false);
   const stopped = events.concat(ev("project.stopped", "L. Brandt", "p_one", { why: "enough" }, 18));
   expect(as("u_lb", "L. Brandt", stopped, "project.milestone.added", { milestoneId: "m2", title: "Go", dueDay: 40 }).ok).toBe(false);
 });

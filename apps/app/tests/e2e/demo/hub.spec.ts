@@ -2,7 +2,7 @@
 // range with the keyboard, writes a Doc on the Files page and adds a link; a team leader then reads both after a reload.
 // Demo mode: one browser plays the people through the dev panel.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 const LINE = "The depot opens at six, bring the stopwatch";
 const LINK_URL = "https://example.com/depot-guide";
@@ -19,7 +19,8 @@ test("HUB acceptance: change the range, save a doc for the team, add a link", as
   await viewAs(page, "Manager");
 
   await test.step("the lead picks Last 30 days in the Overview's range menu with the keyboard", async () => {
-    await page.goto("/acme/projects/pj2?page=overview");
+    await addPages(page, "/acme/projects/pj2", ["Overview"]);
+    await page.goto("/acme/projects/pj2?page=project-overview");
     const range = page.getByRole("button", { name: /^Date range:/ });
     await expect(range).toBeVisible();
     await range.focus();

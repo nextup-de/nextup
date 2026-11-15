@@ -1,6 +1,6 @@
 // Phone width (runs in the "phone" project only, Pixel 7): every page a person reaches fits the
 // screen - nothing scrolls sideways - and publishing an idea works with a thumb.
-import { expect, publishIdea, test } from "../helpers";
+import { addPages, expect, publishIdea, test } from "../helpers";
 
 const PAGES = ["/acme/raise", "/acme/team", "/acme/overview", "/acme/inbox", "/acme/dashboard", "/acme/feed", "/acme/problems", "/acme/projects/pj2"];
 
@@ -25,6 +25,11 @@ test("on a phone a card is dragged by its grip: up its column, then across into 
   await page.getByRole("button", { name: "Dev" }).click();
   await page.getByRole("dialog", { name: "Demo controls" }).getByRole("button", { name: "Manager", exact: true }).click();
   await page.keyboard.press("Escape");
+  // A project starts with its Idea and Files; pages are added from the sidebar, at laptop width.
+  const phone = page.viewportSize()!;
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await addPages(page, "/acme/projects/pj2", ["Steps"]);
+  await page.setViewportSize(phone);
   await page.goto("/acme/projects/pj2?tab=board");
   const todo = page.getByRole("group", { name: "To do" });
   const card = "Retire the paper job sheet at Ulm";

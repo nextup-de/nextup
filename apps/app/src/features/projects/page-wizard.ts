@@ -13,7 +13,7 @@ export type WizardAction =
   | { type: "icon"; icon: PageIconKey };
 
 export const toolIcon: Record<ToolKind, PageIconKey> = {
-  overview: "home", board: "board", list: "list", calendar: "calendar", timeline: "timeline", milestones: "flag",
+  idea: "star", overview: "home", board: "board", list: "list", calendar: "calendar", timeline: "timeline", milestones: "flag",
   results: "target", files: "folder", doc: "doc", checklist: "checklist", table: "table", links: "link",
   requests: "inbox", team: "people", activity: "pulse", agent: "chat",
 };

@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { isJiraTool, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, suggestPageName, TOOL_GROUPS } from "@/features/projects/pages";
+import { addablePages, isJiraTool, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, suggestPageName, TOOL_GROUPS } from "@/features/projects/pages";
 import { canCreate, canNext, preselect as initialState, toolIcon, wizard } from "@/features/projects/page-wizard";
-import type { PageIconKey, ReducedProject, ToolKind } from "@/features/projects/types";
+import type { PageIconKey, ProjectPage, ReducedProject, ToolKind } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
 import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
@@ -58,6 +58,8 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
   }, []);
   useEffect(() => { if (state.step === 2) name.current?.focus(); }, [state.step]);
   const pages = pagesOf(p, { agent: flag("agent") });
+  const gone = [...p.removed.map((item) => item.page?.id), ...Object.values(p.merges).map((merge) => merge.from.id)].filter((id): id is string => !!id);
+  const ready = preselect ? [] : addablePages(pages, gone, { agent: flag("agent") });
   const hasJira = jira !== undefined && jira.projectKey !== null;
   const nameOf = (kind: ToolKind) => t(toolKey(kind));
   const tag = (kind: ToolKind) => hasJira ? <span className={s.tag} data-jira={isJiraTool(kind) || undefined} title={kind === "milestones" ? t("projectJsy.tagMilestonesTitle") : undefined}>{isJiraTool(kind) && <span aria-hidden="true">⟳ </span>}{t(isJiraTool(kind) ? "projectPages.tagJira" : "projectPages.tagNextUpOnly")}</span> : null;
@@ -73,6 +75,18 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
       });
       if (!result.ok) { setError(result.error); pending.current = false; setBusy(false); }
     } catch { setError(t("projectPages.notSaved")); pending.current = false; setBusy(false); }
+  };
+  // A ready-made page is added as it is, under its own id: no naming step.
+  const addReady = async (page: ProjectPage) => {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError(null);
+    try {
+      const result = await acts.create({ pageId: page.id, title: page.title, icon: page.icon, tools: page.tools.map(({ kind }) => ({ kind })) });
+      if (!result.ok) { setError(result.error); return; }
+      showToast(t("projectPages.pageCreated", { page: t(page.title as MessageKey) }));
+      onCreated(page.id); onClose();
+    } catch { setError(t("projectPages.notSaved")); }
+    finally { pending.current = false; setBusy(false); }
   };
   // The next render includes the persisted page in the rights snapshot. Only then may a move name it.
   useEffect(() => {
@@ -109,6 +123,11 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
       </ol><button type="button" className={s.close} disabled={busy} aria-label={t("projectPages.closeDialogLabel")} onClick={onClose}>×</button></header>
       {state.step === 1 ? <div className={s.body}>
         <div className={s.picker}><p>{t("projectPages.pickToolsHint")}{hasJira && <> {t("projectPages.jiraPickerHint", { project: jira.projectKey! })}</>}</p>
+          {ready.length > 0 && <section aria-label={t("projectPages.readyPages")}><h3>{t("projectPages.readyPages")}</h3><div className={s.tiles}>
+            {ready.map((page) => <button key={page.id} type="button" className={s.tile} disabled={busy} data-ready={page.id} onClick={() => void addReady(page)}>
+              <span className={s.tileTop}><span className={s.glyph}><Glyph icon={page.icon} /></span></span><strong>{t(page.title as MessageKey)}</strong><span className={s.description}>{page.tools.map((tool) => nameOf(tool.kind)).join(" · ")}</span>
+            </button>)}
+          </div></section>}
           {TOOL_GROUPS.map((group) => <section key={group.title}><h3>{t(group.title as MessageKey)}</h3><div className={s.tiles}>
             {group.kinds.filter((kind) => kind !== "agent" || flag("agent")).map((kind) => {
               const index = state.picks.findIndex((pick) => pick.kind === kind);

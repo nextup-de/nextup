@@ -16,3 +16,5 @@
 .folderBack { fill: var(--files-folder-back); }
 .folderFront { fill: var(--files-folder-front); }
 @media (width < 900px) { .files { grid-template-columns: minmax(0, 1fr); } }
+/* An idea's Files page (IdeaFilesView): the head and the two cards, clear of the bar above. */
+.ideaPage { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }

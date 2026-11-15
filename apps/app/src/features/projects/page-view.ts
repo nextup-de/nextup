@@ -57,7 +57,7 @@ export function toolCount(p: Pick<ReducedProject, "steps" | "links">, kind: Tool
 
 /** The small glyph in front of a tool's name (Paper 03, 04). */
 export const TOOL_GLYPH: Record<ToolKind, string> = {
-  overview: "⌂", board: "▥", list: "☰", calendar: "▦", timeline: "≡", milestones: "⚑", results: "◎", files: "▣",
+  idea: "★", overview: "⌂", board: "▥", list: "☰", calendar: "▦", timeline: "≡", milestones: "⚑", results: "◎", files: "▣",
   doc: "▤", checklist: "☑", table: "▦", links: "↗", requests: "✉", team: "☺", activity: "∿", agent: "✦",
 };
 

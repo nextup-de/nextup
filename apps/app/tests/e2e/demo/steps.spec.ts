@@ -3,7 +3,7 @@
 // in the List with the keyboard, tick a checklist item and reply to a comment. One browser plays the people
 // through the dev panel; the steps the test adds carry their owner, so the seeded steps do not matter.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 const MINE = "Acceptance: time the deburring queue";
 const OTHER = "Acceptance: order the stopwatch";
@@ -20,6 +20,7 @@ async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager
 test("STP acceptance: filter, group, drag to Blocked, edit a cell, comment on a step", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
+  await addPages(page, "/acme/projects/pj2", ["Steps"]);
   await page.goto("/acme/projects/pj2?page=steps");
   const board = page.getByRole("region", { name: "Board", exact: true });
   const list = page.getByRole("region", { name: "List", exact: true });

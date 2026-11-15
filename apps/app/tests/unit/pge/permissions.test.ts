@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import type { Actor } from "@/features/cases/permissions";
 import type { EventPayload } from "@/features/cases/events";
 import type { State } from "@/features/cases/reducer";
-import { DEFAULT_PAGES, EVENT_BUDGET, kicksJira, pagesOf } from "@/features/projects/pages";
+import { EVENT_BUDGET, READY_PAGES, kicksJira, pagesOf } from "@/features/projects/pages";
 import { mayAppendProject } from "@/features/projects/permissions";
 import { newBook, seedProject } from "@/features/projects/reduce";
 import type { ProjectPage, ToolInstance } from "@/features/projects/types";
@@ -16,6 +16,8 @@ function setup() {
   const book = newBook();
   seedProject(book, { id: "p", title: "Pilot", sources: [], authors: [], lead: "Lead", leadUserId: "lead", memberUserIds: ["member"], openedDay: 0, openedBy: "Lead" });
   const p = book.byId.p;
+  // A project whose team added the ready-made pages (a new one starts with Idea and Files only).
+  p.pages = READY_PAGES.map((x) => ({ ...x, tools: x.tools.map((tool) => ({ ...tool })) }));
   p.followerUserIds = ["follower"];
   const state = { projects: [p], day: 0, seats: [] } as unknown as State;
   const ask = (type: string, payload: EventPayload = {}, who = actor()) => mayAppendProject(who, { type, payload, target: p.id }, state);
@@ -120,7 +122,7 @@ it("PGE page rights: refuses overflowing adds, moves, restores, merges and unmer
   refused("project.tool.restored", { toolId: "gone-tool" }, "projectPages.permPageLimit");
   p.pages = pagesOf({ pages: null }, { agent: true });
   refused("project.page.removed", { pageId: "overview" }, "projectPages.permPageOverview");
-  refused("project.page.merged", { mergeId: "m", fromPageId: "overview", intoPageId: "steps" }, "projectPages.permPageOverview");
+  refused("project.page.merged", { mergeId: "m", fromPageId: "overview", intoPageId: "files" }, "projectPages.permPageOverview"); // the Idea page, first of the defaults
   p.pages = [page("last")];
   refused("project.page.removed", { pageId: "last" }, "projectPages.permPageLast");
 });
@@ -176,5 +178,5 @@ it("PGE page rights: kicksJira keeps page and tool changes local while case deci
   const condition = (type: string) => kicksJira(type) || type === "case.decided";
   for (const type of ["project.page.added", "project.tool.edited", "project.form.added", "case.commented"]) expect(condition(type)).toBe(false);
   for (const type of ["project.step.added", "project.request.stepped", "project.sync", "project.milestone.added", "case.decided"]) expect(condition(type)).toBe(true);
-  expect(DEFAULT_PAGES).toHaveLength(9);
+  expect(READY_PAGES).toHaveLength(9);
 });

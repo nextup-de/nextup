@@ -2,7 +2,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { AddPageDialog } from "@/components/projects/page/AddPageDialog";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import { reduce } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
 import { demoJiraView, jiraRowOf } from "@/features/projects/views";
@@ -10,7 +10,7 @@ import { I18nProvider } from "@/i18n/client";
 
 vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({}) }));
 vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ flag: () => false, showToast: vi.fn() }) }));
-const p = { ...reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0], pages: DEFAULT_PAGES };
+const p = { ...reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0], pages: READY_PAGES };
 const props = { p, open: true, onClose: vi.fn(), onCreated: vi.fn() };
 const render = (extra = {}, locale: "en" | "de" = "en") => renderToStaticMarkup(h(I18nProvider, { locale, children: h(AddPageDialog, { ...props, ...extra }) }));
 

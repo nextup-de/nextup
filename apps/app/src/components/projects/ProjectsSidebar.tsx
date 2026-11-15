@@ -19,12 +19,13 @@ import { commentsOn } from "@/features/cases/selectors";
 import { decisionsWaiting } from "@/features/metrics";
 import { PROJECT_TABS, projectTabOf, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import {
-  IDEA_TABS, PAGE_ICONS, PAGE_KINDS, addPage, daysLate, mayEditIdeaPages, movePage, pageList, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage,
+  IDEA_EXTRA_TABS, IDEA_TABS, PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, mayEditIdeaPages, mayReviseIdea, movePage, pageList, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage,
   type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring, type SidebarIdea,
 } from "@/features/projects/sidebar";
-import { visibleProjectsFor } from "@/features/projects/views";
+import { isOpenDraft, visibleProjectsFor } from "@/features/projects/views";
+import { SETUP_PAGE, showsSetup } from "@/features/projects/page-route";
 import { dropIntent, pageRowMenu } from "@/features/projects/page-drag";
-import { DEFAULT_PAGES, LIMITS, PAGE_ICON_KEYS, pagesOf, tabToPage } from "@/features/projects/pages";
+import { hasDefaultTitle, LIMITS, PAGE_ICON_KEYS, pagesOf, tabToPage } from "@/features/projects/pages";
 import type { MessageKey } from "@/i18n";
 import { AddPageDialog } from "./page/AddPageDialog";
 import { MergeDialog } from "./page/MergeDialog";
@@ -197,8 +198,10 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
   const base = href("/projects/" + p.id);
   const pageUrl = (id: string) => base + "?page=" + encodeURIComponent(id);
   const requested = params.get("page") ?? tabToPage(params.get("tab") ?? "");
-  const current = pages.find((page) => page.id === requested)?.id ?? pages[0]?.id;
-  const title = (page: ProjectPage) => DEFAULT_PAGES.some((entry) => entry.id === page.id && entry.title === page.title) ? t(page.title as MessageKey) : page.title;
+  // A draft that has not started lists its setup first and opens on it (plan SET).
+  const setup = isOpenDraft(p);
+  const current = showsSetup(setup, params.get("page")) ? SETUP_PAGE : pages.find((page) => page.id === requested)?.id ?? pages[0]?.id;
+  const title = (page: ProjectPage) => hasDefaultTitle(page) ? t(page.title as MessageKey) : page.title;
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; section?: "rename" | "icons" | "merge" | "removed" } | null>(null);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
@@ -267,6 +270,12 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
         source.drop = { id: source.id, over, intent }; setDrag(source.drop);
       }}
       onPointerUp={finishDrag} onPointerCancel={() => { pointer.current = null; setDrag(null); }}>
+      {setup && <div className={s.pageRow}>
+        <Link href={pageUrl(SETUP_PAGE)} className={s.row} draggable={false} aria-current={current === SETUP_PAGE ? "page" : undefined}>
+          <span className={s.slot}><span className={s.icon}><PageGlyph icon="checklist" /></span></span>
+          <span className={s.label}>{t("projectDraft.progressTitle")}</span>
+        </Link>
+      </div>}
       {pages.map((page) => <div key={page.id} className={s.pageRow} data-page-id={page.id} data-editor={editor || undefined}
         data-drop={drag?.over === page.id ? drag.intent ?? undefined : undefined} data-dragging={drag?.id === page.id || undefined}
         onPointerDown={(event) => {
@@ -315,22 +324,22 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
 }
 
 function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
-  const { href, log, me, role, act, showToast } = useDemo();
+  const { href, log, me, act, showToast } = useDemo();
   const t = useT();
   const params = useSearchParams();
-  const editor = mayEditIdeaPages(c, { userId: me.userId, manager: role === "manager", holdsDesk: holdsRole(me, c.assigneeRoleId) });
+  const editor = mayEditIdeaPages({ userId: me.userId });
   const base = href("/idea?id=" + encodeURIComponent(c.id));
   const stage: IdeaStage = c.status === "discussion" ? "decision" : "lead";
   const counts: Record<string, number | undefined> = { files: raisedWith(c).attachments || undefined, chats: commentsOn(log, c.id).length || undefined };
   return (
-    <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={IDEA_TABS} base={base} pageUrl={(id) => base + "&page=" + id} editor={editor}
+    <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={IDEA_TABS} extraTabs={IDEA_EXTRA_TABS} base={base} pageUrl={(id) => base + "&page=" + id} editor={editor}
       current={params.get("page") ?? "overview"}
       tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
-      tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : <TabIcon k={k} />, count: counts[k] })}
+      tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : k === "overview" ? <PageGlyph icon="star" /> : <TabIcon k={k} />, count: counts[k] })}
       back={t("projects.sbBack")} onBack={onBack}
       head={<Head mark={<StageMark stage={stage} />} title={c.title}
-        // Who raised it double-clicks the title to rename it: it goes out as its next version, as on the page.
-        onRename={c.fromUserId !== null && c.fromUserId === me.userId && !c.decided && !c.withdrawn ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
+        // Whoever may revise it double-clicks the title to rename it: it goes out as its next version, as on the page.
+        onRename={mayReviseIdea(c, me.userId) ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
   );
 }
 
@@ -365,12 +374,13 @@ function Head({ mark, title, status, note = null, onRename }: { mark: React.Reac
   );
 }
 
-type Menu = { kind: "add" } | { kind: "page"; id: string; icons: boolean; sure: boolean };
+type Menu = { kind: "add" } | { kind: "page"; id: string; icons: boolean; sure: boolean } | { kind: "tab"; id: string; sure: boolean };
 type TabInfo = { label: string; icon: React.ReactNode; count?: number };
 
 /** Layer 2's list of pages, for a project or an idea: the standard ones and the added ones, in the dragged order. */
-function PageLayer({ storeId, from, tabs, base, pageUrl, current, tabUrl, tabInfo, editor, head, back, onBack }: {
-  storeId: string; from: string | null; tabs: readonly string[]; base: string; pageUrl: (id: string) => string; current: string;
+function PageLayer({ storeId, from, tabs: baseTabs, extraTabs = [], base, pageUrl, current, tabUrl, tabInfo, editor, head, back, onBack }: {
+  /** `tabs`: the standard pages it always has; `extraTabs`: standard pages its people may add and take away again. */
+  storeId: string; from: string | null; tabs: readonly string[]; extraTabs?: readonly string[]; base: string; pageUrl: (id: string) => string; current: string;
   tabUrl: (key: string) => string; tabInfo: (key: string) => TabInfo; editor: boolean;
   head: React.ReactNode; back: string; onBack: () => void;
 }) {
@@ -378,6 +388,8 @@ function PageLayer({ storeId, from, tabs, base, pageUrl, current, tabUrl, tabInf
   const t = useT();
   const router = useRouter();
   const [pages, setPages] = useProjectPages(tenant.slug, storeId, from);
+  const tabs = shownTabs(pages, baseTabs, extraTabs);
+  const addable = extraTabs.filter((k) => !tabs.includes(k));
   const entries = pageList(pages, tabs);
   const currentKey = pages.pages.some((x) => x.id === current) || tabs.includes(current) ? current : tabs[0];
   const [menu, setMenu] = useState<(Menu & { x: number; y: number }) | null>(null);
@@ -402,6 +414,11 @@ function PageLayer({ storeId, from, tabs, base, pageUrl, current, tabUrl, tabInf
     setMenu(null);
     setRenaming(id);
     router.push(pageUrl(id));
+  };
+  const addStandard = (key: string) => {
+    setPages((st) => addTab(st, key, tabs));
+    setMenu(null);
+    router.push(tabUrl(key));
   };
   const drop = () => {
     if (!drag?.over) return setDrag(null);
@@ -450,9 +467,9 @@ function PageLayer({ storeId, from, tabs, base, pageUrl, current, tabUrl, tabInf
                 <span className={s.label}>{label}</span>
                 {info?.count !== undefined && <span className={s.count}>{info.count}</span>}
               </Link>
-              {editor && custom && (
-                <button type="button" className={s.more} data-open={menu?.kind === "page" && menu.id === k || undefined} aria-label={t("projects.sbMore", { page: label })}
-                  onClick={(ev) => openMenu({ kind: "page", id: k, icons: false, sure: false }, ev.currentTarget)}>
+              {editor && (custom || extraTabs.includes(k)) && (
+                <button type="button" className={s.more} data-open={menu?.kind !== "add" && menu?.id === k || undefined} aria-label={t("projects.sbMore", { page: label })}
+                  onClick={(ev) => openMenu(custom ? { kind: "page", id: k, icons: false, sure: false } : { kind: "tab", id: k, sure: false }, ev.currentTarget)}>
                   <Svg size={14} fill><circle cx="3" cy="7" r="1.1" /><circle cx="7" cy="7" r="1.1" /><circle cx="11" cy="7" r="1.1" /></Svg>
                 </button>
               )}
@@ -483,7 +500,29 @@ function PageLayer({ storeId, from, tabs, base, pageUrl, current, tabUrl, tabInf
                     </span>
                   </button>
                 ))}
+                {addable.map((k) => {
+                  const info = tabInfo(k);
+                  return (
+                    <button key={k} type="button" role="menuitem" className={s.kind} onClick={() => addStandard(k)}>
+                      <span className={s.slot}>{info.icon}</span>
+                      <span className={s.kindText}>
+                        <span className={s.kindName}>{info.label}</span>
+                        <span className={s.kindSub}>{t(("projects.kind_" + k + "Sub") as "projects.kind_chatsSub")}</span>
+                      </span>
+                    </button>
+                  );
+                })}
               </>
+            ) : menu.kind === "tab" ? (
+              <button type="button" role="menuitem" className={s.item} data-danger onClick={() => {
+                if (!menu.sure) return setMenu({ ...menu, sure: true });
+                setPages((st) => removeTab(st, menu.id));
+                setMenu(null);
+                if (currentKey === menu.id) router.push(base);
+              }}>
+                <span className={s.slot}><Svg size={16}><path d="M3 4.6H13M6.4 4.6V3.2H9.6V4.6M4.4 4.6L5 13H11L11.6 4.6" /></Svg></span>
+                {menu.sure ? t("projects.sbHideYes") : t("projects.sbHidePage")}
+              </button>
             ) : (
               <PageMenu m={menu}
                 onRename={() => { setRenaming(menu.id); setMenu(null); }}

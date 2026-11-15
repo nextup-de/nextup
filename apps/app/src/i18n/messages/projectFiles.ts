@@ -5,6 +5,12 @@ import { defineMessages } from "../define";
 export const projectFiles = defineMessages({
   en: {
     title: "Files",
+    ideaNoneTitle: "No files raised with this idea",
+    ideaHint: "These are the files raised with the idea. Once it gets its yes, its project links a SharePoint folder here and the team uploads into it.",
+    ideaColFrom: "Raised with",
+    ideaFolder: "Raised with the idea",
+    ideaFolderSub_one: "{count} file",
+    ideaFolderSub_other: "{count} files",
     pageLabel: "Files of this project",
     sharepoint: "SharePoint",
     synced: "Synced {ago}",
@@ -250,6 +256,12 @@ export const projectFiles = defineMessages({
   },
   de: {
     title: "Dateien",
+    ideaNoneTitle: "Mit dieser Idee wurden keine Dateien eingereicht",
+    ideaHint: "Das sind die Dateien, die mit der Idee eingereicht wurden. Sobald sie ein Ja bekommt, verknüpft ihr Projekt hier einen SharePoint-Ordner und das Team lädt dort hoch.",
+    ideaColFrom: "Eingereicht mit",
+    ideaFolder: "Mit der Idee eingereicht",
+    ideaFolderSub_one: "{count} Datei",
+    ideaFolderSub_other: "{count} Dateien",
     pageLabel: "Dateien dieses Projekts",
     sharepoint: "SharePoint",
     synced: "Synchronisiert {ago}",

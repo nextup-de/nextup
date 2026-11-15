@@ -5,7 +5,7 @@
 // the yes, and switching projects off on the Rules page takes Projects out of the member's nav.
 // Own company, made straight in the database and deleted at the end, like flr.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, projectPages, raiseLine, setupStep, test, vis } from "../helpers";
+import { addPages, answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, passSecondFactor, projectPages, raiseLine, setupStep, test, vis } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
@@ -45,9 +45,9 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
   return page;
 }
 
-/** The project page's Results tab: the measure card and the reward panel are there. */
+/** The project page's Results page (the first to open it adds it): the measure card and the reward panel are there. */
 async function openResults(page: Page) {
-  await page.goto(`/${SLUG}/projects/${projectId}`);
+  await addPages(page, `/${SLUG}/projects/${projectId}`, ["Results"]);
   await (await projectPages(page)).getByRole("link", { name: /^Results/ }).click();
   await expect(page).toHaveURL(/page=results/);
   await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)

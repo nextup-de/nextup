@@ -2,7 +2,7 @@
 // a step that shows on the board, declines a second answer and undoes the decline; the member then sees 'Made into a step' on their requests page.
 // One browser plays every person via the dev panel, on acme's seeded P-2 (D. Ferraro's); the Manager has the lead's rights.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager") {
   await page.getByRole("button", { name: "Dev" }).click();
@@ -19,6 +19,7 @@ const STEP = "Add Line 2 to the pilot";
 test("REQ acceptance: a member answers a form and the lead makes it a step", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
+  await addPages(page, "/acme/projects/pj2", ["Requests", "Steps"]);
   await page.goto("/acme/projects/pj2?page=requests");
 
   await test.step("the lead sees the Requests page with its forms and a way to make a new one", async () => {

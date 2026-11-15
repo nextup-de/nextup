@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import type { ToolKind } from "@/features/projects/types";
 import type { ToolProps } from "./types";
 import dynamic from "next/dynamic";
+import { IdeaTool } from "./IdeaTool";
 import { OverviewTool } from "./OverviewTool";
 import { BoardTool } from "./BoardTool";
 import { ListTool } from "./ListTool";
@@ -22,6 +23,7 @@ import { ActivityTool } from "./ActivityTool";
 const AgentTool = dynamic(() => import("./AgentTool").then((m) => m.AgentTool));
 
 export const TOOL_REGISTRY: Record<ToolKind, (p: ToolProps) => JSX.Element> = {
+  idea: IdeaTool,
   overview: OverviewTool,
   board: BoardTool,
   list: ListTool,

@@ -2,10 +2,10 @@
 // Timeline, adds Milestones and a Doc, merges it into Steps by the keyboard way, undoes the merge, merges it again
 // by dragging, and removes a page and brings it back. Demo mode: one browser plays the people through the dev panel.
 import type { Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { addPages, expect, test } from "../helpers";
 
 const LINE = "Freeze the dates after the depot visit";
-const DEFAULT_PAGES = ["Overview", "Steps", "Plan", "Results", "Files", "Requests", "Team", "Activity"];
+const DEFAULT_PAGES = ["Idea", "Files"];
 
 async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager") {
   await page.getByRole("button", { name: "Dev" }).click();
@@ -30,6 +30,16 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
   await test.step("the sidebar lists the default pages and no tab row is left", async () => {
     for (const title of DEFAULT_PAGES) await expect(pages.getByRole("link", { name: title, exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Project sections" })).toHaveCount(0);
+  });
+
+  await test.step("Add page offers the ready-made pages: Steps and Team are added with one click each", async () => {
+    await addPages(page, "/acme/projects/pj2", ["Steps", "Team"]);
+    expect(await rowTitles()).toEqual(["Idea", "Files", "Steps", "Team"]);
+    await pages.getByRole("button", { name: /Add page/ }).click();
+    const ready = page.getByRole("dialog", { name: "New page" }).getByRole("region", { name: "Ready-made pages" });
+    await expect(ready.getByRole("button", { name: /^Plan/ })).toBeVisible();
+    await expect(ready.getByRole("button", { name: /^Steps/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
   });
 
   await test.step("Add page: Calendar then Timeline, named Dates, opens with the two sections in that order", async () => {

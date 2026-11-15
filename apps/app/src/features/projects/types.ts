@@ -4,7 +4,7 @@
 import type { CaseEvent, SeedEvent } from "@/features/cases/events";
 import type { MeasureImpact, MeasureSource } from "./measure-source";
 
-export type ToolKind = "overview" | "board" | "list" | "calendar" | "timeline" | "milestones" | "results" | "files" | "doc" | "checklist" | "table" | "links" | "requests" | "team" | "activity" | "agent";
+export type ToolKind = "idea" | "overview" | "board" | "list" | "calendar" | "timeline" | "milestones" | "results" | "files" | "doc" | "checklist" | "table" | "links" | "requests" | "team" | "activity" | "agent";
 export type PageIconKey = "home" | "board" | "list" | "calendar" | "timeline" | "flag" | "target" | "folder" | "link" | "inbox" | "people" | "pulse" | "doc" | "checklist" | "table" | "star" | "chat" | "box";
 export type ToolInstance = { id: string; kind: ToolKind; title: string | null; collapsed: boolean; content: string | null; rev: number };
 export type ProjectPage = { id: string; title: string; icon: PageIconKey; tools: ToolInstance[] };

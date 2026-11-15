@@ -6,7 +6,7 @@ import { AddPageDialog } from "@/components/projects/page/AddPageDialog";
 import { MergeDialog } from "@/components/projects/page/MergeDialog";
 import { ToolSection } from "@/components/projects/page/ToolSection";
 import { BrowserPagesImport } from "@/components/projects/page/BrowserPagesImport";
-import { DEFAULT_PAGES } from "@/features/projects/pages";
+import { READY_PAGES } from "@/features/projects/pages";
 import { reduce } from "@/features/cases/reducer";
 import { LOCAL_SEED } from "@/features/demo";
 import { demoJiraView, jiraRowOf } from "@/features/projects/views";
@@ -25,8 +25,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ check: mocks.check }) }));
 vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ tenant: { slug: "acme" }, flag: () => true, showToast: vi.fn(), act: { project: { page: mocks.page } } }) }));
 
-const p = reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0];
-const page = DEFAULT_PAGES[0];
+// A project whose team added the ready-made pages (a new one starts with Idea and Files only).
+const p = { ...reduce(LOCAL_SEED, { events: [], day: 0 }).projects[0], pages: READY_PAGES };
+const page = READY_PAGES[0];
 const jira = jiraRowOf(p, demoJiraView(0), 0, "en");
 const tool = { id: "notes.doc", kind: "doc" as const, title: null, collapsed: false, rev: 0, content: JSON.stringify({ body: "Decision recorded" }) };
 const noop = () => {};
