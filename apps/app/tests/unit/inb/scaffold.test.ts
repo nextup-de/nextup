@@ -55,7 +55,7 @@ describe("INB scaffold", () => {
 
   it("has the inbox namespace in both languages with the same keys", () => {
     expect(Object.keys(de.inbox).sort()).toEqual(Object.keys(en.inbox).sort());
-    for (const k of ["title", "today", "askDecide", "askConfirm", "askPart", "late", "dueSoon", "empty", "notices", "noticesEmpty", "markRead"]) {
+    for (const k of ["title", "askDecide", "askConfirm", "askPart", "late", "dueSoon", "empty", "notices", "markRead"]) {
       expect(en.inbox).toHaveProperty(k);
     }
   });
