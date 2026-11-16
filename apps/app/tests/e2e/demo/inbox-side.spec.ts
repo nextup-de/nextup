@@ -25,7 +25,7 @@ test("the inbox's side view leads from Inbox to Decisions and lists the items to
   const title = (await row.locator("span").nth(1).innerText()).trim();
   await row.click();
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
-  await expect(page.locator('[data-testid="inbox-side-row"][aria-current="true"]')).toHaveText(title);
+  await expect(page.locator('[data-testid="inbox-side-row"][aria-current="true"]')).toContainText(title); // the late dot carries a hidden "Late"
 
   await pages.getByRole("link", { name: "Decisions" }).click();
   await expect(page).toHaveURL(/\/acme\/decisions/);

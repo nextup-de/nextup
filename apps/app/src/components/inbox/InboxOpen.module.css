@@ -14,7 +14,7 @@
 /* The mark: a small circle in the 16px lane, filled for the open item. */
 .mark { flex: none; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
 .mark::before { content: ""; width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--nh-mute-2); }
-.row[aria-current="true"] .mark::before { border-color: var(--nh-ink); background: var(--nh-ink); }
+.row[aria-current="true"] .mark::before { border-color: var(--nh-ink-2); background: var(--nh-ink-2); }
 .label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Late: one dot at the end of the row, in the status colour (DESIGN_RULES §9). */
 .late { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--nh-danger); }
