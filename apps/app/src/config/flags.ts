@@ -74,10 +74,12 @@ export const FLAGS = {
     removeBy: "2027-06-30",
   },
   // components/projects/overview: Paper "Overview · final + interactions" (OVERVIEW-LIST-FOR-KEVIN.txt)
+  // On for every stage since 17 Nov 2026 (Kevin: the list staging shows is the right one, Musterwerk showed the old grouped one).
+  // Next: delete this entry, the `if` in ProjectsHub and the old grouped list.
   overviewList: {
-    description: "The Projects tab as one Overview list: your open ideas and your projects together, list or grid, with pills, search and sort. Off: projects only",
+    description: "The Projects tab as one Overview list of projects, list or grid, with pills and search. Off: the old list grouped by stage",
     owner: "Sam",
-    defaults: { demo: true, sandbox: true, pilot: false, live: false },
+    defaults: { demo: true, sandbox: true, pilot: true, live: true },
     added: "2026-11-16",
     removeBy: "2027-01-31",
   },
