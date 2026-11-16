@@ -43,11 +43,11 @@ export function Milestones({ p, jira }: ToolProps) {
 
   return <section className={styles.milestones} aria-label={tx("label")}>
     <div className={styles.toolbar}>
-      <input className="nh-input" type="search" aria-label={tx("search")} placeholder={tx("search")} value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input className={styles.search} type="search" aria-label={tx("search")} placeholder={tx("search")} value={query} onChange={(e) => setQuery(e.target.value)} />
       <button type="button" className={styles.control} aria-pressed={only === "open"} onClick={() => setOnly(only === "open" ? null : "open")}>{tx("notShipped")}<span className={styles.count}>{openCount}</span></button>
       <button type="button" className={styles.control} aria-pressed={only === "shipped"} onClick={() => setOnly(only === "shipped" ? null : "shipped")}>{tx("shipped")}</button>
       <span className={styles.spacer} />
-      {editor && <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => setCreating(true)}>+ {tx("create")}</button>}
+      {editor && <button type="button" className={styles.create} onClick={() => setCreating(true)}>{tx("create")}</button>}
     </div>
     {cards.length === 0 && <p className={styles.empty}>{tx("empty")}</p>}
     {cards.length > 0 && shown.length === 0 && <p className={styles.empty}>{tx("emptyFilter")}</p>}
@@ -60,6 +60,8 @@ export function Milestones({ p, jira }: ToolProps) {
           <span className={styles.state} data-state={card.state}>{tx(`state${card.state[0].toUpperCase()}${card.state.slice(1)}` as MilestonesKey)}</span>
           {syncing && <VersionChips m={m} />}
           <span className={styles.spacer} />
+          <span className={styles.when}>{m.startDay !== null ? tx("startsShips", { start: f(m.startDay) }) : tx("shipsLead")}</span>
+          <span className={styles.pill}>{f(m.dueDay)}{card.state !== "shipped" && <> · {card.daysLeft >= 0 ? tx("daysLeft", { count: card.daysLeft }) : tx("daysLate", { count: -card.daysLeft })}</>}</span>
           <PersonFace name={p.lead} size="sm" />
           {editor && <span className={styles.menuWrap}>
             <button type="button" className={styles.more} aria-label={tx("menu", { title: m.title })} aria-haspopup="menu" aria-expanded={menu === m.id} onClick={() => setMenu(menu === m.id ? null : m.id)}>⋯</button>
@@ -68,21 +70,17 @@ export function Milestones({ p, jira }: ToolProps) {
             </div>}
           </span>}
         </header>
-        <p className={styles.line}>
-          <span>{m.startDay !== null ? tx("startsShips", { start: f(m.startDay) }) : tx("shipsLead")}</span>
-          <span className={styles.pill}>{f(m.dueDay)}{card.state !== "shipped" && <> · {card.daysLeft >= 0 ? tx("daysLeft", { count: card.daysLeft }) : tx("daysLate", { count: -card.daysLeft })}</>}</span>
-        </p>
         {card.progress.total > 0 ? <>
           <div className={styles.progressRow}>
             <div className={styles.bar} role="img" aria-label={tx("progress", { done, total: card.progress.total })}>
               {card.steps.map((step) => <span key={step.id} data-column={step.column} />)}
             </div>
-            <span className={styles.hint}>{tx("progress", { done, total: card.progress.total })}</span>
+            <span className={styles.progressText}>{tx("progress", { done, total: card.progress.total })}{card.steps.some((s) => s.column === "blocked") && <> · <b>{t("projectPlan.milestonesBlocked", { count: card.steps.filter((s) => s.column === "blocked").length })}</b></>}</span>
           </div>
-          <ul className={styles.steps}>{card.steps.map((step) => <li key={step.id}>
+          <ul className={styles.steps}>{card.steps.map((step) => <li key={step.id} data-column={step.column}>
             <span className={styles.key}>{stepKey(step)}</span>
             <button type="button" className={styles.step} onClick={() => setPanel({ stepId: step.id })}>{step.text}</button>
-            <span className={styles.stepState} data-column={step.column}>{columnLabel(step.column, locale)}</span>
+            <span className={styles.stepState} data-column={step.waitingOn?.name && step.column !== "done" ? "blocked" : step.column}>{step.waitingOn?.name && step.column !== "done" ? `${t("projectSteps.waitingOn")} ${step.waitingOn.name}` : columnLabel(step.column, locale)}</span>
           </li>)}</ul>
         </> : <p className={styles.hint}>{tx("noSteps")}{editor && <> · <button type="button" className={styles.link} aria-expanded={picker === m.id} onClick={() => setPicker(picker === m.id ? null : m.id)}>{tx("addSteps")}</button></>}</p>}
         {picker === m.id && <div className={styles.picker} role="group" aria-label={tx("pickerLabel")}>
@@ -91,9 +89,10 @@ export function Milestones({ p, jira }: ToolProps) {
           <button type="button" className={styles.control} onClick={() => setPicker(null)}>{tx("pickerClose")}</button>
         </div>}
         {card.state !== "shipped" && <p className={styles.estimate} data-risk={(card.estimate.kind === "some" && card.estimate.lateDays > 0) || undefined}>
+          <span className={styles.dot} aria-hidden="true" />
           {card.estimate.kind === "none" ? tx("estimateNone") : card.estimate.lateDays > 0 ? tx("estimateLate", { count: card.estimate.lateDays }) : tx("estimateOnTime")}
           <span className={styles.info} role="img" tabIndex={0} aria-label={`${tx("estimateInfoLabel")}: ${tx("estimateInfo")}`} title={tx("estimateInfo")}>ⓘ</span>
-          {card.ask && <button type="button" className={styles.link} onClick={() => setPanel({ stepId: card.ask!.step.id, draft: askDraft(card.ask!.step, { name: card.ask!.name }, tx("askIntro")).text })}>{tx("ask", { name: card.ask.name })}</button>}
+          {card.ask && <button type="button" className={`${styles.link} ${styles.nudge}`} onClick={() => setPanel({ stepId: card.ask!.step.id, draft: askDraft(card.ask!.step, { name: card.ask!.name }, tx("askIntro")).text })}>{tx("ask", { name: card.ask.name })}</button>}
         </p>}
       </article>;
     })}

@@ -2,6 +2,7 @@ import { defineMessages } from "../define";
 
 export const projectPlan = defineMessages({
   en: {
+    milestonesBlocked: "{count} blocked",
     timelineLateBy: "{count} d late",
     timelineWaitingOn: "waiting on {name}",
     timelineBlockedAfter: "blocked",
@@ -189,6 +190,7 @@ export const projectPlan = defineMessages({
     milestonesEmptyFilter: "No milestones match.",
   },
   de: {
+    milestonesBlocked: "{count} blockiert",
     timelineLateBy: "{count} T überfällig",
     timelineWaitingOn: "wartet auf {name}",
     timelineBlockedAfter: "blockiert",
