@@ -1,6 +1,7 @@
 // What the draft page reads off a project draft (plan SET, D9 to D17): the setup checklist, whether it may start, the
 // start day, and per viewer which actions they may take. Pure: the project, the viewer and the reduced state in,
 // plain facts out. Every right comes from the rules the server checks (./permissions); none is written down twice.
+import { usersOfRole } from "@/features/auth/identity";
 import type { Actor } from "@/features/cases/permissions";
 import type { State } from "@/features/cases/reducer";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n";
@@ -39,6 +40,19 @@ export type DraftView = {
 export function pendingInviteOf(p: ReducedProject, userId: string | null): Invite | null {
   if (userId === null) return null;
   return p.invites.filter((i) => i.userId === userId && i.state === "pending").sort((a, b) => a.day - b.day)[0] ?? null;
+}
+
+/**
+ * Who a baseline that waits for a second person waits for, by user id, so the page can name them (D16; display only - whether
+ * someone may confirm is mayAppendProject's call): the accepted sponsor, else the holders of the route's deputy role, never the lead
+ * or who typed it. Empty when nobody is there: then a manager confirms it.
+ */
+export function baselineWaitsFor(p: ReducedProject, state: Pick<State, "rules" | "routes" | "seats">): string[] {
+  if (!baselineNeedsConfirm(p, state.rules)) return [];
+  const not = new Set([p.leadUserId, p.baseline?.byUserId ?? null]);
+  if (p.sponsorUserId !== null && !not.has(p.sponsorUserId)) return [p.sponsorUserId];
+  const deputyRole = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
+  return deputyRole === null ? [] : [...new Set(usersOfRole(state.seats, deputyRole))].filter((id) => !not.has(id));
 }
 
 /** A draft that has not started and is not closed: what the draft page is for. */
