@@ -5,6 +5,7 @@ import { timePerColumn } from "@/features/projects/flow-view";
 import type { ReducedProject } from "@/features/projects/types";
 import { baselineText, fmtNumber, measureSourceLine } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
+import { PersonFace } from "@/components/ui/elements";
 import { VerdictChip } from "../../parts";
 import { ResultPanel } from "./ResultPanel";
 import styles from "./Results.module.css";
@@ -46,7 +47,7 @@ export function Results({ p }: { p: ReducedProject }) {
           </span>
           {confirmation && <span className={styles.muted}>{confirmation}</span>}
         </span>
-        {next && <span className={styles.owner}><span>{owner || t("projectHub.overviewNoOwner")}</span><span className={styles.muted}>{t("projectHub.resultsCheckAfterDays", { days: next.check })}</span><span className={styles.muted}>{t("projectHub.resultsCheckDue", { date: f(next.dueDay) })}</span></span>}
+        {next && <span className={styles.owner}><span className={styles.who}>{owner && <PersonFace name={owner} size="sm" />}<span>{owner || t("projectHub.overviewNoOwner")}</span></span><span className={styles.muted}>{t("projectHub.resultsCheckAfterDays", { days: next.check })}</span><span className={styles.muted}>{t("projectHub.resultsCheckDue", { date: f(next.dueDay) })}</span></span>}
       </button>
       {times.length > 0 && <section className={styles.card} aria-label={t("projectHub.resultsColumnChartAriaLabel")}>
         <div className={styles.chartHeading}><h2 className={styles.title}>{t("projectHub.resultsColumnTime")}</h2><span className={styles.muted}>{t("projectHub.resultsMedianDays")}</span></div>

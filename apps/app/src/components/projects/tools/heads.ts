@@ -47,6 +47,8 @@ export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProp
   idea: ({ title }) => ({ title }),
   // Paper "Jira pages · new header": the Overview carries the Jira pill too, but no Add step.
   overview: (c) => { const { open: _open, ...head } = jiraHead({ ...c, editor: false }); void _open; return head; },
+  // Paper "Jira pages · new header": Results carries the Jira pill and Open in Jira; it has no Add step.
+  results: (c) => jiraHead({ ...c, editor: false }),
   board: jiraHead,
   list: jiraHead,
   calendar: jiraHead,
