@@ -59,6 +59,9 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
   // Empty parts stay away (Kevin, 16 Nov 2026): a project with no steps yet shows one card that asks for the first step
   // instead of zero tiles, an empty chart and empty lists. Each part shows once it has something to say.
   const noSteps = p.steps.length === 0;
+  const allDone = !noSteps && facts.columns.done > 0 && facts.columns.todo + facts.columns.doing + facts.columns.blocked === 0;
+  const doneDays = p.steps.flatMap((s) => !s.dropped && s.column === "done" && s.doneDay !== null ? [s.doneDay] : []);
+  const lastDoneDay = doneDays.length ? Math.max(...doneDays) : null;
   const tilesShown = shows(facts.tiles.doneInRange) || shows(facts.tiles.waiting) || shows(facts.tiles.late) || shows(facts.tiles.stuck) || facts.tiles.nextDue !== null;
   const stepsPage = pagesOf(p, { agent: flag("agent") }).find((x) => x.tools.some((tool) => tool.kind === "board" || tool.kind === "list")) ?? null;
   const readySteps = ADDABLE_PAGES.find((x) => x.id === "steps") ?? null;
@@ -101,6 +104,10 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
         {rights.addStep && (stepsPage
           ? <Link className="nh-btn nh-btn-primary nh-btn-sm" href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewAddFirstStep")}</Link>
           : readySteps && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={adding} onClick={() => void addStepsPage()}>{t("projectHub.overviewAddStepsPage")}</button>)}
+      </section> : allDone ? <section className={styles.card} data-done="true" aria-label={t("projectHub.overviewAllDone", { count: facts.columns.done })}>
+        {/* Every step is done (Kevin, 16 Nov 2026): one calm card, no full bar and no legend of zeros. */}
+        <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewAllDone", { count: facts.columns.done })}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
+        {lastDoneDay !== null && <p className={styles.muted}>{t("projectHub.overviewLastDone", { date: f(lastDoneDay) })}</p>}
       </section> : <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>

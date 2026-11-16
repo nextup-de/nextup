@@ -18,6 +18,8 @@ export function NextPanel({ p }: { p: ReducedProject }) {
   const locale = useLocale();
   const fmt = useFormat();
   const rows = nextSteps(p.steps);
+  // With steps that are all done there is nothing next, and "add the first one" would be wrong: the panel stays away.
+  if (!rows.length && p.steps.some((s) => !s.dropped)) return null;
 
   return (
     <section className={styles.panel} aria-label={t("projects.nextTitle")}>
