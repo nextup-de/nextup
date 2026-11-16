@@ -12,7 +12,8 @@ import { columnLabel } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
 import styles from "./Projects.module.css";
 
-export function NextPanel({ p }: { p: ReducedProject }) {
+/** `bare`: inside the Overview's Steps line, which has its own title and its one "Open the board" link. */
+export function NextPanel({ p, bare = false }: { p: ReducedProject; bare?: boolean }) {
   const { S, href, f } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -20,13 +21,14 @@ export function NextPanel({ p }: { p: ReducedProject }) {
   const rows = nextSteps(p.steps);
   // With steps that are all done there is nothing next, and "add the first one" would be wrong: the panel stays away.
   if (!rows.length && p.steps.some((s) => !s.dropped)) return null;
+  if (bare && !rows.length) return null;
 
   return (
     <section className={styles.panel} aria-label={t("projects.nextTitle")}>
-      <div className={styles.panelHead}>
+      {bare ? <h3 className={styles.h3}>{t("projects.nextTitle")}</h3> : <div className={styles.panelHead}>
         <h2 className={styles.h2}>{t("projects.nextTitle")}</h2>
         <Link href={href("/projects/" + p.id) + tabQuery("board")} className={styles.link} scroll={false}>{t("projects.nextOpenBoard")}</Link>
-      </div>
+      </div>}
       {!rows.length ? <p className={styles.hint}>{t("projects.nextEmpty")}</p> : (
         <ul className={styles.nextList}>
           {rows.map((s) => {
@@ -40,7 +42,8 @@ export function NextPanel({ p }: { p: ReducedProject }) {
                     {s.text}
                   </span>
                   <span className={styles.nextMeta} data-stuck={isStuck(s, S.day) ? "true" : undefined}>
-                    {s.column === "blocked" && s.why ? s.why : t("projects.nextWaiting", { days: fmt.days(S.day - s.movedDay), column: columnLabel(s.column, locale) })}
+                    {/* No "0 days in To do": a wait shows once it is a day (DESIGN_RULES §2). */}
+                    {s.column === "blocked" && s.why ? s.why : S.day > s.movedDay ? t("projects.nextWaiting", { days: fmt.days(S.day - s.movedDay), column: columnLabel(s.column, locale) }) : ""}
                   </span>
                 </span>
                 <span className={styles.nextOwner}>

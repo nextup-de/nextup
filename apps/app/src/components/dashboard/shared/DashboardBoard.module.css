@@ -1,17 +1,8 @@
 /* The Dashboard (MET D19), shared by the board, the breakdown card and the baseline dialog.
-   Colour carries meaning and stays put: each tile has its own accent, each series, stage and answer its own
-   colour, a worse delta is orange-red and a better one green. The palette sits on .root as --d-* and is built
-   from the tokens in src/styles/tokens.css. State shows as data-* attributes; only data-driven geometry is inline. */
+   Each tile, series, stage and answer keeps one colour, straight from src/styles/tokens.css; a status uses the status
+   tokens only (DESIGN_RULES §9): better --nh-ok, needs you --nh-warn, late or worse --nh-danger. Blue is never a status.
+   State shows as data-* attributes; only data-driven geometry is inline. */
 .root {
-  --d-blue: var(--nh-brand);
-  --d-sky: #4ba3ef;
-  --d-violet: var(--nh-idea);
-  --d-green: var(--nh-bench-feas);
-  --d-orange: var(--nh-bench-impact);
-  --d-amber: #e9a100;
-  --d-teal: #12a1a1;
-  --d-slate: #7b8aa3;
-  --d-base: #dfe3ea;
   display: flex; flex-direction: column; color: var(--nh-ink); font-variant-numeric: tabular-nums;
 }
 .page { width: 100%; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
@@ -32,12 +23,12 @@
 .menuItem:disabled { color: var(--nh-mute-2); cursor: default; }
 
 /* ── tiles: one accent each ── */
-.root [data-accent="firstReasonedAnswer"] { --acc: var(--d-blue); }
-.root [data-accent="onTime"] { --acc: var(--d-green); }
-.root [data-accent="ideaToDecision"] { --acc: var(--d-violet); }
-.root [data-accent="pastPromise"] { --acc: var(--d-orange); }
-.root [data-accent="escalated"] { --acc: var(--d-amber); }
-.root [data-accent="overruled"] { --acc: var(--d-teal); }
+.root [data-accent="firstReasonedAnswer"] { --acc: var(--nh-brand); }
+.root [data-accent="onTime"] { --acc: var(--nh-bench-feas); }
+.root [data-accent="ideaToDecision"] { --acc: var(--nh-idea); }
+.root [data-accent="pastPromise"] { --acc: var(--nh-bench-impact); }
+.root [data-accent="escalated"] { --acc: var(--nh-warn); }
+.root [data-accent="overruled"] { --acc: var(--nh-mute); }
 .root [data-accent="saved"] { --acc: var(--nh-ok); }
 .tiles { --cols: 6; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 16px; }
 .tiles[data-count="5"] { --cols: 5; }
@@ -58,7 +49,7 @@
 .tileUnit { font-size: var(--nh-fs-md); font-weight: 500; letter-spacing: 0; color: var(--nh-mute); }
 .delta { align-self: flex-start; font-size: var(--nh-fs-xs); font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--nh-fill); color: var(--nh-ink-2); }
 .delta[data-tone="better"] { background: var(--nh-ok-tint); color: var(--nh-ok); }
-.delta[data-tone="worse"] { background: color-mix(in srgb, var(--nh-accent) 12%, white); color: #c2410c; }
+.delta[data-tone="worse"] { background: var(--nh-danger-tint); color: var(--nh-danger); }
 
 .tooFew, .tooFewInline { display: inline-block; padding: 8px 12px; border-radius: 10px; background: var(--nh-app-ground); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); }
 .tooFewInline { padding: 4px 10px; }
@@ -79,7 +70,7 @@
 .month { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
 .monthVal { min-height: 1.4em; font-size: var(--nh-fs-sm); font-weight: 600; }
 .monthBar { width: 100%; max-width: 56px; background: var(--acc); border-radius: 10px; transform-origin: bottom; animation: dGrowY 600ms cubic-bezier(.2,.8,.2,1) backwards; }
-.monthBar[data-base="true"] { background: var(--d-base); }
+.monthBar[data-base="true"] { background: var(--nh-progress-open); }
 /* "Saved per year": the calculation, one row per counted result, then the sum. */
 .calc { display: flex; flex-direction: column; }
 .calcRow, .calcSum { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(96px, auto); gap: 4px 16px; align-items: baseline; padding: 10px 0; font-size: var(--nh-fs-md); }
@@ -104,9 +95,9 @@
 .empty { margin: 0; padding: 18px 20px; border-radius: 18px; background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-md); color: var(--nh-ink-2); }
 
 /* ── series colours: raised, answered, on time ── */
-.root [data-series="raised"] { --ser: var(--d-blue); }
-.root [data-series="answered"] { --ser: var(--d-violet); }
-.root [data-series="onTime"] { --ser: var(--d-green); }
+.root [data-series="raised"] { --ser: var(--nh-brand); }
+.root [data-series="answered"] { --ser: var(--nh-idea); }
+.root [data-series="onTime"] { --ser: var(--nh-bench-feas); }
 .legendRow { display: flex; gap: 16px; flex-wrap: wrap; font-size: var(--nh-fs-xs); font-weight: 500; color: var(--nh-ink-2); }
 .legendItem { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--ser); }
@@ -116,17 +107,17 @@
 .gBar { position: relative; flex: 1; max-width: 22px; background: var(--ser); border-radius: 6px 6px 2px 2px; transform-origin: bottom; animation: dGrowY 640ms cubic-bezier(.2,.8,.2,1) backwards; }
 .gBar[data-series="answered"] { animation-delay: 60ms; }
 .gBar[data-series="onTime"] { animation-delay: 120ms; }
-.group[data-base="true"] .gBar { background: color-mix(in srgb, var(--ser) 30%, var(--d-base)); }
+.group[data-base="true"] .gBar { background: color-mix(in srgb, var(--ser) 30%, var(--nh-progress-open)); }
 .gVal { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); font-size: var(--nh-fs-xs); font-weight: 650; color: var(--nh-ink); white-space: nowrap; }
 .step { text-align: center; font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 
 /* ── stages: one colour each ── */
-.root [data-status="open"] { --st: var(--d-sky); }
-.root [data-status="discussion"] { --st: var(--d-blue); }
-.root [data-status="asked"] { --st: var(--d-amber); }
-.root [data-status="decided"] { --st: var(--d-violet); }
-.root [data-status="building"] { --st: var(--d-green); }
-.root [data-status="shipped"] { --st: var(--d-teal); }
+.root [data-status="open"] { --st: var(--nh-progress-doing); }
+.root [data-status="discussion"] { --st: var(--nh-brand); }
+.root [data-status="asked"] { --st: var(--nh-warn); }
+.root [data-status="decided"] { --st: var(--nh-idea); }
+.root [data-status="building"] { --st: var(--nh-bench-feas); }
+.root [data-status="shipped"] { --st: var(--nh-ok); }
 .stageBars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 14px; height: 236px; }
 .stage { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; text-align: center; }
 .stageN { font-size: var(--nh-fs-xl); font-weight: 650; letter-spacing: -0.02em; }
@@ -136,11 +127,11 @@
 .stageDot { width: 8px; height: 8px; border-radius: 50%; background: var(--st); flex: none; }
 
 /* ── answers ── */
-.root [data-answer="yes"] { --an: var(--d-green); }
-.root [data-answer="yesProject"] { --an: var(--d-blue); }
-.root [data-answer="question"] { --an: var(--d-amber); }
-.root [data-answer="handed"] { --an: var(--d-violet); }
-.root [data-answer="no"] { --an: var(--d-slate); }
+.root [data-answer="yes"] { --an: var(--nh-bench-feas); }
+.root [data-answer="yesProject"] { --an: var(--nh-brand); }
+.root [data-answer="question"] { --an: var(--nh-warn); }
+.root [data-answer="handed"] { --an: var(--nh-idea); }
+.root [data-answer="no"] { --an: var(--nh-mute); }
 .stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 3px; }
 .stack > span { background: var(--an); transform-origin: left; animation: dGrowX 600ms cubic-bezier(.2,.8,.2,1) backwards; }
 .answerList { display: flex; flex-direction: column; }
@@ -149,10 +140,9 @@
 .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--an); }
 .payRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-md); }
 .payRow:first-child { border-top: 0; }
-.verdict { flex: none; padding: 3px 10px; border-radius: 999px; font-size: var(--nh-fs-xs); font-weight: 650; background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.verdict { flex: none; padding: 3px 10px; border-radius: 999px; font-size: var(--nh-fs-xs); font-weight: 650; background: var(--nh-fill); color: var(--nh-ink-2); }
 .verdict[data-verdict="better"] { background: var(--nh-ok-tint); color: var(--nh-ok); }
-.verdict[data-verdict="worse"] { background: var(--nh-problem-tint); color: var(--nh-problem); }
-.verdict[data-verdict="same"] { background: var(--nh-fill); color: var(--nh-ink-2); }
+.verdict[data-verdict="worse"] { background: var(--nh-danger-tint); color: var(--nh-danger); }
 
 /* ── by unit and role ── */
 .table { display: flex; flex-direction: column; font-size: var(--nh-fs-sm); }
@@ -177,13 +167,13 @@
 .onTime { display: flex; align-items: center; gap: 8px; }
 .meter { flex: 1; height: 6px; border-radius: 3px; background: var(--nh-fill-2); overflow: hidden; }
 .meterFill { display: block; height: 100%; border-radius: 3px; transform-origin: left; animation: dGrowX 600ms cubic-bezier(.2,.8,.2,1) backwards; }
-.meterFill[data-tone="good"] { background: var(--d-green); }
-.meterFill[data-tone="mid"] { background: var(--d-amber); }
-.meterFill[data-tone="low"] { background: var(--d-orange); }
+.meterFill[data-tone="good"] { background: var(--nh-ok); }
+.meterFill[data-tone="mid"] { background: var(--nh-warn); }
+.meterFill[data-tone="low"] { background: var(--nh-danger); }
 .meterVal { width: 40px; flex: none; text-align: right; }
 .badge { display: inline-block; min-width: 26px; padding: 2px 8px; border-radius: 999px; font-size: var(--nh-fs-xs); font-weight: 650; text-align: center; }
-.badge[data-tone="late"] { background: color-mix(in srgb, var(--d-orange) 13%, white); color: #c2410c; }
-.badge[data-tone="esc"] { background: color-mix(in srgb, var(--d-amber) 16%, white); color: #8a5a00; }
+.badge[data-tone="late"] { background: var(--nh-danger-tint); color: var(--nh-danger); }
+.badge[data-tone="esc"] { background: var(--nh-warn-tint); color: var(--nh-warn); }
 .seg { align-self: flex-start; display: inline-flex; padding: 3px; border-radius: 999px; background: var(--nh-app-ground); }
 .segBtn { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; }
 .segBtn[aria-pressed="true"] { background: var(--nh-card); color: var(--nh-ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }

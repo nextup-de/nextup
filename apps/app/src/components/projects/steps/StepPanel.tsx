@@ -133,7 +133,7 @@ function Panel({ p, step, jira, onClose, draftComment }: Parameters<typeof StepP
             </div>}
           </div>
         </div>
-        <div className={styles.field}><span className={styles.label}>{t("projectSteps.waitingOn")}</span><span>{waitingName || t("projectSteps.waitingNobody")}</span></div>
+        {waitingName && <div className={styles.field}><span className={styles.label}>{t("projectSteps.waitingOn")}</span><span>{waitingName}</span></div>}
       </div>
       {step.column === "blocked" && step.why && <p className={styles.note}>{step.why}</p>}
       {blocked && <MarkBlockedForm p={p} step={step} onDone={() => setBlocked(false)} onCancel={() => setBlocked(false)} />}
