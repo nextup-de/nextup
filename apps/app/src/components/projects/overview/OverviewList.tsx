@@ -101,17 +101,7 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
 
   return (
     <div className={s.root}>
-      <div className={s.head}>
-        <h2 className={s.title}>{t("projects.ovTitle")}</h2>
-        <div className={s.headActions}>
-          <Link className={s.primary} href={href("/raise")} aria-label={t("projects.ovNewIdeaShort")}><span className={s.primaryLong}>{t("projects.ovNewIdea")}</span><span className={s.primaryShort} aria-hidden="true">+</span></Link>
-          <div className={s.views} role="group" aria-label={t("projects.ovViewList") + " / " + t("projects.ovViewGrid")}>
-            <button type="button" className={s.viewBtn} aria-pressed={view === "grid"} aria-label={t("projects.ovViewGrid")} onClick={() => setPrefs({ view: "grid" })}><GridIcon /></button>
-            <button type="button" className={s.viewBtn} aria-pressed={view === "list"} aria-label={t("projects.ovViewList")} onClick={() => setPrefs({ view: "list" })}><ListIcon /></button>
-          </div>
-        </div>
-      </div>
-
+      {/* One row of controls (DESIGN_RULES §1, §9): no heading that repeats the area, and no "New idea" under Projects (§8). */}
       <div className={s.filters}>
         <div className={s.pills} role="tablist" aria-label={t("projects.ovTitle")}>
           {SHOWS.filter((k) => k !== "ideas" && k !== "projects").map((k) => ( // projects only: All and Your move
@@ -126,6 +116,10 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
           <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("projects.ovSearch")} aria-label={t("projects.ovSearch")} />
           {q && <button type="button" className={s.clear} onClick={() => setQ("")} aria-label={t("projects.ovClear")}>×</button>}
         </label>
+        <div className={s.views} role="group" aria-label={t("projects.ovViewList") + " / " + t("projects.ovViewGrid")}>
+          <button type="button" className={s.viewBtn} aria-pressed={view === "grid"} aria-label={t("projects.ovViewGrid")} onClick={() => setPrefs({ view: "grid" })}><GridIcon /></button>
+          <button type="button" className={s.viewBtn} aria-pressed={view === "list"} aria-label={t("projects.ovViewList")} onClick={() => setPrefs({ view: "list" })}><ListIcon /></button>
+        </div>
       </div>
 
       {shown.length === 0 && q ? (
@@ -136,7 +130,6 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
             <SortHead ctx={ctx} k="name" label={t("projects.ovColName")} className={s.cName} />
             <SortHead ctx={ctx} k="stage" label={t("projects.ovColStage")} className={s.cStage} />
             <SortHead ctx={ctx} k="updated" label={t("projects.ovColUpdated")} className={s.cUpdated} />
-            <SortHead ctx={ctx} k="raised" label={t("projects.ovColRaised")} className={s.cRaised} />
             <span role="columnheader" className={s.cDesk}>{t("projects.ovColDesk")}</span>
             <SortHead ctx={ctx} k="needs" label={t("projects.ovColStatus")} className={s.cStatus} />
           </div>
@@ -145,9 +138,6 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
       ) : (
         <div className={s.grid}>
           {shown.map((i) => <Card key={i.id} i={i} ctx={ctx} />)}
-          {show !== "projects" && !q && !person && (
-            <Link className={s.newCard} href={href("/raise")}><span className={s.newPlus} aria-hidden="true">+</span>{t("projects.ovNewIdeaShort")}</Link>
-          )}
         </div>
       )}
 
@@ -181,13 +171,11 @@ function Row({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
         <Thumb i={i} />
         <span className={s.nameText}>
           <Link className={s.rowTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
-          <span className={s.rowSub} data-key={i.key ? "true" : undefined}>{i.key ? i.key + " · " + t("projects.ovProject") : [t("projects.ovIdea"), i.from, i.area].filter(Boolean).join(" · ")}</span>
           <span className={s.phoneMeta}>{phoneMeta(i, t)}</span>
         </span>
       </span>
       <span role="cell" className={s.cStage}><StageCell i={i} t={t} /></span>
       <span role="cell" className={s.cUpdated}>{ctx.ago(i.updatedDay)}</span>
-      <span role="cell" className={s.cRaised}>{ctx.ago(i.raisedDay)}</span>
       <span role="cell" className={s.cDesk}><Desk i={i} ctx={ctx} /></span>
       <span role="cell" className={s.cStatus}>
         <Chip i={i} ctx={ctx} />
@@ -212,7 +200,7 @@ function Card({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
       <span className={s.cardMeta}>
         <span className={s.cardWho}>
           <Face name={i.desk.name} you={i.desk.you} small />
-          <span className={s.cardSub}>{i.key ? i.key + " · " + stageText(i, t) : t("projects.ovIdea") + " · " + stageText(i, t)}</span>
+          <span className={s.cardSub}>{stageText(i, t)}</span>
         </span>
         <Chip i={i} ctx={ctx} />
       </span>
@@ -245,7 +233,7 @@ const stageText = (i: OverviewItem, t: T): string => {
 };
 
 const phoneMeta = (i: OverviewItem, t: T) =>
-  [i.key ?? t("projects.ovIdea"), stageText(i, t), i.desk.you ? t("projects.ovYou") : i.desk.name].filter(Boolean).join(" · ");
+  [stageText(i, t), i.desk.you ? t("projects.ovYou") : i.desk.name].filter(Boolean).join(" · ");
 
 function StageCell({ i, t }: { i: OverviewItem; t: T }) {
   const st = i.stage;
@@ -441,15 +429,12 @@ function SortHead({ ctx, k, label, className }: { ctx: RowCtx; k: SortKey; label
 
 function NoMatch({ q, onClear }: { q: string; onClear: () => void }) {
   const t = useT();
-  const { href } = useDemo();
   return (
     <div className={s.noMatch}>
       <SearchIcon big />
       <b>{t("projects.ovNoMatchTitle", { q })}</b>
-      <p>{t("projects.ovNoMatchSub")}</p>
       <div className={s.noMatchActions}>
         <button type="button" className={s.soft} onClick={onClear}>{t("projects.ovClearSearch")}</button>
-        <Link className={s.primary} href={href("/raise?title=" + encodeURIComponent(q))}>{t("projects.ovRaiseAs", { q })}</Link>
       </div>
     </div>
   );
@@ -457,28 +442,7 @@ function NoMatch({ q, onClear }: { q: string; onClear: () => void }) {
 
 function Empty() {
   const t = useT();
-  const { href } = useDemo();
-  const pic = libraryCoverFor("empty");
-  return (
-    <div className={s.root}>
-      <div className={s.head}>
-        <h2 className={s.title}>{t("projects.ovTitle")}</h2>
-        <Link className={s.primary} href={href("/raise")} aria-label={t("projects.ovNewIdeaShort")}><span className={s.primaryLong}>{t("projects.ovNewIdea")}</span><span className={s.primaryShort} aria-hidden="true">+</span></Link>
-      </div>
-      <div className={s.empty}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- a local picture from public/feed/library */}
-        {pic && <img src={pic.src} alt="" className={s.emptyImg} />}
-        <div className={s.emptyText}>
-          <b>{t("projects.ovEmptyTitle")}</b>
-          <p>{t("projects.ovEmptySub")}</p>
-          <div className={s.noMatchActions}>
-            <Link className={s.primary} href={href("/raise")}>{t("projects.ovEmptyRaise")}</Link>
-            <Link className={s.link} href={href("/feed")}>{t("projects.ovEmptyFeed")}</Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className={s.root}><p className={s.emptyLine}>{t("projects.ovEmptyTitle")}</p></div>;
 }
 
 const SearchIcon = ({ big }: { big?: boolean }) => (

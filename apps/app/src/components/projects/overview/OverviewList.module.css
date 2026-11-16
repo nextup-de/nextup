@@ -55,10 +55,10 @@
 .row:hover .rowTitle { color: var(--link); text-decoration: underline; }
 .cName { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
 .cStage { width: 130px; flex-shrink: 0; }
-.cUpdated, .cRaised { width: 110px; flex-shrink: 0; }
+.cUpdated { width: 110px; flex-shrink: 0; }
 .cDesk { width: 150px; flex-shrink: 0; }
 .cStatus { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: 132px; flex-shrink: 0; }
-.row .cStage, .row .cUpdated, .row .cRaised { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--ink-2); }
+.row .cStage, .row .cUpdated { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--ink-2); }
 .headRow .cStatus { justify-content: flex-end; padding-right: 34px; }
 .sortBtn { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .sortBtn:hover, .sortBtn[data-active="true"] { color: var(--ink); font-weight: 600; }
@@ -169,7 +169,7 @@ button.chip { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .cover { transition: none; } }
 
 /* A laptop: the grid in three, the list keeps every column. */
-@media (max-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .cRaised { display: none; } }
+@media (max-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1080px) { .cUpdated { display: none; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Below 760px (4.3): one meta line under the title, the chip on the right; pills scroll, search full width, + button. */
@@ -196,7 +196,7 @@ button.chip { cursor: pointer; }
   .rowTitle { white-space: normal; }
   .rowSub { display: none; }
   .phoneMeta { display: block; overflow: hidden; color: var(--mute); font-size: var(--nh-fs-xs); line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
-  .cStage, .cUpdated, .cRaised, .cDesk { display: none; }
+  .cStage, .cUpdated, .cDesk { display: none; }
   .cStatus { width: auto; align-self: flex-end; }
   .more { display: none; }
   .empty { flex-direction: column; align-items: stretch; gap: 24px; padding: 20px; }
@@ -204,3 +204,4 @@ button.chip { cursor: pointer; }
   .noMatch { padding: 64px 0; }
   .footer { margin-top: 0; flex-wrap: wrap; }
 }
+.emptyLine { margin: 0; padding: 24px; border-radius: 12px; background: var(--nh-card); box-shadow: var(--nh-card-shadow); color: var(--ink-2); font-size: var(--nh-fs-md); }
