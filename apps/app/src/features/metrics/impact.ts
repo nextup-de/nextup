@@ -1,6 +1,7 @@
 // What confirmed results save (MET D7, LOOP/D20): the one place where the Dashboard's "Saved per year", the pilot
-// report and the KPI report count impact figures, so the three can never disagree. Pure. A project is named by its
-// title and linked by its id; no person is named or counted (D2).
+// report and the KPI report count impact figures. One sum (`verifiedSum`) and one choice of which results a period
+// counts (`countedIn`, two rules until Kevin picks one for all three). Pure. A project is named by its title and linked
+// by its id; no person is named or counted (D2).
 import type { ReducedProject } from "@/features/projects/types";
 import type { KpiProject, Period, Saved, SavedRow } from "./types";
 
@@ -11,8 +12,31 @@ const inPeriod = (d: number | null, p: Period): d is number => d !== null && d >
 /** D7: a result counts for savings, energy, CO2 and outcomes only when a second person confirmed it and its verdict is "better". */
 export const countsAsVerified = (m: ImpactMeasure): boolean => m.verified && m.better;
 
-/** The projects finished in the period: whose results the reports count for that period. */
+/** The projects finished in the period. */
 export const finishedIn = (projects: readonly KpiProject[], period: Period): KpiProject[] => projects.filter((p) => inPeriod(p.doneDay, period));
+
+/**
+ * Which results a period counts, each project with only those results left:
+ * - "finished": every check of the projects finished in the period (the pilot and the KPI report, as they always counted);
+ * - "latest": per project only its latest check confirmed by the end of the period (a 90-day check replaces the 30-day
+ *   figure), counted in the period it was confirmed (the Dashboard).
+ * They differ in two cases: a project whose 30- and 90-day checks both carry a figure ("finished" adds both), and a result
+ * confirmed outside the period its project finished in. Kevin decides whether all three share one (asked 16 Nov); his
+ * answer is a change of DASHBOARD_RULE or REPORT_RULE below.
+ */
+export type CountRule = "finished" | "latest";
+export const DASHBOARD_RULE: CountRule = "latest";
+export const REPORT_RULE: CountRule = "finished";
+
+export function countedIn(projects: readonly KpiProject[], period: Period, rule: CountRule): KpiProject[] {
+  if (rule === "finished") return finishedIn(projects, period);
+  return projects.flatMap((p) => {
+    const confirmed = p.measures.filter((m) => m.verified && m.confirmedDay != null && m.confirmedDay <= period.to);
+    if (confirmed.length === 0) return [];
+    const latest = confirmed.reduce((a, b) => ((b.check ?? 0) > (a.check ?? 0) ? b : a));
+    return inPeriod(latest.confirmedDay ?? null, period) ? [{ ...p, measures: [latest] }] : [];
+  });
+}
 
 /** The verified sum of one figure over these projects; null when there is no project to count, 0 when none of them saved anything. */
 export function verifiedSum(projects: readonly KpiProject[], pick: (m: ImpactMeasure) => number | null | undefined): number | null {
@@ -44,18 +68,14 @@ export function kpiProjectsOf(projects: readonly ReducedProject[], raiserUnitOf:
 }
 
 /**
- * "Saved per year" on the Dashboard: the results confirmed in the period (in the unit scope, when one is chosen), each a
- * figure per year, summed by `verifiedSum` with the pilot report's rule (D7: confirmed by a second person, verdict better).
- * The period picks results by the day they were confirmed, the pilot report picks projects by the day they finished; over
- * a period that holds both, the two sums are the same. One row per counted result with a euro figure; CO2, energy and
- * scrap as totals. A "better" result nobody has confirmed yet is never in the sum: it is reported apart, as
- * `unconfirmedEur`, whatever its period. Null when no confirmed result saved a euro.
+ * "Saved per year" on the Dashboard: the results DASHBOARD_RULE counts in the period (in the unit scope, when one is
+ * chosen), each a figure per year, summed by `verifiedSum` (D7: confirmed by a second person, verdict better). One row
+ * per counted result with a euro figure; CO2, energy and scrap as totals. A "better" result nobody has confirmed yet is
+ * never in the sum: it is reported apart, as `unconfirmedEur`, whatever its period. Null when no confirmed result saved a euro.
  */
 export function savedPerYear(projects: readonly KpiProject[], period: Period, inScope: ((unitId: string | null) => boolean) | null): Saved | null {
   const scoped = projects.filter((p) => inScope === null || inScope(p.raiserUnitId));
-  const confirmed = scoped
-    .map((p) => ({ ...p, measures: p.measures.filter((m) => inPeriod(m.confirmedDay ?? null, period)) }))
-    .filter((p) => p.measures.length > 0);
+  const confirmed = countedIn(scoped, period, DASHBOARD_RULE);
   const eur = verifiedSum(confirmed, (m) => m.eur) ?? 0;
   if (eur <= 0) return null;
   const rows = confirmed.flatMap((p) => p.measures.filter((m) => countsAsVerified(m) && (m.eur ?? 0) > 0)

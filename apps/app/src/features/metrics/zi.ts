@@ -1,7 +1,7 @@
 // The ZI report (MET D13): per unit and for the company, for a period. Pure; counts only, never per person (D2).
 // Ideas drive participation, ideas per 100 and the decision median. Implementation is read from the projects
 // decided in the period; verified outcomes and premiums from the projects finished in the period.
-import { verifiedSum } from "./impact";
+import { countedIn, REPORT_RULE, verifiedSum } from "./impact";
 import { median } from "./index";
 import { MIN_GROUP, type KpiProject, type LedgerCase, type MetricsOrg, type MetricsUnit, type Period, type ZiRow } from "./types";
 
@@ -72,8 +72,9 @@ export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org
     const days = decided.filter((c) => inScope(c.raiserUnitId)).map((c) => c.decidedDay! - c.raisedDay);
     const decidedHere = decidedProjects.filter((p) => inScope(p.raiserUnitId));
     const finished = finishedProjects.filter((p) => inScope(p.raiserUnitId));
-    // Impact figures (D7): the sum in features/metrics/impact.ts, the same one the pilot report and the Dashboard use.
-    const sum = (pick: (m: KpiProject["measures"][number]) => number | null) => verifiedSum(finished, pick);
+    // Impact figures (D7): the sum and the rule in features/metrics/impact.ts, the same ones the pilot report uses.
+    const counted = countedIn(projects.filter((p) => inScope(p.raiserUnitId)), period, REPORT_RULE);
+    const sum = (pick: (m: KpiProject["measures"][number]) => number | null) => verifiedSum(counted, pick);
     return {
       raisers,
       row: {

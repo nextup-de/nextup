@@ -70,7 +70,7 @@ export const metrics = defineMessages({
     bucketAgo_other: "{count} mo ago",
 
     savedTitle: "Saved per year",
-    savedNote: "Results a second person confirmed in this period, each a figure per year.",
+    savedNote: "Each project's latest result that a second person confirmed in this period, as a figure per year.",
     savedCalc: "How the sum is made",
     savedCheck: "{check}-day check",
     savedSum: "Sum",
@@ -222,7 +222,7 @@ export const metrics = defineMessages({
     bucketAgo_other: "vor {count} Mon.",
 
     savedTitle: "Eingespart pro Jahr",
-    savedNote: "Ergebnisse, die eine zweite Person in diesem Zeitraum bestätigt hat, jeweils als Wert pro Jahr.",
+    savedNote: "Je Projekt das letzte Ergebnis, das eine zweite Person in diesem Zeitraum bestätigt hat, als Wert pro Jahr.",
     savedCalc: "So entsteht die Summe",
     savedCheck: "{check}-Tage-Prüfung",
     savedSum: "Summe",

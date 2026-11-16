@@ -1,7 +1,7 @@
 // "Saved per year" on the Dashboard (features/metrics/impact.ts): the sum of the confirmed, better results, one row each,
 // the same number the pilot report counts; a typed but unconfirmed figure is never in the sum.
 import { describe, expect, it } from "vitest";
-import { savedPerYear } from "@/features/metrics/impact";
+import { countedIn, DASHBOARD_RULE, REPORT_RULE, savedPerYear } from "@/features/metrics/impact";
 import { pilotMetrics } from "@/features/metrics/pilot";
 import type { KpiProject, LedgerInput } from "@/features/metrics/types";
 
@@ -71,5 +71,38 @@ describe("Saved per year", () => {
       project("c", { doneDay: 150, measures: [m({ eur: 999, confirmedDay: 160 })] }),
     ];
     expect(savedPerYear(projects, period, null)!.eur).toBe(pilotSavings(projects));
+  });
+
+  it("takes per project only its latest confirmed check: a 90-day figure replaces the 30-day one, a worse 90-day check counts nothing", () => {
+    const both = project("a", { doneDay: 10, measures: [m({ eur: 10000, check: 30, confirmedDay: 40 }), m({ eur: 12000, check: 90, confirmedDay: 95 })] });
+    expect(savedPerYear([both], period, null)!.rows).toEqual([{ projectId: "a", title: "Project a", check: 90, eur: 12000 }]);
+    // Seen from a period that ended before the 90-day confirmation, the 30-day figure is the latest.
+    expect(savedPerYear([both], { from: 0, to: 60 }, null)!.eur).toBe(10000);
+    const worse = project("b", { measures: [m({ eur: 10000, check: 30, confirmedDay: 40 }), m({ eur: 0, check: 90, better: false, confirmedDay: 95 })] });
+    expect(savedPerYear([worse], period, null)).toBeNull();
+  });
+});
+
+// Until Kevin picks one rule for all three (asked 16 Nov), the Dashboard and the two reports count differently in
+// exactly two cases. These tests pin both rules so the difference stays visible; his answer changes one constant.
+describe("the two counting rules", () => {
+  it("are the Dashboard's and the reports'", () => {
+    expect(DASHBOARD_RULE).toBe("latest");
+    expect(REPORT_RULE).toBe("finished");
+  });
+
+  it("differ when the 30- and the 90-day check both carry a yearly saving: the reports add both", () => {
+    const both = project("a", { doneDay: 10, measures: [m({ eur: 10000, check: 30, confirmedDay: 40 }), m({ eur: 12000, check: 90, confirmedDay: 95 })] });
+    expect(savedPerYear([both], period, null)!.eur).toBe(12000);
+    expect(pilotSavings([both])).toBe(22000);
+    expect(countedIn([both], period, "finished")[0].measures).toHaveLength(2);
+    expect(countedIn([both], period, "latest")[0].measures).toHaveLength(1);
+  });
+
+  it("differ when a result is confirmed outside the period its project finished in", () => {
+    const before = project("before", { doneDay: -20, measures: [m({ eur: 8000, confirmedDay: 30 })] }); // finished before, confirmed in
+    const after = project("after", { doneDay: 50, measures: [m({ eur: 5000, confirmedDay: 150 })] }); // finished in, confirmed after
+    expect(savedPerYear([before, after], period, null)!.eur).toBe(8000);
+    expect(pilotSavings([before, after])).toBe(5000);
   });
 });
