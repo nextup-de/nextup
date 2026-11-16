@@ -71,6 +71,7 @@ import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
 import { track } from "@/lib/test-analytics";
 import { ideaPath } from "@/features/ideas/page-path";
+import { sectionTabsFor } from "@/config/nav";
 
 // Runs `run` after every render: how handlers made after the page's early return reach a ref.
 function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
@@ -396,6 +397,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const go = (v: View) => nav({ view: v });
   // Leaving a draft the start form made: remember which slot holds its choices, for when it is reopened.
   const leave = () => { if (draft && slot !== draft.id) setAliases((a) => ({ ...a, [draft.id]: slot })); setSb((x) => (x === "open" ? "auto" : x)); };
+  // The Ideas area's pages at the top of this side view: this page and Mine (config/nav.ts; managers raise nothing and get none).
+  const ideaPages = sectionTabsFor("ideas", { role, serverMode }).map((page) => ({ key: page.key, label: t(page.labelKey), href: href(page.href), current: page.key === "raise" }));
   const newIdea = () => {
     leave(); toStart();
     if (urlIdea) nav({ idea: null });
@@ -855,7 +858,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     <div className={s.root} data-sb={sb} data-raise-root="">
       <Sync run={syncScript} />
       <div className={s.sbShell}>
-        <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
+        <RaiseSidebar pages={ideaPages} query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
           onPick={(id) => { if (isSampleId(id)) router.push(href(ideaPath(id))); else openDraft(id); }} onPin={preview.togglePin} onNew={newIdea} />
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />

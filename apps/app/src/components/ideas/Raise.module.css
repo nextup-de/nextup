@@ -30,6 +30,14 @@
   .root[data-sb="hidden"] .showSb { display: block; }
 }
 .sbTop { flex: none; display: flex; align-items: center; gap: 6px; padding: 12px 10px 4px; }
+/* The Ideas area's pages (New idea, Mine) at the top of the side view, as every area has them; a phone has the strip instead. */
+.pageRows { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 8px; }
+.pageRow { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; box-sizing: border-box; width: 100%; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); line-height: 18px; text-align: left; text-decoration: none; cursor: pointer; transition: background 160ms ease; }
+.pageRow:hover { background: var(--nh-fill); }
+.pageRow[aria-current="page"] { background: var(--nh-fill-2); font-weight: 600; }
+.pageSlot { flex: none; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: var(--nh-ink-2); }
+.pageRow[aria-current="page"] .pageSlot { color: var(--nh-ink); }
+@media (max-width: 760px) { .pageRows { display: none; } }
 .search { flex: 1; min-width: 0; box-sizing: border-box; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-xs, 999px); }
 .search svg { flex-shrink: 0; }
 .searchInput { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); }

@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, hasSideView, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
+import { adminMenuLinks, bringsOwnSideView, hasSideView, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
 import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
 import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
@@ -38,7 +38,9 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
   const inProjects = projectsArea !== null || projectId !== null || onIdea;
   // Any other area with several pages lists them in its own side view (AreaFrame); the strip then shows on a phone only.
-  const sideArea = area && !inProjects && hasSideView(area.section) ? area : null;
+  // A page that brings its own side view (the raise page) is not wrapped in a second one; its strip is still a phone's alone.
+  const ownSide = area !== null && !inProjects && hasSideView(area.section) && bringsOwnSideView(pathname.slice(tenant.prefix.length));
+  const sideArea = area && !inProjects && hasSideView(area.section) && !ownSide ? area : null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -137,7 +139,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </header>
-      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} side={sideArea !== null} />}
+      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} side={sideArea !== null || ownSide} />}
 
       <main className={styles.content}>
         <div className={styles.contentInner}>

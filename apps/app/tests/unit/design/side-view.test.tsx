@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { AreaFrame, AreaSideSlot } from "@/components/shell/AreaFrame";
 import { SectionTabs } from "@/components/shell/SectionTabs";
-import { hasSideView, SECTION_TABS, SIDE_VIEW_SECTIONS, type SectionKey } from "@/config/nav";
+import { bringsOwnSideView, hasSideView, SECTION_TABS, SIDE_VIEW_SECTIONS, type SectionKey } from "@/config/nav";
 import { I18nProvider } from "@/i18n/client";
 import { read } from "./guard";
 
@@ -19,6 +19,10 @@ describe("DESIGN side view", () => {
     for (const section of SIDE_VIEW_SECTIONS) expect(SECTION_TABS[section].length).toBeGreaterThan(1);
     expect(hasSideView("dashboard")).toBe(true);
     expect(hasSideView("profile")).toBe(true);
+    expect(hasSideView("ideas")).toBe(true);
+    // The raise page's own sidebar is the Ideas side view (its pages at the top): the shell wraps it in no second one; Mine sits in AreaFrame.
+    expect(bringsOwnSideView("/raise")).toBe(true);
+    expect(bringsOwnSideView("/ideas")).toBe(false);
     expect(hasSideView("projects")).toBe(false); // components/projects/ProjectsFrame.tsx
   });
 
