@@ -24,8 +24,8 @@
 }
 /* Opening: the column grows from the edge (the page slides over to make room) while the panel slides in from the
    right; closing runs the same the other way before the tab comes back. */
-.col[data-closing="true"] { animation: colOut 300ms cubic-bezier(.4,0,.6,1) both; }
-.col[data-closing="true"] .panel { animation: panelOut 300ms cubic-bezier(.4,0,.6,1) both; }
+.col[data-closing="true"] { animation: colOut 340ms cubic-bezier(.4,0,.2,1) both; }
+.col[data-closing="true"] .panel { animation: panelOut 340ms cubic-bezier(.4,0,.2,1) both; }
 @keyframes colIn { from { width: 0; } }
 @keyframes colOut { to { width: 0; } }
 @keyframes panelIn { from { transform: translateX(48px); opacity: 0; } }
@@ -86,7 +86,7 @@
 }
 .send:disabled { background: #a1a1a6; cursor: default; }
 /* Not built yet: the box's content is blurred under a "Coming soon" label. */
-.composer > .input, .composer > .tools { filter: blur(5px); user-select: none; pointer-events: none; }
+.composer > .input, .composer > .tools { filter: blur(3px); user-select: none; pointer-events: none; }
 .soon {
   position: absolute; inset: 0; z-index: 1; border-radius: 11px;
   display: flex; align-items: center; justify-content: center;
@@ -103,5 +103,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .tab, .act { transition: none; }
-  .col, .panel, .col[data-closing="true"], .col[data-closing="true"] .panel { animation: none; }
+  .col, .panel, .col[data-closing="true"], .col[data-closing="true"] .panel { animation-duration: 1ms; }
 }

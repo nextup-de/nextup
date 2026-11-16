@@ -13,12 +13,23 @@ export function ProjectAi({ open, setOpen }: { open: boolean; setOpen: (open: bo
   const timer = useRef<number | null>(null);
   useEffect(() => () => { if (timer.current !== null) window.clearTimeout(timer.current); }, []);
   if (!open) return <ProjectAiTab onOpen={() => setOpen(true)} />;
+  const done = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    setClosing(false);
+    setOpen(false);
+  };
   const close = () => {
     if (closing) return;
     setClosing(true);
-    timer.current = window.setTimeout(() => { setClosing(false); setOpen(false); }, 300);
+    // The tab comes back when the column has finished closing; the timer covers reduced motion (no animation).
+    timer.current = window.setTimeout(done, 600);
   };
-  return <div className={s.col} data-closing={closing}><ProjectAiPanel onClose={close} /></div>;
+  return (
+    <div className={s.col} data-closing={closing} onAnimationEnd={(e) => { if (closing && /Out/.test(e.animationName)) done(); }}>
+      <ProjectAiPanel onClose={close} />
+    </div>
+  );
 }
 
 /** The closed tab. */
