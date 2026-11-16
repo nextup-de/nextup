@@ -1,6 +1,6 @@
 # Route map
 
-> **Updated 2026-11-06** · reference: every URL and its file.
+> **Updated 2026-11-16** · reference: every URL and its file.
 
 | URL | File (`src/app/`) | Session | Role | Purpose |
 |---|---|---|---|---|
@@ -27,7 +27,8 @@
 | `/[company]/projects/collaboration` | `.../(app)/projects/collaboration/page.tsx` | yes | any | Tab of Projects. Initiatives; with the `projects` flag, the projects. `/collaboration` redirects here |
 | `/[company]/projects/progress` | `.../(app)/projects/progress/page.tsx` | yes | any | Tab of Projects (`/progress` redirects here). Movement since baseline; with the `projects` flag, each measured project's before → after and the Wait ledger after the yes |
 | `/[company]/projects` | `.../(app)/projects/page.tsx` | yes | any | Projects by state (Planning, Running, Measuring, Measured and recognised, Stopped), on one page side by side with "Ideas" (the `/overview` table), about 80% of the screen wide; `/overview` shows the same page. Below 1100px the two stack. Members see their own ideas' and the ones they are on. `projects` flag (docs/plans/2026-10-15_idea-to-project.md) |
-| `/[company]/projects/[projectId]` | `.../(app)/projects/[projectId]/page.tsx` | yes | any | One project: board (drag a card to move it), the idea it came from with versions, discussion and archive line, files and sources, team, baseline, measure checks, reward, links, comments, timeline. `projects` flag |
+| `/[company]/projects/[projectId]` | `.../(app)/projects/[projectId]/page.tsx` | yes | any | One idea or project. With the `projectPages` flag: its pages of tools, `?page=<pageId>` picks one (`?page=setup` for a draft; an old `?tab=` is mapped by `tabToPage`), the sidebar lists them (docs/PROJECTS.md). Without the flag, the tab view: board (drag a card to move it), the idea it came from with versions, discussion and archive line, files and sources, team, baseline, measure checks, reward, links, comments, timeline. `projects` flag |
+| `/[company]/forms/[formId]` | `.../(app)/forms/[formId]/page.tsx` | yes | any | A form a project shared, answered by anyone signed in at the company while it is shared (`form.answered`; plan REQ, docs/PROJECTS.md). `projectPages` flag |
 | `/[company]/cases/[caseId]` | `.../(app)/cases/[caseId]/page.tsx` | yes | any | Case detail |
 | `/[company]/settings/*` | `.../(app)/settings/{company,members,routing}/page.tsx` | yes | manager | Company admin |
 | `/[company]/setup/*` | `.../setup/{company,units,roles,routes,members,done,open}/page.tsx` | yes | manager | The setup process: own frame, one page per step, outside the app shell. `/setup/open` holds the go-live checks and "Open NextUp"; `/settings/setup` redirects to `/setup` (docs/SETTINGS.md) |

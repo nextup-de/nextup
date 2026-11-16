@@ -103,7 +103,9 @@ anonymous raise does not become attributable. Bug reports keep their reporter id
 **Limit:** pseudonymising does not scrub arbitrary authored text. A comment, a case title or a body that contains
 the person's name, or another person's comment that mentions them ("Thanks Lena Brandt"), keeps that text. NextUp
 does not search or rewrite free text. Copies outside NextUp (mails sent, Jira, Teams, earlier exports) are not
-changed. Do not read this as erasure of every mention.
+changed. Since 15 Nov a synced project's milestone titles and notes are copied to Jira as versions too. A project's
+Jira attachments are never copied into NextUp: they are read as links with the company's integration account and
+kept in memory for 60 seconds at most (docs/INTEGRATIONS.md, "Versions and attachments"). Do not read this as erasure of every mention.
 
 ## Retention
 

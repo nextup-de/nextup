@@ -288,7 +288,8 @@ decision", `CompanyConfig` → `Seed.loop`, `features/loop/rules.ts`).
   archives it with its reason.
 - **The project** (`/projects/[id]`, `components/projects`, `features/projects`): a board (To do,
   Doing, Blocked, Done), the team, links (http(s) only; Jira keys from the connector), comments and
-  the timeline. The baseline comes before the start - or "no number possible" with a why. Steps and
+  the timeline. With the `projectPages` flag these are tools on pages the team arranges, starting with Idea
+  and Files (docs/PROJECTS.md). The baseline comes before the start - or "no number possible" with a why. Steps and
   the metric are suggested from the brief's own lines, and by the brain (`/v1/plan`) where there is
   one. A project not started within the promise goes to the deputy; so does a late measure.
 - **Measure** at done + 30 and + 90 days (`measureDays`): the verdict - better, same within the

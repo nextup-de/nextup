@@ -21,7 +21,8 @@ One file per adapter: `apps/app/src/server/connectors/<id>.ts`, exporting a fact
   returns `[]` on any failure.
 - `jira.ts`: `jiraWorkTracker(api, settings, account)` sits over the `JiraApi` client (`server/jira/cloud.ts` or
   `dc.ts`, picked by `jiraApiFor` in `flavors.ts`), so Cloud and Data Center are one adapter with two ids
-  (`jira-cloud`, `jira-dc`). Reuse the pure helpers of the existing feature code; do not change them.
+  (`jira-cloud`, `jira-dc`). The sync engine itself (issues, versions and fix versions, attachments) still calls
+  `JiraApi` directly, not through the adapter (docs/INTEGRATIONS.md, "Jira in the app"). Reuse the pure helpers of the existing feature code; do not change them.
 
 The adapter holds no company-specific logic and is not a `"use server"` module: whoever calls it passes the viewer.
 

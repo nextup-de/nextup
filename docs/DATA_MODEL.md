@@ -1,6 +1,6 @@
 # Data model
 
-> **Updated 2026-11-06** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
+> **Updated 2026-11-16** · reference. The source of truth is `apps/app/prisma/schema/` (one file per area, see `adr/0007-areas.md`); the "Today (Phase 1)" paragraph below is from 15 Sep and out of date.
 
 Phase additions after REG: see [docs/process/](process/README.md). The event types are declared per area in `apps/app/src/features/cases/events/` (`case`, `project`, `agent`, `approval`, `overload`).
 
@@ -86,6 +86,14 @@ After the routing (docs/plans/2026-10-15_idea-to-project.md, 15 Oct 2026), in th
   `lead`, `invite` and `draft`, with `userId`, `inviteId`, `askId` and `lapse` so each cycle of an ask or an
   invitation has its own idempotency key. The company rule `project_start_days` (`{days}`, 1 to 60, default
   10) is the working days a draft has to start.
+- **Project pages** (plan PAGES, 13–16 Nov, `projectPages` flag; docs/PROJECTS.md): `project.page.*` (added,
+  edited, moved, removed, restored, merged, unmerged) and `project.tool.*` (added, moved, edited with `baseRev`,
+  removed, restored); `project.step.checklist`, `project.step.commented`; `project.step.edited` gains `startDay`
+  and `milestoneId`, and a move to Blocked takes `why` and `waitingOn`. Milestones are `project.milestone.added` /
+  `.edited` (`{id, title, startDay?, dueDay, note, shipped}`, plus `external` and `sync` from the Jira sync only;
+  `SYNC_ONLY_EVENT_TYPES`). Forms and requests: `project.form.saved`, `project.form.answered`,
+  `project.request.stepped`, `.declined`, `.reopened`. Still no table: `reduce.ts` gives `ReducedProject.pages`,
+  `removed`, `merges`, `milestones`, `forms`, `requests`, and `milestoneTombstones` for removed Jira versions.
 
 Pages render `reduceCases(seed, events)` from `features/cases/reducer.ts`. Rule carried over from the demo:
 **never store display text as state.** Store who / which day / which route; build the sentence at
