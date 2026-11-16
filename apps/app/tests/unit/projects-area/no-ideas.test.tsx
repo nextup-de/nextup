@@ -46,7 +46,7 @@ describe.each(["member", "leader", "manager"] as const)("Projects as %s", (role)
     ["the Overview", () => h(ProjectsHub, { tab: "projects" })],
     ["Progress", () => h(ProgressView)],
     ["Collaboration", () => h(Collaboration)],
-    ["the sidebar", () => h(ProjectsSidebar, { area: "overview", projectId: null, caseId: null, onHide: vi.fn() })],
+    ["the sidebar", () => h(ProjectsSidebar, { area: "overview", projectId: null, onHide: vi.fn() })],
   ])("%s draws no idea", (_name, node) => {
     expect(ideaTitles.length).toBeGreaterThan(0);
     const html = render(node());

@@ -55,7 +55,7 @@ it("Project sidebar filters Agent tools wherever moved and hides changing contro
 });
 
 it("Project sidebar switches only flagged project layers to the event-backed pages", () => {
-  const node = h(ProjectsSidebar, { area: null, projectId: project.id, caseId: null, onHide: vi.fn() });
+  const node = h(ProjectsSidebar, { area: null, projectId: project.id, onHide: vi.fn() });
   expect(render(node)).toContain('aria-label="Project pages"');
   mocks.enabled = false;
   const old = render(node);

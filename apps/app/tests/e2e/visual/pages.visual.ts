@@ -55,7 +55,7 @@ test("team leader: the inbox with an item open", async ({ page }, info) => {
   await page.getByRole("region", { name: "Fresh ideas" }).getByRole("button", { name: /^Rework on the 4-series housing/ }).click();
   await expect(page.getByRole("heading", { name: /Rework on the 4-series housing/, level: 1 })).toBeVisible();
   if (info.project.name !== "phone") {
-    // The items to decide are in the inbox's side view, which starts hidden; screenshot it open, as people use it.
+    // The walk through the inbox is in its side view, open at the start; if a stored choice hid it, show it, as people use it.
     const show = page.getByRole("button", { name: "Show sidebar" });
     if (await show.isVisible()) await show.click();
     await expect(page.getByTestId("inbox-side-row").first()).toBeVisible();
