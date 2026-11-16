@@ -44,7 +44,7 @@ export const inbox = defineMessages({
     more: "More",
   },
   de: {
-    title: "Eingang",
+    title: "Posteingang",
     askDecide: "Entscheiden",
     askConfirm: "Bestätigen",
     askPart: "Meinen Teil tun",

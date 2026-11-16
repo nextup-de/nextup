@@ -123,10 +123,10 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     if (r.ok) { setReadIds((s) => new Set(s).add(id)); router.refresh(); } else setFailed(true);
   });
 
-  // Who raised each item to decide, for its avatar on the rail: the idea's proposer ("C. Ilg, Ops") or the case's raiser.
+  // Who raised each item to decide, the fact its row shows: the idea's proposer ("C. Ilg, Ops") or the case's raiser.
   const ideaBy = new Map(inboxIdeas(ctx).map((x) => [x.id, x.proposedBy.split(", ")[0]]));
   const whoOf = (i: InboxItem) => { const id = openId(i); return ideaBy.get(id) ?? S.cases.find((c) => c.id === id)?.from ?? ""; };
-  const rail: RailItem[] = decide.map((i) => ({ id: openId(i), title: i.title, who: whoOf(i), late: i.late, dueSoon: i.dueSoon }));
+  const rail: RailItem[] = decide.map((i) => ({ id: openId(i), title: i.title, late: i.late }));
 
   // One fact per row (DESIGN_RULES §9): why it is back on the list, else who raised what is to decide here, else what is asked.
   const factOf = (i: InboxItem): string => {

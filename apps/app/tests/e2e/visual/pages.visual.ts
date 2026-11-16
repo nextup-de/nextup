@@ -55,10 +55,10 @@ test("team leader: the inbox with an item open", async ({ page }, info) => {
   await page.getByRole("region", { name: "Fresh ideas" }).getByRole("button", { name: /^Rework on the 4-series housing/ }).click();
   await expect(page.getByRole("heading", { name: /Rework on the 4-series housing/, level: 1 })).toBeVisible();
   if (info.project.name !== "phone") {
-    // The list starts folded to avatars on some sizes; screenshot it open, as people use it.
-    const expand = page.getByRole("button", { name: "Show inbox" });
-    if (await expand.isVisible()) await expand.click();
-    await expect(page.getByRole("button", { name: "Tuck inbox away" })).toBeVisible();
+    // The items to decide are in the inbox's side view, which starts hidden; screenshot it open, as people use it.
+    const show = page.getByRole("button", { name: "Show sidebar" });
+    if (await show.isVisible()) await show.click();
+    await expect(page.getByTestId("inbox-side-row").first()).toBeVisible();
   }
   await settle(page);
   await expect(page).toHaveScreenshot("inbox.png");
