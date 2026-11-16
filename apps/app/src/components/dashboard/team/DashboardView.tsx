@@ -118,7 +118,9 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 
 /**
  * `inPage`: the idea drawn as one page of its project (tools/IdeaTool): the idea alone, at its own height, with no
- * close button, no chats column and no small-screen sheet - the project page around it brings the way back.
+ * close button, no chats column and no small-screen sheet - the project page around it brings the way back. It is the
+ * project's origin and read only (DESIGN_RULES §8): the project's head (title, Manage, ⓘ, "Your move") stays above it and
+ * the card carries none of the project's buttons. `projectTitle`: that head's title, so the card does not say it twice.
  */
 /** The band on top of an idea opened on its own: "Idea", and where it stands - not a project yet, declined, withdrawn, or said yes to. */
 function IdeaKind({ c }: { c: ReducedCase }) {
@@ -140,7 +142,7 @@ function IdeaKind({ c }: { c: ReducedCase }) {
   );
 }
 
-export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false, raiserInactive = false, headAction }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean; raiserInactive?: boolean; headAction?: React.ReactNode } = {}) {
+export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false, projectTitle, raiserInactive = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean; projectTitle?: string; raiserInactive?: boolean } = {}) {
   const t = useT();
   const ctx = useDemo();
   const { seed, D, log, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
@@ -293,7 +295,9 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || t("team.dashFile") })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: t("team.dashScreenshot") }))],
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
-      mode, onMode: setMode, onClose: inPage ? undefined : closeCase, headAction,
+      mode, onMode: setMode, onClose: inPage ? undefined : closeCase,
+      // The project's head says its title once; the card repeats it only where the project was named otherwise.
+      titleInHead: inPage && projectTitle !== undefined && projectTitle.trim() === c.title.trim(),
       // The raiser edits it while open, the project lead after its yes (features/cases/permissions.ts, case.revised): the
       // title and text go out as the next version; Affects and Context stay in this browser for now.
       edit: mayReviseIdea(c, me.userId, ctx.S.projects) ? {

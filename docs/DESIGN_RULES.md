@@ -99,7 +99,7 @@ between them is the **last yes**: before it the thing is an idea, after it a pro
 | **An idea's page belongs to the Inbox.** On `/cases/<id>` and `/idea?id=` the bar marks the Inbox; the sidebar shows that idea's own pages and the way back to the Inbox, never the projects list or the Projects tabs. Closing an idea goes to the Inbox. | `tests/unit/design/section-tabs.test.ts`; e2e `an idea opened from the ideas table…` (`tests/e2e/demo/projects.spec.ts`) |
 | **Decisions (every yes and no) is a tab of the Inbox,** not of Projects. | `tests/unit/loop/decisions-nav.test.ts` |
 | **A project draft appears under Projects only after the last yes,** never at the first. | GAT tests (`tests/unit/gat/parallel.test.ts`) |
-| **A project's Idea page is its origin, read only:** who raised it, why, who said yes, what was discussed. It carries no project actions (Start, Manage, Mark done) and the project's own head (title, status, "Your move") stays above it. The project's moves live in its head and on its Overview. | not tested |
+| **A project's Idea page is its origin, read only:** who raised it, why, who said yes, what was discussed. It carries no project actions (Start, Manage, Mark done) and the project's own head (title, status, "Your move") stays above it. The project's moves live in its head and on its Overview. | `tests/unit/projects-area/idea-page.test.tsx` |
 | **Where a design wants ideas and projects on one screen** ("everything I have going on"), that screen is the Inbox (what needs me) or Ideas › Mine (what I raised), never Projects. | not tested |
 
 ## 9. One fact once, folded by default

@@ -10,7 +10,7 @@ import { Banner, PageHeader, PersonFace, Tabs as TabBar } from "@/components/ui/
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
-import type { ProjectPage, ReducedProject } from "@/features/projects/types";
+import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, demoJiraView, isOpenDraft, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";
@@ -81,19 +81,6 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
   );
 }
 
-/** The Idea page of a project that has started: the idea card carries the project's buttons (Start, Manage, (i)) in its top row,
- *  so there is no head, done-by line or move banner above it. A pause or a missing lead still shows, and the sheet Manage opens. */
-function IdeaHome({ p, jira, page }: { p: ReducedProject; jira: JiraRow; page: ProjectPage }) {
-  const [sheet, setSheet] = useState<HeadSheet | null>(null);
-  return <>
-    <PausePanel p={p} />
-    <NoLeadBanner p={p} />
-    {sheet && <ProjectSheet key={sheet} p={p} sheet={sheet} onClose={() => setSheet(null)} />}
-    <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]}
-      headAction={<div className={head.tools}><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>} />
-  </>;
-}
-
 /** The project head (title, (i), start/stop) sits only on the page that carries the overview or the idea;
  *  every other page has its own title, so it keeps a link back to all projects. */
 function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
@@ -118,15 +105,14 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const answerHere = home && pendingInviteOf(p, actorUserId) !== null && !pages.some((x) => x.tools.some((tool) => tool.kind === "team"));
   return <>
     <div className={styles.top}>
-      {home && !ideaOnly ? <Header p={p} jira={jira} />
+      {home ? <Header p={p} jira={jira} />
         : draft ? <div className={styles.hero}><PageHeader title={p.title} /></div>
           : <div className={styles.hero}><Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link></div>}
     </div>
     {page && <>
-      {home && !onOverview && !ideaOnly && <PageMove p={p} overviewId={overview?.id ?? null} />}
+      {home && !onOverview && <PageMove p={p} overviewId={overview?.id ?? null} />}
       {answerHere && <InvitePanel p={p} />}
-      {ideaOnly && home ? <IdeaHome p={p} jira={jira} page={page} />
-        : ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
+      {ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
         : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} titled={!(home && page.tools[0]?.kind === "overview")} />}
     </>}
   </>;

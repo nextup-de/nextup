@@ -36,8 +36,9 @@ export type OverviewIdeaProps = {
   onMode: (m: IdeaMode) => void;
   /** None: the idea is a page of its project and has no close button. */
   onClose?: () => void;
-  /** As a page of its project: the project's buttons, where the close button is on an idea opened on its own. */
-  headAction?: React.ReactNode;
+  /** As a page of its project (tools/IdeaTool) whose head above already says this title: the card keeps who raised it and
+   *  when, and leaves the title to the head (DESIGN_RULES §8, §9). The card never carries the project's buttons. */
+  titleInHead?: boolean;
   // On a phone (OverviewPhone) the same page without the close button (the bar has back), and the
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).
   variant?: "desk" | "phone";
@@ -127,14 +128,13 @@ export function OverviewIdea(p: OverviewIdeaProps) {
         <div className={s.div24}>
           <div className={s.div25}>
             <span className={s.raised}>{t("team.ideaRaised", { raised: p.raised, dept: p.dept })}</span>
-            {p.headAction}
             {!phone && p.onClose && (
               <button type="button" className={s.closeOverview2} onClick={p.onClose} title={t("team.ideaCloseOverview")} aria-label={t("team.ideaBackOverview")}>
                 <svg className={s.svg} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             )}
           </div>
-          {p.page ? <IdeaTitle ed={ed} className={s.title2} /> : editing("title") ? (
+          {p.titleInHead ? null : p.page ? <IdeaTitle ed={ed} className={s.title2} /> : editing("title") ? (
             <input className={s.titleInput} value={draft?.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("team.ideaEditTitle")} maxLength={200} autoFocus onKeyDown={(e) => keys(e, true)} />
           ) : (
             <h1 className={s.title2} data-editable={editable ? "true" : undefined} title={editable} onDoubleClick={() => open("title")}>{p.title}</h1>
