@@ -3,11 +3,26 @@
 // edge shows a corner of the NextUp star like an arrow to pull; on hover the tab comes out a little further.
 // Open, the chat is a column on the right, flush with the screen edge, and the page makes room for it.
 // UI only for now: only open and close work; the suggestions, Attach and Send do nothing yet (PROJECT-AI-FOR-KEVIN.txt).
+import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
 import s from "./ProjectAi.module.css";
 
+/** The tab or the open chat. Closing plays the panel out first, then hands back to the tab. */
+export function ProjectAi({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
+  const [closing, setClosing] = useState(false);
+  const timer = useRef<number | null>(null);
+  useEffect(() => () => { if (timer.current !== null) window.clearTimeout(timer.current); }, []);
+  if (!open) return <ProjectAiTab onOpen={() => setOpen(true)} />;
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    timer.current = window.setTimeout(() => { setClosing(false); setOpen(false); }, 300);
+  };
+  return <div className={s.col} data-closing={closing}><ProjectAiPanel onClose={close} /></div>;
+}
+
 /** The closed tab. */
-export function ProjectAiTab({ onOpen }: { onOpen: () => void }) {
+function ProjectAiTab({ onOpen }: { onOpen: () => void }) {
   const t = useT();
   return (
     <button type="button" className={s.tab} onClick={onOpen} title={t("projects.aiOpen")} aria-label={t("projects.aiOpen")} data-testid="project-ai-tab">
@@ -17,7 +32,7 @@ export function ProjectAiTab({ onOpen }: { onOpen: () => void }) {
 }
 
 /** The open chat column. */
-export function ProjectAiPanel({ onClose }: { onClose: () => void }) {
+function ProjectAiPanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const acts = [t("projects.aiActUpdate"), t("projects.aiActChase"), t("projects.aiActFile")];
 
@@ -46,16 +61,17 @@ export function ProjectAiPanel({ onClose }: { onClose: () => void }) {
 
       <form className={s.foot} onSubmit={(e) => e.preventDefault()}>
         <div className={s.composer}>
-          <textarea className={s.input} rows={2} placeholder={t("projects.aiPlaceholder")} aria-label={t("projects.aiPlaceholder")} />
+          <span className={s.soon}>{t("projects.aiSoon")}</span>
+          <textarea tabIndex={-1} disabled className={s.input} rows={2} placeholder={t("projects.aiPlaceholder")} aria-label={t("projects.aiPlaceholder")} />
           <div className={s.tools}>
-            <button type="button" className={s.attach} disabled>
+            <button type="button" className={s.attach} disabled tabIndex={-1}>
               <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M4 1.5h5l3.5 3.5v9.5H4z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
                 <path d="M9 1.5V5h3.5M6 8.5h4M6 11h4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
               {t("projects.aiAttach")}
             </button>
-            <button type="submit" className={s.send} disabled aria-label={t("projects.aiSend")} title={t("projects.aiSend")}>
+            <button type="submit" className={s.send} disabled tabIndex={-1} aria-label={t("projects.aiSend")} title={t("projects.aiSend")}>
               <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           </div>

@@ -18,11 +18,22 @@
 
 /* ── open: a column on the right, flush with the screen edge; the page makes room */
 .col {
-  flex: none; width: 396px; display: flex; padding: 16px 0; z-index: 6;
+  flex: none; width: 396px; z-index: 6;
   position: sticky; top: var(--nh-bar-h); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
+  animation: colIn 420ms cubic-bezier(.2,.8,.2,1) both;
 }
+/* Opening: the column grows from the edge (the page slides over to make room) while the panel slides in from the
+   right; closing runs the same the other way before the tab comes back. */
+.col[data-closing="true"] { animation: colOut 300ms cubic-bezier(.4,0,.6,1) both; }
+.col[data-closing="true"] .panel { animation: panelOut 300ms cubic-bezier(.4,0,.6,1) both; }
+@keyframes colIn { from { width: 0; } }
+@keyframes colOut { to { width: 0; } }
+@keyframes panelIn { from { transform: translateX(48px); opacity: 0; } }
+@keyframes panelOut { to { transform: translateX(48px); opacity: 0; } }
 .panel {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+  position: absolute; top: 16px; bottom: 16px; right: 0; width: 396px;
+  animation: panelIn 420ms cubic-bezier(.2,.8,.2,1) both;
+  min-width: 0; display: flex; flex-direction: column; overflow: hidden;
   background: #fff; border-radius: 12px 0 0 12px; box-shadow: -6px 10px 30px #283c6414, 0 1px 2px #283c640d;
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -54,6 +65,7 @@
 
 .foot { flex: none; padding: 12px 14px 14px; }
 .composer {
+  position: relative;
   display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 12px 16px;
   background: #fff; border: 1.5px solid #f0b429; border-radius: 12px; box-shadow: 0 8px 24px #283c6414;
 }
@@ -73,11 +85,23 @@
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .send:disabled { background: #a1a1a6; cursor: default; }
+/* Not built yet: the box's content is blurred under a "Coming soon" label. */
+.composer > .input, .composer > .tools { filter: blur(5px); user-select: none; pointer-events: none; }
+.soon {
+  position: absolute; inset: 0; z-index: 1; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  background: #ffffff33;
+  color: var(--nh-ink-2); font-size: var(--nh-fs-sm); font-weight: 600; letter-spacing: 0.01em;
+}
 
 /* Phones: the tab stays on the edge; open, the chat covers the screen under the bar. */
 @media (max-width: 760px) {
-  .col { position: fixed; inset: var(--nh-bar-h) 0 0 0; width: auto; height: auto; padding: 0; z-index: 40; }
-  .panel { border-radius: 0; }
+  .col { position: fixed; inset: var(--nh-bar-h) 0 0 0; width: auto; height: auto; z-index: 40; animation: none; }
+  .col[data-closing="true"] { animation: none; }
+  .panel { inset: 0; width: auto; border-radius: 0; }
   .input { font-size: var(--nh-fs-input); }
 }
-@media (prefers-reduced-motion: reduce) { .tab, .act { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tab, .act { transition: none; }
+  .col, .panel, .col[data-closing="true"], .col[data-closing="true"] .panel { animation: none; }
+}

@@ -10,9 +10,8 @@ import { SectionTabs } from "@/components/shell/SectionTabs";
 import { useT } from "@/i18n/client";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { ProjectsSidebar } from "./ProjectsSidebar";
-import { ProjectAiPanel, ProjectAiTab } from "./ai/ProjectAi";
+import { ProjectAi } from "./ai/ProjectAi";
 import { useProjectAiOpen } from "./ai/projectAiPreview";
-import ais from "./ai/ProjectAi.module.css";
 import s from "./ProjectsFrame.module.css";
 
 const KEY = "nh.projectsSidebar";
@@ -47,7 +46,7 @@ export function ProjectsFrame({ area, projectId, caseId, idea = false, children 
         {area && <div className={s.tabs}><SectionTabs section="projects" active={area} /></div>}
         {children}
       </div>
-      {ai && (aiOpen ? <div className={ais.col}><ProjectAiPanel onClose={() => setAiOpen(false)} /></div> : <ProjectAiTab onOpen={() => setAiOpen(true)} />)}
+      {ai && <ProjectAi open={aiOpen} setOpen={setAiOpen} />}
     </div>
   );
 }
