@@ -1,10 +1,13 @@
-/* The opened idea (Claude Design handoff "Inbox App"). Values are the handoff's, with its design
-   fixes built in: secondary text var(--nh-mute), type 11 / 12.5 / 14 / 16 / 22 / 36, 32px hit areas.
-   Colours come from the inbox page (InboxView.module.css): --c-* for ink and surfaces, --p-* for
-   the reasoning panels. One ease everywhere. */
+/* The opened item (Claude Design handoff "Inbox App", quieted by DESIGN_RULES §9). One layout for every width: the item
+   and "Your move" beside it; on a phone one column with "Your move" on top. --c-* are ink and surfaces, --p-* the grey
+   panels; they are set here so the item looks the same wherever it opens. One ease everywhere. */
 .detail {
   --ease: cubic-bezier(.2, .8, .2, 1);
   --shadow: 0 6px 20px rgb(40 60 100 / 0.06);
+  --c-ink: var(--nh-ink); --c-title: var(--nh-ink); --c-ink-2: var(--nh-ink-2); --c-mute: var(--nh-mute);
+  --c-fill: var(--nh-fill); --c-sep-head: var(--nh-line); --c-sep: var(--nh-line-2); --c-hover: var(--nh-surface); --c-divider: var(--nh-line-soft);
+  --c-left: var(--nh-brand);
+  --p-bg: var(--nh-surface); --p-fg: var(--nh-ink); --p-sub: var(--nh-mute-2); --p-track: var(--nh-line); --p-bar: var(--nh-brand); --p-gauge: var(--nh-brand);
   display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--nh-gap);
 }
 .main { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: var(--nh-gap); }
@@ -132,9 +135,7 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .drill { display: flex; flex-direction: column; gap: 12px; animation: affIn 260ms var(--ease) backwards; }
 .back { align-self: flex-start; display: flex; align-items: center; gap: 4px; min-height: 32px; border: 0; background: transparent; padding: 0 4px; font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; color: var(--c-left); cursor: pointer; }
 
-/* ── file chips (the phone's rail) + sources ── */
-.file { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 8px 14px 8px 8px; border: 1px solid var(--c-sep-head); border-radius: var(--radius-sm, 12px); color: var(--c-ink); }
-.fileTag { width: 32px; height: 32px; flex: none; border-radius: var(--radius-xs, 8px); font-size: var(--nh-fs-xs); font-weight: 700; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: center; }
+/* ── file names + sources ── */
 .fileText { display: flex; flex-direction: column; min-width: 0; }
 .fileName { font-size: var(--nh-fs-sm); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fileN { color: var(--c-mute); font-weight: 600; margin-right: 6px; }
@@ -154,11 +155,11 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .srcRow:first-child { border-top: 0; }
 .srcRow .fileN { margin: 0; min-width: 16px; font-size: var(--nh-fs-sm); }
 .srcTag { flex: none; min-width: 36px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 6px; font-size: var(--nh-fs-xs); font-weight: 700; display: flex; align-items: center; justify-content: center; }
-.srcDot[data-tone="red"], .srcTag[data-tone="red"], .fileTag[data-tone="red"] { background: rgb(255 59 48 / 0.1); color: var(--nh-danger); }
-.srcDot[data-tone="green"], .srcTag[data-tone="green"], .fileTag[data-tone="green"] { background: rgb(52 199 89 / 0.12); color: #1f8a3e; }
-.srcDot[data-tone="violet"], .srcTag[data-tone="violet"], .fileTag[data-tone="violet"] { background: rgb(175 82 222 / 0.1); color: #8e3bb8; }
-.srcDot[data-tone="blue"], .srcTag[data-tone="blue"], .fileTag[data-tone="blue"] { background: color-mix(in srgb, var(--nh-brand) 10%, transparent); color: var(--nh-brand-ink); }
-.srcDot[data-tone="grey"], .srcTag[data-tone="grey"], .fileTag[data-tone="grey"] { background: var(--c-fill); color: var(--c-mute); }
+.srcDot[data-tone="red"], .srcTag[data-tone="red"] { background: rgb(255 59 48 / 0.1); color: var(--nh-danger); }
+.srcDot[data-tone="green"], .srcTag[data-tone="green"] { background: rgb(52 199 89 / 0.12); color: #1f8a3e; }
+.srcDot[data-tone="violet"], .srcTag[data-tone="violet"] { background: rgb(175 82 222 / 0.1); color: #8e3bb8; }
+.srcDot[data-tone="blue"], .srcTag[data-tone="blue"] { background: color-mix(in srgb, var(--nh-brand) 10%, transparent); color: var(--nh-brand-ink); }
+.srcDot[data-tone="grey"], .srcTag[data-tone="grey"] { background: var(--c-fill); color: var(--c-mute); }
 
 /* ── the five scores: one row each, the row opens its reasoning ── */
 .scoreList { margin: 0; padding: 0 16px; list-style: none; background: var(--p-bg); border-radius: var(--radius-sm, 12px); }
@@ -167,10 +168,6 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .scoreSum::-webkit-details-marker { display: none; }
 .scoreSum:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 6px; }
 .scoreBody { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 16px; }
-/* The arcs of the phone's score rings. */
-.arcTrack, .arcFill { fill: none; stroke-width: 10; stroke-linecap: round; }
-.arcTrack { stroke: #e3eaf7; }
-.arcFill { stroke: var(--p-gauge); transition: stroke-dasharray 420ms var(--ease); }
 
 /* ── reasoning + what the AI found ── */
 /* Opening a score wipes its reasoning down from the top as it settles 8px (the prototype's _morph). */
@@ -224,6 +221,8 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
   .pop, .popListHead, .members, .drill { animation: none; }
 }
 @media (max-width: 760px) {
-  .side { min-width: 0; flex-basis: 100%; }
+  .side { min-width: 0; flex-basis: 100%; order: -1; }
+  .card { padding: 18px 16px; }
+  .title { font-size: var(--nh-fs-2xl); }
   dl.panel { grid-template-columns: 96px minmax(0, 1fr); }
 }
