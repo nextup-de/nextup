@@ -1,7 +1,7 @@
 "use client";
 // A project keeps its header and state actions while the company chooses pages built from tools
 // or the pilot-rc1 tabs. Draft setup and the raiser's progress view keep their own guarded shells.
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -39,9 +39,9 @@ import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
 import { CustomPageView } from "./CustomPageView";
 import { ideaPagesId, useProjectPages } from "./projectPagesPreview";
-import { DoneSheet } from "./result/DoneSheet";
-import { StopChoice } from "./result/StopChoice";
-import { resultView } from "@/features/projects/result-view";
+import { ProjectMenu, ProjectSheet, type HeadSheet } from "./head/ProjectMenu";
+import { useDismiss } from "./head/useDismiss";
+import head from "./head/Head.module.css";
 import styles from "./Projects.module.css";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
@@ -230,21 +230,26 @@ function Tabs({ p, tab, agent }: { p: ReducedProject; tab: ProjectTab; agent: bo
   return <TabBar items={items} current={tab} label={t("projects.tabsLabel")} />;
 }
 
-/** The head says what the project is and the one thing to do: the title, an (i) that opens the details on
- *  request (status, due date, where it came from, who leads it, the tools), the states that need a move, and
- *  the actions. On a laptop or monitor the sidebar is the way back; a phone keeps the back link. */
+/** The head says what the project is and the one thing to do: the title and, right of it, Start (while planned), Manage
+ *  (move the date, pause, done, stop) and an (i) that opens the details on request (status, where it came from, who
+ *  leads it, the tools). Under the title: the done-by date, the states that need a move, and the sheet Manage opened.
+ *  On a laptop or monitor the sidebar is the way back; a phone keeps the back link. */
 function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { href } = useDemo();
   const t = useT();
+  const [sheet, setSheet] = useState<HeadSheet | null>(null);
   return (
     <div className={styles.hero}>
       <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
-      <PageHeader title={p.title} action={<ProjectInfo p={p} jira={jira} />} />
+      <PageHeader
+        title={p.title}
+        action={<div className={head.tools}><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>}
+      />
       {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
       <DoneByLine p={p} />
       <PausePanel p={p} />
       <NoLeadBanner p={p} />
-      <Actions p={p} />
+      {sheet && <ProjectSheet key={sheet} p={p} sheet={sheet} onClose={() => setSheet(null)} />}
     </div>
   );
 }
@@ -254,16 +259,7 @@ function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { S, href, f } = useDemo();
   const t = useT();
   const box = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const close = (e: Event) => {
-      const d = box.current;
-      if (!d?.open) return;
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !d.contains(e.target as Node)) d.open = false;
-    };
-    document.addEventListener("keydown", close);
-    document.addEventListener("pointerdown", close);
-    return () => { document.removeEventListener("keydown", close); document.removeEventListener("pointerdown", close); };
-  }, []);
+  useDismiss(box);
   const sourceOf = (id: string) => {
     const c = S.cases.find((x) => x.id === id);
     if (c) return { title: c.title, to: href("/cases/" + id) };
@@ -336,33 +332,17 @@ function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   );
 }
 
-// Start, done and stop: the moves that change the project's state. Done and stop are the sheets of plan RES (components/projects/result).
-function Actions({ p }: { p: ReducedProject }) {
-  const { act, S } = useDemo();
-  const ctx = useDemo();
-  const locale = useLocale();
+// Start, while planned: the lead's one move, next to the title. Done and stop (plan RES) are in the Manage menu.
+function StartButton({ p }: { p: ReducedProject }) {
+  const { act } = useDemo();
   const r = useRights(p);
   const send = useSend(p);
   const t = useT();
-  const view = resultView(p, S, idViewerOf(ctx), S.day, locale);
-  const planning = p.status === "planning";
-  const showStart = planning && r.lead;
-  const done = view.done !== null && view.done.can;
-  const stop = view.stop !== null && view.stop.can;
-  if (!showStart && !done && !stop) return null;
-
+  if (p.status !== "planning" || !r.lead) return null;
+  // Without a baseline the button waits; the move above the stepper says what to do, the tooltip says why.
   return (
-    <div className={styles.actions}>
-      {showStart && (
-        <span className={styles.actionRow}>
-          {/* Without a baseline the button waits; the move above the stepper says what to do, the tooltip says why. */}
-          <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!p.baseline} title={p.baseline ? undefined : t("projects.permStartNeedsBaseline")} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>
-            {t("projects.move_start")}
-          </button>
-        </span>
-      )}
-      {view.done && <DoneSheet p={p} done={view.done} />}
-      {view.stop && <StopChoice p={p} stop={view.stop} />}
-    </div>
+    <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!p.baseline} title={p.baseline ? undefined : t("projects.permStartNeedsBaseline")} onClick={() => send("project.started", {}, () => act.project.start(p.id))}>
+      {t("projects.move_start")}
+    </button>
   );
 }

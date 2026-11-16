@@ -153,8 +153,10 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
 
   await test.step("marks it done; the 30-day check opens 30 days later", async () => {
     await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
+    await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
+    await page.getByRole("button", { name: "Mark it done…" }).click();
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
-    await page.getByRole("button", { name: "Mark it done" }).click();
+    await page.getByRole("form", { name: "Mark the project done" }).getByRole("button", { name: "Mark it done", exact: true }).click();
     await expect(head(page)).toContainText("P-4 · Measuring");
     await projectPage(page, "results");
     await openResult(page);
@@ -219,6 +221,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 
   await test.step("done waits until every open step is finished or dropped with a reason", async () => {
+    await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
     await page.getByRole("button", { name: "Mark it done…" }).click();
     const sheet = page.getByRole("form", { name: "Mark the project done" });
     await expect(sheet).toContainText("No done-when was set");
@@ -239,6 +242,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
 
   await test.step("a stop with 'Return the idea to its desk' puts the idea back in the inbox", async () => {
     await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
+    await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
     await page.getByRole("button", { name: "Stop the project" }).click();
     const form = page.getByRole("form", { name: "Stop the project" });
     await form.getByRole("textbox", { name: "Why does it stop?" }).fill("The queue went away by itself");

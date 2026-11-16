@@ -301,6 +301,7 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
     await test.step("the lead pauses a project in the UI, for ten working days", async () => {
       const page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${paused.projectId}`);
+      await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
       await page.getByRole("button", { name: "Pause…" }).click();
       const form = page.getByRole("form", { name: "Pause the project" });
       await form.getByRole("spinbutton").fill("10");
@@ -373,7 +374,8 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
 
       await test.step("the sponsor sets a new done-by date in the UI; the escalation ends", async () => {
         await expect(page.getByTestId("done-by-line")).toContainText("Done by");
-        await page.getByTestId("done-by").getByRole("button", { name: "Move", exact: true }).click();
+        await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
+        await page.getByRole("button", { name: "Move the done-by date…" }).click();
         const form = page.getByRole("form", { name: "Move the done-by date" });
         await form.getByRole("spinbutton").fill("10");
         await form.getByRole("textbox", { name: "Why" }).fill(SPONSOR_WHY);

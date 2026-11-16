@@ -23,6 +23,7 @@ vi.mock("@/features/projects/views", async (load) => ({ ...await load<typeof imp
 vi.mock("@/components/projects/move/DoneByLine", () => ({ DoneByLine: () => null }));
 vi.mock("@/components/projects/move/PausePanel", () => ({ PausePanel: () => null }));
 vi.mock("@/components/projects/move/NoLeadBanner", () => ({ NoLeadBanner: () => null }));
+vi.mock("@/components/projects/head/ProjectMenu", () => ({ ProjectMenu: () => null, ProjectSheet: () => null }));
 vi.mock("@/components/projects/move/WeeklyUpdate", () => ({ WeeklyUpdate: () => null }));
 vi.mock("@/components/projects/move/HowWeWork", () => ({ HowWeWork: () => null }));
 vi.mock("@/components/projects/agent/PlanDraftLink", () => ({ PlanDraftLink: () => null }));

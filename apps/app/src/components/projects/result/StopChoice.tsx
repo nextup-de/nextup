@@ -14,22 +14,22 @@ import styles from "./Result.module.css";
 
 const newRequestId = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : "r" + Math.random().toString(36).slice(2) + Date.now().toString(36));
 
-export function StopChoice({ p, stop }: { p: ReducedProject; stop: NonNullable<ResultView["stop"]> }) {
+/** The stop sheet, opened from the head's Manage menu. */
+export function StopChoice({ p, stop, onClose }: { p: ReducedProject; stop: NonNullable<ResultView["stop"]>; onClose: () => void }) {
   const { act, S, serverMode, tenant, showToast } = useDemo();
   const t = useT();
   const r = useRights(p);
-  const [why, setWhy] = useState<string | null>(null);
+  const [why, setWhy] = useState("");
   const [pick, setPick] = useState<StopPick>("keep");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The id of this attempt: the same body keeps it (a retry), a changed body gets a new one.
   const attempt = useRef<{ key: string; id: string } | null>(null);
   if (!stop.can) return null;
-  if (why === null) return <button type="button" className={styles.quiet} onClick={() => setWhy("")}>{t("projects.stopProject")}</button>;
 
   const text = why.trim();
   const reopenable = r.stopReturn;
-  const close = () => { setWhy(null); setPick("keep"); setError(null); attempt.current = null; };
+  const close = () => { setWhy(""); setPick("keep"); setError(null); attempt.current = null; onClose(); };
   const submit = async () => {
     if (!text || busy) return;
     const chosen: StopPick = reopenable ? pick : "keep";

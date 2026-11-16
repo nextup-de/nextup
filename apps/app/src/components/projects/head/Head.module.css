@@ -1,0 +1,42 @@
+/* The project head's controls right of the title: Start, Manage and the (i) in one row. Tokens from src/styles/tokens.css. */
+.tools { display: flex; align-items: center; gap: 8px; }
+
+.menu { position: relative; }
+.menuBtn {
+  list-style: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 14px;
+  border: 1px solid var(--nh-line); border-radius: 999px; background: var(--nh-card);
+  font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); cursor: pointer; user-select: none;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.menuBtn::-webkit-details-marker { display: none; }
+.menuBtn:hover, .menu[open] .menuBtn { background: var(--nh-fill); }
+.menuBtn:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 2px; }
+.chevron { color: var(--nh-mute); transition: transform 160ms ease; }
+.menu[open] .chevron { transform: rotate(180deg); }
+.dots { display: none; }
+
+.menuPop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 232px; padding: 6px;
+  background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 12px; box-shadow: 0 8px 24px rgb(40 60 100 / 10%);
+}
+.menuGroup[data-split="true"] { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--nh-line-soft); }
+.menuItem {
+  display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: 8px; background: none; text-align: left;
+  font-family: inherit; font-size: var(--nh-fs-sm); font-weight: 500; color: var(--nh-ink); cursor: pointer;
+}
+.menuItem:hover, .menuItem:focus-visible { background: var(--nh-fill); outline: none; }
+.menuItem[data-tone="danger"] { color: var(--nh-danger); }
+.menuItem[data-tone="danger"]:hover { background: var(--nh-danger-tint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .menuBtn, .chevron { transition: none; }
+}
+
+/* On a phone the title keeps its width: Manage shrinks to a round three-dot button. */
+@media (max-width: 760px) {
+  .menuBtn { width: 34px; padding: 0; justify-content: center; }
+  .menuText, .chevron { display: none; }
+  .dots { display: block; }
+  .menu { position: static; }
+  .menuPop { left: 0; right: 0; min-width: 0; }
+}

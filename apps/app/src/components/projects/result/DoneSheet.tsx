@@ -1,7 +1,7 @@
 "use client";
 // Mark the project done (plan RES, D13): the lead finishes or drops every step still open, each drop with a reason, sees what "done" was meant to
-// mean (the goal's done-when) and may say what is done. One event, project.done with the list. A board with nothing open shows the plain form;
-// otherwise a quiet link opens the sheet. Shown only when the rights would let it through (features/projects/result-view.ts).
+// mean (the goal's done-when) and may say what is done. One event, project.done with the list. The head's Manage menu opens the sheet.
+// Shown only when the rights would let it through (features/projects/result-view.ts).
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import type { ResultView } from "@/features/projects/result-view";
@@ -13,22 +13,19 @@ import styles from "./Result.module.css";
 
 type End = "done" | "dropped";
 
-export function DoneSheet({ p, done }: { p: ReducedProject; done: NonNullable<ResultView["done"]> }) {
+export function DoneSheet({ p, done, onClose }: { p: ReducedProject; done: NonNullable<ResultView["done"]>; onClose: () => void }) {
   const { act } = useDemo();
   const t = useT();
   const send = useSend(p);
-  const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [ends, setEnds] = useState<Record<string, End | undefined>>({});
   const [whys, setWhys] = useState<Record<string, string>>({});
   if (!done.can) return null;
 
   const hasOpen = done.open.length > 0;
-  if (hasOpen && !open) return <button type="button" className={styles.quiet} onClick={() => setOpen(true)}>{t("projects.markDoneEllipsis")}</button>;
-
   const why = (id: string) => (whys[id] ?? "").trim();
   const complete = done.open.every((s) => ends[s.stepId] === "done" || (ends[s.stepId] === "dropped" && why(s.stepId).length >= 1 && why(s.stepId).length <= DROP_WHY_MAX));
-  const close = () => { setOpen(false); setEnds({}); setWhys({}); };
+  const close = () => { setEnds({}); setWhys({}); onClose(); };
   const submit = () => {
     if (!complete) return;
     const openSteps = done.open.map((s) => (ends[s.stepId] === "dropped" ? { stepId: s.stepId, end: "dropped" as const, why: why(s.stepId) } : { stepId: s.stepId, end: "done" as const }));
@@ -75,12 +72,12 @@ export function DoneSheet({ p, done }: { p: ReducedProject; done: NonNullable<Re
       )}
       <label className={styles.field}>
         <span className={styles.label}>{t("projects.doneNoteLabel")}</span>
-        <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.doneNotePlaceholder")} aria-label={t("projects.doneNoteLabel")} autoFocus={hasOpen} />
+        <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.doneNotePlaceholder")} aria-label={t("projects.doneNoteLabel")} autoFocus />
       </label>
       {!complete && <p className={styles.hint}>{t("projectResult.doneNeedsChoice")}</p>}
       <span className={styles.row}>
         <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!complete}>{t("projects.move_done")}</button>
-        {hasOpen && <button type="button" className={styles.quiet} onClick={close}>{t("common.cancel")}</button>}
+        <button type="button" className={styles.quiet} onClick={close}>{t("common.cancel")}</button>
       </span>
     </form>
   );
