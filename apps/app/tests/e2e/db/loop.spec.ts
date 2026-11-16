@@ -168,7 +168,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     }, { message: "the yes carries the id of the project it opened" }).not.toBeNull();
     await page.goto(`/${SLUG}/projects/${projectId}`);
     await expect(page.getByRole("main")).toContainText(TITLE);
-    await expect(page.getByTestId("draft-top-line")).toContainText("Draft"); // the yes opens a draft, not a running project
+    await expect(page.getByTestId("project-draft")).toBeVisible(); // the yes opens a draft (its setup), not a running project
     await page.context().close();
   });
 

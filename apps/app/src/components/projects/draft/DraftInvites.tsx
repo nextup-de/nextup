@@ -8,7 +8,6 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { hasClosedAudience } from "@/features/cases/visibility";
 import { pendingInviteOf } from "@/features/projects/draft";
 import type { Invite, InviteRole, ReducedProject } from "@/features/projects/types";
-import { TEMPLATES } from "@/features/templates/library";
 import { useT } from "@/i18n/client";
 import { peopleOf, useRights, useSend } from "../parts";
 import styles from "./Draft.module.css";
@@ -30,7 +29,6 @@ export function InvitePanel({ p, bare = false }: { p: ReducedProject; bare?: boo
   const people = peopleOf(seed.seats).filter((x) => x.userId !== p.leadUserId);
   // Inviting someone on a private or custom idea lets them read it (Q5.14).
   const closed = S.cases.some((c) => p.sources.includes(c.id) && hasClosedAudience(c));
-  const slots = p.template ? TEMPLATES[p.template.key as keyof typeof TEMPLATES]?.find((x) => x.version === p.template?.version)?.roles ?? [] : [];
   const mine = pendingInviteOf(p, actorUserId);
 
   return (
@@ -69,12 +67,6 @@ export function InvitePanel({ p, bare = false }: { p: ReducedProject; bare?: boo
         </form>
       )}
       {mayInvite && closed && <p className={styles.warn} role="note">{t("projectDraft.teamWarn")}</p>}
-      {slots.length > 0 && (
-        <div className={styles.slots}>
-          <span className={styles.muted}>{t("projectDraft.teamOpenSlots")}</span>
-          <ul className={styles.chips}>{slots.map((s) => <li key={s} className={styles.chip}>{s}</li>)}</ul>
-        </div>
-      )}
     </section>
   );
 }

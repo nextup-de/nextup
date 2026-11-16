@@ -4,8 +4,6 @@
 .page { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 860px; margin: 0 auto; padding: 0 0 48px; min-width: 0; container-type: inline-size; }
 .back { display: inline-block; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); margin: 0 0 12px; text-decoration: none; }
 .back:hover { color: var(--nh-brand-ink); }
-.top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 4px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
-.draftChip { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-brand-ink); background: var(--nh-brand-tint); border: 1px solid var(--nh-brand-line); border-radius: var(--radius-sm, 8px); padding: 2px 8px; }
 
 /* Cards: every part of the draft page is one; parts drawn by other components (baseline, how we work) are wrapped. */
 .page .section, .card { padding: 20px 22px 22px; border-radius: var(--radius-md, 12px); background: var(--nh-card); box-shadow: var(--nh-card-shadow); border: 0; }
@@ -14,7 +12,6 @@
 /* The step shown under the lines, and Back / Next at its foot. */
 .stepBox { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; min-width: 0; }
 .stepBox > .ask, .stepBox > .late, .stepBox > .notice { margin: 0; }
-.stepCount { font-size: var(--nh-fs-sm); color: var(--nh-mute); margin-bottom: -6px; }
 .stepFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
 .stepGap { flex: 1; }
 
@@ -49,11 +46,8 @@
 /* The start card. */
 .startCard { display: flex; flex-direction: column; gap: 14px; }
 .startCard .h2 { margin-bottom: 2px; }
-.needed { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--radius-sm, 8px); background: var(--nh-surface); }
-.neededTitle { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
-.neededList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.neededList button { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); text-align: left; cursor: pointer; }
-.neededList button:hover { color: var(--nh-brand-ink); }
+.firstMissing { align-self: flex-start; padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-brand-ink); cursor: pointer; }
+.firstMissing:hover { text-decoration: underline; }
 .startBtn { align-self: flex-start; }
 
 .section { padding: 16px 0 18px; border-top: 1px solid var(--nh-line); min-width: 0; }
@@ -81,8 +75,7 @@
 .notice { margin: 8px 0; padding: 10px 14px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); }
 .warn { margin: 10px 0 0; padding: 9px 12px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.45; }
 
-.list, .templates, .chips { list-style: none; margin: 8px 0 0; padding: 0; }
-.dot { width: 14px; height: 14px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--nh-line-2); }
+.list, .templates { list-style: none; margin: 8px 0 0; padding: 0; }
 
 /* Template tiles: three side by side while picking, the one in use on its own with every step. */
 .templates { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
@@ -104,9 +97,6 @@
 .state { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
 .state[data-state="accepted"] { color: var(--nh-ink); }
 .answer { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 8px; }
-.slots { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
-.chip { padding: 3px 10px; border: 1px dashed var(--nh-line); border-radius: 999px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 8px 0 0; font-size: var(--nh-fs-sm); }
 .facts dt { font-weight: 600; color: var(--nh-mute); }

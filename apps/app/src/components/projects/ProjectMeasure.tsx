@@ -21,6 +21,7 @@ import { importMeasuresAction, type ImportCode } from "@/server/actions/measures
 import { measureView, type MeasureFlags } from "@/features/projects/measure-view";
 import { QUESTION_WHY_MAX } from "@/features/projects/result";
 import { idViewerOf, useRights, useSend, VerdictChip } from "./parts";
+import { waitsForName } from "./draft/waitsFor";
 import styles from "./Projects.module.css";
 
 const num = (s: string): number | null => {
@@ -28,7 +29,8 @@ const num = (s: string): number | null => {
   return s.trim() !== "" && Number.isFinite(n) ? n : null;
 };
 
-export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHint | null }) {
+/** `onSaved`: called once a baseline is saved (the draft's setup moves on to its next open step). */
+export function BaselinePanel({ p, hint, onSaved }: { p: ReducedProject; hint: BaselineHint | null; onSaved?: () => void }) {
   const ctx = useDemo();
   const { act, f, S, serverMode, tenant, showToast } = ctx;
   const t = useT();
@@ -71,7 +73,7 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
     const payload: EventPayload = none ? { none: true, why: why.trim() } : { metric: metric.trim(), unit: unit.trim(), value: v ?? Number.NaN, better, source: source.trim() };
     const ok = send("project.baseline", payload, () =>
       act.project.baseline(p.id, none ? { none: true, why: why.trim() } : { metric: metric.trim(), unit: unit.trim(), value: v as number, better, source: source.trim() }));
-    if (ok) setEditing(false);
+    if (ok) { setEditing(false); onSaved?.(); }
   };
 
   return (
@@ -81,7 +83,10 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
       {b && (
         <div className={styles.checkHead}>
           <span className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</span>
-          {bv.needsConfirm && <span data-testid="baseline-waits"><Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill></span>}
+          {/* Waiting for a second person: whoever may confirm sees the chip and the button; everyone else reads who it waits for. */}
+          {bv.needsConfirm && (bv.canConfirm
+            ? <span data-testid="baseline-waits"><Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill></span>
+            : <span className={styles.muted} data-testid="baseline-waits">{t("projects.baselineWaitsFor", { name: waitsForName(p, S, t, locale) })}</span>)}
           {bv.needsConfirm && bv.canConfirm && (
             <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} data-testid="baseline-confirm" onClick={confirmBaseline}>{t("projectResult.baselineConfirm")}</button>
           )}
@@ -160,18 +165,21 @@ export function MeasurePanel({ p }: { p: ReducedProject }) {
   const ctx = useDemo();
   const { S } = ctx;
   const t = useT();
+  const r = useRights(p);
   const view = measureView(p, S, idViewerOf(ctx), S.day);
   if (!measureShown(S.rules)) return null;
   const noNumber = p.baseline?.none === true && p.doneDay !== null;
   const stoppedFirst = p.checks.length === 0 && !noNumber && p.stopped !== null;
   // Nothing empty is drawn (DESIGN_RULES §1): without a check, a stop or a "no number possible" the panel has nothing to say.
   if (p.checks.length === 0 && !noNumber && !stoppedFirst) return null;
+  // One filled button per screen (DESIGN_RULES §9): the earliest number this viewer may confirm gets it; a later one waits, quiet.
+  const firstConfirm = p.checks.find((c) => p.measures.some((m) => m.check === c.check && !m.sentBack && !m.confirmed) && r.confirm(c.check))?.check ?? null;
   return (
     <section className={styles.panel} aria-labelledby={"measure-" + p.id}>
       <h2 id={"measure-" + p.id} className={styles.h2}>{t("projects.measureTitle")}</h2>
       {noNumber && <p className={styles.emptyLine}>{t("projects.notMeasuredNoNumber")} {p.baseline?.none ? p.baseline.why : ""}</p>}
       {stoppedFirst && <p className={styles.emptyLine}>{t("projects.stoppedBeforeMeasured")}</p>}
-      {p.checks.map((c) => <Check key={c.check} p={p} c={c} flags={view.measures.find((x) => x.check === c.check)} />)}
+      {p.checks.map((c) => <Check key={c.check} p={p} c={c} flags={view.measures.find((x) => x.check === c.check)} primary={c.check === firstConfirm} />)}
     </section>
   );
 }
@@ -191,7 +199,7 @@ const IMPACT_FIELDS = [
   ["scrapPartsPerYear", "projects.impactScrapField"],
 ] as const;
 
-function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: MeasureFlags | undefined }) {
+function Check({ p, c, flags, primary }: { p: ReducedProject; c: CheckDue; flags: MeasureFlags | undefined; primary: boolean }) {
   const { act, S, f, serverMode, tenant, seed, showToast } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -296,7 +304,7 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
             {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
             {m.confirmed ? <VerdictChip verdict={m.verdict} /> : <span data-testid={"measure-waiting-" + c.check}><Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill></span>}
             {canConfirm && (
-              <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} data-testid={"measure-confirm-" + c.check} title={t("projects.confirmAsk")} onClick={() => confirm(m)}>{t("projects.confirmResult")}</button>
+              <button type="button" className={`nh-btn ${primary ? "nh-btn-primary" : "nh-btn-ghost"} nh-btn-sm ${styles.checkMove}`} data-testid={"measure-confirm-" + c.check} title={t("projects.confirmAsk")} onClick={() => confirm(m)}>{t("projects.confirmResult")}</button>
             )}
           </>
         ) : (

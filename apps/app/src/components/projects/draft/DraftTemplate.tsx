@@ -41,7 +41,6 @@ export function DraftTemplate({ p, view }: { p: ReducedProject; view: DraftView 
         <h2 id={"template-" + p.id} className={styles.h2}>{t("projectDraft.templateTitle")}</h2>
         {may && p.template !== null && !changing && <button type="button" className={styles.quiet} onClick={() => setChanging(true)}>{t("projectDraft.templateChange")}</button>}
       </div>
-      <p className={styles.muted}>{t("projectDraft.templateLede")}</p>
       {may && picking && (
         <label className={styles.field}>
           <span className={styles.label}>{t("projectDraft.templateTitleLabel")}</span>
@@ -63,7 +62,7 @@ export function DraftTemplate({ p, view }: { p: ReducedProject; view: DraftView 
                   {inUse && <span className={styles.inUse}>{t("projectDraft.templateInUse")}</span>}
                 </div>
                 <p className={styles.tplDesc}>{t(k.desc)}</p>
-                <span className={styles.hint}>{t("projectDraft.templateMeta", { count: tpl.steps.length, days })}</span>
+                {picking && <span className={styles.hint}>{t("projectDraft.templateMeta", { count: tpl.steps.length, days })}</span>}
               </div>
               <ol className={styles.tplSteps}>
                 {shown.map((s, i) => (
@@ -79,7 +78,6 @@ export function DraftTemplate({ p, view }: { p: ReducedProject; view: DraftView 
           );
         })}
       </ul>
-      {may && picking && p.template !== null && <p className={styles.hint}>{t("projectDraft.templateKeep")}</p>}
     </section>
   );
 }
