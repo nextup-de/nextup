@@ -83,7 +83,6 @@
 .a2 { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; padding: 8px 14px 8px 8px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 12px); text-decoration: none; color: var(--nh-ink); transition: background 180ms ease,transform 160ms cubic-bezier(.2,.8,.2,1); }
 .a2:active { transform: scale(.98); }
 .a2:hover { background: var(--nh-surface); }
-.ext { width: 32px; height: 32px; border-radius: var(--radius-xs, 8px); font-size: var(--nh-fs-xs); font-weight: 700; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: center; flex: none; }
 .span { display: flex; flex-direction: column; min-width: 0; }
 .name2 { font-size: var(--nh-fs-sm); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .size { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
@@ -196,8 +195,7 @@
 .pick2[data-on="true"][data-dept-tone] .count2 { color: var(--nh-dept-ink); opacity: 0.7; }
 .stage { color: var(--nh-ink-2); background: var(--nh-fill); }
 .stage[data-tone="review"] { color: var(--nh-warn); background: var(--nh-warn-tint); }
-.stage[data-tone="piloting"] { color: var(--nh-brand-ink); background: var(--nh-brand-tint); }
-.stage[data-tone="approved"] { color: var(--nh-ok); background: var(--nh-ok-tint); }
+.stage[data-tone="piloting"], .stage[data-tone="approved"] { color: var(--nh-ok); background: var(--nh-ok-tint); }
 .toggleSupport2 { background: var(--nh-brand); color: var(--nh-on-brand); }
 /* On a card Support is quiet: a grid of cards would otherwise be a grid of filled buttons (DESIGN_RULES §9). */
 .toggleSupport { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
@@ -206,11 +204,6 @@
 .toggleSupport[data-on="true"], .toggleSupport2[data-on="true"] { background: transparent; color: var(--nh-mute); box-shadow: inset 0 0 0 1px var(--nh-line); }
 .toggleSupport[data-on="true"] svg, .toggleSupport2[data-on="true"] svg { color: var(--nh-brand); }
 .toggleSupport2[data-on="true"]:hover { filter: none; background: var(--nh-surface); }
-.ext { background: var(--nh-fill); color: var(--nh-ink-2); }
-.ext[data-tone="green"] { background: #e8f5ec; color: var(--nh-ok); }
-.ext[data-tone="red"] { background: #fdeaea; color: #c4161c; }
-.ext[data-tone="blue"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
-.ext[data-tone="violet"] { background: #f1ebfd; color: #6b3fc4; }
 .div27 { border-radius: var(--radius-md, 18px); }
 .div27[data-open="true"] { border-radius: var(--radius-md, 18px) var(--radius-md, 18px) 0 0; }
 .svg2[data-open="true"] { transform: rotate(180deg); }
