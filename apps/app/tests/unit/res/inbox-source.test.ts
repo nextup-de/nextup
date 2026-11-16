@@ -9,6 +9,7 @@ import { inboxItems } from "@/features/inbox";
 import { mayConfirmBaseline } from "@/features/inbox/sources/project-result";
 import type { InboxItem } from "@/features/inbox/types";
 import type { HelpAsk, ReducedProject } from "@/features/projects/types";
+import { confirmsDraftBaseline, isOpenDraft, mayReadDraft, visibleProjectsFor, type IdViewer } from "@/features/projects/views";
 
 const seats: SeatRow[] = [
   { id: "s_own", roleId: "role_owner", label: "Owner", userId: "u_own", sort: 0 },
@@ -89,5 +90,51 @@ describe("RES inbox", () => {
   it("needs the projects flag", () => {
     const s = state({ status: "running", sponsorUserId: "u_sp", helpAsks: [ask()] });
     expect(kinds(itemsFor(s, "u_sp", "leader", false), "help")).toEqual([]);
+  });
+
+  // Rights (docs/VISIBILITY.md, "A draft"): whoever is asked to confirm a draft's baseline has to be able to read that draft.
+  describe("the draft is read by whoever its baseline waits for", () => {
+    const viewer = (userId: string, role: IdViewer["role"] = "leader"): IdViewer => ({ role, userId, me: meFor(userId, seats) });
+    const reads = (s: State, v: IdViewer) => visibleProjectsFor(s, v, false).some((p) => p.id === "p_one");
+
+    it("a holder of the route's deputy role reads the draft while its baseline waits, and nobody else gains anything", () => {
+      const s = state({ draft: true });
+      expect(isOpenDraft(s.projects[0])).toBe(true);
+      for (const user of ["u_dep", "u_dep2"]) expect(reads(s, viewer(user)), user).toBe(true);
+      // The lead reads it as before; a leader who is not asked and the raiser do not.
+      expect(reads(s, viewer("u_lead"))).toBe(true);
+      expect(reads(s, viewer("u_other"))).toBe(false);
+      expect(reads(s, viewer("u_au", "member"))).toBe(false);
+      // Without the viewer's roles nobody is known to be asked.
+      expect(reads(s, { role: "leader", userId: "u_dep" })).toBe(false);
+    });
+
+    it("only while it waits: not before a baseline, not once it is confirmed, not where no reward is possible", () => {
+      expect(reads(state({ draft: true, baseline: null }), viewer("u_dep"))).toBe(false);
+      const confirmed = { ...baseline!, confirmed: { byUserId: "u_dep2", day: 3 } } as ReducedProject["baseline"];
+      expect(reads(state({ draft: true, baseline: confirmed }), viewer("u_dep"))).toBe(false);
+      expect(reads(state({ draft: true }, false), viewer("u_dep"))).toBe(false);
+    });
+
+    it("whoever typed the baseline is not its second person, so they gain nothing either", () => {
+      const s = state({ draft: true, baseline: { ...baseline!, byUserId: "u_dep" } as ReducedProject["baseline"] });
+      expect(reads(s, viewer("u_dep"))).toBe(false);
+      expect(reads(s, viewer("u_dep2"))).toBe(true);
+    });
+
+    it("a private idea's draft is read by its confirmer too, as by the seat a late draft went to", () => {
+      const s = state({ draft: true });
+      const p = s.projects[0];
+      const dep = viewer("u_dep");
+      expect(mayReadDraft(p, dep, true, false, confirmsDraftBaseline(p, dep, s))).toBe(true);
+      expect(mayReadDraft(p, viewer("u_other"), true, false, confirmsDraftBaseline(p, viewer("u_other"), s))).toBe(false);
+      // A manager reads an open idea's draft anyway; a private one only when the baseline waits for them (no sponsor, no deputy holder).
+      const manager = viewer("u_m1", "manager");
+      expect(mayReadDraft(p, manager, true, false, confirmsDraftBaseline(p, manager, s))).toBe(false);
+      const noDesk = state({ draft: true });
+      noDesk.seats = noDesk.seats.filter((x) => x.roleId !== "role_deputy");
+      const alone: IdViewer = { role: "manager", userId: "u_m1", me: meFor("u_m1", noDesk.seats) };
+      expect(mayReadDraft(noDesk.projects[0], alone, true, false, confirmsDraftBaseline(noDesk.projects[0], alone, noDesk))).toBe(true);
+    });
   });
 });

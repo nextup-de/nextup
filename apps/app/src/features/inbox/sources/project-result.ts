@@ -2,7 +2,6 @@
 // asked person or the holders of the asked role, and a baseline that waits for a second person's confirmation - for whoever may
 // confirm it. The confirm row of a sponsor or a manager-only result comes through projectItems, a sent-back check as the lead's measure
 // move: nothing shows twice. Derived from the reduced state, nothing stored.
-import type { State } from "@/features/cases/reducer";
 import { DEFAULT_RULES } from "@/features/knowledge/rules";
 import { mayConfirmBaseline } from "@/features/projects/result";
 import type { ReducedProject } from "@/features/projects/types";
