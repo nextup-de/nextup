@@ -9,9 +9,10 @@
 .side {
   flex: none; width: 256px; overflow: hidden; z-index: 6;
   position: sticky; top: var(--nh-bar-h); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
-  transition: width 420ms cubic-bezier(.2,.8,.2,1);
 }
 .root[data-sb="hidden"] .side { width: 0; }
+/* The width slides on the button only; a load draws the side view open or hidden at once. */
+.root[data-moved="true"] .side { transition: width 420ms cubic-bezier(.2,.8,.2,1); }
 .main { flex: 1; min-width: 0; padding: 20px var(--nh-page-x) 40px; }
 .inner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .show { position: absolute; top: 12px; left: 12px; z-index: 7; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -57,4 +58,4 @@
 @media (max-width: 760px) {
   .side, .show { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .side, .iconBtn, .row { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .root[data-moved="true"] .side, .iconBtn, .row { transition: none; } }

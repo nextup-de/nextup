@@ -40,6 +40,14 @@ describe("DESIGN side view", () => {
     expect(out).not.toContain('aria-label="Show sidebar"');
   });
 
+  it("no slide on a page load: the width moves only after the button is pressed", () => {
+    const out = render(h(AreaFrame, { section: "inbox", active: "inbox", children: h("p", null, "the page") }));
+    expect(out).not.toContain("data-moved");
+    const css = read("src/components/shell/AreaFrame.module.css");
+    expect(css).toMatch(/\.root\[data-moved="true"\] \.side \{ transition: width/);
+    expect(css).not.toMatch(/^\.side \{[^}]*transition/m); // the bare rule: a load draws it at once
+  });
+
   it("the strip of a side-view section is marked, so only a phone draws it; other strips are not", () => {
     const strip = (section: SectionKey, active: string, side: boolean) => render(h(SectionTabs, { section, active, side }));
     expect(strip("dashboard", "ledger", true)).toContain('data-side="true"');

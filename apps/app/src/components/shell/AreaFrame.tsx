@@ -32,13 +32,15 @@ export function AreaFrame({ section, active, children }: { section: SectionKey; 
   const { href, role, serverMode } = useDemo();
   const t = useT();
   const sb = useSyncExternalStore(subscribeSb, () => readSb(section), () => startOf(section));
-  const set = (v: Sb) => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
+  // The side view slides only when its button is pressed: a page load draws it where the viewer left it, without motion.
+  const [moved, setMoved] = useState(false);
+  const set = (v: Sb) => { setMoved(true); try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const pages = sectionTabsFor(section, { role, serverMode });
   const name = pages[0] ? t(pages[0].labelKey) : section; // the area's name; "Main" is the bar's nav alone
 
   return (
-    <div className={s.root} data-sb={sb} data-section={section} data-testid="area-frame">
+    <div className={s.root} data-sb={sb} data-section={section} data-moved={moved ? "true" : undefined} data-testid="area-frame">
       <aside className={s.side} aria-label={name} inert={sb === "hidden"}>
         {/* Hidden, it draws nothing: no list or links left in the page for a reader or a test. */}
         {sb === "open" && (
