@@ -5,7 +5,7 @@ import { holdsRole, meFor, seatsOfRole, type Me, type SeatRow } from "@/features
 import type { Actor } from "@/features/cases/permissions";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { approvalsFor, matchingRules, reviewApplies, reviewSeatFor } from "./rules";
-import { currentStep } from "./steps";
+import { currentStep, returnedRun } from "./steps";
 import { COST_BASIS_MAX, COST_EUR_MAX, type ApprovalRule, type ApprovalStepInput, type CaseApprovals } from "./types";
 
 /** What these rules read of the state: the seats, the company's settings with its roles, the loop's fast lane and the projects. */
@@ -75,16 +75,34 @@ function stepRoleId(step: { kind: string; roleId?: string; councilId?: string },
  * May the actor answer an approval step (D22): the run is the active one, the step is its current step and the form was opened for its current
  * revision (an older form is stale), and the actor holds the step's role (a council's secretary role), or the seat a late hand-over named; never the
  * person who wrote the case.provisional. A manager answers only when they hold that role.
+ *
+ * A parallel run (decisions A and D, 16 Nov 2026): any step still waiting may be answered, each by the person it names (`userId`) and nobody else; a
+ * step without a person (nobody held its role when the run started) by its role's holders as above. Never the first decider.
  */
 export function mayAnswerStep(actor: Actor, kase: Pick<RightsCase, "approvals">, state: Pick<State, "seats" | "approvals">, form: { runId: string; stepId: string; dueRev: number }): boolean {
   const run = kase.approvals;
   if (run === null || run.done || run.runId !== form.runId) return false;
-  const step = currentStep(run);
+  const step = run.parallel === true ? run.steps.find((s) => s.id === form.stepId && s.state === "pending") ?? null : currentStep(run);
   if (step === null || step.id !== form.stepId || step.dueRev !== form.dueRev) return false;
   if (actor.userId == null || actor.userId === run.deciderUserId) return false;
+  if (step.userId !== undefined) return actor.userId === step.userId;
   const me = meOf(actor, state.seats);
   if (step.seatId !== null && me.seatIds.includes(step.seatId)) return true;
   return holdsRole(me, stepRoleId(step, state));
+}
+
+/**
+ * May the actor send a returned idea again (decision B, 16 Nov 2026): the last run's no returned it, nothing started since, it is not withdrawn, and
+ * the actor raised it. A fresh parallel run among the same approvers follows; nobody else may overrule a no.
+ */
+export function mayResendApproval(actor: Pick<Actor, "userId">, kase: Pick<RightsCase, "fromUserId" | "status" | "withdrawn" | "approvals" | "approvalRuns">): boolean {
+  return kase.withdrawn === null && returnedRun(kase) !== null && isOwnIdea(actor, kase);
+}
+
+/** The named approvers of the active and the last run (decision A): they read the idea and its draft while it is approved, as the step roles do (D24). */
+export function approverUserIds(kase: Pick<RightsCase, "approvals" | "approvalRuns">): string[] {
+  const last = kase.approvalRuns[kase.approvalRuns.length - 1] ?? null;
+  return [...new Set([kase.approvals, last].flatMap((run) => (run?.steps ?? []).map((s) => s.userId)).filter((u): u is string => typeof u === "string"))];
 }
 
 /**
@@ -105,6 +123,7 @@ export function approverRoleIds(kase: Pick<RightsCase, "approvals" | "approvalRu
   const roles = new Set<string>();
   for (const run of [kase.approvals, last]) {
     for (const step of run?.steps ?? []) {
+      if (step.userId !== undefined) continue; // a named approver reads it by user id (approverUserIds), not every holder of their role
       if (step.roleId !== undefined) roles.add(step.roleId);
       if (step.kind === "council") {
         const council = state.approvals.councils.find((c) => c.id === step.councilId);

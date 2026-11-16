@@ -116,6 +116,9 @@ export const approvals = defineMessages({
     permBackReason: "Say what is missing, in at least 8 characters.",
     permPresent: "Give how many were present as a whole number from 0 to 200.",
     permConfig: "These settings are not valid. Check the roles, the days and the councils.",
+    // Send again (decision B, 16 Nov 2026)
+    permNotReturned: "This idea was not sent back, so it cannot be sent again.",
+    permResendRaiser: "Only the person who raised the idea can send it again.",
   },
   de: {
     title: "Prüfung und Freigaben",
@@ -221,5 +224,7 @@ export const approvals = defineMessages({
     permBackReason: "Sagen Sie, was fehlt, in mindestens 8 Zeichen.",
     permPresent: "Geben Sie die Zahl der Anwesenden als ganze Zahl von 0 bis 200 an.",
     permConfig: "Diese Einstellungen sind nicht gültig. Prüfen Sie die Rollen, die Tage und die Gremien.",
+    permNotReturned: "Diese Idee wurde nicht zurückgeschickt, sie kann nicht erneut gesendet werden.",
+    permResendRaiser: "Nur die Person, die die Idee eingebracht hat, kann sie erneut senden.",
   },
 });
