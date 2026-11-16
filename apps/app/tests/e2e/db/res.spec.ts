@@ -435,9 +435,12 @@ test.describe("RES acceptance: a result that closes properly", () => {
     });
 
     await test.step("the raiser sees that recognition is due, and the manager records the reward in the UI: the project is recognised", async () => {
+      // The raiser works on the project like its team (an idea and its project are one thing): the Results page shows the date.
       page = await signIn(browser, RAISER);
-      await page.goto(`/${SLUG}/projects/${projectId}`);
-      await expect(page.getByTestId("raiser-recognition")).toContainText("Recognition due by");
+      await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
+      await page.getByRole("button", { name: "Open result", exact: true }).click();
+      await expect(page.getByTestId("recognition-due")).toContainText("Recognition due by");
+      await expect(page.getByRole("form", { name: "Record the reward" }), "the reward is the manager's").toHaveCount(0);
       await page.context().close();
 
       page = await signIn(browser, MANAGER);
@@ -446,6 +449,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await page.getByRole("form", { name: "Record the reward" }).getByRole("button", { name: "Record the reward" }).click();
       await expect.poll(async () => (await eventsOf("project.rewarded", projectId)).length).toBe(1);
       expect((await eventsOf("project.rewarded", projectId))[0]).toMatchObject({ actorUserId: id.manager });
+      await page.goto(`/${SLUG}/projects/${projectId}`); // the project's head, with its state, is on its Idea page
       await expect(page.getByRole("main")).toContainText("Recognised");
       await page.context().close();
       // Recorded: the reminder is over, however many days pass.
@@ -455,26 +459,16 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect(aboutProject(await noticesOf(id.manager, "reminder.reward", "inapp"), TITLE), "no second reminder").toHaveLength(1);
     });
 
-    // ── the raiser's panel ─────────────────────────────────────────────────────────────────────────────────────────────
-    await test.step("the raiser, who is not on the team, sees only the raiser panel: steps 1 of 1, the result, no board and no buttons", async () => {
+    // ── the raiser's view ──────────────────────────────────────────────────────────────────────────────────────────────
+    await test.step("the raiser, who is not on the team, opens the project like its team: the board, the confirmed result, recognised", async () => {
       page = await signIn(browser, RAISER);
+      await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
+      await expect(page.getByRole("region", { name: "Board", exact: true })).toContainText(STEP_DONE);
       await page.goto(`/${SLUG}/projects/${projectId}`);
-      const panel = page.getByTestId("raiser-panel");
-      await expect(panel).toBeVisible();
-      await expect(panel.getByTestId("raiser-steps")).toContainText("1 of 1 steps done"); // the dropped step counts in no total
-      await expect(panel.getByTestId("raiser-results")).toContainText(`${CHECK_DAYS}-day check: ${SECOND}`);
-      await expect(panel.getByTestId("raiser-results")).toContainText("Confirmed by a second person");
       await expect(page.getByRole("main")).toContainText("Recognised");
-      for (const text of [STEP_DONE, STEP_DROP, DROP_WHY, BACK_WHY]) await expect(page.getByRole("main"), `"${text}" is not on the raiser's page`).not.toContainText(text);
-      // The projects sidebar and its "Show sidebar" control are navigation, not actions on this project: count the project's own buttons only.
-      const actions = page.getByRole("main").locator('button:not(aside[aria-label="Projects"] *):not([aria-label="Show sidebar"])').filter({ visible: true });
-      await expect(actions, "no buttons on the raiser's page").toHaveCount(0);
-      const entries = page.getByRole("main").locator('input:not(aside[aria-label="Projects"] *), textarea:not(aside[aria-label="Projects"] *)').filter({ visible: true }); // the sidebar's search is navigation
-      await expect(entries, "no entry on the raiser's page").toHaveCount(0);
       await page.context().close();
 
-      // Q1's current default: this is a presentation only. The browser's log still carries the project's events - the board, the numbers,
-      // the reasons - so this step is NOT a privacy check; the cut of the data is a later release (RES D21, Q1).
+      // The raiser's browser carries the project's events - the board, the numbers, the reasons (RES D21, Q1).
       const shipped = JSON.stringify((await loadLogFor(companyId, { userId: id.raiser, role: "member" })).log.events);
       expect(shipped, "the raiser's browser still receives the project's events").toContain(projectId);
       expect(shipped).toContain("project.step.added");
