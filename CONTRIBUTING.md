@@ -120,6 +120,31 @@ person's code to make the error go away.
 
 ---
 
+## Rights — who may do what
+
+Who may do what (add a step, revise an idea, stop a project …) is Kevin's call, even when the change is small and
+comes as part of a feature. Everyone may still build features that need a rights change; the change just has to
+be visible. The table of all rights is `docs/RIGHTS.md`. It is generated from the rights code, and a unit test fails
+when the two disagree.
+
+The rights code: `apps/app/src/features/*/permissions.ts`, `features/*/rights.ts`, `features/cases/reducer.ts` and
+`visibility.ts`, `features/projects/views.ts` and `confirm.ts`, `features/auth/`, `config/roles.ts`.
+
+1. **Rights get their own PR.** Never inside a design or feature PR. Build the feature on the rights as they are,
+   and open a small `rights:` PR for what it needs (`fix(rights): the raiser may add steps to their project`).
+2. **Change the table with the code.** Run `npm run rights:write -w @nextup/app` and commit `docs/RIGHTS.md`.
+   A new action or a new kind of person gets its row or column in `apps/app/tests/unit/rights-table.test.ts`.
+3. **Say it in the PR**, under "Rights" in the template: which row changes from what to what, and why. "Kevin said
+   yes" is not enough — name the rows, so the answer was to the actual change.
+4. **Don't loosen a rights test to make it pass.** If a rights test fails, the rights changed: that is rule 1–3,
+   not a test fix.
+
+A PR that touches the rights code gets the `rights` label and a comment with the changed table rows from the
+`Rights` workflow, and Kevin is mentioned on it. It doesn't block the merge: approvals stay optional. Merging
+it without the table and the PR note is what is not OK.
+
+---
+
 ## What not to do — and why
 
 | Don't | Because |
@@ -129,6 +154,7 @@ person's code to make the error go away.
 | `git add -f something` | Force-adding an ignored file. The ignore is on purpose. |
 | Edit `.gitignore`, `CLAUDE.md`, or anything in `.github/` | Kevin's. Ask. |
 | Add a new dependency (`npm install something`) | Changes how everyone runs the project. Say why in the PR; Kevin decides. |
+| Change who may do what inside a feature or design PR | Rights are Kevin's call; mixed in, 20 lines hide in 600. See "Rights" above. |
 | Reformat a whole file "to clean it up" | 400-line diffs hide the 3 lines that matter. |
 | Commit `.env`, keys, passwords, tokens | It's public the second it's pushed. Rotate it and tell Kevin. |
 | Click "bypass" on a push-protection warning | It's telling you there's a secret. Remove it instead. |

@@ -9,6 +9,7 @@
     "lint": "eslint && stylelint \"src/**/*.css\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "rights:write": "RIGHTS_WRITE=1 vitest run tests/unit/rights-table.test.ts",
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",

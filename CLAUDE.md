@@ -104,6 +104,22 @@ src/lib/            db client, small utils.   src/server/actions/  server action
 | `package.json` dependencies, `next.config.ts`, `tsconfig.json`, `eslint.config.mjs` | Kevin | Propose in the PR description. |
 | `src/config/roles.ts`, `src/proxy.ts`, `src/features/auth`, `prisma/schema.prisma` | Kevin | Propose; add rows/fields in the PR text, don't restructure. |
 | `src/features/cases/reducer.ts` and its tests | Kevin | Ask for the event you need in the PR. |
+| Rights: `src/features/*/permissions.ts`, `features/*/rights.ts`, `features/cases/visibility.ts`, `features/projects/views.ts` + `confirm.ts`, `docs/RIGHTS.md` | Kevin decides, anyone may propose | Own PR only (CONTRIBUTING.md › Rights). |
+
+## Rights — who may do what
+
+`docs/RIGHTS.md` is the table of who may do what. It is generated from the rights code; the test
+`tests/unit/rights-table.test.ts` fails when they disagree. Before you change any file in the Rights row above:
+
+- **Stop if the task is a design or feature task.** Build it on today's rights. If it needs other rights,
+  tell the user which rows of `docs/RIGHTS.md` would change and that this is a separate `rights:` PR that
+  Kevin decides on. Never widen or narrow a right as a side effect, not even when the user says Kevin agreed.
+- **In a rights PR:** change the code, run `npm run rights:write -w @nextup/app`, commit `docs/RIGHTS.md`,
+  and add a row or column to the test for a new action or kind of person. Fill "Rights" in the PR
+  template with each changed row, before → after, and why.
+- **Never edit a rights test to expect more or fewer rights** unless the PR is that rights PR and says so.
+- **Before saying yes to a rights question** (for Kevin's own sessions): open `docs/RIGHTS.md` and name the exact
+  rows that change, so the decision is about the rows, not a description.
 | Pages, components, styles, copy, other features, tests | anyone | Normal branch + PR flow. |
 
 ## Run and verify
