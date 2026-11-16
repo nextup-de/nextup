@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useReducer, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { addablePages, isJiraTool, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, suggestPageName, TOOL_GROUPS } from "@/features/projects/pages";
 import { canCreate, canNext, preselect as initialState, toolIcon, wizard } from "@/features/projects/page-wizard";
@@ -21,8 +22,11 @@ export type AddPageDialogProps = {
 };
 const toolKey = (kind: ToolKind, description = false) => `projectPages.tool${kind[0].toUpperCase()}${kind.slice(1)}${description ? "Description" : ""}` as MessageKey;
 
+/** On the body, so the app's top bar (and any layer it sits in) never covers the dialog's head. */
 export function AddPageDialog(props: AddPageDialogProps) {
-  return props.open ? <WizardDialog {...props} /> : null;
+  if (!props.open) return null;
+  const dialog = <WizardDialog {...props} />;
+  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body); // server markup (tests) stays in place
 }
 
 function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogProps) {
@@ -122,12 +126,18 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
         <li aria-current={state.step === 2 ? "step" : undefined}><span>2</span>{t("projectPages.nameIt")}</li>
       </ol><button type="button" className={s.close} disabled={busy} aria-label={t("projectPages.closeDialogLabel")} onClick={onClose}>×</button></header>
       {state.step === 1 ? <div className={s.body}>
-        <div className={s.picker}><p>{t("projectPages.pickToolsHint")}{hasJira && <> {t("projectPages.jiraPickerHint", { project: jira.projectKey! })}</>}</p>
-          {ready.length > 0 && <section aria-label={t("projectPages.readyPages")}><h3>{t("projectPages.readyPages")}</h3><div className={s.tiles}>
-            {ready.map((page) => <button key={page.id} type="button" className={s.tile} disabled={busy} data-ready={page.id} onClick={() => void addReady(page)}>
-              <span className={s.tileTop}><span className={s.glyph}><Glyph icon={page.icon} /></span></span><strong>{t(page.title as MessageKey)}</strong><span className={s.description}>{page.tools.map((tool) => nameOf(tool.kind)).join(" · ")}</span>
-            </button>)}
+        <div className={s.picker}>
+          {ready.length > 0 && <section aria-label={t("projectPages.readyPages")}><h3>{t("projectPages.readyPages")}</h3><p className={s.hint}>{t("projectPages.readyPagesHint")}</p><div className={s.ready}>
+            {ready.map((page) => {
+              const name = t(page.title as MessageKey);
+              const tools = page.tools.map((tool) => nameOf(tool.kind)).join(" · ");
+              return <button key={page.id} type="button" className={s.readyTile} disabled={busy} data-ready={page.id} onClick={() => void addReady(page)}>
+                <span className={s.glyph}><Glyph icon={page.icon} /></span>
+                <span className={s.readyText}><strong>{name}</strong>{tools !== name && <span className={s.description}>{tools}</span>}</span>
+              </button>;
+            })}
           </div></section>}
+          <p>{t("projectPages.pickToolsHint")}{hasJira && <> {t("projectPages.jiraPickerHint", { project: jira.projectKey! })}</>}</p>
           {TOOL_GROUPS.map((group) => <section key={group.title}><h3>{t(group.title as MessageKey)}</h3><div className={s.tiles}>
             {group.kinds.filter((kind) => kind !== "agent" || flag("agent")).map((kind) => {
               const index = state.picks.findIndex((pick) => pick.kind === kind);
