@@ -19,6 +19,7 @@ const FORMER_HOLDER = "u_former_seat";
 
 const person = (userId: string, role: Actor["role"] = "member"): Actor => ({ role, name: userId, handle: null, userId });
 const clock: Actor = { role: "member", name: CLOCK_ACTOR, handle: null };
+// The manager accepted an invitation to the project (project() below), so it is theirs: in charge (Kevin, 16 Nov 2026).
 const manager = person("u_mgr", "manager");
 
 const invite = (over: Partial<Invite> = {}): Invite => ({ id: "inv1", userId: "u_guest", role: "member", state: "pending", day: 1, reason: "", ...over });
@@ -29,7 +30,7 @@ const project = (over: Partial<ReducedProject> = {}): ReducedProject => ({
   openedDay: 0, openedBy: "Decider", startedDay: null, doneDay: null, doneNote: "", stopped: null, baseline: null,
   steps: [], links: [], sync: null, measures: [], checks: [], verdict: null, reward: null, claimed: null,
   status: "planning", closed: false, rewardDue: false, dueDay: 5, overdue: false, escalated: null, history: [],
-  draft: true, leadState: "taken", leadAskedDay: 0, template: null, invites: [], sponsorUserId: null, followerUserIds: [],
+  draft: true, leadState: "taken", leadAskedDay: 0, template: null, invites: [invite({ id: "inv_mgr", userId: "u_mgr", state: "accepted" })], sponsorUserId: null, followerUserIds: [],
   goal: null, startDay: null, approvalsPendingSince: null, raiserNote: "", deciderUserId: DECIDER,
   doneBy: null, doneByMoves: [], pausedUntil: null, pauseWhy: "", lastActivityDay: null, checkInWeekday: null, howWeWorkNote: "", leadVacatedDay: null, latestUpdate: null, rewardDueDay: null, helpAsks: [], pages: null, milestones: [], forms: [], requests: [], removed: [], merges: {},
   ...over,

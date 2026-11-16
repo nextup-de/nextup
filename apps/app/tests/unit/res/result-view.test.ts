@@ -20,6 +20,7 @@ function world(more: ReturnType<typeof ev>[] = [], tweak: (p: ReturnType<typeof 
   const s = stateOf([...startedLog(), P("project.step.added", { stepId: "s1", text: "Order the cart" }), P("project.step.added", { stepId: "s2", text: "Train the shift", to: "done" }), ...more], today);
   const p = project(s);
   p.memberUserIds = ["u_ci"];
+  p.invites = [{ id: "i_mgr", userId: "u_boss", role: "member" as const, state: "accepted" as const, day: 0, reason: "" }]; // the manager is asked onto it: in charge
   p.sponsorUserId = "u_hs";
   p.followerUserIds = ["u_fo"];
   tweak(p);

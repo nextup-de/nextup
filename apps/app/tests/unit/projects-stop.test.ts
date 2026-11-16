@@ -37,12 +37,13 @@ const mails = (last: CaseEvent, ...more: CaseEvent[]) => loopMails({ ev: last, s
 const SUBJECT = "P-1 stopped: Changeover cart";
 
 describe("stopping a project", () => {
-  it("the lead and a manager may, with a reason; a team member, the raiser and the desk may not", () => {
+  it("the lead and a manager in charge of it may, with a reason; a team member, the raiser, the desk and an uninvolved manager may not", () => {
     const S = stateOf();
     const stop = (who: string, role: "member" | "leader" | "manager", why = "No budget this year") =>
       mayAppend({ role, name: who, handle: null, userId: UID[who] }, { type: "project.stopped", target: "p_m", payload: { why } }, S).ok;
     expect(stop("L. Brandt", "leader")).toBe(true);
-    expect(stop("B. Hartmann", "manager")).toBe(true);
+    expect(stop("H. Sander", "manager")).toBe(true); // a manager on the team
+    expect(stop("B. Hartmann", "manager")).toBe(false); // has nothing to do with it
     expect(stop("H. Sander", "member")).toBe(false);
     expect(stop("Anonymous #4471", "member")).toBe(false);
     expect(stop("T. Vogel", "leader")).toBe(false);

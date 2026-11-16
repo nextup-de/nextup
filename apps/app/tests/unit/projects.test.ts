@@ -267,10 +267,12 @@ describe("projects: who may", () => {
     }
   });
 
-  it("the lead (or a manager) runs it; the team adds steps; anyone comments", () => {
+  it("the lead (or a manager in charge of it) runs it; the team adds steps; anyone comments", () => {
     expect(mayAppend(actor("L. Brandt"), q("project.baseline", { metric: "m", value: 1, better: "down" }), planning).ok).toBe(true);
     expect(mayAppend(actor("M. Roth"), q("project.baseline", { metric: "m", value: 1, better: "down" }), planning).ok).toBe(false);
-    expect(mayAppend(actor("B. Hartmann", "manager"), q("project.baseline", { none: true, why: "No metric" }), planning).ok).toBe(true);
+    // A manager runs it only when it is theirs: T. Vogel said yes to it; B. Hartmann has nothing to do with it (Kevin, 16 Nov 2026).
+    expect(mayAppend(actor("T. Vogel", "manager"), q("project.baseline", { none: true, why: "No metric" }), planning).ok).toBe(true);
+    expect(mayAppend(actor("B. Hartmann", "manager"), q("project.baseline", { none: true, why: "No metric" }), planning).ok).toBe(false);
     expect(mayAppend(actor("L. Brandt"), q("project.baseline", { none: true }), planning).ok).toBe(false);
     expect(mayAppend(actor("L. Brandt"), q("project.started"), planning).ok).toBe(false);
     expect(mayAppend(actor("M. Roth"), q("project.step.added", { stepId: "s_1", text: "Cart" }), planning).ok).toBe(true);
@@ -328,12 +330,13 @@ describe("projects: sent to Jira (project.sync)", () => {
     expect(S.projects[0].sync).toMatchObject({ on: true, day: 1 });
   });
 
-  it("the lead or a manager may; nobody else; and only while the project is open", () => {
+  it("the lead or a manager in charge of it may; nobody else; and only while the project is open", () => {
     const send = (name: string, role: Actor["role"] = "leader", state = sent) => mayAppend(actor(name, role), q("project.sync", { system: "jira", on: true }), state);
     expect(send("L. Brandt").ok).toBe(true);
-    expect(send("B. Hartmann", "manager").ok).toBe(true);
+    expect(send("T. Vogel", "manager").ok).toBe(true);
+    expect(send("B. Hartmann", "manager").ok).toBe(false);
     const roth = reduce(SEED, logAt(0, ...base, P("project.member", { name: "M. Roth", userId: "u_mr", on: true })));
-    expect(send("M. Roth", "member", roth)).toEqual({ ok: false, error: "Only the project's lead (or a manager) can do that." });
+    expect(send("M. Roth", "member", roth)).toEqual({ ok: false, error: "Only the project's lead (or a manager in charge of it) can do that." });
     expect(send("H. Sander", "member", roth).ok).toBe(false);
     expect(send("J. Schmidt", "member").ok).toBe(false);
     const closed = reduce(SEED, logAt(1, ...base, P("project.stopped", { why: "Line closes" }, 1)));

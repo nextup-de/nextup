@@ -19,6 +19,7 @@ function setup() {
   // A project whose team added the ready-made pages (a new one starts with Idea and Files only).
   p.pages = READY_PAGES.map((x) => ({ ...x, tools: x.tools.map((tool) => ({ ...tool })) }));
   p.followerUserIds = ["follower"];
+  p.invites = [{ id: "i_mgr", userId: "manager", role: "member", state: "accepted", day: 0, reason: "" }]; // a manager asked onto it
   const state = { projects: [p], day: 0, seats: [] } as unknown as State;
   const ask = (type: string, payload: EventPayload = {}, who = actor()) => mayAppendProject(who, { type, payload, target: p.id }, state);
   const refused = (type: string, payload: EventPayload, key: MessageKey, who = actor()) => expect(ask(type, payload, who)).toEqual({ ok: false, error: translate("en", key) });
@@ -46,6 +47,7 @@ it("PGE page rights: lead, member and manager can append all twelve events; foll
   ];
   for (const [type, payload] of events) {
     for (const who of [actor(), actor("member"), actor("manager", "manager")]) expect(ask(type, payload, who), type).toEqual({ ok: true });
+    expect(ask(type, payload, actor("boss", "manager")).ok, `${type} by an uninvolved manager`).toBe(false);
     for (const who of [actor("follower"), actor("stranger"), actor("")]) refused(type, payload, "projectPages.permPageWho", who);
     for (const status of ["stopped", "recognised"] as const) {
       p.status = status;

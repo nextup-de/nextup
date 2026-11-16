@@ -33,6 +33,7 @@ function world(extra: CaseEvent[] = [], day = TODAY) {
   // The sponsor and the member are as the invitations of a draft left them (the real reducer path is MOV's test); the state's own project, so mayAppend reads the same.
   project.sponsorUserId = "u_hs";
   project.memberUserIds = ["u_ci"];
+  project.invites = [{ id: "i_mgr", userId: "u_boss", role: "member" as const, state: "accepted" as const, day: 0, reason: "" }]; // the manager is asked onto it: in charge
   return { state, project };
 }
 
