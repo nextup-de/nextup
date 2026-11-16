@@ -61,7 +61,7 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
 
   await test.step("+ Add tool: Milestones and a Doc with a line that saves", async () => {
     for (const kind of ["Milestones", "Doc"]) {
-      await page.getByRole("button", { name: "+ Add tool", exact: true }).click();
+      await page.getByRole("button", { name: "+ Add a tool to this page", exact: true }).click();
       await page.getByRole("dialog", { name: "Add tool" }).getByRole("button", { name: new RegExp("^" + kind) }).click();
       await expect(page.getByRole("dialog", { name: "Add tool" })).toHaveCount(0);
     }
