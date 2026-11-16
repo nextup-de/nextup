@@ -1,0 +1,54 @@
+/* An area's side view. The frame and the rows carry the values of the Projects area (projects/ProjectsFrame.module.css,
+   projects/ProjectsSidebar.module.css), so every area's side view looks and moves the same. Hidden, the page sits
+   where it sat without the frame: the same gutter, the same width. */
+.root {
+  position: relative; display: flex; align-items: stretch; min-width: 0;
+  width: var(--nh-screen-w); min-height: calc(var(--nh-screen-h) - var(--nh-bar-h));
+  margin: -20px 0 -40px calc((min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x)) - var(--nh-screen-w)) / 2);
+}
+.side {
+  flex: none; width: 256px; overflow: hidden; z-index: 6;
+  position: sticky; top: var(--nh-bar-h); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
+  transition: width 420ms cubic-bezier(.2,.8,.2,1);
+}
+.root[data-sb="hidden"] .side { width: 0; }
+.main { flex: 1; min-width: 0; padding: 20px var(--nh-page-x) 40px; }
+.inner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.show { position: absolute; top: 12px; left: 12px; z-index: 7; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.show:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
+.show:focus-visible { outline: 2px solid var(--nh-brand-line); outline-offset: -2px; }
+
+/* The side view itself: 256px on the grey app ground, 34px rows, a fixed 16px mark slot so every label starts in one lane. */
+.sb {
+  width: 256px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0;
+  background: var(--nh-app-ground); border-right: 1px solid var(--nh-line);
+  font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink); -webkit-font-smoothing: antialiased;
+}
+.sb :is(a, button):focus-visible { outline: 2px solid var(--nh-brand-line); outline-offset: -2px; }
+.top { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 12px 10px 8px; }
+.iconBtn { width: 32px; height: 32px; flex: none; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 160ms ease; }
+.iconBtn:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
+.pages { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 0 10px 8px; }
+/* A page's own list (AreaSideSlot). Nothing in it, nothing drawn: no line under the pages. */
+.lower { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 10px; border-top: 1px solid var(--nh-line); padding: 8px 0 12px; scrollbar-width: none; }
+.lower:empty { display: none; }
+.row {
+  display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; box-sizing: border-box; width: 100%;
+  border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink); text-decoration: none; text-align: left;
+  font-size: var(--nh-fs-sm); line-height: 18px; cursor: pointer; transition: background 160ms ease;
+}
+.row:hover { background: var(--nh-fill); }
+.row[aria-current="page"] { background: var(--nh-fill-2); font-weight: 600; }
+.row[aria-current="page"] .slot { color: var(--nh-ink); }
+.slot { flex: none; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: var(--nh-ink-2); }
+.label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Between a phone and a laptop the gutter is narrower than the button: the page moves aside while the side view is hidden. */
+@media (min-width: 761px) and (max-width: 1023px) {
+  .root[data-sb="hidden"] .main { padding-left: 60px; }
+}
+/* Phones have no side view; the strip of tabs under the bar stays (SectionTabs). */
+@media (max-width: 760px) {
+  .side, .show { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .side, .iconBtn, .row { transition: none; } }

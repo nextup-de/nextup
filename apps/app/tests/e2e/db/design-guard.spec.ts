@@ -47,14 +47,24 @@ test("no black fill on the signed-in pages", async ({ page }) => {
   }
 });
 
-test("Dashboard and Profile each have a strip of tabs that leads to the other page", async ({ page }) => {
+test("Dashboard and Profile each list their pages in the side view, which leads to the other page", async ({ page }) => {
   await signIn(page, company, MANAGER.name);
   await page.goto(`/${SLUG}/dashboard`);
-  await page.getByTestId("dashboard-tabs").getByRole("link", { name: "KPIs" }).click();
+  // On a laptop the strip of tabs is not drawn (DESIGN_RULES §4): the side view carries the pages, hidden at the start.
+  await expect(page.getByTestId("dashboard-tabs")).toBeHidden();
+  await expect(page.getByTestId("dashboard-pages")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show sidebar" }).click();
+  await page.getByTestId("dashboard-pages").getByRole("link", { name: "KPIs" }).click();
   await expect(page).toHaveURL(new RegExp(`/${SLUG}/dashboard/kpis`));
-  await expect(page.getByTestId("dashboard-tabs").locator('[aria-current="page"]')).toHaveText("KPIs");
+  await expect(page.getByTestId("dashboard-pages").locator('[aria-current="page"]')).toHaveText("KPIs");
+  // Open here, open in every area: the choice is one.
   await page.goto(`/${SLUG}/profile`);
-  await page.getByTestId("profile-tabs").getByRole("link", { name: "My reports" }).click();
+  await expect(page.getByTestId("profile-tabs")).toBeHidden();
+  await page.getByTestId("profile-pages").getByRole("link", { name: "My reports" }).click();
   await expect(page).toHaveURL(new RegExp(`/${SLUG}/reports`));
+  await expect(page.getByTestId("profile-pages").locator('[aria-current="page"]')).toHaveText("My reports");
+  // A phone has no side view and keeps the strip.
+  await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("profile-tabs").locator('[aria-current="page"]')).toHaveText("My reports");
+  await expect(page.getByTestId("profile-pages")).toBeHidden();
 });
