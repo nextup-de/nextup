@@ -1,6 +1,8 @@
 // Projects shows projects only, for every role (Kevin and Sam, 16 Nov 2026): ideas are raised and followed in the Ideas
 // tab and decided in the Inbox. The Overview, Progress, Collaboration and the sidebar's list draw no idea - only a project
 // an approved idea became, under the project's own title.
+// The flag `overviewList` (Paper "Overview · final + interactions", OVERVIEW-LIST-FOR-KEVIN.txt) proposes the opposite for
+// the Overview: open ideas and projects in one list. These tests hold with it off; the last one says what it changes.
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -27,12 +29,12 @@ const D = demoData(LOCAL_SEED, S, true);
 const ideaTitles = S.cases.filter((c) => !S.projects.some((p) => p.sources.includes(c.id))).map((c) => c.title);
 const render = (node: React.ReactNode) => renderToStaticMarkup(h(I18nProvider, { locale: "en", children: node }));
 
-const ctxFor = (role: "member" | "leader" | "manager") => {
+const ctxFor = (role: "member" | "leader" | "manager", overviewList = false) => {
   const persona = ROLES.find((r) => r.id === role)!;
   const userId = LOCAL_SEED.seats.find((s) => s.label === persona.who.name && s.userId)?.userId ?? null;
   return {
     S, D, seed: LOCAL_SEED, ready: true, demo: true, serverMode: false, role, persona, actorUserId: userId, me: meFor(userId, LOCAL_SEED.seats),
-    tenant: { slug: "acme", prefix: "/acme" }, log: { events: [], day: 0 }, href: (url: string) => url, flag: () => true,
+    tenant: { slug: "acme", prefix: "/acme" }, log: { events: [], day: 0 }, href: (url: string) => url, flag: (key: string) => key !== "overviewList" || overviewList,
     f: (d: number) => "day " + d, deptName: (id: string) => id, act: {},
   };
 };
@@ -63,4 +65,12 @@ it("the Overview shows the projects, a draft from an approved idea among them", 
 it("the old address of the ideas table still draws the table", () => {
   mocks.ctx = ctxFor("leader");
   expect(render(h(ProjectsHub, { tab: "ideas" }))).toContain("IDEAS-TABLE");
+});
+
+it("with overviewList on, the Overview lists the open ideas next to the projects", () => {
+  mocks.ctx = ctxFor("manager", true);
+  const html = render(h(ProjectsHub, { tab: "projects" }));
+  expect(html).not.toContain("IDEAS-TABLE");
+  for (const p of S.projects.filter((x) => x.status !== "stopped")) expect(html).toContain(p.title);
+  expect(html).toContain("/idea?id=");
 });

@@ -99,11 +99,13 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await viewAs(page, "Team leader");
   await expect(page).toHaveURL(/\/acme\/inbox$/);
 
-  await test.step("the lead finds P-4 under Planning", async () => {
+  await test.step("the lead finds P-4, in Planning, on the Overview", async () => {
     await page.getByRole("link", { name: "Projects", exact: true }).click();
-    const planning = page.getByRole("region", { name: "Planning" });
-    await expect(planning).toContainText("Take the baseline");
-    await planning.getByRole("link", { name: /P-4 Second deburring bench/ }).click();
+    // The Overview list (flag overviewList, on for demo companies): one row per idea or project.
+    const row = page.getByRole("row").filter({ has: page.getByRole("link", { name: /P-4 Second deburring bench/ }) });
+    await expect(row).toContainText("Planning");
+    await expect(row).toContainText("Your move");
+    await row.getByRole("link", { name: /P-4 Second deburring bench/ }).click();
     await expect(page).toHaveURL(/\/acme\/projects\/pj4$/);
     await expect(page.getByRole("status").filter({ hasText: "Your move" })).toContainText("Take the baseline");
   });
@@ -263,20 +265,24 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 });
 
-// Projects shows projects only (Kevin and Sam, 16 Nov 2026); the ideas table keeps its old address, /overview.
-test("the Projects page shows projects only; the ideas table stays at /overview", async ({ page }) => {
+// With the flag overviewList (on for demo companies) the Projects page is one Overview list of the open ideas and the
+// projects; with it off it shows projects only (Kevin and Sam, 16 Nov 2026, tests/unit/projects-area/no-ideas). The ideas
+// table keeps its old address, /overview, either way.
+test("the Projects page is the Overview list of ideas and projects; the ideas table stays at /overview", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Overview", level: 2 })).toBeVisible();
+  const list = page.getByRole("table", { name: "Overview" });
+  await expect(list.getByRole("link", { name: /^P-\d+ / }).first()).toBeVisible();
+  await expect(list.locator('a[href*="/idea?id="]').first()).toBeVisible();
   await expect(page.getByRole("table", { name: "Problems and ideas" })).toHaveCount(0);
   await page.goto("/acme/overview");
   await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
   await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toHaveCount(0);
+  await expect(page.getByRole("table", { name: "Overview" })).toHaveCount(0);
 });
 
 test("an idea opened from the ideas table has its own address, /idea?id=", async ({ page }) => {
@@ -316,7 +322,7 @@ test("an idea opened from the ideas table has its own address, /idea?id=", async
   await expect(page).toHaveURL(idea);
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page).toHaveURL(/\/acme\/projects$/);
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview", level: 2 })).toBeVisible();
   const id = new URL(at).searchParams.get("id") ?? "";
   for (const old of ["/acme/projects", "/acme/overview"]) {
     await page.goto(old + "?id=" + encodeURIComponent(id));
