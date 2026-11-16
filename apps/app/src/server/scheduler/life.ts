@@ -1,7 +1,8 @@
 // Musterwerk's working day (features/demo/life): every LIFE_INTERVAL_MS (default 10 minutes) this looks for the generated demo
 // company (named "Musterwerk GmbH", in sandbox or pilot, with the flag musterwerkLife switched on in admin.sellux.ch; it is off
 // by default, so the test runs' own generated companies stay still) and, from 07:00 Europe/Berlin on a working
-// day of its calendar, writes that day's ideas, decisions and project moves once. Every event carries an idemKey
+// day of its calendar, writes that day's ideas, decisions, approvals and project moves once (the settle operation's decision after
+// the last approval as system:approvals, with no user id; the approvers' 3-day reminder is the clock's). Every event carries an idemKey
 // (life:<date>:<what>), so another process or a restart writes nothing twice. Stored with source "life": the notice planner
 // keeps only the in-app copy, so nobody gets mail or a Teams message from the simulation. LIFE_OFF=1 switches it off. Started from instrumentation.ts.
 //
