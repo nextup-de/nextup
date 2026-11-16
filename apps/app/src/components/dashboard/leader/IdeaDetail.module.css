@@ -11,9 +11,6 @@
 .side { flex: 0 0 var(--col-w, 300px); min-width: 0; display: flex; flex-direction: column; gap: var(--nh-gap); } /* as wide as the open inbox list (InboxView --col-w) */
 
 .card { position: relative; background: #fff; border-radius: var(--radius-md, 18px); padding: var(--nh-pad-card); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
-.card[data-joined="left"] { border-top-left-radius: 0; }
-.card[data-joined="right"] { border-top-right-radius: 0; }
-.card[data-joined] { padding: 24px 22px 22px; }
 
 /* ── head: author, badge, close ── */
 .head { display: flex; align-items: center; gap: 10px; }
@@ -26,29 +23,30 @@
 .authorName { font-size: var(--nh-fs-md); font-weight: 600; }
 .authorLine { font-size: var(--nh-fs-sm); color: var(--c-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { font-size: var(--nh-fs-sm); font-weight: 600; border-radius: var(--radius-sm, 999px); padding: 4px 10px; white-space: nowrap; }
-.badge[data-tone="late"] { color: var(--c-late); background: rgb(255 59 48 / 0.12); }
-.badge[data-tone="overdue"] { color: var(--c-mute); background: rgb(110 110 115 / 0.12); }
-.badge[data-tone="left"] { color: var(--c-left); background: color-mix(in srgb, var(--nh-brand) 12%, transparent); }
-.badge[data-tone="paused"] { color: var(--c-mute); background: var(--c-fill); }
+/* The one due chip, in the status colours (DESIGN_RULES §9): past the promise is late; days left and paused are plain facts. */
+.badge[data-tone="late"], .badge[data-tone="overdue"] { color: var(--nh-danger); background: var(--nh-danger-tint); }
+.badge[data-tone="left"], .badge[data-tone="paused"] { color: var(--c-ink-2); background: var(--c-fill); }
 .close { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 0; background: var(--nh-brand-tint); color: var(--nh-brand-ink); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .close:hover { background: var(--nh-brand-line); }
 .title { margin: 0; font-weight: 600; font-size: var(--nh-fs-3xl); line-height: 1.1; letter-spacing: -0.02em; color: var(--c-title); text-wrap: pretty; }
 .lede { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.55; color: var(--c-ink-2); text-wrap: pretty; max-width: 72ch; }
+.lede[data-clamped="true"] { display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.readMore { align-self: flex-start; margin-top: -8px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); cursor: pointer; }
+.readMore:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 4px; }
+/* One line of advice: the recommended move and why. */
+.advice { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--nh-fs-md); line-height: 1.45; color: var(--c-ink); max-width: 72ch; }
+.advice .sparkle { margin-top: 4px; }
+/* The folds under the text: one line each, set apart by space. */
+.folds { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.happened { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--c-ink-2); }
 
 /* ── sections ── */
 /* A section is a grey heading over its content, set apart by space alone - no rules between them. */
 .section { display: flex; flex-direction: column; gap: 10px; }
-.card > .section { margin-top: 12px; }
-.sectionTop { display: flex; flex-direction: column; gap: 6px; }
 .label { font-size: var(--nh-fs-sm); font-weight: 500; color: var(--c-mute); }
 .count { font-size: var(--nh-fs-sm); color: #aeaeb2; }
 .para { margin: 0; font-size: var(--nh-fs-md); line-height: 1.55; color: var(--c-ink-2); text-wrap: pretty; max-width: 72ch; }.leadPara { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.5; color: var(--c-ink); text-wrap: pretty; max-width: 72ch; }
 .small { font-size: var(--nh-fs-sm); color: var(--c-mute); }
-.fade { animation: affFade 420ms var(--ease) backwards; }
-.fade[data-delay="1"] { animation-delay: 60ms; }
-.fade[data-delay="2"] { animation-delay: 120ms; }
-.fade[data-delay="3"] { animation-delay: 180ms; }
-.fade[data-delay="4"] { animation-delay: 240ms; }
 .affects { position: relative; z-index: 2; gap: 8px; }
 
 .cite { margin-left: 3px; font-size: var(--nh-fs-xs); font-weight: 600; color: #aeaeb2; text-decoration: none; vertical-align: super; line-height: 0; }
@@ -162,67 +160,26 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .srcDot[data-tone="blue"], .srcTag[data-tone="blue"], .fileTag[data-tone="blue"] { background: color-mix(in srgb, var(--nh-brand) 10%, transparent); color: var(--nh-brand-ink); }
 .srcDot[data-tone="grey"], .srcTag[data-tone="grey"], .fileTag[data-tone="grey"] { background: var(--c-fill); color: var(--c-mute); }
 
-/* ── the five score widgets ── */
-.scoreWrap { position: relative; z-index: 3; container-type: inline-size; }
-.scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.score {
-  position: relative; align-self: start; height: min(190px, calc((100cqw - 40px) / 5)); min-height: 0; container-type: size;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  background: #fff; border-radius: var(--radius-md, 18px); box-shadow: var(--shadow);
-}
-.score[data-open="true"] { border-radius: var(--radius-md, 18px) var(--radius-md, 18px) 0 0; }
-.scoreLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--c-ink-2); white-space: nowrap; }
-.gauge { position: relative; width: 62cqmin; height: 62cqmin; }
-.arc { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); }
+/* ── the five scores: one row each, the row opens its reasoning ── */
+.scoreList { margin: 0; padding: 0 16px; list-style: none; background: var(--p-bg); border-radius: var(--radius-sm, 12px); }
+.scoreList > li + li { border-top: 0.5px solid var(--c-sep); }
+.scoreSum { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr) 32px; align-items: center; gap: 12px; min-height: 44px; list-style: none; cursor: pointer; font-size: var(--nh-fs-sm); }
+.scoreSum::-webkit-details-marker { display: none; }
+.scoreSum:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 6px; }
+.scoreBody { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 16px; }
+/* The arcs of the phone's score rings. */
 .arcTrack, .arcFill { fill: none; stroke-width: 10; stroke-linecap: round; }
 .arcTrack { stroke: #e3eaf7; }
 .arcFill { stroke: var(--p-gauge); transition: stroke-dasharray 420ms var(--ease); }
-.gaugeText { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 6%; }
-.gaugeNum { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--c-ink); font-variant-numeric: tabular-nums; }
-/* The score has to fit inside the ring: "100" steps down one size, and small tiles step down once more. */
-.gaugeNum[data-long="true"] { font-size: var(--nh-fs-xl); }
-@container (max-height: 150px) {
-  .gaugeNum { font-size: var(--nh-fs-xl); }
-  .gaugeNum[data-long="true"] { font-size: var(--nh-fs-lg); }
-}
-@container (max-height: 112px) {
-  .gaugeNum { font-size: var(--nh-fs-lg); }
-  .gaugeNum[data-long="true"] { font-size: var(--nh-fs-md); }
-}
-@container (max-height: 84px) {
-  .gaugeNum { font-size: var(--nh-fs-md); }
-  .gaugeNum[data-long="true"] { font-size: var(--nh-fs-sm); }
-}
-.gaugeSub { font-size: var(--nh-fs-xs); color: var(--nh-mute-2); margin-top: 2px; }
-.scoreBtn {
-  position: absolute; left: 36.1%; top: 77.8%; width: 27.8%; aspect-ratio: 1; padding: 0; border-radius: 50%; border: 0;
-  background: var(--nh-brand-tint); color: var(--nh-brand-ink); display: flex; align-items: center; justify-content: center; cursor: pointer;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.2); transition: transform 180ms var(--ease), box-shadow 180ms ease, background 180ms ease;
-}
-.scoreBtn::after { content: ""; position: absolute; inset: -6px; } /* a 32px hit area around the small button */
-.scoreBtn:hover { background: var(--nh-brand-line); transform: scale(1.12); box-shadow: 0 4px 12px rgb(0 0 0 / 0.28); }
-.scoreBtn:active { transform: scale(.9); }
-.scoreBtn svg { width: 50%; height: 50%; transition: transform 320ms cubic-bezier(.34, 1.56, .64, 1); }
-.score[data-open="true"] .scoreBtn svg { transform: rotate(180deg); }
-/* The open widget runs down into the card below; the fillets round the corners where they meet. */
-.tab { position: absolute; left: 0; right: 0; top: 100%; height: 40px; background: #fff; }
-.filletL, .filletR { position: absolute; top: calc(100% + 4px); width: 12px; height: 12px; }
-.filletL { left: -12px; background: radial-gradient(circle at 0 0, transparent 11.5px, #fff 12px); }
-.filletR { right: -12px; background: radial-gradient(circle at 100% 0, transparent 11.5px, #fff 12px); }
 
 /* ── reasoning + what the AI found ── */
 /* Opening a score wipes its reasoning down from the top as it settles 8px (the prototype's _morph). */
-.reason { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 28px; animation: reasonIn 300ms var(--ease); }
 .quote { color: var(--c-ink); }
 .quoteBy { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 24px; }
 .split > div { display: flex; flex-direction: column; gap: 6px; }
 
 .found { display: flex; flex-direction: column; gap: 28px; }
-.foundHead { display: flex; align-items: center; gap: 8px; }
-.foundIcon { display: flex; color: var(--p-gauge); }
-.foundIcon .sparkle { color: inherit; }
-.foundTitle { font-size: var(--nh-fs-md); font-weight: 600; }
 .foundBody { display: flex; flex-direction: column; gap: 8px; }
 .timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 6px; }
 .step { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -232,14 +189,9 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .stepWhat { font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--c-ink-2); text-wrap: pretty; }
 .status { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--c-ink-2); background: #fff; border-radius: var(--radius-sm, 999px); padding: 2px 8px; white-space: nowrap; }
 
-/* ── side: the feed ("Your move" is components/inbox/YourMove) ── */
-.sideCard { background: #fff; border-radius: var(--radius-md, 18px); padding: var(--nh-pad-card-sm); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
-.sideTitle { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--c-title); }
-.close:focus-visible, .author:focus-visible, .scoreBtn:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
+/* ── the feed, in the Comments fold ("Your move" is components/inbox/YourMove) ── */
+.close:focus-visible, .author:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
 
-.feedStats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.feedStat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--radius-sm, 12px); background: var(--p-bg); }
-.feedNum { font-size: var(--nh-fs-2xl); font-weight: 700; letter-spacing: -0.02em; color: var(--p-fg); }
 .sentiment { font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--c-ink-2); }
 .comment { display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid var(--c-divider); }
 .commentAvatar { width: 28px; height: 28px; flex: none; border-radius: 50%; background: var(--nh-avatar); color: var(--nh-avatar-ink); display: flex; align-items: center; justify-content: center; font-size: var(--nh-fs-xs); font-weight: 600; }
@@ -257,22 +209,21 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .compose { display: flex; gap: 6px; padding-top: 12px; border-top: 1px solid var(--c-divider); }
 .input { flex: 1; min-width: 0; height: 34px; box-sizing: border-box; border: 1px solid var(--c-sep-head); border-radius: var(--radius-xs, 10px); padding: 0 12px; font: inherit; font-size: var(--nh-fs-sm); color: var(--c-ink); background: #fff; outline: 0; }
 .input:disabled { background: var(--c-hover); cursor: not-allowed; }
-.post { flex: none; height: 34px; padding: 0 14px; border: 0; border-radius: var(--radius-xs, 10px); background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; opacity: 0.4; cursor: not-allowed; }
+/* Post is a quiet button: the one filled button is the viewer's move (DESIGN_RULES §9). */
+.post { flex: none; height: 34px; padding: 0 14px; border: 1px solid var(--nh-brand-line); border-radius: var(--radius-xs, 10px); background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; opacity: 0.5; cursor: not-allowed; }
 .post[data-live="true"] { opacity: 1; cursor: pointer; }
-.post[data-live="true"]:hover { background: var(--nh-brand-hover); }
+.post[data-live="true"]:hover { background: var(--nh-brand-tint); }
+.post:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
 @keyframes affPop { from { opacity: 0; transform: translateY(-6px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes affFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes affIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
 @keyframes affBack { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
-@keyframes reasonIn { from { clip-path: inset(0 0 100% 0); transform: translateY(-8px); } to { clip-path: inset(0 0 0% 0); transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fade, .pop, .popListHead, .members, .drill, .reason { animation: none; }
+  .pop, .popListHead, .members, .drill { animation: none; }
 }
 @media (max-width: 760px) {
   .side { min-width: 0; flex-basis: 100%; }
   dl.panel { grid-template-columns: 96px minmax(0, 1fr); }
-  .scores { gap: 6px; }
-  .score { border-radius: var(--radius-sm, 14px); }
 }

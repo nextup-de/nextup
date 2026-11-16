@@ -20,6 +20,7 @@ export type IdeaProps = {
   idea: IdeaHeader;
   brief: IdeaBrief;
   status: StatusNote | null; // what is already in motion: a question asked, a discussion round
+  advice?: string | null; // one line: the recommended move and why, in a few words
   feed: FeedEntry[];
   onDecide: (key: string) => void; // a key of brief.actions
   onComment?: (text: string) => void; // comments are live (cases); absent = the box says "coming soon"
@@ -180,19 +181,44 @@ export function Sources({ id, list }: { id: string; list: Numbered[] }) {
   );
 }
 
-// What the AI found, in a fixed order: the finding and its numbers, the advice, the timeline, then
+// The five scores, one row each: the number on a bar, the row opens its reasoning and sources.
+export function ScoreRows({ scores, srcId }: { scores: IdeaBrief["scores"]; srcId: string }) {
+  const t = useT();
+  return (
+    <ul className={styles.scoreList} aria-label={t("leader.scores")}>
+      {scores.map((s, i) => (
+        <li key={s.label}>
+          <details className={styles.scoreRow}>
+            <summary className={styles.scoreSum} aria-label={t("leader.scoreAria", { label: s.label, value: s.value })}>
+              <span className={styles.panelFg}>{s.label}</span>
+              <span className={styles.track}><span className={styles.fill} style={{ width: s.value + "%" }} /></span>
+              <span className={`${styles.panelFg} ${styles.barVal}`}>{s.value}</span>
+            </summary>
+            <div className={styles.scoreBody}>
+              <p className={styles.para}>{s.note}</p>
+              <Blocks blocks={s.blocks} srcId={srcId + "-" + i} />
+              <Sources id={srcId + "-" + i} list={s.sources} />
+            </div>
+          </details>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// What the AI found, in a fixed order: the finding and its numbers (and `children`: the scores), the timeline, then
 // what to follow up on (questions, similar ideas, reviewers), the pattern, and the sources folded.
 // Every list is the same grouped list; sections are set apart by space, not lines.
-export function AiBrief({ brief, srcId }: { brief: IdeaBrief; srcId: string }) {
+export function AiBrief({ brief, srcId, children }: { brief: IdeaBrief; srcId: string; children?: React.ReactNode }) {
   const t = useT();
   const questions = brief.lead ? brief.questions.slice(0, 2) : brief.questions;
   return (
     <div className={styles.found}>
-      <div className={styles.foundHead}><span className={styles.foundIcon}><Sparkle size={16} /></span><span className={styles.foundTitle}>{t("leader.whatAiFound")}</span></div>
       <div className={styles.foundBody}>
         <p className={styles.leadPara}>{brief.summary}<Cites ns={brief.cites.summary} to={srcId} /></p>
         {brief.lead && <p className={styles.para}>{brief.lead}<Cites ns={brief.cites.lead} to={srcId} /></p>}
       </div>
+      {children}
       {brief.bars && (
         <div className={`${styles.panel} ${styles.bars}`}>
           <span className={styles.panelSub}>{brief.bars.title}</span>
@@ -201,8 +227,7 @@ export function AiBrief({ brief, srcId }: { brief: IdeaBrief; srcId: string }) {
         </div>
       )}
       {brief.after && <p className={styles.para}>{brief.after}<Cites ns={brief.cites.after} to={srcId} /></p>}
-      {/* The recommended move is the filled button in "Your move"; here only why. */}
-      {brief.recText && <dl className={styles.panel}><PanelRow k={t("leader.why")}>{brief.recText}<Cites ns={brief.cites.rec} to={srcId} /></PanelRow></dl>}
+      {/* The recommended move and why are the advice line above the folds and the filled button in "Your move": not repeated here. */}
       {brief.timeline && (
         <div className={styles.section}>
           <span className={styles.label}>{brief.timeline.title}</span>
@@ -281,13 +306,8 @@ export function FeedBody({ brief, feed, open = null, onPerson, onComment }: { br
   const post = () => { const t = draft.trim(); if (!t || !onComment) return; onComment(t); setDraft(""); };
   return (
     <>
-      <div className={styles.feedStats}>
-        {/* Only the counts above 0 (lib/utils/quiet.ts); "no comments yet" below says the rest. */}
-        {brief.feed.supporters > 0 && <div className={styles.feedStat}><span className={styles.feedNum}>{brief.feed.supporters}</span><span className={styles.panelSub}>{t("leader.supporters")}</span></div>}
-        {feed.length > 0 && <div className={styles.feedStat}><span className={styles.feedNum}>{feed.length}</span><span className={styles.panelSub}>{t("leader.comments")}</span></div>}
-      </div>
-      <span className={styles.sentiment}>{brief.feed.sentiment}</span>
-      {feed.length === 0 && <span className={styles.small}>{t("leader.noComments")}</span>}
+      {/* How the feed reads, once somebody stands behind it or wrote; the number of comments is on the fold. */}
+      {(brief.feed.supporters > 0 || feed.length > 0) && <span className={styles.sentiment}>{brief.feed.sentiment}</span>}
       {feed.map((c, i) => (
         <div key={i} className={styles.comment}>
           {c.person && onPerson ? (
