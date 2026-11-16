@@ -120,9 +120,10 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
         {/* Every step is done (Kevin, 16 Nov 2026): one calm card, no full bar and no legend of zeros. */}
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewAllDone", { count: facts.columns.done })}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {lastDoneDay !== null && <p className={styles.muted}>{t("projectHub.overviewLastDone", { date: f(lastDoneDay) })}</p>}
+        {/* While the result above waits, its rows carry the checks' dates: the card does not say them again (DESIGN_RULES §9). */}
         {markDone?.can ? (marking ? <DoneSheet p={p} done={markDone} onClose={() => setMarking(false)} />
           : <p><button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setMarking(true)}>{t("projects.markDoneEllipsis")}</button></p>)
-          : p.status !== "running" && <p className={styles.muted} data-testid="overview-stands">{nextLine(p, S.day, f, false, t, locale)}</p>}
+          : p.status !== "running" && !(resultWaits && p.status === "measuring") && <p className={styles.muted} data-testid="overview-stands">{nextLine(p, S.day, f, false, t, locale)}</p>}
       </section> : <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>

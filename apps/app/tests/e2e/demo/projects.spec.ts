@@ -169,11 +169,11 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await projectPage(page, "results");
     await openResult(page);
     const check30 = page.getByRole("group", { name: "30-day check" });
-    await expect(check30).toContainText("Opens");
+    await expect(check30).toContainText("opens"); // before it opens the row is its date and nothing else (DESIGN_RULES §9)
     await plus30WithResult(page);
     await check30.getByLabel(/The number now/).fill("12");
     await expect(check30.getByRole("status")).toContainText("better");
-    await check30.getByRole("button", { name: "Record the measure" }).click();
+    await check30.getByRole("button", { name: "Record", exact: true }).click(); // the number is typed inline, one filled Record
     await expect(check30).toContainText("25 → 12 minutes");
     await expect(check30).toContainText("−52 %");
   });
@@ -182,7 +182,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await plus30WithResult(page, 2);
     const check90 = page.getByRole("group", { name: "90-day check" });
     await check90.getByLabel(/The number now/).fill("14");
-    await check90.getByRole("button", { name: "Record the measure" }).click();
+    await check90.getByRole("button", { name: "Record", exact: true }).click();
     await expect(check90).toContainText("25 → 14 minutes");
     await expect(head(page)).toContainText(/4-series\s*Measured/); // the sidebar's status under the title; the head is on the Idea page
     // The lead does not record a reward: that is the manager's.
