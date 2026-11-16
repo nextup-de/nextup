@@ -4,6 +4,7 @@ import type { CaseEvent, EventPayload } from "@/features/cases/events";
 import { reduce } from "@/features/cases/reducer";
 import { SEED } from "@/features/demo/seed";
 import { withSampleData } from "@/features/demo/sample-data";
+import { byFolderJob } from "@/features/files/folder-actor";
 import { loopRules } from "@/features/loop/rules";
 import { DEFAULT_PAGES } from "@/features/projects/pages";
 import { applyProjectEvent, newBook, seedProject } from "@/features/projects/reduce";
@@ -200,12 +201,14 @@ it("PGE pages reduce: replays the recorded pre-PGE demo sample unchanged with pa
   const projects = reduce(seed, { events: [], day: 0 }).projects;
   expect(projects).toHaveLength(9);
   for (const p of projects) expect(model(p)).toEqual({ pages: null, removed: [], merges: {} });
+  // The folder each sample project is linked to (features/demo/sample-data.ts) came after the capture: its link and its event
+  // are left out below, so the capture still stands.
   const legacy = projects.map((p) => Object.fromEntries(Object.entries(p)
     .filter(([key]) => !["pages", "milestones", "forms", "requests", "removed", "merges"].includes(key))
     .map(([key, value]) => [key, key === "steps" ? p.steps.map((step) => {
       expect(step).toMatchObject({ checklist: [], comments: [], waitingOn: null });
       return Object.fromEntries(Object.entries(step).filter(([field]) => !["checklist", "comments", "waitingOn"].includes(field)));
-    }) : value])));
+    }) : key === "links" ? p.links.filter((link) => link.system !== "sharepoint") : key === "history" ? p.history.filter((ev) => !byFolderJob(ev)) : value])));
   // Captured from this sample with the reducer before PGE-A1; covers every existing project field and its history.
   expect(createHash("sha256").update(JSON.stringify(legacy)).digest("hex")).toBe("7b6d013d117a15fc9c3a782461b29b1a77946f838c00d96d2a6177555616aa9e");
 });

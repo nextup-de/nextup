@@ -1,11 +1,18 @@
 // The static demo's SharePoint folder (plan FIL, D11): no database, no Graph. A tree shaped like the Paper frames
 // (Shared documents › Supplier data, with the subfolder Delivery reports Q3 and seven files) answering with the
 // same shapes as server/files. Uploads, deletes and requests change it in memory only; a reload starts again.
-import { extOf, kindOf, type FileRow, type FolderAnswer } from "@/features/files/items";
+import { extOf, kindOf, type FileRow, type FolderAnswer, type VersionsAnswer } from "@/features/files/items";
 
 /** Where the demo folder sits: the breadcrumb above the project's own folder. */
 export const DEMO_TRAIL = ["Shared documents", "Supplier data"] as const;
 const BASE = "https://acme.sharepoint.com/sites/purchasing/Shared%20Documents/Supplier%20data";
+
+/**
+ * The demo folder as a project's own (the payload of project.linked, D4). The folder job links every real project to its
+ * idea's folder at the yes (server/files/auto-folder.ts); it never sees a project that lives in the browser, so the sample
+ * data links this one instead.
+ */
+export const DEMO_FOLDER = { system: "sharepoint", url: BASE } as const;
 
 const file = (path: string, name: string, size: number, modifiedBy: string, modifiedAt: string, createdBy = modifiedBy): FileRow => ({
   id: `demo-${path ? path + "/" : ""}${name}`, name, kind: kindOf(name), ext: extOf(name), size, isFolder: false, childCount: 0,
@@ -43,6 +50,12 @@ export function listDemoFolder(path: string): FolderAnswer {
   const rows = tree[clean(path)];
   if (!rows) return { state: "no-access" };
   return rows.length ? { state: "ok", rows: rows.map((r) => ({ ...r })), next: null } : { state: "empty" };
+}
+
+/** A demo file's versions: each was written once, so the history holds the version there is. */
+export function demoVersions(id: string): VersionsAnswer {
+  const row = Object.values(tree).flat().find((r) => r.id === id && !r.isFolder);
+  return row ? { state: "ok", versions: [{ id: "1.0", modifiedAt: row.modifiedAt, modifiedBy: row.modifiedBy, size: row.size }] } : { state: "no-access" };
 }
 
 /** A file put into a folder (memory only). Returns the new row, or null when the folder is not there. */
