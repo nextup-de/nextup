@@ -6,10 +6,16 @@ import { newId, type EventPayload } from "@/features/cases/events";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { RAISER_NOTE_MAX, type AcceptPerson } from "@/features/projects/accept";
 import { DEFAULT_LOCALE, translate, type Locale } from "@/i18n";
+import type { SeatRow } from "@/features/auth/identity";
+import { approverName, nameApprovers } from "./approvers";
 import { requiredApprovals } from "./rights";
 import type { ApprovalStepInput } from "./types";
 
-export type YesApprover = { label: string; kind: ApprovalStepInput["kind"] };
+/** One approver as the sheet names them: the person who will be asked (decision A), else the role's title or the council's name. */
+export type YesApprover = { label: string; kind: ApprovalStepInput["kind"]; roleId?: string; userId?: string };
+
+/** Who is looking and whose idea it is, to name the approvers as the server will (decisions A and D): the seats, the first decider, the raiser. */
+export type YesSheetPeople = { seats: readonly SeatRow[]; deciderUserId: string | null; raiserUserId: string | null };
 
 /** What the sheet sends along: who says yes, who sets it up, the line to the raiser and the note. A new draft's project id is minted when missing. */
 export type YesSheetInput = { decider: AcceptPerson; lead?: AcceptPerson; raiserNote?: string; note?: string; newProjectId?: string };
@@ -32,15 +38,20 @@ export type YesSheetModel = {
 type SheetCase = Pick<ReducedCase, "title" | "assigneeRoleId" | "routeId" | "cost">;
 type SheetState = Pick<State, "approvals" | "rules">;
 
-export function yesSheetModel(kase: SheetCase, state: SheetState, byHand: readonly string[], join: { projectId: string; title: string } | null, locale: Locale = DEFAULT_LOCALE): YesSheetModel {
+export function yesSheetModel(kase: SheetCase, state: SheetState, byHand: readonly string[], join: { projectId: string; title: string } | null, locale: Locale = DEFAULT_LOCALE, people?: YesSheetPeople): YesSheetModel {
   const byRules = requiredApprovals(kase, state);
   const all = requiredApprovals(kase, state, byHand);
   const nameOf = (s: ApprovalStepInput): string =>
     (s.kind === "council" ? state.approvals.councils.find((c) => c.id === s.councilId)?.name : state.approvals.roles.find((r) => r.id === s.roleId)?.title) ?? "";
+  // With the seats, the people the server will ask: each step through its head, at most three, never the decider or the raiser (decisions A and D).
+  const named = people === undefined ? all : nameApprovers({ steps: all, seats: people.seats, config: state.approvals, exclude: [people.deciderUserId, people.raiserUserId] });
   return {
     onlyIfApproved: byRules.length > 0,
     provisional: all.length > 0,
-    approvers: all.map((s) => ({ label: nameOf(s), kind: s.kind })),
+    approvers: named.map((s) => ({
+      label: (s.userId !== undefined && people !== undefined ? approverName(people.seats, s.userId) : "") || nameOf(s), kind: s.kind,
+      ...(people !== undefined && s.roleId !== undefined ? { roleId: s.roleId } : {}), ...(s.userId !== undefined ? { userId: s.userId } : {}),
+    })),
     noBudgetCheck: kase.cost === null,
     joinLine: join === null ? null : translate(locale, "approvals.joinWaits", { project: join.title }),
     payload(input) {

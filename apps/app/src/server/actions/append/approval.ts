@@ -4,9 +4,10 @@
 // and the seed come in through the context, nothing here reads the database. server/actions/events.ts is closed.
 import { seatsOfRole } from "@/features/auth/identity";
 import { approvalsFor } from "@/features/approvals/rules";
+import { nameApprovers } from "@/features/approvals/approvers";
 import { unmetApprovals } from "@/features/approvals/rights";
-import { stepDueDay } from "@/features/approvals/steps";
-import type { ApprovalStepInput } from "@/features/approvals/types";
+import { returnedRun, stepDueDay } from "@/features/approvals/steps";
+import { APPROVER_REMIND_DAYS, type ApprovalStepInput } from "@/features/approvals/types";
 import type { EventPayload } from "@/features/cases/events";
 import { translate } from "@/i18n";
 import type { AppendCtx, AppendHook } from "./shared";
@@ -39,6 +40,19 @@ export async function prepareApprovalAppend(c: AppendCtx): Promise<AppendHook> {
 
   const { state } = c;
   const config = state.approvals;
+
+  // Send again (decision B, 16 Nov 2026): the raiser restarts the approval among the same named approvers, each asked afresh. Nothing else of the
+  // client's payload counts; mayAppend checked it is the raiser's returned idea.
+  if (c.payload.resend === true) {
+    const last = returnedRun(kase);
+    if (last === null) return refuse("approvals.permNotReturned");
+    const again = last.steps.map(({ kind, roleId, councilId, userId, byHand, coversUpToEur }): ApprovalStepInput => ({
+      kind, ...(roleId !== undefined ? { roleId } : {}), ...(councilId !== undefined ? { councilId } : {}), ...(userId !== undefined ? { userId } : {}),
+      ...(byHand !== undefined ? { byHand } : {}), ...(coversUpToEur !== undefined ? { coversUpToEur } : {}),
+    }));
+    return { ok: true, payload: { resend: true, parallel: true, approvals: again, stepDueDay: state.day + APPROVER_REMIND_DAYS } };
+  }
+
   let steps: ApprovalStepInput[];
   let decidingRoleId: string | null;
   if (c.payload.supplement === true) {
@@ -52,17 +66,29 @@ export async function prepareApprovalAppend(c: AppendCtx): Promise<AppendHook> {
       .filter((a) => a !== null && typeof a === "object" && a.kind === "role" && a.byHand === true && typeof a.roleId === "string")
       .map((a) => a.roleId as string);
     decidingRoleId = kase.assigneeRoleId;
-    steps = approvalsFor({ config, roles: config.roles, fastLaneEur: state.rules.fastLaneEur, decidingRoleId, routeKey: kase.routeId, costEur: kase.cost?.eur ?? null, byHand });
-    if (steps.length === 0) return refuse("approvals.permNotProvisional");
+    const rules = approvalsFor({ config, roles: config.roles, fastLaneEur: state.rules.fastLaneEur, decidingRoleId, routeKey: kase.routeId, costEur: kase.cost?.eur ?? null, byHand });
+    // The people the desk named by hand (decision A): only their user ids count; nameApprovers keeps those who hold a seat.
+    const people = (Array.isArray(c.payload.approvals) ? c.payload.approvals : [])
+      .filter((a) => a !== null && typeof a === "object" && a.kind === "person" && a.byHand === true && typeof a.userId === "string")
+      .map((a) => a.userId as string);
+    // Each step counts through the person who heads it, at most three people, never the decider or the raiser (decisions A and D).
+    steps = nameApprovers({ steps: rules, people, seats: state.seats, config, exclude: [c.viewer.userId, kase.fromUserId] });
+    if (steps.length === 0) return refuse(rules.length === 0 && people.length === 0 ? "approvals.permNotProvisional" : "approvals.permNoApprovers");
   }
 
+  // A parallel run asks every approver at once; each gets one reminder APPROVER_REMIND_DAYS working days later (decision C). A supplement stays an old,
+  // sequential run (D33): it asks for what a started decision still lacks.
+  const parallel = c.payload.supplement !== true;
   const payload: EventPayload = {
     ...c.payload,
     approvals: steps,
-    stepDueDay: stepDueDay(steps[0], state.day, config),
+    stepDueDay: parallel ? state.day + APPROVER_REMIND_DAYS : stepDueDay(steps[0], state.day, config),
     costEur: kase.cost?.eur ?? null,
     decidingRoleId,
+    ...(parallel ? { parallel: true } : {}),
   };
+  if (!parallel) delete payload.parallel;
+  delete payload.resend;
   // A join names an existing project of the company; a new draft names the id the page minted for it (mayAppend checks it is a project id and that a join
   // is the decider's to make, and the reducer opens it). A supplement opens and joins nothing: it asks for the draft its decision already opened.
   if (c.payload.supplement === true) delete payload.projectId;

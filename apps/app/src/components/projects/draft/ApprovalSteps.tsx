@@ -7,6 +7,7 @@ import { runsOf, stepLabel } from "@/features/approvals/steps";
 import type { ApprovalStep } from "@/features/approvals/types";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { useT } from "@/i18n/client";
+import { approverName } from "@/features/approvals/approvers";
 import styles from "./ApprovalSteps.module.css";
 
 export function ApprovalSteps({ kase }: { kase: Pick<ReducedCase, "approvals" | "approvalRuns" | "openingRunId"> }) {
@@ -16,6 +17,9 @@ export function ApprovalSteps({ kase }: { kase: Pick<ReducedCase, "approvals" | 
   if (runs.length === 0) return null;
   const roleTitle = (id: string | null | undefined) => S.approvals.roles.find((r) => r.id === id)?.title ?? "";
   const label = (s: ApprovalStep): string => {
+    // A named approver (decisions A to D) by their name alone.
+    const person = s.userId !== undefined ? approverName(S.seats, s.userId) : "";
+    if (person !== "") return person;
     const { kind, name } = stepLabel(s, S.approvals, S.approvals.roles);
     return t(kind === "budget" ? "approvals.stepBudget" : kind === "council" ? "approvals.stepCouncil" : "approvals.stepRole", kind === "council" ? { name } : { role: name });
   };

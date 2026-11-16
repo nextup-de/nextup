@@ -20,11 +20,13 @@ import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { ApprovalsBlock } from "@/components/cases/ApprovalsBlock";
+import { ApproverLine } from "@/components/cases/ApproverLine";
 import { CostField } from "@/components/cases/CostField";
 import { ReviewBlock } from "@/components/cases/ReviewBlock";
 import { roundState } from "@/features/cases/discussion";
 import { timelineSentence, type TimelineFacts } from "@/features/cases/timeline";
 import { stepLabel } from "@/features/approvals/steps";
+import { approverName } from "@/features/approvals/approvers";
 import { formatEuro } from "@/i18n/format";
 import { caseActions } from "@/features/cases/case-actions";
 import { followHref } from "@/features/cases/links";
@@ -113,7 +115,8 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
     && !mayReadDraft(accepted, { role, userId: ctx.actorUserId }, S.cases.some((x) => accepted.sources.includes(x.id) && isPrivateIdea(x)));
   const project = hiddenDraft ? undefined : accepted;
   // What the timeline's sentences name beyond the event itself: another case's title, euros, and approvers by their role or council.
-  const approver: TimelineFacts["approver"] = (step) => stepLabel(step, S.approvals, S.approvals.roles).name;
+  // A named approver (decisions A to D) by their name.
+  const approver: TimelineFacts["approver"] = (step) => (step.userId !== undefined ? approverName(S.seats, step.userId) : "") || stepLabel(step, S.approvals, S.approvals.roles).name;
   const facts: TimelineFacts = {
     labels: tenant.actorLabels,
     other: (id) => (id ? related.ofCase(id) : null),
@@ -177,6 +180,7 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
         {seesRouting(c, me, role) && <CaseRouting c={c} />}
         <ReviewBlock c={c} />
         <CostField c={c} />
+        <ApproverLine c={c} />
         <ApprovalsBlock c={c} />
         <div className={styles.tiles}>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.assignee}</div><div className={styles.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>

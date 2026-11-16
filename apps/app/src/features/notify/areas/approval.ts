@@ -57,7 +57,8 @@ export const APPROVAL_REMINDER_AUDIENCE: Record<ApprovalReminderKind, ReminderAu
     const { step } = found;
     const handed = ev.payload.check === 2;
     const role = answeringRole(step, ctx);
-    const holders = handed ? ctx.usersOfSeat(ev.payload.toRoleHolderId) : step.seatId !== null ? ctx.usersOfSeat(step.seatId) : role === null ? [] : usersOfRole(ctx.state.seats, role);
+    // A named approver (decision A) is reminded by user id, once (decision C).
+    const holders = step.userId !== undefined ? [step.userId] : handed ? ctx.usersOfSeat(ev.payload.toRoleHolderId) : step.seatId !== null ? ctx.usersOfSeat(step.seatId) : role === null ? [] : usersOfRole(ctx.state.seats, role);
     return { users: step.state === "pending" ? ctx.uniq(holders) : [], title: ctx.kase.title, link: ctx.caseLink(ctx.kase.id), day: step.dueDay };
   },
   council: (ev, ctx) => {

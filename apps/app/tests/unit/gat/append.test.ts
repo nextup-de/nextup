@@ -98,20 +98,21 @@ it("GAT append computes the unmet steps of a supplement", async () => {
 it("GAT append stamps stepDueDay costEur decidingRoleId and coversUpToEur", async () => {
   const state = stateOf([kase()]);
   const out = await ok(ctx("case.provisional", { projectId: "p_new", draft: true, stepDueDay: 1, costEur: 1, decidingRoleId: "role_boss" }, state));
-  // Whatever the client sent is overwritten: step 0 is due approval_days (6) after today (20), the cost and the deciding role are the case's now.
-  expect(out).toMatchObject({ stepDueDay: 26, costEur: 9000, decidingRoleId: "role_desk" });
+  // Whatever the client sent is overwritten. The approvers vote at once and each is reminded once, APPROVER_REMIND_DAYS (3) after today (20), not
+  // approval_days later (decisions C and D, 16 Nov 2026); the cost and the deciding role are the case's now.
+  expect(out).toMatchObject({ stepDueDay: 23, costEur: 9000, decidingRoleId: "role_desk", parallel: true });
   expect((out.approvals ?? [])[0]).toEqual({ kind: "budget", roleId: "role_boss", coversUpToEur: 100000 });
   // A cost the first approver covers: its limit; the top of the chain covers any cost (null).
   const lower = await ok(ctx("case.provisional", { projectId: "p_new", draft: true }, stateOf([kase({ cost: { eur: 4000, basis: "", day: 3, by: "D", byUserId: "u" } })])));
   expect((lower.approvals ?? [])[0]).toEqual({ kind: "budget", roleId: "role_fin", coversUpToEur: 5000 });
   const huge = await ok(ctx("case.provisional", { projectId: "p_new", draft: true }, stateOf([kase({ cost: { eur: 500000, basis: "", day: 3, by: "D", byUserId: "u" } })])));
   expect((huge.approvals ?? [])[0]).toEqual({ kind: "budget", roleId: "role_boss", coversUpToEur: null });
-  // No cost: no budget step, and no costEur to freeze. A council first: its next meeting is the first step's due day (30 + k * 10 on or after today).
+  // No cost: no budget step, and no costEur to freeze. A council first is reminded like everyone else: 3 working days after today (decision C), not at its meeting.
   const noCost = await ok(ctx("case.provisional", { projectId: "p_new", draft: true }, stateOf([kase({ cost: null })])));
   expect(noCost).toMatchObject({ costEur: null });
   expect((noCost.approvals ?? []).map((a) => a.kind)).toEqual(["role"]);
   const councilFirst = await ok(ctx("case.provisional", { projectId: "p_new", draft: true }, stateOf([kase({ cost: null })], { ...CONFIG, rules: [{ id: "ru2", kind: "council", councilId: "k1", routeKey: "r1", minEur: null }] })));
-  expect(councilFirst).toMatchObject({ stepDueDay: 30 });
+  expect(councilFirst).toMatchObject({ stepDueDay: 23 });
   // The cost estimate is rounded down; anything else passes through unchanged.
   expect((await ok(ctx("case.costed", { eur: 1234.9, basis: "x" }, state))).eur).toBe(1234);
   const read = ctx("case.read", {}, state);

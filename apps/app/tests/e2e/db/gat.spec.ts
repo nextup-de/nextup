@@ -3,11 +3,11 @@
 //  1. before any approval setting a raise without a route lands on the first manager role's seat, not on the head of the org chart (D16, D30);
 //  2. an admin sets the review role, a council and a role rule for the route on Settings -> Approvals; the spend limits of the desk (5k) and of the
 //     plant manager (25k) come from the org;
-//  3. a raise lands on the review seat and is forwarded to its desk; the desk records a 12k cost and can only say "Yes, if approved"; the budget
-//     approver, the council secretary and the role holder each find their step in /inbox, in order; the draft has no start day until the last approval
-//     and then counts from it;
-//  4. a council step nobody decided on its meeting day moves to the next meeting in a second idea, and the lead is told;
-//  5. a second run: a refused approval stops the draft, the raiser sees the reasoned no on the case page and may ask for a second look.
+//  3. a raise lands on the review seat and is forwarded to its desk; the desk records a 12k cost and can only say "Yes, if approved", which names the
+//     people who will approve; the budget approver, the council secretary and the role holder find their approval in /inbox at once and answer in any
+//     order; the draft opens only with the last yes (decisions A, D and P5 as changed on 16 Nov 2026);
+//  4. a pending approver is reminded once, three working days after they were asked, and nothing follows (decision C);
+//  5. one no returns the idea to its raiser with the reason, who sends it again, which asks every approver afresh (decision B).
 // Notices are outbox rows: a sandbox skips every outside row and sends every in-app row; nothing here reads delivered mail.
 //
 // Set up in the database where the UI is not the point: the org, and the raises that only need to exist. The clock is moved by running it with a later
@@ -53,7 +53,6 @@ const COST_BASIS = "Supplier quote of 3 November";
 const CONDITIONS = "The crane is bought after the audit and the quote stays under 12k";
 const COUNCIL = "Investment council";
 const REFUSAL = "It does not serve a goal of this year and it would break the plant budget";
-const APPEAL = "The supplier now offers the crane on a rental plan below the plant budget";
 
 const codes = new Map<string, string>();
 let companyId = "";
@@ -289,7 +288,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       expect(told[0]).toMatchObject({ status: "sent" });
     });
 
-    await test.step("the desk records a 12k cost, sees the flag and can only say 'Yes, if approved', with the approvers named", async () => {
+    await test.step("the desk records a 12k cost, sees the flag and can only say 'Yes, if approved', with the approving people named", async () => {
       const page = await signIn(browser, DESK);
       await page.goto(`/${SLUG}/cases/${first}`);
       await vis(page, "case-cost-eur").fill("12000");
@@ -305,31 +304,33 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       const sheet = page.getByRole("dialog", { name: "Yes, do it" });
       await expect(sheet.getByTestId("yes-only-if-approved")).toBeVisible();
       const approvers = await sheet.getByTestId("yes-approvers").innerText();
-      // In order: the budget approver (the plant manager covers 12k above the desk's 5k), the council, the role rule.
-      expect(approvers.indexOf(ROLE.plant)).toBeGreaterThanOrEqual(0);
-      expect(approvers.indexOf(COUNCIL)).toBeGreaterThan(approvers.indexOf(ROLE.plant));
-      expect(approvers.indexOf(ROLE.safety)).toBeGreaterThan(approvers.indexOf(COUNCIL));
+      // The people, each step through its head (decision A): the budget approver (the plant manager covers 12k above the desk's 5k), the council through
+      // its secretary, the role rule through the safety officer.
+      expect(approvers.indexOf(PLANT)).toBeGreaterThanOrEqual(0);
+      expect(approvers.indexOf(SECRETARY)).toBeGreaterThan(approvers.indexOf(PLANT));
+      expect(approvers.indexOf(SAFETY)).toBeGreaterThan(approvers.indexOf(SECRETARY));
       await expect(sheet.getByRole("button", { name: "Say yes and open the draft" }), "no plain yes").toHaveCount(0);
       await sheet.getByRole("button", { name: "Yes, if approved" }).click();
       await expect.poll(async () => (await eventsOf("case.provisional", first)).length).toBe(1);
       const run = (await eventsOf("case.provisional", first))[0];
       runId = run.id;
       expect(run.payload).toMatchObject({
-        approvals: [{ kind: "budget", roleId: role.plant, coversUpToEur: 25_000 }, { kind: "council", councilId: expect.any(String) }, { kind: "role", roleId: role.safety }],
-        costEur: 12_000, decidingRoleId: role.desk, draft: true,
+        approvals: [
+          { kind: "budget", roleId: role.plant, coversUpToEur: 25_000, userId: id.plant },
+          { kind: "council", councilId: expect.any(String), userId: id.secretary },
+          { kind: "role", roleId: role.safety, userId: id.safety },
+        ],
+        costEur: 12_000, decidingRoleId: role.desk, draft: true, parallel: true, stepDueDay: D + 3,
       });
       expect(await eventsOf("case.decided", first), "no plain yes was written").toHaveLength(0);
       await page.context().close();
     });
 
-    // ── the approvals, in order ───────────────────────────────────────────────────────────────────────────────────
-    await test.step("the budget approver, the council secretary and the role holder each find their step in /inbox in order; the draft waits until the last", async () => {
+    // ── the approvals, at once ────────────────────────────────────────────────────────────────────────────────────
+    await test.step("the budget approver, the council secretary and the role holder find their approval in /inbox at once; the draft opens with the last yes", async () => {
       let s = await stateNow();
-      const project = s.projects.find((p) => p.sources.includes(first));
-      expect(project, "the yes opened one draft").toBeDefined();
-      const projectId = (project as NonNullable<typeof project>).id;
+      expect(s.projects.filter((p) => p.sources.includes(first)), "no draft while the approvers vote").toHaveLength(0);
       expect(s.cases.find((c) => c.id === first)).toMatchObject({ status: "approval", decided: null });
-      expect(project).toMatchObject({ draft: true, waitsForApproval: true, startDay: null });
       // The raiser hears of the provisional yes: an outside row (skipped on a sandbox) and the in-app copy.
       const mail = (await settle(() => noticesOf(id.raiser, "loop.case.provisional", "mail"), "the raiser is told of the provisional yes"))[0];
       expect(mail).toMatchObject({ status: "skipped", lastError: "sandbox" });
@@ -338,85 +339,71 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       const secretary = await signIn(browser, SECRETARY);
       const safety = await signIn(browser, SAFETY);
       const inboxOf = async (page: Page) => { await page.goto(`/${SLUG}/inbox`); await page.waitForLoadState("networkidle"); };
-      for (const page of [secretary, safety]) { await inboxOf(page); await expect(approvalRow(page, FIRST_IDEA), "not their step yet").toHaveCount(0); }
+      for (const page of [plant, secretary, safety]) { await inboxOf(page); await expect(approvalRow(page, FIRST_IDEA), "everyone is asked at once").toHaveCount(1); }
 
-      // 1. the budget: the plant manager.
-      await inboxOf(plant);
-      await expect(approvalRow(plant, FIRST_IDEA)).toHaveCount(1);
-      await openFromInbox(plant, FIRST_IDEA, first);
-      await vis(plant, "approval-approve").click();
-      await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(1);
-      expect((await eventsOf("case.approval", first))[0].payload).toMatchObject({ approvalAnswer: "yes", step: 0, dueRev: 0 });
-      await inboxOf(plant);
-      await expect(approvalRow(plant, FIRST_IDEA), "answered").toHaveCount(0);
-
-      // 2. the council: its secretary records the outcome with how many were present.
-      await inboxOf(safety);
-      await expect(approvalRow(safety, FIRST_IDEA), "the role holder waits for the council").toHaveCount(0);
-      await inboxOf(secretary);
-      await expect(approvalRow(secretary, FIRST_IDEA)).toHaveCount(1);
+      // The council's secretary first, with conditions and how many were present; then the safety officer. Any order.
       await openFromInbox(secretary, FIRST_IDEA, first);
       await vis(secretary, "approval-present").fill("7");
       await vis(secretary, "approval-conditions").click();
       await vis(secretary, "approval-text").fill(CONDITIONS);
       await vis(secretary, "approval-send").click();
-      await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(2);
-      expect((await eventsOf("case.approval", first))[1].payload).toMatchObject({ approvalAnswer: "conditions", step: 1, present: 7, conditions: CONDITIONS });
-      s = await stateNow();
-      expect(s.projects.find((p) => p.id === projectId), "two of three: the draft still waits and has no start day").toMatchObject({ waitsForApproval: true, startDay: null });
-      expect(s.cases.find((c) => c.id === first)?.status).toBe("approval");
-
-      // 3. the role: the safety officer. The last yes decides the case; nobody else writes it.
-      await inboxOf(safety);
-      await expect(approvalRow(safety, FIRST_IDEA)).toHaveCount(1);
+      await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(1);
+      expect((await eventsOf("case.approval", first))[0].payload).toMatchObject({ approvalAnswer: "conditions", step: 1, present: 7, conditions: CONDITIONS });
       await openFromInbox(safety, FIRST_IDEA, first);
       await vis(safety, "approval-approve").click();
+      await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(2);
+      await inboxOf(safety);
+      await expect(approvalRow(safety, FIRST_IDEA), "answered").toHaveCount(0);
+      s = await stateNow();
+      expect(s.projects.filter((p) => p.sources.includes(first)), "two of three: still no draft").toHaveLength(0);
+      expect(s.cases.find((c) => c.id === first)?.status).toBe("approval");
+      // The idea page's approver line: who approved, who it waits on.
+      await openFromInbox(plant, FIRST_IDEA, first);
+      await expect(vis(plant, "approver-count")).toHaveText(`2 of 3 approved · waiting on ${PLANT}`);
+
+      // The budget: the plant manager's yes is the last. It decides the case and opens the draft; nobody else writes it.
+      await vis(plant, "approval-approve").click();
       await expect.poll(async () => (await eventsOf("case.decided", first)).length).toBe(1);
       const yes = (await eventsOf("case.decided", first))[0];
       expect(yes).toMatchObject({ actor: "system:approvals" });
-      expect(yes.payload).toMatchObject({ answer: "yes", projectId });
       for (const page of [plant, secretary, safety]) await page.context().close();
 
-      // The draft counts its start day from the last approval, and shows the conditions in its brief once the lead writes one.
+      // One draft, opened on the day of the last yes as the desk's yes asked for it, its start day counted from then.
       s = await stateNow();
       const done = s.cases.find((c) => c.id === first);
       expect(done).toMatchObject({ status: "decided", approvals: null, openingRunId: runId });
-      expect(s.projects.filter((p) => p.sources.includes(first)), "no second project").toHaveLength(1);
-      const draft = s.projects.find((p) => p.id === projectId);
-      expect(draft).toMatchObject({ waitsForApproval: false, approvalsPendingSince: yes.day, startDay: yes.day + s.rules.projectStartDays });
+      const drafts = s.projects.filter((p) => p.sources.includes(first));
+      expect(drafts, "one draft").toHaveLength(1);
+      expect(yes.payload).toMatchObject({ answer: "yes", projectId: drafts[0].id });
+      expect(drafts[0]).toMatchObject({ draft: true, openedDay: yes.day, leadUserId: id.desk, deciderUserId: id.desk, startDay: yes.day + s.rules.projectStartDays });
     });
 
-    // ── a council that did not decide on its meeting day ──────────────────────────────────────────────────────────
+    // ── one reminder, three working days after ────────────────────────────────────────────────────────────────────
     const second = `${SLUG}-case-second`;
-    await test.step("a council step nobody decided on its meeting day moves to the next meeting, and the lead is told", async () => {
+    await test.step("a pending approver is reminded once, three working days after they were asked, and nothing follows", async () => {
       await raiseOnDesk(second, SECOND_IDEA);
       const page = await signIn(browser, DESK);
       await yesIfApproved(page, SECOND_IDEA);
       await expect.poll(async () => (await eventsOf("case.provisional", second)).length).toBe(1);
       const run = (await eventsOf("case.provisional", second))[0];
-      // No cost, so no budget step: the council comes first, on its meeting day.
-      expect(run.payload).toMatchObject({ approvals: [{ kind: "council" }, { kind: "role", roleId: role.safety }], stepDueDay: MEETING });
+      // No cost, so no budget step: the council through its secretary and the safety officer, each due for a reminder three working days on.
+      expect(run.payload).toMatchObject({ approvals: [{ kind: "council", userId: id.secretary }, { kind: "role", roleId: role.safety, userId: id.safety }], stepDueDay: D + 3, parallel: true });
       await page.context().close();
 
-      // Two working days after the meeting, as tests/db/gat-clock.test.ts moves the clock: the step moves to the council's next meeting.
-      const next = MEETING + 10;
-      const lead = await settle(() => noticesOf(id.desk, "reminder.council", "inapp"), "the lead is told the step moved", MEETING + 2);
-      expect(lead[0]).toMatchObject({ status: "sent" });
-      const facts = (await eventsOf("clock.due", second)).filter((e) => (e.payload as { kind?: string }).kind === "council");
-      expect(facts, "one fact, however often the clock runs").toHaveLength(1);
-      expect(facts[0].payload).toMatchObject({ dueDay: next, originEventId: run.id, stepId: `${run.id}:0@0` });
-      expect(facts[0]).toMatchObject({ actor: "system:clock" });
-      const step = (await stateNow()).cases.find((c) => c.id === second)?.approvals?.steps[0];
-      expect(step).toMatchObject({ kind: "council", state: "pending", dueDay: next });
-      const mail = await noticesOf(id.desk, "reminder.council", "mail");
-      expect(mail[0]).toMatchObject({ status: "skipped", lastError: "sandbox" });
-      await runClockOnce(on(MEETING + 3));
-      expect((await eventsOf("clock.due", second)).filter((e) => (e.payload as { kind?: string }).kind === "council"), "not written again").toHaveLength(1);
+      const told = await settle(() => noticesOf(id.secretary, "reminder.approval", "inapp"), "the secretary is reminded", D + 3);
+      expect(told[0]).toMatchObject({ status: "sent" });
+      const facts = async () => (await eventsOf("clock.due", second)).filter((e) => ["approval", "council"].includes((e.payload as { kind?: string }).kind ?? ""));
+      expect((await facts()).map((e) => (e.payload as { kind?: string; check?: number }).kind + ":" + (e.payload as { check?: number }).check).sort(), "one reminder each").toEqual(["approval:1", "approval:1"]);
+      expect((await facts()).map((e) => (e.payload as { stepId?: string }).stepId).sort()).toEqual([`${run.id}:0@0`, `${run.id}:1@0`]);
+      // Weeks later: no second reminder, no hand-over, no escalation to a manager, no council move.
+      await runClockOnce(on(D + 20));
+      expect(await facts(), "nothing after the one reminder").toHaveLength(2);
+      expect(await noticesOf(id.plant, "reminder.approval"), "the manager above is not told").toHaveLength(0);
     });
 
-    // ── a refused approval ────────────────────────────────────────────────────────────────────────────────────────
+    // ── one no returns the idea ───────────────────────────────────────────────────────────────────────────────────
     const third = `${SLUG}-case-third`;
-    await test.step("a refused approval stops the draft; the raiser sees the reasoned no on the case page and asks for a second look", async () => {
+    await test.step("one no returns the idea to its raiser with the reason; the raiser sends it again and every approver is asked afresh", async () => {
       await raiseOnDesk(third, THIRD_IDEA);
       await append("case.costed", DESK, id.desk, third, { eur: 12_000, basis: COST_BASIS });
       const desk = await signIn(browser, DESK);
@@ -428,34 +415,36 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       await plant.goto(`/${SLUG}/inbox`);
       await plant.waitForLoadState("networkidle");
       await openFromInbox(plant, THIRD_IDEA, third);
+      await expect(vis(plant, "approval-back"), "no send-back: a no goes to the raiser").toHaveCount(0);
       await vis(plant, "approval-refuse").click();
-      await plant.getByRole("button", { name: /Does not fit a goal/ }).first().click();
       await vis(plant, "approval-text").fill(REFUSAL);
       await vis(plant, "approval-send").click();
-      await expect.poll(async () => (await eventsOf("case.decided", third)).length).toBe(1);
-      const no = (await eventsOf("case.decided", third))[0];
-      expect(no).toMatchObject({ actor: "system:approvals" });
-      expect(no.payload).toMatchObject({ answer: "no", category: "no-fit", reason: REFUSAL });
+      await expect.poll(async () => (await eventsOf("case.approval", third)).length).toBe(1);
+      expect((await eventsOf("case.approval", third))[0].payload).toMatchObject({ approvalAnswer: "no", reason: REFUSAL });
       await plant.context().close();
-      const s = await stateNow();
-      const project = s.projects.find((p) => p.sources.includes(third));
-      expect(project?.stopped, "the draft is stopped with the no's reason").toMatchObject({ why: REFUSAL });
-      expect(s.cases.find((c) => c.id === third)).toMatchObject({ status: "decided", approvals: null, openingRunId: null });
+      expect(await eventsOf("case.decided", third), "a no decides nothing").toHaveLength(0);
+      let s = await stateNow();
+      expect(s.projects.filter((p) => p.sources.includes(third)), "nothing was opened").toHaveLength(0);
+      expect(s.cases.find((c) => c.id === third)).toMatchObject({ status: "approval", decided: null, approvals: null });
       expect(s.cases.find((c) => c.id === third)?.approvalRuns.map((r) => r.outcome)).toEqual(["no"]);
+      const back = await settle(() => noticesOf(id.raiser, "loop.case.approval", "inapp"), "the raiser is told it came back");
+      expect(back.some((r) => (r.subject ?? "").startsWith("Sent back to you"))).toBe(true);
 
       const raiser = await signIn(browser, RAISER);
       await raiser.goto(`/${SLUG}/cases/${third}`);
-      const block = vis(raiser, "no-block");
-      await expect(block.getByTestId("no-category")).toContainText("Does not fit a goal");
-      await expect(block.getByTestId("no-reason")).toHaveText(REFUSAL);
-      await vis(raiser, "second-look-ask").click();
-      await raiser.locator(`#appeal-text-${third}`).fill(APPEAL);
-      await raiser.getByRole("button", { name: "Send the request" }).click();
-      await expect.poll(async () => (await eventsOf("case.appealed", third)).length).toBe(1);
-      expect((await eventsOf("case.appealed", third))[0].payload).toMatchObject({ text: APPEAL, toRoleHolderId: seat.review }); // the route's deputy role takes it
+      await expect(vis(raiser, "approver-returned")).toContainText(REFUSAL);
+      await vis(raiser, "approver-resend").click();
+      await expect.poll(async () => (await eventsOf("case.provisional", third)).length).toBe(2);
+      const again = (await eventsOf("case.provisional", third))[1];
+      expect(again).toMatchObject({ actorUserId: id.raiser });
+      expect(again.payload).toMatchObject({ resend: true, parallel: true, stepDueDay: D + 3 });
       await raiser.context().close();
-      const asked = await settle(() => noticesOf(id.ideaManager, "loop.case.appealed", "mail"), "the second look's desk is asked");
-      expect(asked[0]).toMatchObject({ status: "skipped", lastError: "sandbox" });
+      s = await stateNow();
+      const fresh = s.cases.find((c) => c.id === third);
+      expect(fresh?.approvals).toMatchObject({ runId: again.id, parallel: true, deciderUserId: id.desk });
+      expect(fresh?.approvals?.steps.map((x) => x.state)).toEqual(["pending", "pending", "pending"]);
+      const asked = await settle(() => noticesOf(id.plant, "loop.case.provisional", "inapp"), "the approvers are asked again");
+      expect(asked.length).toBeGreaterThan(0);
     });
 
     // ── a sandbox sends no mail ───────────────────────────────────────────────────────────────────────────────────
@@ -467,7 +456,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       for (const row of rows.filter((r) => r.channel !== "inapp")) expect({ status: row.status, lastError: row.lastError }, `${row.template} (${row.channel})`).toEqual({ status: "skipped", lastError: "sandbox" });
       for (const row of rows.filter((r) => r.channel === "inapp")) expect(row.status, `${row.template} (in-app)`).toBe("sent");
       const templates = new Set(rows.map((r) => r.template));
-      for (const wanted of ["loop.case.reviewed", "loop.case.provisional", "loop.case.approval", "reminder.council"]) expect(templates.has(wanted), wanted).toBe(true);
+      for (const wanted of ["loop.case.reviewed", "loop.case.provisional", "loop.case.approval", "reminder.approval"]) expect(templates.has(wanted), wanted).toBe(true);
     });
   });
 });
