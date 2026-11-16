@@ -4,6 +4,7 @@
 // (the browser's persisted state), so a page never sits empty or half-rendered.
 //
 // No data, no context: this has to render outside DemoProvider (src/app/[company]/loading.tsx).
+import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useT } from "@/i18n/client";
 import styles from "./PageSkeleton.module.css";
@@ -14,15 +15,15 @@ export type SkeletonKind = "list" | "overview" | "inbox" | "raise" | "dashboard"
 export function skeletonKindFor(appPath: string): SkeletonKind {
   const p = appPath === "/" ? "/raise" : appPath;
   if (p.startsWith("/dashboard") || p.startsWith("/manager")) return "overview"; // the Dashboard (the manager home)
-  if (p.startsWith("/leader")) return "inbox";
+  if (p.startsWith("/leader") || p === "/inbox") return "inbox";
   if (p.startsWith("/raise")) return "raise";
-  if (p.startsWith("/overview") || p === "/idea") return "dashboard"; // the Overview table, an idea opened from it
-  if (p.startsWith("/cases/")) return "detail";
+  if (p.startsWith("/overview") || p === "/feed") return "dashboard"; // the Feed, the Overview table
+  if (p.startsWith("/cases/") || p === "/idea") return "detail"; // an idea's one page
   if (p.startsWith("/settings")) return "settings";
   return "list";
 }
 
-const APP_ROUTES = new Set(["manager", "leader", "raise", "dashboard", "overview", "cases", "settings", "problems", "idea", "ideas", "collaboration", "progress", "team"]);
+const APP_ROUTES = new Set(["manager", "leader", "raise", "dashboard", "overview", "cases", "settings", "problems", "idea", "ideas", "collaboration", "progress", "team", "inbox", "feed", "projects", "decisions", "profile", "reports", "people"]);
 
 /**
  * Same, from the browser's pathname, which is /acme/leader in path mode and /leader in subdomain
@@ -40,8 +41,12 @@ export function skeletonKindForPathname(pathname: string): SkeletonKind {
 // waiting for hydration: on a page load it replaces the skeleton loading.tsx was already showing, so
 // a delay there blanks the page for 400ms and the boxes come back - the page seems to load twice.
 // CSS-only, so it runs pre-hydration.
-export function PageSkeleton({ kind = "list", delay = false }: { kind?: SkeletonKind; delay?: boolean }) {
+export function PageSkeleton({ kind: asked = "list", delay = false }: { kind?: SkeletonKind; delay?: boolean }) {
   const t = useT();
+  // A view that waits for its data asks for a general shape ("list", "dashboard"). Where the address says more - the
+  // Dashboard's tiles, an idea's page - the skeleton follows the address, so it has the shape loading.tsx just showed.
+  const here = skeletonKindForPathname(usePathname() ?? "");
+  const kind = (asked === "list" || asked === "dashboard") && (here === "overview" || here === "detail") ? here : asked;
   const body =
     kind === "overview" ? <Overview /> :
     kind === "inbox" ? <Inbox /> :
