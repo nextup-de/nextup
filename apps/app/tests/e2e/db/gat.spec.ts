@@ -310,7 +310,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       expect(approvers.indexOf(PLANT)).toBeGreaterThanOrEqual(0);
       expect(approvers.indexOf(SECRETARY)).toBeGreaterThan(approvers.indexOf(PLANT));
       expect(approvers.indexOf(SAFETY)).toBeGreaterThan(approvers.indexOf(SECRETARY));
-      await expect(sheet.getByRole("button", { name: "Say yes and open the draft" }), "no plain yes").toHaveCount(0);
+      await expect(sheet.getByRole("button", { name: "Say yes", exact: true }), "no plain yes").toHaveCount(0);
       await sheet.getByRole("button", { name: "Yes, if approved" }).click();
       await expect.poll(async () => (await eventsOf("case.provisional", first)).length).toBe(1);
       const run = (await eventsOf("case.provisional", first))[0];

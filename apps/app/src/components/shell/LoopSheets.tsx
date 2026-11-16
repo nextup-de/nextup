@@ -24,7 +24,7 @@ import { railOf } from "@/features/ideas/raise";
 import { joinableProjects, RAISER_NOTE_MAX } from "@/features/projects/accept";
 import { projectById, projectLabel } from "@/features/projects/selectors";
 import { useFormat, useLocale, useT } from "@/i18n/client";
-import { PersonFace } from "@/components/ui/elements";
+import { Fold, PersonFace } from "@/components/ui/elements";
 import { brainCheckinAction } from "@/server/actions/brain";
 import base from "./InputSheet.module.css";
 import styles from "./LoopSheets.module.css";
@@ -43,15 +43,19 @@ export function LoopSheet() {
   return null;
 }
 
-export function Frame({ label, title, sub, children, actions }: { label: string; title: string; sub: string; children?: React.ReactNode; actions: React.ReactNode }) {
+/**
+ * A sheet (DESIGN_RULES §9): the move is its heading ("Yes, do it"), with no kicker over it and not the item's title again (the
+ * item is right behind it); `sub` is one line of fact when the move needs one. `heading` overrides the move's name, for the
+ * line after a move ("P-5 is open as a draft").
+ */
+export function Frame({ label, heading, sub, children, actions }: { label: string; heading?: string; sub?: string; children?: React.ReactNode; actions: React.ReactNode }) {
   const { closeSheet } = useDemo();
   return (
     <>
       <div className={base.backdrop} onClick={closeSheet} />
       <div className={base.sheet} role="dialog" aria-modal="true" aria-label={label}>
-        <div className={base.eyebrow}>{label}</div>
-        <div className={base.title}>{title}</div>
-        <div className={base.sub}>{sub}</div>
+        <h2 className={base.title}>{heading ?? label}</h2>
+        {sub ? <div className={base.sub}>{sub}</div> : null}
         {children}
         <div className={base.actions}>{actions}</div>
       </div>
@@ -160,7 +164,7 @@ function DiscussSheet({ c }: { c: ReducedCase }) {
     showToast(t("shell.discussDone", { count: picked.length, date: f(S.day + R.discussEveryDays) }));
   };
   return (
-    <Frame label={t("shell.discussLabel")} title={c.title}
+    <Frame label={t("shell.discussLabel")}
       sub={t("shell.discussSub", { days: R.discussEveryDays, rounds: R.discussMaxRounds, from: c.from })}
       actions={<><Btn kind={ok ? "primary" : "disabled"} onClick={confirm}>{!missing.trim() ? t("shell.discussSayMissing") : !picked.length ? t("shell.discussInviteSomeone") : t("shell.discussStart", { count: picked.length })}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
       <div className={base.textLabel}>{t("shell.discussMissing")}</div>
@@ -188,7 +192,7 @@ function InviteSheet({ c }: { c: ReducedCase }) {
     showToast(t("shell.inviteDone", { names: labelsOf(ctx.seed.seats, picked).join(", "), count: picked.length }));
   };
   return (
-    <Frame label={t("shell.inviteLabel")} title={c.title} sub={already.length ? t("shell.inviteIn", { names: already.join(", "), from: c.from }) : t("shell.inviteNobody")}
+    <Frame label={t("shell.inviteLabel")} sub={already.length ? t("shell.inviteIn", { names: already.join(", "), from: c.from }) : t("shell.inviteNobody")}
       actions={<><Btn kind={ok ? "primary" : "disabled"} onClick={confirm}>{ok ? t("shell.inviteButton", { count: picked.length }) : t("shell.invitePick")}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
       <PeoplePicker suggested={suggested} picked={picked} onToggle={(n) => setPicked((p) => toggle(p, n))} skip={[c.fromUserId, ctx.me.userId, ...alreadyIds]} />
     </Frame>
@@ -244,7 +248,7 @@ function CheckinSheet({ c }: { c: ReducedCase }) {
   };
   const points = [...SCORE_LABELS, ...open.filter((o) => !(SCORE_LABELS as readonly string[]).includes(o))];
   return (
-    <Frame label={t("shell.checkinLabel")} title={c.title}
+    <Frame label={t("shell.checkinLabel")}
       sub={t("shell.checkinSub", { round: rs?.round ?? 1, rounds: S.rules.discussMaxRounds })}
       actions={<><Btn kind={ok ? "primary" : "disabled"} onClick={confirm}>{next === "decide" ? t("shell.checkinSendDecide") : t("shell.checkinSendRound")}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
       <div className={base.options}>
@@ -326,12 +330,13 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
     const p = projectById(S, opened.id);
     const name = p ? projectLabel(p) : t("shell.acceptTheProject");
     return (
-      <Frame label={t("shell.acceptLabel")} title={t(opened.joined ? "shell.acceptIsJoined" : "shell.acceptIsOpen", { name })} sub={t("shell.acceptOpenSub", { title: p?.title ?? c.title, lead: lead?.name ?? "" })}
+      <Frame label={t("shell.acceptLabel")} heading={t(opened.joined ? "shell.acceptIsJoined" : "shell.acceptIsOpen", { name })} sub={t("shell.acceptOpenSub", { title: p?.title ?? c.title, lead: lead?.name ?? "" })}
         actions={<><Link href={href("/projects/" + opened.id)} className={styles.go} onClick={closeSheet}>{t("shell.acceptOpen", { name })}</Link><Btn fixed onClick={closeSheet}>{t("shell.done")}</Btn></>} />
     );
   }
   return (
-    <Frame label={t("shell.acceptLabel")} title={c.title} sub={t("shell.acceptSub", { from: c.from })}
+    // The yes asks one thing, who sets it up (decision of 10 Nov); the facts the yes depends on stay in view, the choices fold behind More.
+    <Frame label={t("shell.acceptLabel")}
       actions={<>
         {!model.onlyIfApproved && <Btn kind={ok ? "accent" : "disabled"} onClick={confirm}>{ok ? t("shell.acceptSend") : t("shell.acceptName")}</Btn>}
         {(model.onlyIfApproved || byHand.length > 0) && <Btn kind={ok && model.provisional ? (model.onlyIfApproved ? "accent" : "muted") : "disabled"} onClick={confirmProvisional}>{ok ? t("approvals.yesIfApproved") : t("shell.acceptName")}</Btn>}
@@ -342,6 +347,15 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
         {order.map((id) => { const p = people.find((x) => x.userId === id)!; return <option key={id} value={id}>{p.name}{roleOf(id, p.name) ? " · " + roleOf(id, p.name) : ""}</option>; })}
       </select>
       {leadId !== actorUserId && <div className={styles.none}>{t("shell.acceptLeadHint")}</div>}
+      {model.onlyIfApproved && <div className={styles.none} data-testid="yes-only-if-approved">{t("approvals.onlyIfApproved")}</div>}
+      {model.approvers.length > 0 && (
+        <div className={styles.approvers} data-testid="yes-approvers">
+          <div className={styles.none}>{t("approvals.approversNeeded", { list: model.approvers.map((a) => a.label).join(", ") })}</div>
+          {model.noBudgetCheck && <div className={styles.none}>{t("approvals.noBudgetCheck")}</div>}
+          {model.joinLine && <div className={styles.none}>{model.joinLine}</div>}
+        </div>
+      )}
+      <Fold summary={t("shell.acceptMore")} name="accept-more">
       {joinable.length > 0 && (
         <>
           <label className={base.textLabel} htmlFor="accept-join">{t("shell.acceptJoin")}</label>
@@ -350,14 +364,6 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
             {joinable.map((p) => <option key={p.id} value={p.id}>{t("shell.acceptJoinTo", { name: projectLabel(p), title: p.title })}</option>)}
           </select>
         </>
-      )}
-      {model.onlyIfApproved && <div className={styles.none} data-testid="yes-only-if-approved">{t("approvals.onlyIfApproved")}</div>}
-      {model.approvers.length > 0 && (
-        <div className={styles.approvers} data-testid="yes-approvers">
-          <div className={styles.none}>{t("approvals.approversNeeded", { list: model.approvers.map((a) => a.label).join(", ") })}</div>
-          {model.noBudgetCheck && <div className={styles.none}>{t("approvals.noBudgetCheck")}</div>}
-          {model.joinLine && <div className={styles.none}>{model.joinLine}</div>}
-        </div>
       )}
       {byHand.length > 0 && (
         <div className={styles.points} aria-label={t("approvals.addApprover")}>
@@ -375,6 +381,7 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
       )}
       <label className={base.textLabel} htmlFor="accept-note">{t("shell.acceptNote")}</label>
       <input id="accept-note" className={`nh-input ${styles.field}`} value={note} onChange={(e) => setNote(e.target.value.slice(0, RAISER_NOTE_MAX))} maxLength={RAISER_NOTE_MAX} placeholder={t("shell.acceptNotePlaceholder")} />
+      </Fold>
     </Frame>
   );
 }

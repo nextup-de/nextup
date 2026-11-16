@@ -746,7 +746,7 @@ export const dashboard = defineMessages({
     scoreFitsMap: "Passt zu einem Entscheidungstyp der Karte",
     scoreUpside: "Nutzen genannt",
     scoreDetail: "Ausführlich beschrieben",
-    scoreWaiting: "Wartet {n} d",
+    scoreWaiting: "Wartet {n} T",
     scorePastPromise: "Über dem Versprechen",
     scoreAffects: "Betrifft {n} weitere",
     scoreEvidence: "Belege angehängt",

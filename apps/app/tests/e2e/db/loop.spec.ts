@@ -158,7 +158,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await expect(page).toHaveURL(new RegExp(`/${SLUG}/inbox$`));
     await page.getByRole("main").getByText(TITLE).first().click();
     await page.getByRole("button", { name: "Yes, do it" }).click();
-    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
+    await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes", exact: true }).click();
 
     await expect.poll(async () => {
       const row = await getDb().caseEvent.findFirst({ where: { companyId, type: "case.decided" } });

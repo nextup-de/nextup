@@ -223,8 +223,9 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await page.getByRole("button", { name: "Yes, do it" }).click();
       const sheet = page.getByRole("dialog", { name: "Yes, do it" });
       await sheet.locator("#accept-lead").selectOption(id.lead);
+      await sheet.getByTestId("fold").filter({ hasText: "More" }).locator("summary").click(); // the line to the raiser is under More (DESIGN_RULES §9)
       await sheet.locator("#accept-note").fill(NOTE);
-      await sheet.getByRole("button", { name: "Say yes and open the draft" }).click();
+      await sheet.getByRole("button", { name: "Say yes", exact: true }).click();
 
       await expect.poll(async () => {
         const row = (await eventsOf("case.decided", caseA))[0];
