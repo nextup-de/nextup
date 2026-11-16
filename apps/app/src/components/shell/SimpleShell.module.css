@@ -55,6 +55,11 @@
 .sectionTabs a { font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; }
 .sectionTabs a:not([aria-current="page"]) { color: var(--nh-ink-2); }
 .sectionTabs[data-section="projects"] nav { max-width: max(80vw, 1120px); }
+/* A section whose pages sit in its side view (AreaFrame): the strip is for phones, which have no side view. */
+@media (min-width: 761px) {
+  .sectionTabs[data-side="true"] { display: none; }
+  .root:has(> .sectionTabs[data-side="true"]) { --nh-tabs-h: 0px; }
+}
 @media (min-width: 1101px) { .sectionTabs[data-section="projects"] { --nh-page-x: 32px; } } /* as the wide pages */
 
 .content { flex: 1; padding: 20px var(--nh-page-x) 40px; overflow-x: clip; } /* decorative glows (the raise aura) may reach into the gutter, never past the screen edge */

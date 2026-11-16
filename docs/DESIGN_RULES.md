@@ -24,7 +24,7 @@ still calls black the action colour (Visual Foundations), this file and its own 
 | Nothing empty is drawn: no empty card, section, inbox group or dashboard row. With nothing at all, the page says so in one sentence. | INB acceptance (`tests/e2e/db/inb.spec.ts`) for the inbox; elsewhere not tested |
 | The ideas sidebar is one quiet line per idea: no date, no preview, no Draft badge (a dashed circle marks a draft). | `tests/unit/design/ideas-sidebar.test.ts` |
 | Detail views use one structure: sections are a grey heading separated by space, not by lines; key/value blocks and lists share one grouped-list style. | not tested |
-| One row of controls per list: at most two levels of "where am I" (top pills, page tabs); everything else is a filter in that row; empty departments go behind "More". | not tested |
+| One row of controls per list: at most two levels of "where am I" (the bar's pills, the pages in the side view); everything else is a filter in that row; empty departments go behind "More". | not tested |
 
 ## 2. Numbers and data
 
@@ -53,7 +53,7 @@ still calls black the action colour (Visual Foundations), this file and its own 
 |---|---|
 | One inbox, `/<company>/inbox`, for every role; a member sees it in the nav only while something waits. Order: pinned, late, due soon, the rest. The badge never adds overlapping counts. | INB acceptance; [INBOX.md](INBOX.md) |
 | The shell is chosen per role (members: simple bar; leaders and managers: rail and top bar). Roles, homes and nav are config (`ROLE_HOME`, `NAV`), never hard-coded in a page. | `tests/unit/design/roles-config.test.ts` (leaders and managers still have the simple shell: listed there) |
-| A section-tab strip appears only with two or more tabs. Tab strips never show a vertical scrollbar. | `tests/unit/design/section-tabs.test.ts`; `tests/e2e/demo/design-guard.spec.ts` |
+| **An area's pages sit in its side view** on a laptop or monitor: the same side view in every area, on the left, hidden at the start and opened by the button at the top left; open in one area, it is open in all. No strip of tabs repeats it there. A phone has no side view and keeps the strip. Either appears only with two or more pages; a strip never shows a vertical scrollbar. Kevin, 16 Nov 2026: every area. Projects, Dashboard and Profile have it; Inbox and Ideas keep the strip until their own lists sit in the side view (`SIDE_VIEW_SECTIONS` in `config/nav.ts`). | `tests/unit/design/side-view.test.tsx`; `tests/unit/design/section-tabs.test.ts`; `tests/e2e/demo/design-guard.spec.ts`; `tests/e2e/db/design-guard.spec.ts` |
 | Everything works below 760px; nothing scrolls sideways; nothing scales with the window (no `zoom`, no vw/vh). | `mobile.spec.ts`; checkDesign; `fluid.test.ts`; [RESPONSIVE.md](RESPONSIVE.md) |
 | Floor pages: no app shell, light theme, touch targets at least 48px (main buttons 64px), a DE / EN switch. | `tests/unit/design/floor.test.ts` (the DE / EN buttons are 40px: listed there) |
 
