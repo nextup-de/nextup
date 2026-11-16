@@ -59,7 +59,7 @@ export const ROWS: EventRow[] = [
 ];
 
 /** What GAT adds to a case, a project and the state: dropped before the golden is compared. */
-const GAT_CASE_FIELDS = ["review", "cost", "approvals", "approvalRuns", "openingRunId"] as const;
+const GAT_CASE_FIELDS = ["review", "cost", "approvals", "approvalRuns", "openingRunId", "folder"] as const; // folder: the folder job's (case.folder), newer than the golden
 const GAT_PROJECT_FIELDS = ["waitsForApproval"] as const;
 const without = (o: object, keys: readonly string[]) => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k)));
 export const beforeCase = (c: ReducedCase) => without(c, GAT_CASE_FIELDS);

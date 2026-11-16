@@ -34,6 +34,7 @@ import { stampDept, stampEvent, underHandle } from "@/features/cases/stamp";
 import { loadUnitPeople } from "@/lib/db/pseudonymise";
 import { kicksJira } from "@/features/projects/pages";
 import { kickJira } from "@/server/jira-sync";
+import { kickFolders } from "@/server/files/auto-folder";
 import { proposeOnRaise } from "@/server/routing";
 import { getLocale } from "@/i18n/server";
 import { createT } from "@/i18n";
@@ -154,6 +155,8 @@ export async function appendEventAction(input: AppendInput): Promise<AppendOutco
   // The mails for this event come from the outbox: server/notify/dispatch.ts plans them from the log.
   // A person's project event (or a yes that opens a project) is Jira's to hear about now, not in a minute.
   if (kicksJira(type) || type === "case.decided") kickJira(slug);
+  // A new idea gets its SharePoint folder, and a yes links it to the project, now and not in five minutes.
+  if (type === "case.raised" || type === "case.decided") kickFolders(slug);
 
   revalidatePath("/" + slug, "layout");
   revalidatePath("/", "layout"); // subdomain mode: the company is the host, so the path has no slug

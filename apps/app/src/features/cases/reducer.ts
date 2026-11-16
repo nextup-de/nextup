@@ -8,6 +8,7 @@
 // offset; age = day - raisedDay. A paused clock (question sent) does not count towards the promise.
 import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { byClock } from "@/features/clock/actor";
+import { byFolderJob } from "@/features/files/folder-actor";
 import type { SeatRow } from "@/features/auth/identity";
 import { applyOverload, emptyOverload } from "@/features/overload/reduce";
 import type { OverloadState } from "@/features/overload/types";
@@ -86,6 +87,8 @@ export type ReducedCase = {
   // `mergedIn` carries user ids for the reducer's readers (the affected count by user id); a page shows only the count.
   follows: string | null; followedBy: string[]; sameAs: string | null; related: string[]; merged: Merge | null;
   mergedIn: { id: string; userId: string | null; day: number }[]; links: string[];
+  // The idea's own SharePoint folder (case.folder): its project links the same folder at the yes. null until the folder job made it.
+  folder: string | null;
   // Review and approvals (plan GAT, D12, D14, D18, D21, D32, D33): the review of the raise, the latest cost estimate, the active approval
   // run and the finished ones, and the id of the run whose final yes decided the case. null, null, null, [] and null until GAT's events.
   review: CaseReview | null; cost: CaseCost | null; approvals: CaseApprovals | null; approvalRuns: CaseApprovals[]; openingRunId: string | null;
@@ -154,7 +157,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
       status: "open", read: null, decided: null, withdrawn: null, question: null, handed: [], building: null, shipped: null,
       override: null, discussion: null, versions: [],
       decisions: [], passes: 0, notNowInRow: 0, appeal: null, reopens: [], cycleStartDay: row.raisedDay ?? 0, dueFloor: null, reopenSeq: null, decidedSeq: null,
-      follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [],
+      follows: null, followedBy: [], sameAs: null, related: [], merged: null, mergedIn: [], links: [], folder: null,
       review: null, cost: null, approvals: null, approvalRuns: [], openingRunId: null,
       pausedDays: 0, pausedSince: null, history: [],
       route: null, age: 0, clock: 0, open: true, archived: false, overdue: false, dueDay: 0, escalated: null,
@@ -477,6 +480,13 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         endReview(c);
         c.status = "withdrawn";
         c.history.push(ev);
+        break;
+      }
+      case "case.folder": {
+        // Only the folder job's, and only an https address. Not in the history: nobody did anything to the idea.
+        const c = cases[target];
+        if (!c || !byFolderJob(ev) || pl.system !== "sharepoint" || typeof pl.url !== "string" || !/^https:\/\//i.test(pl.url)) break;
+        c.folder = pl.url;
         break;
       }
       case "case.unanswered": {

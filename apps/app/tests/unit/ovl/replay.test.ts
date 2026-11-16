@@ -37,10 +37,13 @@ const beforePages = (p: ReducedProject) => Object.fromEntries(Object.entries(p)
     return Object.fromEntries(Object.entries(step).filter(([field]) => !["checklist", "comments", "waitingOn"].includes(field)));
   }) : value]));
 
+// The folder job's case.folder adds an empty folder to every case; leave the pre-OVL golden unchanged.
+const beforeFolder = <T extends object>(c: T) => Object.fromEntries(Object.entries(c).filter(([key]) => key !== "folder"));
+
 it("OVL replay writes the golden of a pre-OVL log", async () => {
   const state = reduce(SEED, logFromRows(REPLAY_ROWS, DAY));
   // The golden was written before OVL: the field OVL adds is left out, so it reads the same at the base commit and after.
-  await expect(JSON.stringify({ ...state, projects: state.projects.map(beforePages), overload: undefined }, null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
+  await expect(JSON.stringify({ ...state, cases: state.cases.map(beforeFolder), projects: state.projects.map(beforePages), overload: undefined }, null, 2)).toMatchFileSnapshot("./snapshot/replay.json");
 });
 
 it("OVL replay reduces a pre-OVL log to the golden apart from an empty overload", () => {
@@ -48,7 +51,7 @@ it("OVL replay reduces a pre-OVL log to the golden apart from an empty overload"
   // The new field is the only difference: empty, and read the same through overloadOf as without it.
   expect(state.overload).toEqual({ away: [], desks: [] });
   expect(overloadOf({})).toEqual(emptyOverload());
-  expect(JSON.stringify({ ...state, projects: state.projects.map(beforePages), overload: undefined }, null, 2)).toBe(readFileSync("tests/unit/ovl/snapshot/replay.json", "utf8"));
+  expect(JSON.stringify({ ...state, cases: state.cases.map(beforeFolder), projects: state.projects.map(beforePages), overload: undefined }, null, 2)).toBe(readFileSync("tests/unit/ovl/snapshot/replay.json", "utf8"));
 });
 
 let n = 0;

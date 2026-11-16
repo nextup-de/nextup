@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { useLocale, useT } from "@/i18n/client";
+import { byFolderJob } from "@/features/files/folder-actor";
 import { lastReadOf } from "./FileStates";
 import type { FilesPartProps } from "./types";
 import styles from "./States.module.css";
@@ -48,7 +49,9 @@ function Open({ state, actions }: FilesPartProps) {
       <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => { actions.reload(); actions.closeDialog(); }}>{t("projectFiles.syncNow")}</button>
       {editor && <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => actions.openDialog({ kind: "picker" })}>{t("projectFiles.changeFolderMore")}</button>}
     </div>
-    <span className={styles.note}>{t("projectFiles.popoverNote", { name: by?.actor ?? p.lead, date: f(by?.day ?? folder.day) })}</span>
+    <span className={styles.note}>{by && byFolderJob(by)
+      ? t("projectFiles.popoverNoteAuto", { date: f(by.day) })
+      : t("projectFiles.popoverNote", { name: by?.actor ?? p.lead, date: f(by?.day ?? folder.day) })}</span>
     <a className={styles.link} href={folder.url} target="_blank" rel="noopener noreferrer">{t("projectFiles.openInSharePoint")} ↗</a>
   </div>;
 }
