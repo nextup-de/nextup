@@ -154,8 +154,9 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("marks it done; the 30-day check opens 30 days later", async () => {
-    await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
     // Every step is done, so the Overview's done card offers the same sheet as Manage › Mark it done (Kevin, 16 Nov 2026).
+    // The Overview is "project-overview"; "overview" is the project's Idea page since #958.
+    await page.goto("/acme/projects/pj4?page=project-overview");
     const doneCard = page.getByRole("region", { name: "All 2 steps done" });
     await doneCard.getByRole("button", { name: "Mark it done…" }).click();
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");

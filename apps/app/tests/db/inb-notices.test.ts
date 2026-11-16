@@ -114,7 +114,7 @@ describe("INB notices in the app", () => {
     const mine = await listNotices(companyId, a);
     expect(mine.length).toBeGreaterThanOrEqual(2);
     expect(mine.every((r) => r.template === "raised" && r.readAt === null && r.subject !== "" && r.text !== "")).toBe(true);
-    expect(Object.keys(mine[0]).sort()).toEqual(["createdAt", "id", "link", "readAt", "subject", "template", "text"]);
+    expect(Object.keys(mine[0]).sort()).toEqual(["createdAt", "data", "id", "link", "readAt", "subject", "template", "text"]);
     expect(mine.map((r) => r.createdAt.getTime())).toEqual(mine.map((r) => r.createdAt.getTime()).sort((x, y) => y - x));
     expect((await listNotices(companyId, a, { limit: 1 }))).toHaveLength(1);
     expect(await listNotices(companyId, raiserId)).toEqual([]);

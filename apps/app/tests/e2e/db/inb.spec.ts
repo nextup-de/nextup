@@ -164,14 +164,11 @@ test.describe.serial("INB acceptance", () => {
       await expect(section(page, "Decide")).toHaveCount(0);
       await expect(section(page, "Approve or confirm")).toHaveCount(0);
 
-      // The notice for it is in the app, unread, and Mark as read marks it.
+      // The notice for it is in the app, unread, but not repeated under Notices while its row is in the list (#962).
       const asked = (await noticesOf(ids.raiser)).find((n) => n.template === "loop.case.asked");
       expect(asked, "an in-app copy of the question").toBeTruthy();
-      const notice = page.getByTestId("inbox-notice").filter({ hasText: asked!.subject });
-      await expect(notice).toHaveAttribute("data-read", "false");
-      await notice.getByRole("button", { name: "Mark as read" }).click();
-      await expect(notice).toHaveAttribute("data-read", "true");
-      await expect.poll(async () => (await getDb().outboxMessage.findUniqueOrThrow({ where: { id: asked!.id } })).readAt !== null).toBe(true);
+      expect(asked!.readAt).toBeNull();
+      await expect(page.getByTestId("inbox-notice").filter({ hasText: asked!.subject })).toHaveCount(0);
       await page.context().close();
     });
 
@@ -200,14 +197,23 @@ test.describe.serial("INB acceptance", () => {
       await rows.first().click();
       await expect(page.getByRole("button", { name: "Yes, do it" })).toBeVisible();
 
-      // One raise notice per case that came to the desk (the project's case too).
+      // One raise notice per case that came to the desk (the project's case too). Those still to decide are rows above,
+      // so their notices are not repeated under Notices (#962); the project's case is decided, so its notice shows.
       const raisedNotices = (await noticesOf(ids.lead)).filter((n) => n.template === "raised");
       expect(raisedNotices).toHaveLength(4);
-      for (const c of [OLD, NEW, ASKED, { title: PROJECT.title }]) {
+      for (const c of [OLD, NEW, ASKED]) {
         const n = raisedNotices.find((x) => x.subject.includes(c.title));
         expect(n, `a notice for ${c.title}`).toBeTruthy();
-        await expect(page.getByTestId("inbox-notice").filter({ hasText: n!.subject })).toHaveAttribute("data-read", "false");
+        await expect(page.getByTestId("inbox-notice").filter({ hasText: n!.subject })).toHaveCount(0);
       }
+      const projectRaised = raisedNotices.find((x) => x.subject.includes(PROJECT.title));
+      expect(projectRaised, `a notice for ${PROJECT.title}`).toBeTruthy();
+      const notice = page.getByTestId("inbox-notice").filter({ hasText: projectRaised!.subject });
+      await expect(notice).toHaveAttribute("data-read", "false");
+      // Mark as read marks it, on the page and in the outbox.
+      await notice.getByRole("button", { name: "Mark as read" }).click();
+      await expect(notice).toHaveAttribute("data-read", "true");
+      await expect.poll(async () => (await getDb().outboxMessage.findUniqueOrThrow({ where: { id: projectRaised!.id } })).readAt !== null).toBe(true);
       await page.context().close();
     });
 
@@ -223,9 +229,11 @@ test.describe.serial("INB acceptance", () => {
       await expect(today(page).late).toHaveText("0 late"); // confirmable for CONFIRM_DAYS working days from today
       expect(CONFIRM_DAYS).toBeGreaterThan(1);
 
+      // The request to confirm is in the app, but not repeated under Notices while the project is a row above (#962).
       const ask = (await noticesOf(ids.second)).find((n) => n.template === "loop.project.measured");
       expect(ask, "an in-app copy of the request to confirm").toBeTruthy();
-      await expect(page.getByTestId("inbox-notice").filter({ hasText: ask!.subject })).toHaveAttribute("data-read", "false");
+      expect(ask!.readAt).toBeNull();
+      await expect(page.getByTestId("inbox-notice").filter({ hasText: ask!.subject })).toHaveCount(0);
       await page.context().close();
     });
 

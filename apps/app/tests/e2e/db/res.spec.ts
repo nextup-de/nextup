@@ -330,9 +330,11 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect((await eventsOf("project.done", projectId))[0]).toMatchObject({
         actorUserId: id.lead, payload: { openSteps: [{ stepId: "s_done", end: "done" }, { stepId: "s_drop", end: "dropped", why: DROP_WHY }] },
       });
-      // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else.
+      // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else: with no
+      // step open its steps card is the done card (#964), and the legend of columns is gone.
       await page.goto(`/${SLUG}/projects/${projectId}?page=project-overview`);
-      await expect(page.getByRole("region", { name: "Where the steps are" }).getByRole("listitem")).toHaveText([/To do\s*0/, /Doing\s*0/, /Blocked\s*0/, /Done\s*1/]);
+      await expect(page.getByRole("region", { name: "The one step is done" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Where the steps are" })).toHaveCount(0);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
       const board = page.getByRole("region", { name: "Board", exact: true });
       await expect(board.getByRole("group", { name: "Done" }), "the board counts the done step").toHaveText(/^Done\s*1(?!\d)/);
