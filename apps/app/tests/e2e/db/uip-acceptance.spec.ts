@@ -22,8 +22,9 @@ const HEADERS = [
   "settings/company", "settings/rules", "settings/calendar", "settings/org", "settings/routing", "settings/members",
   "team",
 ].map(page_);
-// The Projects area: the tab in the strip names the page, so the title is for screen readers only.
-const AREA = ["projects", "decisions", "projects/collaboration", "projects/progress"].map(page_);
+// The Projects area: the tab in the strip names the page, so the title is for screen readers only. Decisions is a tab of the
+// Inbox since #980 (docs/DESIGN_RULES.md §8), swept in uip-cases.spec.ts.
+const AREA = ["projects", "projects/collaboration", "projects/progress"].map(page_);
 
 let company: TestCompany;
 
