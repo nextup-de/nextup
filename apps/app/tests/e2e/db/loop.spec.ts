@@ -118,9 +118,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     });
 
     await test.step("'Where should it go?' proposes the desk by keywords, and the send names the role and a date", async () => {
-      const show = page.getByRole("button", { name: "Show sidebar" });
-      if (await show.isVisible()) await show.click();
-      await page.getByRole("button", { name: "Publish idea" }).click();
+      await page.getByRole("button", { name: "Publish", exact: true }).click(); // the page's one Publish, under the latest reply
       const look = page.getByRole("dialog", { name: "Last look before it goes out" });
       await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
       const who = page.getByRole("dialog", { name: "Where should it go?" });

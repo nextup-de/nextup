@@ -153,17 +153,14 @@ export async function setupStep(page: Page, name: "Lead" | "Template" | "Team" |
 }
 
 /**
- * "Publish idea", the last look before it goes out (its preview window) and "Choose a desk",
+ * "Publish" under the coach's latest reply (the page's one Publish), the last look before it goes out (its preview window) and "Choose a desk",
  * then "Where should it go?": pick the desk whose title or holders name `to`, or find it under "Choose another desk".
  * Waits until the case is raised (the chat offers "Open the case").
  * An already open preview goes straight on.
  */
 export async function publishTo(page: Page, to: string) {
   const look = page.getByRole("dialog", { name: "Last look before it goes out" });
-  if (!(await look.isVisible())) {
-    await showSidebar(page);
-    await page.getByRole("button", { name: "Publish idea" }).click();
-  }
+  if (!(await look.isVisible())) await page.getByRole("button", { name: "Publish", exact: true }).click();
   await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
   const who = page.getByRole("dialog", { name: "Where should it go?" });
   await expect(who).toBeVisible({ timeout: 30_000 });
