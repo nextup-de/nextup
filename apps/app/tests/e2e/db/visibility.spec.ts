@@ -161,6 +161,10 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
     await page.goto(`/${SLUG}/cases/${OTHER_PRIVATE.id}`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(OTHER_PRIVATE.title)).toHaveCount(0);
+    // The idea's one page, /idea?id= (16 Nov 2026), that the old address moves on to: the same nothing.
+    await page.goto(`/${SLUG}/idea?id=${OTHER_PRIVATE.id}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(OTHER_PRIVATE.title)).toHaveCount(0);
 
     const all = seen.bodies.join("\n");
     expect(all, "the recording caught the layout's payload").toContain(M_SHARED.title);
@@ -177,11 +181,11 @@ test.describe.serial("VIS acceptance: a member receives only visible cases and p
       test.setTimeout(180_000);
       const page = await signIn(browser, who);
       await loadTime(page, "/inbox"); // warm-up
-      await loadTime(page, `/cases/${M_SHARED.id}`);
+      await loadTime(page, `/idea?id=${M_SHARED.id}`); // the idea's one page (16 Nov 2026); /cases/<id> only moves on to it
       // Best of three after the warm-up: one slow sample on a busy machine is noise, not the page.
       const best = async (path: string) => Math.min(await loadTime(page, path), await loadTime(page, path), await loadTime(page, path));
       const inbox = await best("/inbox");
-      const casePage = await best(`/cases/${M_SHARED.id}`);
+      const casePage = await best(`/idea?id=${M_SHARED.id}`);
       await expect(page.getByText(M_SHARED.title).first()).toBeVisible();
       expect(inbox, `${who} inbox load`).toBeLessThan(LIMIT_MS);
       expect(casePage, `${who} case page load`).toBeLessThan(LIMIT_MS);

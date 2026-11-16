@@ -100,12 +100,14 @@ test("the interview script: employee raises, team leader finds it, manager sees 
   });
 
   await test.step("employee: sees the details of the case", async () => {
-    await expect(page).toHaveURL(/\/cases\/c_\w+$/);
+    await expect(page).toHaveURL(/\/idea\?id=c_\w+$/); // the idea's one page (16 Nov 2026)
     const main = page.getByRole("main");
     await expect(main).toContainText(SHOWN);
-    await expect(main).toContainText(MORE[0]);
-    await expect(main).toContainText("5 d left on the promise");
-    await expect(main).toContainText(/T\. Vogel\s*on whose desk it is/);
+    // The idea card (one idea page, 16 Nov 2026): the answer's two halves as label and text, the desk and the promise.
+    await expect(main).toContainText("It serves the changeover goal");
+    await expect(main).toContainText(MORE[0].split(": ")[1]);
+    await expect(main).toContainText(/of the 5-day promise/);
+    await expect(main).toContainText(/On the desk of[\s\S]*T\. Vogel/);
     // "What happened": the log so far is one line.
     await expect(main.getByRole("listitem").filter({ hasText: "raised this" })).toBeVisible();
   });

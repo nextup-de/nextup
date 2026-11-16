@@ -70,13 +70,13 @@ describe("INB items", () => {
 
   it("gives a raiser the question asked of them as part", () => {
     const items = inboxItems(inputFor("u_lb", 2));
-    expect(items.find((i) => i.kind === "question")).toMatchObject({ id: "question:c_ask", ask: "part", caseId: "c_ask", href: "/cases/c_ask" });
+    expect(items.find((i) => i.kind === "question")).toMatchObject({ id: "question:c_ask", ask: "part", caseId: "c_ask", href: "/idea?id=c_ask" });
     expect(items.filter((i) => i.kind === "question")).toHaveLength(1);
   });
 
   it("gives an invitee the view asked as part, only with the discussion flag and not when it is on their own desk", () => {
     const items = inboxItems(inputFor("u_hs", 2));
-    expect(items.find((i) => i.id === "view:c_disc")).toMatchObject({ ask: "part", kind: "view", href: "/cases/c_disc", deskRoleId: null });
+    expect(items.find((i) => i.id === "view:c_disc")).toMatchObject({ ask: "part", kind: "view", href: "/idea?id=c_disc", deskRoleId: null });
     expect(ids(inboxItems(inputFor("u_hs", 2, { flags: { projects: true, discussion: false } }))).filter((id) => id.startsWith("view:"))).toEqual([]);
     expect(ids(inboxItems(inputFor("u_tv", 2))).filter((id) => id.startsWith("view:"))).toEqual([]);
   });

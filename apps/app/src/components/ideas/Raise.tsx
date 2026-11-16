@@ -70,6 +70,7 @@ import { Icon } from "./raiseIcons";
 import { RaisePeople } from "./RaisePerson";
 import s from "./Raise.module.css";
 import { track } from "@/lib/test-analytics";
+import { ideaPath } from "@/features/ideas/page-path";
 
 // Runs `run` after every render: how handlers made after the page's early return reach a ref.
 function Sync({ run }: { run: () => void }) { useEffect(run); return null; }
@@ -669,7 +670,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
     msgs.unshift({ id: "idea", role: "user", text: description, idea: { body, details } });
   }
   if (published) msgs.push({ id: "published", role: "ai", text: t("ideas.pagePublishedMsg", { lead }),
-    link: draft?.caseId ? { label: t("ideas.pageOpenCase"), href: href("/cases/" + draft.caseId) } : undefined });
+    link: draft?.caseId ? { label: t("ideas.pageOpenCase"), href: href(ideaPath(draft.caseId)) } : undefined });
   // "Ask this now" on the rail: the coach asks that step straight away, and the rail shows it as the one
   // being asked, until the answer is sent.
   const asking = !sending && !published && ask ? gaps.find((g) => g.ask === ask) ?? null : null;
@@ -755,10 +756,10 @@ function RaisePage({ script = false }: { script?: boolean }) {
   ];
   const inCase = (id: string) => S.cases.some((c) => c.id === id);
   const simsOf = (r: typeof reading): Similar[] => r ? (r.similar.length
-    ? r.similar.map((m) => ({ title: m.title, status: SIM_STATUS[m.status] ? t(SIM_STATUS[m.status]) : m.status || t("ideas.pageSimOpen"), where: t(m.same ? "ideas.pageSimSame" : "ideas.pageSimRelated"), href: inCase(m.id) ? href("/cases/" + m.id) : null }))
+    ? r.similar.map((m) => ({ title: m.title, status: SIM_STATUS[m.status] ? t(SIM_STATUS[m.status]) : m.status || t("ideas.pageSimOpen"), where: t(m.same ? "ideas.pageSimSame" : "ideas.pageSimRelated"), href: inCase(m.id) ? href(ideaPath(m.id)) : null }))
     : [{ title: t("ideas.pageSimNone"), status: "–", where: t("ideas.pageSimChecked", { n: r.checked }), href: null }])
     : similar
-    ? [{ title: similar.title, status: t("ideas.pageSimOpen"), where: t("ideas.pageSimRaisedBy"), by: similar.from, href: href("/cases/" + similar.id) }]
+    ? [{ title: similar.title, status: t("ideas.pageSimOpen"), where: t("ideas.pageSimRaisedBy"), by: similar.from, href: href(ideaPath(similar.id)) }]
     : [{ title: t("ideas.pageSimNone"), status: "–", where: t("ideas.pageSimSearched", { n: openCases }), href: null }];
   const sims = simsOf(reading);
   const cats = [...new Set([ev?.route?.type, affected[0] ?? t("ideas.pageCatGeneral"), t("ideas.pageCatIdea")].filter((x): x is string => !!x))];
@@ -856,7 +857,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       <Sync run={syncScript} />
       <div className={s.sbShell}>
         <RaiseSidebar query={query} onQuery={setQuery} onHide={() => { setSb("hidden"); setMenu(null); }} card={card} rows={rows} loaded={studio.loaded}
-          onPick={(id) => { if (isSampleId(id)) router.push(href("/cases/" + id)); else openDraft(id); }} onPin={preview.togglePin} onNew={newIdea} />
+          onPick={(id) => { if (isSampleId(id)) router.push(href(ideaPath(id))); else openDraft(id); }} onPin={preview.togglePin} onNew={newIdea} />
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />
       {pubStep && "desks" in pubStep && (

@@ -47,7 +47,7 @@ it("GAT inbox gives the current step holders one approval item", () => {
   for (const user of ["u_plant", "u_plant2"]) {
     const got = items(s, user, 5);
     expect(got, user).toHaveLength(1);
-    expect(got[0]).toMatchObject({ id: "approval:prov:0", ask: "confirm", kind: "approval", caseId: "ca", title: "Case ca", href: "/cases/ca", dueDay: 9, late: false, deskRoleId: "role_plant" });
+    expect(got[0]).toMatchObject({ id: "approval:prov:0", ask: "confirm", kind: "approval", caseId: "ca", title: "Case ca", href: "/idea?id=ca", dueDay: 9, late: false, deskRoleId: "role_plant" });
   }
   // Due soon on the last working day, late the day after the step's day.
   expect(items(s, "u_plant", 8)[0]).toMatchObject({ dueDay: 9, dueSoon: true, late: false });

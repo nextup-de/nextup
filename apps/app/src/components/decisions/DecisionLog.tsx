@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import type { T } from "@/i18n";
 import styles from "./DecisionLog.module.css";
+import { ideaPath } from "@/features/ideas/page-path";
 
 export type DecisionLine = {
   caseId: string; title: string; kind: string; dateLabel: string; answer: "yes" | "no"; reason: string; note: string;
@@ -88,7 +89,7 @@ export function DecisionLog({ t, base, lines, total, page, pageSize, filters, pr
                 <tr key={`${l.caseId}-${i}`} data-testid="decisions-row">
                   <td data-label={t("decisions.colDate")} className={styles.date}>{l.dateLabel}</td>
                   <td data-label={t("decisions.colCase")}>
-                    <Link href={`${base}/cases/${l.caseId}`} className={styles.caseLink}>{l.title}</Link>
+                    <Link href={base + ideaPath(l.caseId)} className={styles.caseLink}>{l.title}</Link>
                     <span className={styles.meta}>{l.caseId} · {kind(l.kind)}</span>
                   </td>
                   <td data-label={t("decisions.colDecision")}>
