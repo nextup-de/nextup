@@ -28,6 +28,13 @@
 .menuItem[data-tone="danger"] { color: var(--nh-danger); }
 .menuItem[data-tone="danger"]:hover { background: var(--nh-danger-tint); }
 
+/* In the sidebar, next to the project's title: a quiet ⋯ whose list opens beside it, fixed to the window. */
+.menu[data-variant="sidebar"] .menuBtn { width: 28px; height: 28px; padding: 0; justify-content: center; border: 0; border-radius: var(--nh-r-sm); background: transparent; color: var(--nh-ink-2); }
+.menu[data-variant="sidebar"] .menuBtn:hover, .menu[data-variant="sidebar"][open] .menuBtn { background: var(--nh-fill); color: var(--nh-ink); }
+.menu[data-variant="sidebar"] .menuText, .menu[data-variant="sidebar"] .chevron { display: none; }
+.menu[data-variant="sidebar"] .dots { display: block; }
+.menu[data-variant="sidebar"] .menuPop { position: fixed; top: var(--my, 0); left: var(--mx, 0); right: auto; z-index: 70; }
+
 @media (prefers-reduced-motion: reduce) {
   .menuBtn, .chevron { transition: none; }
 }

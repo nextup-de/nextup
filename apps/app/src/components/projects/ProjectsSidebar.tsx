@@ -36,6 +36,10 @@ import { useT } from "@/i18n/client";
 import { idViewerOf, useRights } from "./parts";
 import { ideaPagesId, newPageId, useProjectPages } from "./projectPagesPreview";
 import { useAgentTab } from "./agent/useAgentTab";
+import { ProjectMenu, useManage } from "./head/ProjectMenu";
+import { useMyMove } from "./head/useMyMove";
+import { useMoveView } from "./move/useMoveView";
+import { useHeadInSidebar } from "./sidebarState";
 import s from "./ProjectsSidebar.module.css";
 
 const MAX_ROWS = 8; // layer 1 shows this many projects; "All n projects" opens the rest
@@ -189,7 +193,7 @@ type PageDrop = { id: string; over: string | null; intent: ReturnType<typeof dro
 
 /** Event-backed project pages. The legacy layer remains shared only by ideas and flag-off projects. */
 export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedProject; onBack: () => void; agent: boolean; editor: boolean }) {
-  const { S, href } = useDemo();
+  const { S, href, f } = useDemo();
   const t = useT();
   const router = useRouter();
   const params = useSearchParams();
@@ -250,10 +254,19 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
     if (at >= 0) void send(() => acts.move(id, intent === "before" ? over : rest[at + 1]?.id ?? null));
   };
   const late = daysLate(p, S.day);
+  // While the sidebar is open it carries the project's head (Paper "Project head · options", A): the done-by date, the
+  // viewer's move and Manage are here, and the page shows none of them. A draft starts and stops from its setup.
+  const headHere = useHeadInSidebar();
+  const myMove = useMyMove(p);
+  const moveView = useMoveView(p);
+  const manage = useManage();
   return <div className={s.layer}>
     <button type="button" className={s.back} onClick={onBack}><span className={s.slot}>‹</span><span className={s.label}>{t("projects.sbBack")}</span></button>
-    <Head mark={<RingMark ring={ringOf(p.status)} />} title={p.title} status={t(("projects.status_" + p.status) as "projects.status_planning")}
-      note={late > 0 ? { text: t("projects.sbLate", { count: late }), tone: "late" } : null} />
+    <Head mark={<RingMark ring={ringOf(p.status)} />} title={p.title}
+      status={t(("projects.status_" + p.status) as "projects.status_planning") + (headHere && moveView.doneBy !== null && p.status === "running" ? " · " + t("projectMove.doneByLine", { date: f(moveView.doneBy) }) : "")}
+      note={late > 0 ? { text: t("projects.sbLate", { count: late }), tone: "late" } : null}
+      move={headHere && myMove ? myMove.label + " · " + myMove.text : null}
+      action={headHere && !setup ? <ProjectMenu p={p} sidebar onPick={manage.open} /> : null} />
     <span className={s.group}>{t("projectPages.pages")}</span>
     <nav className={s.pages} aria-label={t("projectPages.pageNavigationLabel")} aria-busy={busy}
       onClickCapture={(event) => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}
@@ -344,7 +357,8 @@ function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
 }
 
 /** The open project's or idea's title; a project also says where it stands (an idea's stage is its mark). `onRename`: a double-click edits the title. */
-function Head({ mark, title, status, note = null, onRename }: { mark: React.ReactNode; title: string; status?: string; note?: { text: string; tone: "late" | "move" } | null; onRename?: (title: string) => void }) {
+/** `action`: a control right of the title (the project's ⋯ Manage); `move`: the viewer's next move, a line under the status. */
+function Head({ mark, title, status, note = null, onRename, action = null, move = null }: { mark: React.ReactNode; title: string; status?: string; note?: { text: string; tone: "late" | "move" } | null; onRename?: (title: string) => void; action?: React.ReactNode; move?: string | null }) {
   const t = useT();
   const [draft, setDraft] = useState<string | null>(null);
   const finish = (keep: boolean) => {
@@ -369,7 +383,9 @@ function Head({ mark, title, status, note = null, onRename }: { mark: React.Reac
             {note && <><span className={s.dotSep} aria-hidden="true" /><span className={s.noteText} data-tone={note.tone}>{note.text}</span></>}
           </span>
         )}
+        {move && <span className={s.headMove} role="status">{move}</span>}
       </span>
+      {action && <span className={s.headAction}>{action}</span>}
     </div>
   );
 }

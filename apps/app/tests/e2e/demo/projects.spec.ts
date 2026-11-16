@@ -47,6 +47,8 @@ async function deputyConfirmsBaseline(page: Page) {
 
 // The project page; its state ("P-4 · Running") is in the header, the baseline in its section and the summary.
 const head = (page: Page) => page.getByRole("main");
+/** P-4's state: in the page's head, or - the sidebar open - under the project's title in the sidebar. */
+const inState = (page: Page, state: string) => expect(head(page)).toContainText(new RegExp(`P-4 · ${state}|4-series\\s*${state}`));
 
 /** Open the page by its stable id; navigation is covered separately by the sidebar task. */
 /** The Results tool keeps its measure checks in the drawer behind the result card (HUB, #888). */
@@ -78,8 +80,17 @@ async function projectPage(page: Page, id: keyof typeof TITLES | "files") {
 /** The details behind the (i) next to the title: status, origin, team and the tools in use. */
 async function about(page: Page) {
   const info = page.locator('summary[aria-label="About this project"]');
-  if (!(await page.getByRole("dialog", { name: "About this project" }).isVisible())) await info.click();
-  return page.getByRole("dialog", { name: "About this project" });
+  if (await info.count()) {
+    if (!(await page.getByRole("dialog", { name: "About this project" }).isVisible())) await info.click();
+    return page.getByRole("dialog", { name: "About this project" });
+  }
+  // The open sidebar carries the head: its ⋯ Manage opens the details at the top of the page.
+  const details = page.getByRole("region", { name: "About this project" });
+  if (!(await details.isVisible())) {
+    await page.locator('summary[aria-label="Manage the project"]').click();
+    await page.getByRole("button", { name: "About this project" }).click();
+  }
+  return details;
 }
 
 /** Find a board card by its title; the List tool shows the same steps. */
@@ -132,7 +143,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await expect(head(page)).toContainText("25 minutes");
     await expect(head(page)).toContainText("Deburring queue · lower is better");
     await page.getByRole("button", { name: "Start the project" }).click();
-    await expect(head(page)).toContainText("P-4 · Running");
+    await inState(page, "Running");
   });
 
   await test.step("works the board from the card sheets: blocked asks why, then both steps are done", async () => {
@@ -157,7 +168,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.getByRole("button", { name: "Mark it done…" }).click();
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("form", { name: "Mark the project done" }).getByRole("button", { name: "Mark it done", exact: true }).click();
-    await expect(head(page)).toContainText("P-4 · Measuring");
+    await inState(page, "Measuring");
     await projectPage(page, "results");
     await openResult(page);
     const check30 = page.getByRole("group", { name: "30-day check" });
@@ -217,7 +228,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
     await page.getByRole("button", { name: "Save the baseline" }).click();
     await deputyConfirmsBaseline(page);
     await page.getByRole("button", { name: "Start the project" }).click();
-    await expect(head(page)).toContainText("P-4 · Running");
+    await inState(page, "Running");
   });
 
   await test.step("done waits until every open step is finished or dropped with a reason", async () => {
@@ -235,7 +246,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
     await expect(submit).toBeEnabled();
     await sheet.getByRole("textbox", { name: "What is done" }).fill("The bench is in use");
     await submit.click();
-    await expect(head(page)).toContainText("P-4 · Measuring");
+    await inState(page, "Measuring");
     await projectPage(page, "steps");
     await expect(page.getByRole("group", { name: "Done" })).toContainText(FIRST);
   });
@@ -249,7 +260,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
     await expect(form.getByLabel("Keep the idea archived")).toBeChecked(); // the default
     await form.getByLabel("Return the idea to its desk").check();
     await form.getByRole("button", { name: "Stop it" }).click();
-    await expect(head(page)).toContainText("P-4 · Stopped");
+    await inState(page, "Stopped");
     await page.goto("/acme/inbox");
     await expect(page.getByTestId("inbox-row").filter({ hasText: IDEA })).toHaveCount(1);
   });

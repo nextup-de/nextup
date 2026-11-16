@@ -74,6 +74,8 @@
 .dotSep { width: 3px; height: 3px; border-radius: 50%; background: var(--nh-mute-2); }
 .noteText[data-tone="late"] { color: var(--nh-problem); }
 .noteText[data-tone="move"] { color: var(--nh-brand); }
+.headMove { font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; color: var(--nh-brand); }
+.headAction { flex: none; margin: -4px -4px 0 0; }
 
 .pages { display: flex; flex-direction: column; gap: 1px; }
 .pageRow { position: relative; display: flex; align-items: center; border-radius: var(--radius-xs, 6px); }

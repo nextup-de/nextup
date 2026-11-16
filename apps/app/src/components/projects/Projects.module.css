@@ -70,6 +70,10 @@ form .due { white-space: normal; }
 .infoBtn:hover, .info[open] .infoBtn { background: var(--nh-fill-2); color: var(--nh-ink); }
 .infoBtn:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 2px; }
 .infoPop {
+/* The details as a sheet at the top of the page, opened from the sidebar's ⋯ (the head and its (i) are in the sidebar then). */
+.infoSheet { display: flex; flex-direction: column; gap: 12px; max-width: 560px; padding: 16px 18px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--nh-r-lg); }
+.infoSheetHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.infoSheetTitle { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; }
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 360px; max-width: calc(var(--nh-screen-w) - 2 * var(--nh-page-x));
   padding: 16px 18px; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-md, 18px); box-shadow: 0 6px 20px rgb(40 60 100 / 6%);
 }
@@ -79,6 +83,7 @@ form .due { white-space: normal; }
 .infoStatus { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .infoTeam { display: flex; align-items: center; gap: 8px; }
 .infoPop .toolChips { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); }
+.infoSheet .toolChips { padding-top: 12px; border-top: 1px solid var(--nh-line-soft); }
 
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 8px; }
 .actionRow { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }

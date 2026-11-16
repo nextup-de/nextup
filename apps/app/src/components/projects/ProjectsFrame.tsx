@@ -4,24 +4,16 @@
 // its tabs, a project's pages and the way back. No strip of tabs and no back link repeat it, open or
 // hidden (Kevin, 13 Nov 2026). Hidden, one button at the top left brings it back. A phone has no sidebar,
 // so it keeps the strips. The shell (SimpleShell) wraps every page of the area in this.
-import { useSyncExternalStore } from "react";
 import type { ProjectsTabKey } from "@/config/nav";
 import { SectionTabs } from "@/components/shell/SectionTabs";
 import { useT } from "@/i18n/client";
 import { ProjectsSidebar } from "./ProjectsSidebar";
+import { useSidebarState } from "./sidebarState";
 import s from "./ProjectsFrame.module.css";
-
-const KEY = "nh.projectsSidebar";
-// Open or hidden, remembered in this browser. It starts hidden, the calm start (Kevin, 13 Nov 2026): a project
-// page leads through its steps by itself, and the button at the top left opens the rest. The server draws it hidden.
-const listeners = new Set<() => void>();
-const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
-const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 export function ProjectsFrame({ area, projectId, caseId, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; children: React.ReactNode }) {
   const t = useT();
-  const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
-  const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
+  const [sb, set] = useSidebarState();
 
   return (
     <div className={s.root} data-wide="true" data-psb={sb} data-testid="projects-area">

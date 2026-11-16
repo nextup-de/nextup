@@ -39,7 +39,9 @@ import { ActivityPanel, TeamPanel, ToolsPanel } from "./ProjectTeam";
 import { DueBadge, ProjectsOff, useRights, useSend, VerdictChip, idViewerOf } from "./parts";
 import { CustomPageView } from "./CustomPageView";
 import { ideaPagesId, useProjectPages } from "./projectPagesPreview";
-import { ProjectMenu, ProjectSheet, type HeadSheet } from "./head/ProjectMenu";
+import { ProjectMenu, ProjectSheet, useManage } from "./head/ProjectMenu";
+import { useHeadInSidebar } from "./sidebarState";
+import { useMyMove } from "./head/useMyMove";
 import { useDismiss } from "./head/useDismiss";
 import head from "./head/Head.module.css";
 import styles from "./Projects.module.css";
@@ -97,14 +99,18 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const home = !draft && (page?.tools.some((tool) => tool.kind === "overview" || tool.kind === "idea") ?? false);
   // An invitation is answered in the Team tool; a project without one answers it on its home page (the inbox link lands there).
   const answerHere = home && pendingInviteOf(p, actorUserId) !== null && !pages.some((x) => x.tools.some((tool) => tool.kind === "team"));
+  // The open sidebar carries the head: status, the viewer's move and Manage under the project's title. The page keeps what
+  // reports a state (paused, no lead) and the sheet Manage opened.
+  const inSidebar = useHeadInSidebar();
   return <>
     <div className={styles.top}>
-      {home ? <Header p={p} jira={jira} />
-        : draft ? <div className={styles.hero}><PageHeader title={p.title} /></div>
-          : <div className={styles.hero}><Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link></div>}
+      {home && !inSidebar ? <Header p={p} jira={jira} />
+        : home ? <div className={styles.hero}><StartTop p={p} /><PausePanel p={p} /><NoLeadBanner p={p} /><ManageSheet p={p} jira={jira} /></div>
+          : draft ? <div className={styles.hero}><PageHeader title={p.title} /></div>
+            : <div className={styles.hero}><Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>{inSidebar && <ManageSheet p={p} jira={jira} />}</div>}
     </div>
     {page && <>
-      {home && <PageMove p={p} />}
+      {home && !inSidebar && <PageMove p={p} />}
       {answerHere && <InvitePanel p={p} />}
       {ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
         : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} />}
@@ -114,18 +120,9 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
 
 /** Keep the viewer's next move visible on pages that contain the overview tool. */
 function PageMove({ p }: { p: ReducedProject }) {
-  const ctx = useDemo();
-  const r = useRights(p);
-  const t = useT();
-  const locale = useLocale();
-  const move = nextMove(p, ctx.S.day);
-  const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
-  const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
-  if ((!mine && !escalatedToMe) || !move) return null;
-  return <div role="status"><Banner tone="info">
-    <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>{" "}
-    {escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}
-  </Banner></div>;
+  const move = useMyMove(p);
+  if (!move) return null;
+  return <div role="status"><Banner tone="info"><span className={styles.yourMoveLabel}>{move.label}</span>{" "}{move.text}</Banner></div>;
 }
 
 /** The pilot-rc1 body, including browser-only pages, stays behind the company flag. */
@@ -237,29 +234,61 @@ function Tabs({ p, tab, agent }: { p: ReducedProject; tab: ProjectTab; agent: bo
 function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const { href } = useDemo();
   const t = useT();
-  const [sheet, setSheet] = useState<HeadSheet | null>(null);
+  const manage = useManage();
   return (
     <div className={styles.hero}>
       <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
       <PageHeader
         title={p.title}
-        action={<div className={head.tools}><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>}
+        action={<div className={head.tools}><StartButton p={p} /><ProjectMenu p={p} onPick={manage.open} /><ProjectInfo p={p} jira={jira} /></div>}
       />
       {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
       <DoneByLine p={p} />
       <PausePanel p={p} />
       <NoLeadBanner p={p} />
-      {sheet && <ProjectSheet key={sheet} p={p} sheet={sheet} onClose={() => setSheet(null)} />}
+      <ManageSheet p={p} jira={jira} />
     </div>
+  );
+}
+
+/** The sheet Manage opened (the address says which), or the details when the sidebar's menu asked for them. */
+function ManageSheet({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+  const t = useT();
+  const { sheet, close } = useManage();
+  if (!sheet) return null;
+  if (sheet !== "details") return <ProjectSheet key={sheet} p={p} sheet={sheet} onClose={close} />;
+  return (
+    <section className={styles.infoSheet} aria-label={t("projects.about")}>
+      <div className={styles.infoSheetHead}>
+        <h2 className={styles.infoSheetTitle}>{t("projects.about")}</h2>
+        <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={close}>{t("common.close")}</button>
+      </div>
+      <ProjectDetails p={p} jira={jira} />
+    </section>
   );
 }
 
 /** The details behind the (i): asked for, not on the page. Closes on Escape and on a click outside. */
 function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
-  const { S, href, f } = useDemo();
   const t = useT();
   const box = useRef<HTMLDetailsElement>(null);
   useDismiss(box);
+  return (
+    <details ref={box} className={styles.info}>
+      <summary className={styles.infoBtn} aria-label={t("projects.about")} title={t("projects.about")}>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="9" cy="9" r="7.3" /><path d="M9 8v4.6" strokeLinecap="round" /><circle cx="9" cy="5.6" r=".5" fill="currentColor" /></svg>
+      </summary>
+      <div className={styles.infoPop} role="dialog" aria-label={t("projects.about")}>
+        <ProjectDetails p={p} jira={jira} />
+      </div>
+    </details>
+  );
+}
+
+/** Status, where it came from, who raised and opened it, the team, and the tools in use. */
+function ProjectDetails({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+  const { S, href, f } = useDemo();
+  const t = useT();
   const sourceOf = (id: string) => {
     const c = S.cases.find((x) => x.id === id);
     if (c) return { title: c.title, to: href("/cases/" + id) };
@@ -268,38 +297,33 @@ function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   };
   const team = [p.lead, ...p.members];
   return (
-    <details ref={box} className={styles.info}>
-      <summary className={styles.infoBtn} aria-label={t("projects.about")} title={t("projects.about")}>
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="9" cy="9" r="7.3" /><path d="M9 8v4.6" strokeLinecap="round" /><circle cx="9" cy="5.6" r=".5" fill="currentColor" /></svg>
-      </summary>
-      <div className={styles.infoPop} role="dialog" aria-label={t("projects.about")}>
-        <dl className={styles.infoList}>
-          <dt>{t("projects.aboutStatus")}</dt>
-          <dd className={styles.infoStatus}>
-            <span><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
-            <VerdictChip verdict={p.verdict} /><DueBadge p={p} />
-          </dd>
-          <dt>{t("projects.heroFrom")}</dt>
-          <dd>
-            {p.sources.map((id, k) => {
-              const src = sourceOf(id);
-              return <span key={id}>{k > 0 && ", "}{src.to ? <Link href={src.to} className={styles.link}>{src.title}</Link> : src.title}</span>;
-            })}
-          </dd>
-          {/* As they posted: a handle stays a handle. */}
-          <dt>{t("projects.aboutRaised")}</dt>
-          <dd>{p.authors.join(", ")}</dd>
-          <dt>{t("projects.aboutOpened")}</dt>
-          <dd>{t("projects.aboutOpenedOn", { day: f(p.openedDay), name: p.openedBy })}</dd>
-          <dt>{t("projects.tab_team")}</dt>
-          <dd className={styles.infoTeam}>
-            <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>
-            <span>{t("projects.facesLabel", { lead: p.lead })}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
-          </dd>
-        </dl>
-        <ToolChips p={p} jira={jira} />
-      </div>
-    </details>
+    <>
+      <dl className={styles.infoList}>
+        <dt>{t("projects.aboutStatus")}</dt>
+        <dd className={styles.infoStatus}>
+          <span><span className={styles.code}>{projectLabel(p)}</span> · {t(("projects.status_" + p.status) as "projects.status_planning")}</span>
+          <VerdictChip verdict={p.verdict} /><DueBadge p={p} />
+        </dd>
+        <dt>{t("projects.heroFrom")}</dt>
+        <dd>
+          {p.sources.map((id, k) => {
+            const src = sourceOf(id);
+            return <span key={id}>{k > 0 && ", "}{src.to ? <Link href={src.to} className={styles.link}>{src.title}</Link> : src.title}</span>;
+          })}
+        </dd>
+        {/* As they posted: a handle stays a handle. */}
+        <dt>{t("projects.aboutRaised")}</dt>
+        <dd>{p.authors.join(", ")}</dd>
+        <dt>{t("projects.aboutOpened")}</dt>
+        <dd>{t("projects.aboutOpenedOn", { day: f(p.openedDay), name: p.openedBy })}</dd>
+        <dt>{t("projects.tab_team")}</dt>
+        <dd className={styles.infoTeam}>
+          <span className={styles.faceStack}>{team.slice(0, 5).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>
+          <span>{t("projects.facesLabel", { lead: p.lead })}{p.members.length ? " · " + t("projects.onTheTeam", { count: p.members.length + 1 }) : ""}</span>
+        </dd>
+      </dl>
+      <ToolChips p={p} jira={jira} />
+    </>
   );
 }
 
@@ -330,6 +354,11 @@ function ToolChips({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
       {r.link && <a href={tabQuery("files") + "#tools-" + p.id} className={styles.quietLink}>{on.length ? t("projects.connectAnother") : t("projects.connectFirst")}</a>}
     </div>
   );
+}
+
+/** With the head in the sidebar, Start (while planned, the lead's one move) stays on the page, at its top. */
+function StartTop({ p }: { p: ReducedProject }) {
+  return <div className={head.tools}><StartButton p={p} /></div>;
 }
 
 // Start, while planned: the lead's one move, next to the title. Done and stop (plan RES) are in the Manage menu.

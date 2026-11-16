@@ -13,6 +13,11 @@ vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => mocks.ctx
 vi.mock("@/components/projects/parts", () => ({ useRights: () => ({ addStep: mocks.editor }), idViewerOf: () => ({}) }));
 vi.mock("@/components/projects/agent/useAgentTab", () => ({ useAgentTab: () => ({ view: mocks.agent ? {} : null }) }));
 vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({}) }));
+// The project's head in the sidebar (open sidebar, laptop): its ⋯ Manage, the done-by date and the viewer's move.
+vi.mock("@/components/projects/sidebarState", () => ({ useHeadInSidebar: () => false }));
+vi.mock("@/components/projects/head/ProjectMenu", () => ({ ProjectMenu: () => null, useManage: () => ({ sheet: null, open: vi.fn(), close: vi.fn() }) }));
+vi.mock("@/components/projects/head/useMyMove", () => ({ useMyMove: () => null }));
+vi.mock("@/components/projects/move/useMoveView", () => ({ useMoveView: () => ({ doneBy: null }) }));
 
 const state = reduce(LOCAL_SEED, { events: [], day: 0 });
 const project = { ...state.projects[0], pages: READY_PAGES, removed: [] };
