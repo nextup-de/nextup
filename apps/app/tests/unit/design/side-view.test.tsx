@@ -19,6 +19,7 @@ describe("DESIGN side view", () => {
     for (const section of SIDE_VIEW_SECTIONS) expect(SECTION_TABS[section].length).toBeGreaterThan(1);
     expect(hasSideView("dashboard")).toBe(true);
     expect(hasSideView("profile")).toBe(true);
+    expect(hasSideView("inbox")).toBe(true); // Inbox and Decisions (package A, Kevin 16 Nov: every area)
     expect(hasSideView("projects")).toBe(false); // components/projects/ProjectsFrame.tsx
   });
 

@@ -1,30 +1,27 @@
 "use client";
-// The inbox with one item open, on a screen wider than a phone: the layout of the old leader inbox (components/dashboard/
-// leader/InboxView, before #746) that Kevin and Sam liked. Left, the rail: a tuck button, then one avatar per item to
-// decide, the open one on blue; untucked it shows each item's title, who raised it and its due badge. Beside it the item
-// itself (IdeaDetail): the item and its folds, and "Your move" on the right. The bar names the inbox and the item's
-// title is the page's one heading, so the rail has no title of its own. ↑/↓ walk the items, Escape
-// closes. Props in, JSX out: the page decides what is listed and what is open.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+// The inbox with one item open, on a screen wider than a phone (DESIGN_RULES §4, §9): the item itself (IdeaDetail) is the
+// page, and the items to decide are one quiet row each in the inbox's side view, under its pages (AreaSideSlot): a mark,
+// the title on one line, a dot when late, the open one marked. With the side view hidden the item stands alone with its
+// close button; the side view's own button is the one toggle. ↑/↓ walk the items, Escape closes. Props in, JSX out: the
+// page decides what is listed and what is open.
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
-import { initialsOf, type IdeaProps } from "@/components/dashboard/leader/IdeaParts";
-import { avatarTone } from "@/lib/avatar";
+import type { IdeaProps } from "@/components/dashboard/leader/IdeaParts";
+import { AreaSideSlot } from "@/components/shell/AreaFrame";
 import { useT } from "@/i18n/client";
 import styles from "./InboxOpen.module.css";
 
-/** One item on the rail: what it is called, who raised it, and its due state. */
-export type RailItem = { id: string; title: string; who: string; late: boolean; dueSoon: boolean };
+/** One item to decide in the side view: what it is called and whether it is late. */
+export type RailItem = { id: string; title: string; late: boolean };
 
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 
 export function InboxOpen({ items, openId, detail, onPick, onClose, sheetOpen }: { items: RailItem[]; openId: string; detail: IdeaProps; onPick: (id: string) => void; onClose: () => void; sheetOpen: boolean }) {
   const t = useT();
-  const [tucked, setTucked] = useState(true);
-  const paneRef = useRef<HTMLDivElement>(null);
   const navRef = useRef({ ids: [] as string[], at: -1, onPick, onClose, sheetOpen });
   useLayoutEffect(() => { navRef.current = { ids: items.map((i) => i.id), at: items.findIndex((i) => i.id === openId), onPick, onClose, sheetOpen }; });
 
-  // Keyboard: ↑/↓ walk the rail, Escape closes. The idea's popovers and an open sheet handle their own keys first.
+  // Keyboard: ↑/↓ walk the items, Escape closes. The item's popovers and an open sheet handle their own keys first.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const nav = navRef.current;
@@ -40,39 +37,24 @@ export function InboxOpen({ items, openId, detail, onPick, onClose, sheetOpen }:
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   // A newly picked item starts at its top.
-  useEffect(() => { paneRef.current?.scrollTo({ top: 0 }); }, [openId]);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [openId]);
 
   return (
-    <div className={styles.page} data-tucked={tucked ? "true" : undefined} data-testid="inbox-open">
-      <nav className={styles.rail} aria-label={t("inbox.title")}>
-        <div className={styles.railHead}>
-          <button type="button" className={styles.tuck} onClick={() => setTucked((v) => !v)} title={t(tucked ? "leader.showInbox" : "leader.tuckInbox")} aria-label={t(tucked ? "leader.showInbox" : "leader.tuckInbox")} aria-expanded={!tucked} data-testid="inbox-tuck">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
-          </button>
-        </div>
-        <ul className={styles.list}>
-          {items.map((r) => {
-            const on = r.id === openId;
-            return (
-              <li key={r.id}>
-                <button type="button" className={styles.row} onClick={() => onPick(r.id)} data-testid="inbox-rail-row" data-active={on ? "true" : undefined} aria-current={on ? "true" : undefined} title={tucked ? r.title : undefined}>
-                  <span className={styles.avatar} data-avatar={avatarTone(r.who)} aria-hidden="true">{initialsOf(r.who || "?")}</span>
-                  <span className={styles.rowBody}>
-                    <span className={styles.rowMain}>
-                      <span className={styles.rowTitle}>{r.title}</span>
-                      {r.who ? <span className={styles.rowWho}>{r.who}</span> : null}
-                    </span>
-                    {r.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : r.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+    <div className={styles.page} data-testid="inbox-open">
+      <AreaSideSlot>
+        <ul className={styles.list} aria-label={t("inbox.askDecide")}>
+          {items.map((r) => (
+            <li key={r.id}>
+              <button type="button" className={styles.row} onClick={() => onPick(r.id)} data-testid="inbox-side-row" aria-current={r.id === openId ? "true" : undefined}>
+                <span className={styles.mark} aria-hidden="true" />
+                <span className={styles.label}>{r.title}</span>
+                {r.late ? <span className={styles.late}><span className={styles.srOnly}>{t("inbox.late")}</span></span> : null}
+              </button>
+            </li>
+          ))}
         </ul>
-      </nav>
-      <div className={styles.pane} ref={paneRef}>
-        <IdeaDetail key={detail.idea.id} {...detail} />
-      </div>
+      </AreaSideSlot>
+      <IdeaDetail key={detail.idea.id} {...detail} />
     </div>
   );
 }

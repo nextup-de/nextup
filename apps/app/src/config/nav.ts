@@ -111,7 +111,7 @@ export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
  * Projects area has them: no strip of tabs under the bar repeats them there (Kevin, 16 Nov 2026: every area). A phone
  * keeps the strip. A section joins this list in the PR that moves its page's own list into the side view.
  */
-export const SIDE_VIEW_SECTIONS: readonly SectionKey[] = ["dashboard", "profile"];
+export const SIDE_VIEW_SECTIONS: readonly SectionKey[] = ["dashboard", "profile", "inbox"];
 export const hasSideView = (section: SectionKey): boolean => SIDE_VIEW_SECTIONS.includes(section);
 
 export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMode: boolean }): SectionTabItem[] {

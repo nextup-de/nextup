@@ -1,8 +1,6 @@
 import { defineMessages } from "../define";
 
 export const leader = defineMessages({ en: {
-  showInbox: "Show inbox",
-  tuckInbox: "Tuck inbox away",
   raisedToday: "today",
   raisedYesterday: "yesterday",
   raisedOn: "on {day}",
@@ -93,8 +91,6 @@ export const leader = defineMessages({ en: {
   scores: "Scores",
   scoreAria: "{label} {value} of 100, show the reasoning",
 }, de: {
-  showInbox: "Posteingang einblenden",
-  tuckInbox: "Posteingang ausblenden",
   raisedToday: "heute",
   raisedYesterday: "gestern",
   raisedOn: "am {day}",
