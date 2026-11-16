@@ -3,11 +3,13 @@
 //             written by the scheduler, never a fact) on the first day the clock may forward it, never while the raiser is asked (D14).
 //   approval  check 1: the step's holders are reminded on its due day; check 2: escalation_days later the step is handed to the seat above (D23).
 //   council   a council step nobody answered on its meeting day moves to the next meeting, the working day after.
+//   A parallel run (decision C, 16 Nov 2026): each pending approver gets one reminder on their step's due day, APPROVER_REMIND_DAYS working days after
+//   they were asked (check 1), and nothing else: no hand-over, no escalation to their manager, no council move.
 // Every Due carries originEventId (the approval run's id, `review:<case id>` for a review) and stepId (`<step id>@<due revision>`, or the review's
 // identity), and is checked with hasFact(history, kind, dueDay, check, stepId), so each is written once per step revision: two steps due on one day,
 // a send-back and its re-answer, and a second run keep their own Dues. Nothing is due in demo mode (dueNow) or for a finished review or run.
 import { seatsOfRole } from "@/features/auth/identity";
-import { currentStep, dueStepId, lateSeat, nextMeetingDay } from "@/features/approvals/steps";
+import { currentStep, dueStepId, lateSeat, nextMeetingDay, openSteps } from "@/features/approvals/steps";
 import type { State } from "@/features/cases/reducer";
 import type { Due, SeatAbove } from "../due";
 import { hasFact, idemKeyOf, targetSeat } from "./shared";
@@ -51,6 +53,17 @@ export const approvalDues: (state: State, today: number, above: SeatAbove) => Du
   for (const c of state.cases) {
     const run = c.approvals;
     if (!run || run.done) continue;
+    if (run.parallel === true) {
+      for (const step of openSteps(run)) {
+        const due = step.dueDay;
+        const stepId = dueStepId(step);
+        if (due === null || today < due || hasFact(c.history, "approval", due, 1, stepId)) continue;
+        const seat = step.userId !== undefined ? [...state.seats].sort((a, b) => a.sort - b.sort).find((s) => s.userId === step.userId)?.id ?? null
+          : step.roleId === undefined ? null : seatsOfRole(state.seats, step.roleId).find((s) => s.userId !== null)?.id ?? null;
+        out.push({ kind: "approval", target: c.id, dueDay: due, check: 1, toRoleHolderId: seat, originEventId: run.runId, stepId, idemKey: idemKeyOf("approval", c.id, due, 1, stepId) });
+      }
+      continue;
+    }
     const step = currentStep(run);
     if (step === null || step.dueDay === null) continue;
     const stepId = dueStepId(step);

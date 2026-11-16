@@ -299,8 +299,8 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
   // Approvals (plan GAT, D20): where rules apply the yes waits for them and the plain yes is not offered; the desk may add roles that must approve.
   const [byHand, setByHand] = useState<string[]>([]);
   const joined = joinable.find((x) => x.id === join);
-  const model = yesSheetModel(c, S, byHand, joined ? { projectId: joined.id, title: joined.title } : null, locale);
-  const addable = S.approvals.roles.filter((r) => r.id !== c.assigneeRoleId && !byHand.includes(r.id) && !model.approvers.some((a) => a.label === r.title));
+  const model = yesSheetModel(c, S, byHand, joined ? { projectId: joined.id, title: joined.title } : null, locale, { seats: S.seats, deciderUserId: actorUserId, raiserUserId: c.fromUserId });
+  const addable = S.approvals.roles.filter((r) => r.id !== c.assigneeRoleId && !byHand.includes(r.id) && !model.approvers.some((a) => a.roleId === r.id));
   const roleName = (id: string) => S.approvals.roles.find((r) => r.id === id)?.title ?? id;
   const ok = !!lead;
   // The decider first, then the route's owner and deputy, then the rest of the directory.
@@ -313,12 +313,13 @@ function AcceptSheet({ c }: { c: ReducedCase }) {
     setOpened({ id, joined: join !== "" });
     showToast(t(join ? "shell.acceptDoneJoin" : "shell.acceptDone", { days: fmt.days(c.clock), from: c.from }));
   };
-  // 'Yes, if approved': one case.provisional; the server computes the steps and keeps only the roles added by hand (D20, D21).
+  // 'Yes, if approved': one case.provisional; the server computes the steps and keeps only the roles added by hand (D20, D21). The approvers vote at once
+  // and the draft opens only with the last yes (decisions A to D, 16 Nov 2026), so there is no project to open yet: the sheet closes.
   const confirmProvisional = () => {
     if (!lead || opened || !model.provisional) return;
     const payload = model.payload({ decider: { userId: actorUserId, name: actor }, lead: { userId: lead.userId, name: lead.name }, raiserNote: note });
     act.provisional(c.id, payload);
-    setOpened({ id: payload.projectId as string, joined: join !== "" });
+    closeSheet();
     showToast(t("approvals.yesIfApproved"));
   };
   if (opened) {

@@ -56,17 +56,20 @@ export function ApprovalsBlock({ c }: { c: ReducedCase }) {
     </ol>
   );
 
+  // A parallel run is shown by the approver line (ApproverLine, decisions A to D); this block keeps only the viewer's form and older runs.
+  const parallelOnly = latest.parallel && past.every((run) => run.parallel);
+  if (parallelOnly && !(serverMode && view.myStep)) return null;
   return (
     <section className={styles.block} aria-label={t("approvals.title")} data-testid="case-approvals">
-      <span className={styles.blockTitle}>{t("approvals.title")}</span>
-      {runList(latest)}
-      {latest.outcome !== null && <p className={styles.stepNote}>{t(latest.outcome === "yes" ? "approvals.stepYes" : "approvals.stepNo")}</p>}
-      {serverMode && view.myStep && <ApproverForm key={`${view.myStep.stepId}@${view.myStep.dueRev}`} c={c} mine={view.myStep} council={latest.steps.find((x) => x.id === view.myStep?.stepId)?.kind === "council"} />}
-      {past.length > 0 && (
+      {!parallelOnly && <span className={styles.blockTitle}>{t("approvals.title")}</span>}
+      {!latest.parallel && runList(latest)}
+      {!latest.parallel && latest.outcome !== null && <p className={styles.stepNote}>{t(latest.outcome === "yes" ? "approvals.stepYes" : "approvals.stepNo")}</p>}
+      {serverMode && view.myStep && <ApproverForm key={`${view.myStep.stepId}@${view.myStep.dueRev}`} c={c} mine={{ ...view.myStep, parallel: latest.parallel }} council={latest.steps.find((x) => x.id === view.myStep?.stepId)?.kind === "council"} />}
+      {!parallelOnly && past.filter((run) => !run.parallel).length > 0 && (
         <details className={styles.past}>
-          <summary>{t("approvals.title")} ({past.length})</summary>
+          <summary>{t("approvals.title")} ({past.filter((run) => !run.parallel).length})</summary>
           <div className={styles.runs}>
-            {past.map((run) => <div key={run.runId}>{runList(run)}<p className={styles.stepNote}>{run.outcome === null ? "" : t(run.outcome === "yes" ? "approvals.stepYes" : "approvals.stepNo")}</p></div>)}
+            {past.filter((run) => !run.parallel).map((run) => <div key={run.runId}>{runList(run)}<p className={styles.stepNote}>{run.outcome === null ? "" : t(run.outcome === "yes" ? "approvals.stepYes" : "approvals.stepNo")}</p></div>)}
           </div>
         </details>
       )}
@@ -81,7 +84,7 @@ type Mode = "conditions" | "back" | "refuse" | null;
  * a council. The answer names the run, the step and the revision the page showed (D22): a form opened before a send-back is refused by the server. It is
  * keyed by the step and its revision, so it starts empty again when either changes, and it sends once: the button is off while the answer is on its way.
  */
-function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: string; stepId: string; dueRev: number }; council: boolean }) {
+function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: string; stepId: string; dueRev: number; parallel: boolean }; council: boolean }) {
   const { S, showToast, f, tenant } = useDemo();
   const t = useT();
   // One id for this form's submit: a double click and a retry after a lost answer are one answer, the second one read back by the server (D32).
@@ -100,6 +103,8 @@ function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: str
   const presentOk = !council || seen === null || (Number.isInteger(seen) && seen >= 0 && seen <= PRESENT_MAX);
   const day = date === "" ? null : dayOfDate(date, S.clock, today, S.day) ?? Number.NaN;
   const no = noSheet(c, S.rules, S.day, { category, reason: text, changeIf, revisitDay: day }, []);
+  // A parallel run's no returns the idea to its raiser (decision B): a reason is all it needs, and there is no send-back.
+  const returns = mine.parallel;
   const send = async (answer: ApprovalAnswerInput["approvalAnswer"], fields: Partial<ApprovalAnswerInput> = {}) => {
     if (sent || !presentOk) return;
     setSent(true); // one answer per form: a second click is not a second answer
@@ -120,10 +125,11 @@ function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: str
   const trimmed = text.trim();
   const ready = mode === "conditions" ? trimmed.length >= 1 && trimmed.length <= CONDITIONS_MAX
     : mode === "back" ? trimmed.length >= BACK_REASON_MIN
-    : mode === "refuse" ? no.ok : false;
+    : mode === "refuse" ? (returns ? trimmed.length >= BACK_REASON_MIN : no.ok) : false;
   const confirm = () => {
     if (mode === "conditions") void send("conditions", { conditions: trimmed });
     else if (mode === "back") void send("back", { reason: trimmed });
+    else if (mode === "refuse" && returns) void send("no", { reason: trimmed });
     else if (mode === "refuse") {
       const payload = no.payload();
       if (payload && payload.category !== undefined) void send("no", { reason: payload.reason, category: payload.category as ApprovalAnswerInput["category"], ...(payload.changeIf ? { changeIf: payload.changeIf } : {}), ...(payload.revisitDay !== undefined ? { revisitDay: payload.revisitDay } : {}) });
@@ -142,13 +148,13 @@ function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: str
       <div className={styles.row}>
         <button type="button" className={dash.primary} disabled={sent || !presentOk} data-testid="approval-approve" onClick={() => void send("yes")}>{t("approvals.approve")}</button>
         <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "conditions"} data-testid="approval-conditions" onClick={() => { setMode("conditions"); setText(""); }}>{t("approvals.approveConditions")}</button>
-        <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "back"} data-testid="approval-back" onClick={() => { setMode("back"); setText(""); }}>{t("approvals.sendBack")}</button>
+        {!returns && <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "back"} data-testid="approval-back" onClick={() => { setMode("back"); setText(""); }}>{t("approvals.sendBack")}</button>}
         <button type="button" className={dash.soft} disabled={sent} aria-pressed={mode === "refuse"} data-testid="approval-refuse" onClick={() => { setMode("refuse"); setText(""); }}>{t("approvals.refuse")}</button>
       </div>
       {error !== null && <p className={styles.flag} role="alert" data-testid="approval-error">{error}</p>}
       {mode !== null && (
         <>
-          {mode === "refuse" && (
+          {mode === "refuse" && !returns && (
             <div className={styles.options} role="group" aria-label={t("shell.noEyebrow")}>
               {no.categories.filter((x) => !x.hidden && x.id !== "duplicate").map((x) => (
                 <button key={x.id} type="button" className={dash.soft} aria-pressed={category === x.id} title={t(noCategorySub(x.id))} onClick={() => { setCategory(x.id); if (x.date === "none") setDate(""); }}>{t(noCategoryLabel(x.id))}</button>
@@ -156,10 +162,10 @@ function ApproverForm({ c, mine, council }: { c: ReducedCase; mine: { runId: str
             </div>
           )}
           <label className={styles.formLabel} htmlFor={`approval-text-${mine.stepId}`}>
-            {mode === "conditions" ? t("approvals.conditions") : mode === "back" ? t("approvals.sendBack") : t("shell.noReasonLabel", { from: c.from })}
+            {mode === "conditions" ? t("approvals.conditions") : mode === "back" ? t("approvals.sendBack") : returns ? t("approvals.refuseReason", { from: c.from }) : t("shell.noReasonLabel", { from: c.from })}
           </label>
           <textarea id={`approval-text-${mine.stepId}`} className={styles.area} rows={3} value={text} onChange={(e) => setText(e.target.value)} data-testid="approval-text" />
-          {mode === "refuse" && (
+          {mode === "refuse" && !returns && (
             <>
               <label className={styles.formLabel} htmlFor={`approval-if-${mine.stepId}`}>{t("shell.noChangeIfLabel")}</label>
               <textarea id={`approval-if-${mine.stepId}`} className={styles.area} rows={2} value={changeIf} onChange={(e) => setChangeIf(e.target.value)} />

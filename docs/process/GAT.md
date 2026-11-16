@@ -2,6 +2,30 @@
 
 > Area: approval. Written only by this phase (see [README](README.md)).
 
+## Parallel approval of named people (16 Nov 2026)
+
+Kevin and Sam decided on 16 Nov 2026 to split ideas and projects: an idea is approved and discussed on its own page and becomes a project draft only
+once everybody approved. Every new "Yes, if approved" now starts a **parallel run** (`CaseApprovals.parallel`); runs without the flag are the old
+sequential runs below and replay unchanged. Supplement runs (D33) stay sequential.
+
+| Decision | Rule | Where |
+|---|---|---|
+| A | The approvers are named people, at most three (`MAX_APPROVERS`). Every step the rules give counts through the person who heads it: a budget or role step through its role's first holder, a council through its secretary; the desk may add roles or people by hand. Never the first decider or the raiser. The idea's "Affects" chips only inform and never approve. | `features/approvals/approvers.ts` `nameApprovers`, stamped by `server/actions/append/approval.ts` as `userId` on each step |
+| B | One no, with its reason, returns the idea to its raiser (`run.returned`): the run ends, nothing is decided or opened, nobody overrules it. The raiser may change the idea and send it again (`case.provisional` with `resend: true`), which starts a fresh run among the same approvers, or withdraw it. | reducer `case.approval` / `case.provisional`; `mayResendApproval` |
+| C | A pending approver gets one reminder `APPROVER_REMIND_DAYS` (3) working days after they were asked, and nothing else: no hand-over, no escalation, no council move. | `features/clock/kinds/approval.ts` |
+| D | The first decider's "Yes, if approved" filters; then all approvers are asked at once and answer in any order. There is no send-back in a parallel run. | `openSteps`, `mayAnswerStep`, `settleApproval` |
+
+**What changed from the decisions below.** D21: a parallel run opens no draft and joins nothing at the provisional yes; the draft opens (or the join
+happens) only with the last yes, from the first decider's yes (`yesEventId`), on that day. The old rule that a yes leads straight to a project draft
+(P5) now holds only after every approver said yes. D22: no send-back; a parallel no is not a `case.decided` no and stops no draft; any pending step
+may be answered, only by the person it names. D23: no due day per role, no late hand-over and no council meeting for a parallel step; its due day is
+the day of its one reminder. D24: a named approver reads the idea by user id, not every holder of their role. D25: each named approver gets their own
+inbox item at once; a returned idea is an item of the raiser's.
+
+`ideaApprovalStatus(case, state)` in `features/approvals/status.ts` says where an idea's approval stands: `{ state, approved, total, approvers,
+waitingOn, returned, runId, parallel }`; `approvalLine(status, t)` builds "2 of 3 approved · waiting on Anna Weber". The idea page shows it in the
+approver line (`components/cases/ApproverLine.tsx`).
+
 ## Data model
 
 What GAT-G1 puts in place; the behaviour (reducer branches, rights, Dues, notice builders, screens) comes with GAT-A1, B1, C1, R1, S1 and the UI tasks. Decisions are cited by their number in the plan (D6, D12, ...). People are user ids and roles, never names (D3).
