@@ -53,8 +53,7 @@ it("OVERVIEW with only a fresh step: no tile row at all", () => {
 it("OVERVIEW with every step done: one done card, no tiles, no bar, no legend of zeros", () => {
   const markup = render(project({ steps: [step("a", { column: "done", doneDay: -20 }), step("b", { column: "done", doneDay: -12 })] }));
   expect(markup).toContain("All 2 steps done");
-  expect(markup).toContain("Last one done on");
-  for (const gone of ["Where the steps are", "data-column=\"done\"", "Steps done this week", "Waiting on someone", "No upcoming due date", ">0<", "—"]) expect(markup).not.toContain(gone);
+  for (const gone of ["Last one done on", "Where the steps are", "data-column=\"done\"", "Steps done this week", "Waiting on someone", "No upcoming due date", ">0<", "—"]) expect(markup).not.toContain(gone);
 });
 
 it("WHAT HAPPENS NEXT stays away when every step is done, and asks for the first step only without steps", () => {

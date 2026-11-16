@@ -107,7 +107,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await expect(row).toContainText("Your move");
     await row.getByRole("link", { name: /P-4 Second deburring bench/ }).click();
     await expect(page).toHaveURL(/\/acme\/projects\/pj4$/);
-    await expect(page.getByRole("status").filter({ hasText: "Your move" })).toContainText("Take the baseline");
+    // The Overview opens with the lead's one move as one card (DESIGN_RULES §9): the baseline, with its filled Save.
+    await expect(page.getByRole("region", { name: "Your move" })).toContainText("Save the baseline");
   });
 
   await test.step("adds a step the brief suggests and one of their own", async () => {
@@ -123,7 +124,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
 
   await test.step("Start stays locked until the baseline is taken", async () => {
     await projectPage(page, "overview");
-    await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Start the project" }), "a button that does nothing yet is not drawn (DESIGN_RULES §9)").toHaveCount(0);
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
@@ -160,7 +161,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     // The card is on the project's own Overview page (`project-overview`), not on `?page=overview`, which is the Idea page.
     await projectPage(page, "overview");
     const doneCard = page.getByRole("region", { name: "All 2 steps done" });
-    await doneCard.getByRole("button", { name: "Mark it done…" }).click();
+    await expect(doneCard).toBeVisible();
+    await page.getByRole("region", { name: "Your move" }).getByRole("button", { name: "Mark it done…" }).click(); // the one move, in its card
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("form", { name: "Mark the project done" }).getByRole("button", { name: "Mark it done", exact: true }).click();
     await expect(doneCard.getByTestId("overview-stands"), "past running: the card says where it stands, no button").toBeVisible();
