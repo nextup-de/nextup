@@ -35,11 +35,13 @@ then oldest first. An item without a due day is never late. Nothing sets `pinned
 working-day numbers (`docs/CLOCK.md`), so a weekend or a holiday sits between Friday and the next working day without
 counting; in the demo they are plain days.
 
-## The Today line
+## The counts
 
-Above the list: `n to decide · n late · n to do my part`, from `inboxCounts` (`total`, `decide`, `late`, `waiting`).
-They overlap: a late case to decide is in `decide` and in `late`, so the nav badge uses `total` and nothing ever adds
-the others. `waiting` counts the Do my part ask, not work that waits on other people. No count per person is shown.
+There is no line of counts above the list any more (quiet screens, 16 Nov 2026, DESIGN_RULES §9: it repeated the groups
+and drew "0 late"). Each group carries its count beside its heading ("Decide 3"), a group with nothing is not drawn,
+and a late item is its row's Late chip. `inboxCounts` (`total`, `decide`, `late`, `waiting`) is unchanged. Its numbers
+overlap: a late case to decide is in `decide` and in `late`, so the nav badge uses `total` and nothing ever adds the
+others. `waiting` counts the Do my part ask, not work that waits on other people. No count per person is shown.
 
 ## Who sees it where (Q3.2)
 
@@ -55,7 +57,8 @@ item links to its own page (case, project).
 
 ## Notices
 
-Below the list, the viewer's notices: every notice a person gets by mail or Teams is also written to the outbox as a
+Below the list, the viewer's notices, drawn only when there are any and not under an opened item (the item is what
+is in front of the viewer then): every notice a person gets by mail or Teams is also written to the outbox as a
 row with channel `inapp` (see [NOTIFICATIONS.md](NOTIFICATIONS.md), "In the app"). The list shows them newest first,
 unread marked, with Mark as read for one and Mark all as read. Read marks (`readAt`) belong to the person; the server
 action (`markNoticesReadAction`) takes the user and company from the session only.

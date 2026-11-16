@@ -81,14 +81,16 @@ test.describe.serial("INB page", () => {
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     await page.goto(`/${SLUG}/inbox`);
 
-    // Since the quiet screens (DESIGN_RULES §9) there is no Today line: each group's heading carries its count.
-    const decide = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) });
+    // The Today line is gone (quiet screens, DESIGN_RULES §9): the count sits beside the group's heading, an empty group is not drawn.
     await test.step("the Decide heading counts the case to decide", async () => {
-      await expect(decide.getByTestId("inbox-count")).toHaveText("1");
-      await expect(page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Do my part", exact: true }) })).toHaveCount(0);
+      const decide = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) });
+      await expect(decide.getByTestId("inbox-count")).toHaveText("1"); // was "1 to decide"
+      await expect(decide.locator('[data-testid="inbox-row"][data-late="true"]')).toHaveCount(0); // was "0 late"
+      await expect(page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Do my part", exact: true }) })).toHaveCount(0); // was "0 to do my part"
     });
 
     await test.step("the case is under Decide and opens in place with the decide actions", async () => {
+      const decide = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) });
       const row = decide.getByTestId("inbox-row").filter({ hasText: TITLE });
       await expect(row).toHaveCount(1);
       await expect(row).toHaveAttribute("data-ask", "decide");
@@ -117,7 +119,7 @@ test.describe.serial("INB page", () => {
       await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
       await expect.poll(() => getDb().caseEvent.count({ where: { companyId, type: "case.decided", targetId: CASE_ID } })).toBe(1);
       await page.goto(`/${SLUG}/inbox`);
-      await expect(decide).toHaveCount(0);
+      await expect(page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) })).toHaveCount(0); // was "0 to decide"
     });
 
     expect(errors, "console errors").toEqual([]);

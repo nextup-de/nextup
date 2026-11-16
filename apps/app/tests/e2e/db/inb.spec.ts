@@ -53,8 +53,10 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 
 /** The section card of an ask on /inbox, by its heading. */
 const section = (page: Page, name: string) => page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name, exact: true }) });
-/** How many items a group holds: the count beside its heading (since the quiet screens, DESIGN_RULES §9, there is no Today line). */
+// The Today line is gone (quiet screens, DESIGN_RULES §9): its facts are read where they now are. A group's count sits beside its
+// heading, a group with nothing is not drawn, a late item is a row with the Late chip.
 const count = (page: Page, name: string) => section(page, name).getByTestId("inbox-count");
+const lateRows = (page: Page) => page.locator('[data-testid="inbox-row"][data-late="true"]');
 const noticesOf = async (userId: string) => getDb().outboxMessage.findMany({ where: { companyId, channel: "inapp", recipientUserId: userId }, orderBy: { createdAt: "asc" } });
 
 test.describe.serial("INB acceptance", () => {
@@ -150,7 +152,9 @@ test.describe.serial("INB acceptance", () => {
     await test.step("the member sees the question the desk asked, as their part, and nothing to decide", async () => {
       const page = await signIn(browser, RAISER);
       await page.goto(`/${SLUG}/inbox`);
-      await expect(count(page, "Do my part")).toHaveText("1");
+      await expect(section(page, "Decide")).toHaveCount(0); // was "0 to decide"
+      await expect(lateRows(page)).toHaveCount(0); // was "0 late"
+      await expect(count(page, "Do my part")).toHaveText("1"); // was "1 to do my part"
       const rows = section(page, "Do my part").getByTestId("inbox-row");
       await expect(rows).toHaveCount(1);
       await expect(rows.first()).toContainText(ASKED.title);
@@ -180,8 +184,10 @@ test.describe.serial("INB acceptance", () => {
     await test.step("the leader sees the desk cases under Decide, the late one first, and the raise notices", async () => {
       const page = await signIn(browser, LEAD);
       await expect(page).toHaveURL(new RegExp(`/${SLUG}/inbox$`)); // the leader's home
-      await expect(count(page, "Decide")).toHaveText("3");
-      await expect(section(page, "Do my part")).toHaveCount(0);
+      await expect(count(page, "Decide")).toHaveText("3"); // was "3 to decide"
+      await expect(lateRows(page)).toHaveCount(1); // was "1 late": exactly one row carries the Late chip, and it is first
+      await expect(page.getByTestId("inbox-row").first()).toHaveAttribute("data-late", "true");
+      await expect(section(page, "Do my part")).toHaveCount(0); // was "0 to do my part"
       const rows = section(page, "Decide").getByTestId("inbox-row");
       await expect(rows).toHaveCount(3);
       await expect(rows.first()).toContainText(OLD.title);
@@ -192,8 +198,9 @@ test.describe.serial("INB acceptance", () => {
       // Opens in place: the existing decision card is there.
       await rows.first().click();
       await expect(page.getByRole("button", { name: "Yes, do it" })).toBeVisible();
-      // The notices are below the list, not under an open item: back to the list.
-      await page.goto(`/${SLUG}/inbox`);
+      // No notices under an opened item (quiet screens, DESIGN_RULES §9); its own close goes back to the list, where they are.
+      await expect(page.getByTestId("inbox-notice")).toHaveCount(0);
+      await page.getByRole("button", { name: "Back to inbox" }).click();
 
       // One raise notice per case that came to the desk (the project's case too). The three under Decide are rows already, so
       // their notices wait until the row is gone (#962); the project's case is no row and its notice is listed, unread.
@@ -224,9 +231,8 @@ test.describe.serial("INB acceptance", () => {
       await expect(rows.first()).toContainText(PROJECT.title);
       await expect(rows.first()).toHaveAttribute("data-kind", "confirm");
       await expect(rows.first()).toHaveAttribute("href", new RegExp(`/projects/${PROJECT.id}$`));
-      await expect(count(page, "Approve or confirm")).toHaveText("1");
-      await expect(section(page, "Decide")).toHaveCount(0);
-      await expect(rows.first()).not.toHaveAttribute("data-late", "true"); // confirmable for CONFIRM_DAYS working days from today
+      await expect(section(page, "Decide")).toHaveCount(0); // was "0 to decide"
+      await expect(lateRows(page)).toHaveCount(0); // was "0 late"; confirmable for CONFIRM_DAYS working days from today
       expect(CONFIRM_DAYS).toBeGreaterThan(1);
 
       const ask = (await noticesOf(ids.second)).find((n) => n.template === "loop.project.measured");
