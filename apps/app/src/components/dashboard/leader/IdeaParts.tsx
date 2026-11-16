@@ -1,7 +1,6 @@
 "use client";
-// The pieces an opened idea is built from, shared by the desktop layout (IdeaDetail) and the phone
-// layout (IdeaDetailPhone): citations, file chips, the person card, the reasoning blocks, what the
-// AI found, the moves for "Your move" and the feed. Props in, JSX out.
+// The pieces an opened item is built from (IdeaDetail): citations, the person card, the reasoning blocks, the scores,
+// what the AI found, the moves for "Your move" and the feed. Props in, JSX out.
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -41,18 +40,6 @@ export function Chevron({ back = false }: { back?: boolean }) {
 export function Cites({ ns, to }: { ns: number[]; to: string }) {
   if (!ns.length) return null;
   return <>{ns.map((n) => <a key={n} href={"#" + to} className={styles.cite}>{n}</a>)}</>;
-}
-
-export function FileChip({ ext, name, title, meta }: { ext: string; name: string; title?: string; meta: string }) {
-  return (
-    <span className={styles.file} title={title}>
-      <span className={styles.fileTag} data-tone={tagTone(ext)}>{ext}</span>
-      <span className={styles.fileText}>
-        <span className={styles.fileName}>{name}</span>
-        <span className={styles.fileMeta}>{meta}</span>
-      </span>
-    </span>
-  );
 }
 
 // The small profile: who, where, how to reach them. The profile page does not exist yet, so the

@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxIdeas } from "@/components/dashboard/derive";
-import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
+import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
@@ -98,7 +98,6 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     return d ? moveLabel(d.move, locale) : i.kind === "case" ? "" : t(KIND[i.kind]);
   };
   const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
-  const navIds = decide.map(openId);
   // A case to decide on a desk may be selected; one desk at a time, the first selection fixes it.
   const selectable = (i: InboxItem) => i.ask === "decide" && i.kind === "case" && i.caseId !== undefined && i.projectId === undefined;
   const deskOf = (i: InboxItem) => i.deskRoleId ?? "-";
@@ -108,7 +107,6 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const triage = triageFor(deskLoads(S, S.day), me);
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const leaveSelecting = () => { setSelecting(false); setSelected(new Set()); };
-  const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
   // A notice about a row of the list above is that row's echo: the row is where to act, so the notice waits until it is gone.
   const shown = noticesBesideItems(notices, items);
@@ -174,10 +172,11 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     );
   }
 
+  // On a phone the item is the page: the same detail in one column, "Your move" on top; its close goes back to the list.
   if (isOpen && phone) {
     return (
       <div className={styles.page}>
-        <IdeaDetailPhone key={detail.idea.id} {...detail} nav={{ index: at, count: navIds.length, onPrev: () => at > 0 && pick(navIds[at - 1]), onNext: () => at >= 0 && at < navIds.length - 1 && pick(navIds[at + 1]) }} />
+        <IdeaDetail key={detail.idea.id} {...detail} />
       </div>
     );
   }
