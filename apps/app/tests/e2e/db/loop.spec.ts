@@ -230,7 +230,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await page.goto(`/${SLUG}/leader`);
     const waiting = page.getByRole("link", { name: /Confirm the result/ }).filter({ visible: true });
     await expect(waiting).toContainText("a second person checks the number");
-    await expect(waiting).toContainText(/Due /);
+    // Its date is on the result (below); the row shows a chip only once it is due soon or late (quiet screens, DESIGN_RULES §9).
     await openResults(page);
     await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until");
     await vis(page, "measure-confirm-30").click();

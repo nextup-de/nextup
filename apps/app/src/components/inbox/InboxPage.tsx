@@ -88,12 +88,13 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const causeText = (cause: NonNullable<InboxItem["cause"]>, i: InboxItem): string =>
     cause === "passed" && i.fromRole ? t("inbox.passedByNoWhy", { role: i.fromRole }) : t(CAUSE[cause]);
   // What is asked, for a row that is not decided here: a comment row how many are new, a project move which move it is ("Take
-  // the baseline"), a result to confirm that it is asked, or that it came up to this desk late (decision Q6.15), every other row its kind.
+  // the baseline"), a result to confirm what is asked and why it is on this desk, as the project desk words it (decision Q6.15),
+  // every other row its kind.
   const moveOf = (i: InboxItem) => desk.find((x) => x.project.id === i.projectId && (i.kind === "confirm" ? x.move === "confirm" : i.kind === "move" && (x.why === "lead" || x.why === "escalated")));
   const askedText = (i: InboxItem): string => {
     if (i.kind === "comment") return t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 });
     const d = moveOf(i);
-    if (d?.why === "confirmUp") return t("inbox.causeUp");
+    if (d && i.kind === "confirm") return `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}`;
     return d ? moveLabel(d.move, locale) : i.kind === "case" ? "" : t(KIND[i.kind]);
   };
   const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
