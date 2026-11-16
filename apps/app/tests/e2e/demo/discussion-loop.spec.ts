@@ -5,7 +5,7 @@
 // leaves the open list and shows in the Archive. Demo mode: one browser
 // plays every person via the dev panel; the flags are on for demo companies.
 import type { Page } from "@playwright/test";
-import { expect, publishIdea, test } from "../helpers";
+import { expect, publishIdea, test, yourMove } from "../helpers";
 
 const TITLE = "Setters walk to the tool crib before every changeover"; // under 56 characters: longer titles are finished at a natural break (coach.ts finishTitle)
 const V2 = "Every changeover on line 3 loses about 20 minutes because the setter walks to the tool crib. First step: a one-week pilot with one tool cart on line 3, about €800 for the cart. It serves the changeover goal on every shift.";
@@ -24,8 +24,8 @@ async function nextDay(page: Page) {
   await page.keyboard.press("Escape");
 }
 
-/** The opened idea's decision card (the list beside it is tucked to avatars, its lines hidden). */
-const decision = (page: Page) => page.getByRole("region", { name: "Your decision" });
+/** The opened idea's "Your move" (the list beside it is tucked to avatars, its lines hidden). */
+const decision = (page: Page) => page.getByRole("region", { name: "Your move" });
 
 /** The leader's inbox with the idea open. */
 async function openInInbox(page: Page) {
@@ -35,7 +35,7 @@ async function openInInbox(page: Page) {
 
 /** "Check in" on the open idea: pick the outcome, keep the drafted note, send. */
 async function checkIn(page: Page, outcome: "Another round" | "Ready to decide") {
-  await page.getByRole("button", { name: /^Check in/ }).click();
+  await (await yourMove(page, /^Check in/)).click();
   const sheet = page.getByRole("dialog", { name: "Check in" });
   await expect(sheet.getByRole("textbox", { name: "Note to everyone" })).not.toBeEmpty();
   await sheet.getByRole("button", { name: new RegExp("^" + outcome) }).click();
@@ -56,7 +56,7 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
   await test.step("the leader says 'Discuss first' and invites someone from the directory", async () => {
     await viewAs(page, "Team leader");
     await openInInbox(page);
-    await page.getByRole("button", { name: /^Discuss first/ }).click();
+    await (await yourMove(page, /^Discuss first/)).click();
     const sheet = page.getByRole("dialog", { name: "Discuss first" });
     await sheet.getByRole("textbox", { name: "What is still missing" }).fill("A rough cost for the cart");
     await sheet.getByRole("textbox", { name: "Search people" }).fill("Brandt");
@@ -67,6 +67,9 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await expect(page.getByRole("main").getByText("check-in in 3 d").first()).toBeVisible();
     await expect(decision(page)).toContainText("In discussion · round 1 of 3");
     await expect(page.getByRole("button", { name: "Ask a question" })).toHaveCount(0);
+    await decision(page).getByRole("button", { name: "More", exact: true }).click();
+    await expect(decision(page).getByRole("menuitem", { name: "Ask a question" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
   });
 
   await test.step("the employee sees the discussion and posts v2, scored again", async () => {

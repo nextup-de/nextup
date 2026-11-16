@@ -17,7 +17,7 @@
 // passes. The clock is moved by running it with a later `now`, as tests/db/nor-clock.test.ts does. Own company, made straight in the database and
 // deleted at the end, like set.spec.ts and loop.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, test } from "../helpers";
+import { expect, passSecondFactor, test, yourMove } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { appendEventRow } from "../../../src/lib/db/events";
 import { addRole, addSeat, addUnit, saveRoute } from "../../../src/lib/db/org-edit";
@@ -258,7 +258,7 @@ test.describe("NOR acceptance: a no has a reason, a date and a second look", () 
       const page = await signIn(browser, DESK);
       await page.goto(`/${SLUG}/inbox`);
       await page.getByRole("main").getByText("Gauge calibration on line 3").first().click();
-      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await (await yourMove(page, /^Pass to/)).click();
       await page.getByRole("dialog").getByRole("button", { name: new RegExp(DEPUTY) }).click();
       await page.locator("textarea").fill(WHY_PASS);
       await page.getByRole("dialog").getByRole("button", { name: `Pass to ${DEPUTY}` }).click();
@@ -271,7 +271,7 @@ test.describe("NOR acceptance: a no has a reason, a date and a second look", () 
       const page = await signIn(browser, DEPUTY);
       await page.goto(`/${SLUG}/inbox`);
       await page.getByRole("main").getByText("Gauge calibration on line 3").first().click();
-      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await (await yourMove(page, /^Pass to/)).click();
       await page.getByRole("dialog").getByRole("button", { name: /Not mine: send it back/ }).click();
       await page.locator("textarea").fill(WHY_BACK);
       await page.getByRole("dialog").getByRole("button", { name: /^Send it back to/ }).click();
@@ -284,7 +284,7 @@ test.describe("NOR acceptance: a no has a reason, a date and a second look", () 
       const page = await signIn(browser, DESK);
       await page.goto(`/${SLUG}/inbox`);
       await page.getByRole("main").getByText("Gauge calibration on line 3").first().click();
-      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await (await yourMove(page, /^Pass to/)).click();
       await expect(page.getByTestId("hand-up-line")).toContainText(ABOVE); // no list of people any more: the seat above the desk
       await page.locator("textarea").fill(WHY_UP);
       await page.getByRole("dialog").getByRole("button", { name: "Send it up" }).click();
@@ -306,7 +306,7 @@ test.describe("NOR acceptance: a no has a reason, a date and a second look", () 
       const page = await signIn(browser, DESK);
       await page.goto(`/${SLUG}/inbox`);
       await page.getByRole("main").getByText("Crane booking for the changeover").first().click();
-      await page.getByRole("button", { name: /^Pass to/ }).click();
+      await (await yourMove(page, /^Pass to/)).click();
       await page.getByRole("dialog").getByRole("button", { name: new RegExp(DEPUTY) }).click();
       await page.locator("textarea").fill(WHY_PASS);
       // The page learns nothing more from now on (it refreshes itself every few seconds): its form stays the one of a first pass.

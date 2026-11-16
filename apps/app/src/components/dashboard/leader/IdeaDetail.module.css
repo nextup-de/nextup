@@ -44,7 +44,6 @@
 .count { font-size: var(--nh-fs-sm); color: #aeaeb2; }
 .para { margin: 0; font-size: var(--nh-fs-md); line-height: 1.55; color: var(--c-ink-2); text-wrap: pretty; max-width: 72ch; }.leadPara { margin: 0; font-size: var(--nh-fs-lg); line-height: 1.5; color: var(--c-ink); text-wrap: pretty; max-width: 72ch; }
 .small { font-size: var(--nh-fs-sm); color: var(--c-mute); }
-.strong { font-weight: 600; }
 .fade { animation: affFade 420ms var(--ease) backwards; }
 .fade[data-delay="1"] { animation-delay: 60ms; }
 .fade[data-delay="2"] { animation-delay: 120ms; }
@@ -124,7 +123,6 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .profileBtn:hover { background: var(--nh-brand-hover); }
 .profileBtn:active { transform: scale(.97); }
 .profileBtn:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
-.soonNote { margin-top: -4px; text-align: center; font-size: var(--nh-fs-sm); color: var(--c-mute); animation: affFade 220ms var(--ease); }
 .aiWhy { display: flex; gap: 6px; align-items: flex-start; font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--c-ink-2); background: color-mix(in srgb, var(--nh-brand) 6%, transparent); border-radius: var(--radius-xs, 8px); padding: 7px 9px; }
 .aiWhy .sparkle { margin-top: 2px; }
 .popListHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 4px; animation: affBack 240ms var(--ease) backwards; }
@@ -234,23 +232,10 @@ dl.panel > dt:first-of-type, dl.panel > dd:first-of-type { border-top: 0; }
 .stepWhat { font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--c-ink-2); text-wrap: pretty; }
 .status { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--c-ink-2); background: #fff; border-radius: var(--radius-sm, 999px); padding: 2px 8px; white-space: nowrap; }
 
-/* ── side: decision + feed ── */
+/* ── side: the feed ("Your move" is components/inbox/YourMove) ── */
 .sideCard { background: #fff; border-radius: var(--radius-md, 18px); padding: var(--nh-pad-card-sm); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
 .sideTitle { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--c-title); }
-.actions { display: flex; flex-direction: column; gap: 8px; }
-.action { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; padding: 0 16px; border: 0; border-radius: var(--radius-sm, 12px); background: var(--c-fill); color: var(--c-ink); font: inherit; font-size: var(--nh-fs-md); font-weight: 600; cursor: pointer; text-align: left; transition: opacity 150ms ease; }
-.action[data-primary="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
-.action[data-tone="danger"] { color: var(--nh-danger); }
-.action:hover:not(:disabled) { opacity: 0.85; }
-.action:disabled { cursor: not-allowed; opacity: 0.45; }
-.soon { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--c-mute); }
-.action:focus-visible, .close:focus-visible, .author:focus-visible, .scoreBtn:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
-.suggest { display: flex; align-items: center; gap: 4px; font-size: var(--nh-fs-xs); font-weight: 600; padding: 3px 8px; border-radius: var(--radius-sm, 999px); background: rgb(255 255 255 / 0.16); color: #fff; white-space: nowrap; flex-shrink: 0; }
-.suggest .sparkle { color: currentColor; }
-.action:not([data-primary="true"]) .suggest { background: color-mix(in srgb, var(--nh-brand) 12%, transparent); color: var(--c-left); }
-.asked { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: var(--radius-sm, 14px); background: color-mix(in srgb, var(--nh-brand) 8%, transparent); }
-.askedLabel { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-brand-ink); }
-.askedText { font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--c-ink-2); }
+.close:focus-visible, .author:focus-visible, .scoreBtn:focus-visible { outline: 2px solid var(--c-left); outline-offset: 2px; }
 
 .feedStats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .feedStat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--radius-sm, 12px); background: var(--p-bg); }

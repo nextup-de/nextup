@@ -14,7 +14,7 @@ export function DeskDecision({ brief, status, onDecide }: Pick<IdeaProps, "brief
     <section className={s.bar} aria-label={t("leader.yourDecision")}>
       <div className={s.text}>
         <h2 className={s.title}>{t("leader.yourDecision")}</h2>
-        {status && <p className={s.status}>{status.label}{status.sub ? " · " + status.sub : ""}</p>}
+        {status && <p className={s.status}>{status.label}</p>}
       </div>
       <div className={s.actions}>
         {brief.actions.map((d) => {

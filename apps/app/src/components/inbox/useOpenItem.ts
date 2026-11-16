@@ -49,7 +49,7 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
         ...brief.feed.comments.map((c) => ({ name: c.name, role: c.role, text: c.text, when: t("leader.daysShort", { n: c.daysAgo }), mine: false, person: personFor(c.name, briefCtx) })),
         ...si.thread.map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: t("leader.askedQuestion"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
       ],
-      status: asked.length ? { label: t("leader.moreInfoRequested"), lines: asked.map((m) => "“" + m.text + "” · " + f(m.day)), sub: t("leader.toldAuthor", { name: brief.author.name }) } : null,
+      status: asked.length ? { label: t("leader.moreInfoRequested"), lines: asked.map((m) => "“" + m.text + "” · " + f(m.day)) } : null,
       onDecide: (key: string) => {
         if (key === "approve") openSheet("assign", si.id, { people: si.team.filter((n) => n !== "—" && n !== "Anonymous") });
         else if (key === "info") openSheet("askIdea", si.id);
@@ -89,7 +89,6 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
       t("leader.invitedLine", { who: d.invited.length ? d.invited.join(", ") : t("leader.nobodyYet"), from: sc.from }),
       ...(last ? [t(last.open.length ? "leader.checkinLineOpen" : "leader.checkinLine", { round: last.round, day: f(last.day), next: last.next === "decide" ? t("leader.checkinReady") : t("leader.checkinAnother"), open: last.open.join(", ") })] : []),
     ],
-    sub: rs.ready ? t("leader.decideNow") : rs.late ? t("leader.checkinLate", { n: -rs.left, day: f(rs.dueDay) }) : t("leader.nextCheckin", { day: f(rs.dueDay) }),
   } : null;
   return {
     idea, onClose: close, brief,
@@ -97,7 +96,6 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
     status: talkNote ?? (!q ? null : {
       label: q.answer ? t("leader.answeredBy", { name: sc.from }) : q.unanswered !== null ? t("leader.noAnswer", { name: sc.from }) : t("leader.questionOut"),
       lines: [t("leader.youAsked", { text: q.text || t("leader.oneQuestion"), day: f(q.day) }), ...(q.answer ? [t("leader.answerLine", { text: q.answer.text, day: f(q.answer.day) })] : q.unanswered !== null ? [t("leader.noAnswerLine", { day: f(q.unanswered) })] : [])],
-      sub: sc.status === "asked" ? t("leader.waitingFor", { name: sc.from, n: sc.clock }) : "",
     }),
     onDecide: (key: string) => {
       if (key === "yes" && projects) openSheet("accept", sc.id);

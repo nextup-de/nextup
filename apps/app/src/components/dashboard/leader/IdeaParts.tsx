@@ -1,7 +1,7 @@
 "use client";
 // The pieces an opened idea is built from, shared by the desktop layout (IdeaDetail) and the phone
 // layout (IdeaDetailPhone): citations, file chips, the person card, the reasoning blocks, what the
-// AI found, the decisions and the feed. Props in, JSX out.
+// AI found, the moves for "Your move" and the feed. Props in, JSX out.
 import { useState } from "react";
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -10,6 +10,7 @@ import { type BadgeTone, type IdeaBrief, type Numbered, type NumberedBlock, type
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
 import { DeptChip } from "@/components/ui/elements";
+import { sortMoves, type Moves } from "@/components/inbox/YourMove";
 import { useT } from "@/i18n/client";
 
 export type IdeaHeader = { id: string; kind: "idea" | "case"; title: string; badge: string; tone: BadgeTone; raised: string };
@@ -18,13 +19,13 @@ export type FeedEntry = { name: string; role: string; text: string; when: string
 export type IdeaProps = {
   idea: IdeaHeader;
   brief: IdeaBrief;
-  status: StatusNote | null; // what is already in motion: a question asked, the clock paused
+  status: StatusNote | null; // what is already in motion: a question asked, a discussion round
   feed: FeedEntry[];
   onDecide: (key: string) => void; // a key of brief.actions
   onComment?: (text: string) => void; // comments are live (cases); absent = the box says "coming soon"
   onClose: () => void;
 };
-export type StatusNote = { label: string; lines: string[]; sub: string };
+export type StatusNote = { label: string; lines: string[] };
 
 export const initialsOf = (name: string) => name.startsWith("Anonymous") ? "?" : name.split(/[\s.]+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
@@ -184,7 +185,6 @@ export function Sources({ id, list }: { id: string; list: Numbered[] }) {
 // Every list is the same grouped list; sections are set apart by space, not lines.
 export function AiBrief({ brief, srcId }: { brief: IdeaBrief; srcId: string }) {
   const t = useT();
-  const rec = brief.actions.find((d) => d.key === brief.rec);
   const questions = brief.lead ? brief.questions.slice(0, 2) : brief.questions;
   return (
     <div className={styles.found}>
@@ -201,12 +201,8 @@ export function AiBrief({ brief, srcId }: { brief: IdeaBrief; srcId: string }) {
         </div>
       )}
       {brief.after && <p className={styles.para}>{brief.after}<Cites ns={brief.cites.after} to={srcId} /></p>}
-      <dl className={styles.panel}>
-        {rec && <PanelRow k={t("leader.advice")}><span className={styles.strong}>{rec.label}</span></PanelRow>}
-        <PanelRow k={t("leader.why")}>{brief.recText}<Cites ns={brief.cites.rec} to={srcId} /></PanelRow>
-        {brief.next && <PanelRow k={t("leader.nextStep")}>{brief.next}</PanelRow>}
-        {brief.by && <PanelRow k={t("leader.answerBy")}>{brief.by}</PanelRow>}
-      </dl>
+      {/* The recommended move is the filled button in "Your move"; here only why. */}
+      {brief.recText && <dl className={styles.panel}><PanelRow k={t("leader.why")}>{brief.recText}<Cites ns={brief.cites.rec} to={srcId} /></PanelRow></dl>}
       {brief.timeline && (
         <div className={styles.section}>
           <span className={styles.label}>{brief.timeline.title}</span>
@@ -266,42 +262,14 @@ export function AiBrief({ brief, srcId }: { brief: IdeaBrief; srcId: string }) {
         {brief.categories.length > 0 && <PanelRow k={t("leader.categorisedAs")}>{brief.categories.join(" · ")}</PanelRow>}
       </dl>
       <Sources id={srcId} list={brief.sources} />
-      <span className={styles.small}>{t("leader.aiSuggestionsOnly")}</span>
     </div>
   );
 }
 
-// What is already in motion (a question asked, a clock paused), then the decisions - the AI's pick
-// on top of its row.
-export function StatusBox({ status }: { status: StatusNote | null }) {
-  if (!status) return null;
-  return (
-    <div className={styles.asked}>
-      <span className={styles.askedLabel}>{status.label}</span>
-      {status.lines.map((t, i) => <span key={i} className={styles.askedText}>{t}</span>)}
-      {status.sub && <span className={styles.small}>{status.sub}</span>}
-    </div>
-  );
-}
-
-export function DecisionList({ brief, onDecide }: { brief: IdeaBrief; onDecide: (k: string) => void }) {
-  const t = useT();
-  if (!brief.actions.length) return null;
-  return (
-    <div className={styles.actions}>
-      {brief.actions.map((d) => {
-        const suggested = d.key === brief.rec;
-        return (
-          <button key={d.key} type="button" className={styles.action} data-primary={suggested ? "true" : undefined} data-tone={d.danger ? "danger" : undefined}
-            disabled={!d.live} onClick={() => onDecide(d.key)} title={d.live ? undefined : t("leader.decisionSoon")}>
-            <span>{d.label}</span>
-            {suggested && <span className={styles.suggest}><Sparkle size={10} />{t("leader.aiSuggests")}</span>}
-            {!d.live && !suggested && <span className={styles.soon}>{t("leader.soon")}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
+// The moves of an opened item for "Your move": only the live ones (a decision that needs an event that does not exist yet
+// is not drawn), the one the brief recommends filled.
+export function deskMoves(brief: IdeaBrief, onDecide: (k: string) => void): Moves {
+  return sortMoves(brief.actions.filter((d) => d.live).map((d) => ({ key: d.key, label: d.label, danger: d.danger, onSelect: () => onDecide(d.key) })), brief.rec);
 }
 
 // Supporters, comments, and the comment box (live when `onComment` is given). A commenter on the org

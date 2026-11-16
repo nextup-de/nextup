@@ -1,12 +1,13 @@
 "use client";
 // One idea, opened from the inbox (Claude Design handoff "Inbox App", detail half): who raised it,
-// what it is, who it affects, five scores that each open their reasoning, what the AI found, the
-// decision, and the feed. Props in, JSX out - the brief comes from features/ideas/brief.ts and
+// what it is, who it affects, five scores that each open their reasoning, what the AI found, "Your
+// move", and the feed. Props in, JSX out - the brief comes from features/ideas/brief.ts and
 // every decision goes back up through onDecide, which opens the existing input sheets.
 // Local state is view state only: which popover or score is open.
 import { useEffect, useId, useState } from "react";
 import type { AffectedDept, AffectedPerson, IdeaBrief } from "@/features/ideas/brief";
-import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileRows, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type FeedEntry, type IdeaProps } from "./IdeaParts";
+import { AiBrief, Blocks, Chevron, deskMoves, FeedBody, FileRows, initialsOf, PanelRow, PersonCard, Sources, Sparkle, type FeedEntry, type IdeaProps } from "./IdeaParts";
+import { YourMove } from "@/components/inbox/YourMove";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
 import { deptTone } from "@/lib/dept-tone";
@@ -125,7 +126,7 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
       </div>
 
       <aside className={styles.side}>
-        <DecisionCard brief={brief} status={status} onDecide={onDecide} />
+        <YourMove status={status?.label} lines={status?.lines} moves={deskMoves(brief, onDecide)} />
         <Feed brief={brief} feed={feed} open={aff?.startsWith("f:") ? Number(aff.slice(2)) : null} onPerson={(i) => toggle("f:" + i)} onComment={onComment} />
       </aside>
     </div>
@@ -178,18 +179,6 @@ function PersonChip({ p, on, author, onToggle }: { p: AffectedPerson; on: boolea
       </button>
       {on && <div className={styles.pop}><PersonCard p={p} why={p.why} /></div>}
     </span>
-  );
-}
-
-
-function DecisionCard({ brief, status, onDecide }: { brief: IdeaBrief; status: IdeaProps["status"]; onDecide: (k: string) => void }) {
-  const t = useT();
-  return (
-    <section className={styles.sideCard} aria-label={t("leader.yourDecision")}>
-      <h2 className={styles.sideTitle}>{t("leader.yourDecision")}</h2>
-      <StatusBox status={status} />
-      <DecisionList brief={brief} onDecide={onDecide} />
-    </section>
   );
 }
 

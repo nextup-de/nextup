@@ -10,7 +10,7 @@
 // the live check against a stack that is already up (`npm run e2e:live`, playwright.live.config.ts),
 // where the company has a database and the demo login. Everything else is the same clicks.
 import type { Page } from "@playwright/test";
-import { aiMessages, answerCoach, answerRail, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
+import { aiMessages, answerCoach, answerRail, expect, holdNextReply, publishTo, showSidebar, START, test, yourMove } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
 const SHOWN = "A shared setup cart for line 3"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
@@ -133,8 +133,9 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(detail).toContainText(MORE[0]);
     await expect(detail).toContainText("5 d left");
     await expect(leader.getByRole("region", { name: "What the AI found" })).toBeVisible();
-    const decision = leader.getByRole("region", { name: "Your decision" });
-    for (const name of [/^Yes, do it/, "No, and why", "Ask a question"]) await expect(decision.getByRole("button", { name })).toBeVisible();
+    const decision = leader.getByRole("region", { name: "Your move" });
+    for (const name of [/^Yes, do it/, "No, and why"]) await expect(decision.getByRole("button", { name })).toBeVisible();
+    await expect(await yourMove(leader, "Ask a question")).toBeVisible(); // in view or under More
   });
 
   await test.step("manager: the Dashboard", async () => {
