@@ -41,7 +41,7 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
     <PageHead {...headOf(page.tools[0]?.kind, { p, jira, t, editor, title, onAddStep: () => setStepOpen(true), onFilesUpload: () => window.dispatchEvent(new CustomEvent(FILES_UPLOAD)), onFilesSource: () => window.dispatchEvent(new CustomEvent(FILES_SOURCE)), ...(files && syncedAgo ? { filesSyncedAgo: syncedAgo } : {}) })}
       {...(files ? { extra: <FilesSettings p={p} page={page} jira={jira} editor={editor} hints={stepHints} onAddTool={() => onAddAt(page.tools.length)} /> } : {})}>
       {/* The slot a tool fills with its own controls (HeadSlot); empty, the head shows no row. Tools are added below; a Files page has none. */}
-      {!files && <div id={headRowId(page.id)} />}
+      {!files && <div id={headRowId(page.id)} className={styles.slot} />}
     </PageHead>
     {files && Browser && <Browser p={p} page={page} tool={page.tools[0]} jira={jira} editor={editor} hints={stepHints} />}
     {!files && page.tools.map((tool, index) => <Fragment key={tool.id}>

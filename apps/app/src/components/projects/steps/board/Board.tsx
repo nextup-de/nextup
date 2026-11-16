@@ -15,8 +15,12 @@ import { StepFilterRow } from "../StepFilterRow";
 import { StepPanel } from "../StepPanel";
 import styles from "./Board.module.css";
 
+const CHECK_ICON = <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M8.5 12.2l2.4 2.4 4.6-5" /></svg>;
+const DONE_ICON = <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
+const PLUS_ICON = <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>;
+
 export function Board({ p, hints, jira, page, tool }: ToolProps) {
-  const { act, S, seed, actorUserId, f } = useDemo();
+  const { act, S, seed, actorUserId, f, persona } = useDemo();
   const t = useT();
   const locale = useLocale();
   const rights = useRights(p);
@@ -47,6 +51,14 @@ export function Board({ p, hints, jira, page, tool }: ToolProps) {
   const owners = boardLanes(p.steps, { groupBy: "person" }).filter((l) => l.ownerUserId);
   const waitingCount = stepFilter(p, { ...NO_FILTER, waiting: true }, { day: S.day, me: actorUserId }).filter((s) => !s.dropped).length;
   const older = olderDoneCount(p, S.day);
+  const synced = jira.state === "synced";
+  const nameOf = (userId: string | null) => (userId ? team.find((m) => m.userId === userId)?.name ?? null : null);
+  /** 'Take it →' on a card nobody owns: the person looking becomes its owner. */
+  const takeIt = (step: Step) => {
+    if (!actorUserId) return;
+    const change = { ownerUserId: actorUserId, owner: nameOf(actorUserId) ?? persona.who.name };
+    send("project.step.edited", { stepId: step.id, ...change }, () => act.project.editStep(p.id, step.id, change));
+  };
   const active = filter.query.trim() || filter.owners.length || filter.mine || filter.waiting || filter.dueWeek || filter.notStarted || filter.dropped;
   const setTarget = (target: BoardTarget | null) => { spotRef.current = target; setSpot(target); };
   const end = () => { dragRef.current = null; setDrag(null); setTarget(null); setGhost(null); };
@@ -105,23 +117,37 @@ export function Board({ p, hints, jira, page, tool }: ToolProps) {
           onDragOver={(e) => { if (!dragged) return; e.preventDefault(); if (!(e.target as Element).closest("[data-step]")) setTarget(target); }}
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTarget(null); }}
           onDrop={(e) => { e.preventDefault(); drop(); }}>
-          <div className={groupBy === "person" ? styles.personColumnHead : styles.columnHead}><strong>{columnLabel(column, locale)}</strong>{list.filter((s) => !s.dropped).length > 0 && <span className={styles.count}>{list.filter((s) => !s.dropped).length}</span>}</div>
+          <div className={groupBy === "person" ? styles.personColumnHead : styles.columnHead}><strong>{columnLabel(column, locale)}</strong>{list.filter((s) => !s.dropped).length > 0 && <span className={styles.count}>{list.filter((s) => !s.dropped).length}</span>}{synced && groupBy === "status" && <span className={styles.jiraStatus}>{t(`projectSteps.jiraColumn_${column}`)}</span>}</div>
           {list.map((step, index) => <div key={step.id}>{line(step.id)}<article className={styles.card} data-step={step.id} data-done={step.column === "done" || undefined} data-dropped={!!step.dropped || undefined} data-dragging={drag === step.id || undefined} draggable={rights.moveStep(step) && !step.dropped}
             onClick={(e) => { if (!(e.target as Element).closest("button")) setOpen(step.id); }}
             onDragStart={(e) => { dragRef.current = step.id; setDrag(step.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", step.id); }} onDragEnd={end}
             onDragOver={(e) => { if (!dragged) return; e.preventDefault(); e.stopPropagation(); const box = e.currentTarget.getBoundingClientRect(); setTarget({ ...target, before: e.clientY < box.top + box.height / 2 ? step.id : list[index + 1]?.id ?? null }); }}>
-            <div className={styles.cardTop}><span className={styles.key}>{step.external?.key ?? (jira.waiting ? <span title={t("projects.waitKeyTitle")}>{t("projects.waitKey")}</span> : null)}</span>{step.ownerUserId && <PersonFace name={step.owner ?? ""} size="sm" />}</div>
+            <div className={styles.cardTop}>
+              <span className={styles.check}>{CHECK_ICON}</span>
+              <span className={styles.key}>{step.external?.key ?? (jira.waiting ? <span title={t("projects.waitKeyTitle")}>{t("projects.waitKey")}</span> : null)}</span>
+              {step.ownerUserId || step.owner ? <PersonFace name={step.owner ?? ""} size="sm" /> : <span className={styles.nobody} aria-hidden="true" />}
+            </div>
             <button type="button" className={styles.cardOpen} onClick={() => setOpen(step.id)} aria-label={t("projectSteps.openStep", { text: step.text })}>{step.text}</button>
-            {step.checklist.length > 0 && <div className={styles.progress}><progress max={step.checklist.length} value={step.checklist.filter((item) => item.done).length} aria-label={t("projectSteps.checklistProgress", { done: step.checklist.filter((item) => item.done).length, total: step.checklist.length })} /><span>{step.checklist.filter((item) => item.done).length}/{step.checklist.length}</span></div>}
-            {step.waitingOn && <div className={styles.waiting}>{t("projectSteps.waitingFor", { name: step.waitingOn.name ?? t("projectSteps.waitingNobody") })}</div>}
-            {!step.waitingOn && step.column === "blocked" && step.why && <div className={styles.waiting}>{step.why}</div>}
-            {p.helpAsks.filter((ask) => ask.stepId === step.id && ask.answeredDay === null).map((ask) => <div className={styles.waiting} key={ask.id}>{ask.text}</div>)}
-            <div className={styles.cardFoot}><span>{step.owner ?? t("projectSteps.noOwner")}</span>{step.dueDay !== null && <span className={styles.due} data-late={step.column !== "done" && step.dueDay < S.day || undefined}>{step.column !== "done" && step.dueDay < S.day && `${t("projects.lateShort")} · `}{f(step.dueDay)}</span>}</div>
+            {step.checklist.length > 0 && <div className={styles.progress} role="img" aria-label={t("projectSteps.checklistProgress", { done: step.checklist.filter((item) => item.done).length, total: step.checklist.length })}>
+              <span className={styles.segments}>{step.checklist.map((item) => <span key={item.id} data-done={item.done || undefined} />)}</span>
+              <span>{t("projectSteps.progressOf", { done: step.checklist.filter((item) => item.done).length, total: step.checklist.length })}</span>
+            </div>}
+            {step.waitingOn && <div className={styles.note}><span className={styles.dot} aria-hidden="true" /><span>{t("projectSteps.waitingOn")} <b>{step.waitingOn.name ?? t("projectSteps.waitingNobody")}</b></span></div>}
+            {!step.waitingOn && step.column === "blocked" && step.why && <div className={styles.note}><span className={styles.dot} data-tone="problem" aria-hidden="true" /><span>{step.why}</span></div>}
+            {p.helpAsks.filter((ask) => ask.stepId === step.id && ask.answeredDay === null).map((ask) => <div className={styles.ask} key={ask.id}>
+              <span className={styles.askText}>{ask.text}</span>
+              <span className={styles.askMeta}>{t("projectSteps.askedBy")}{nameOf(ask.byUserId) && <> <b>{nameOf(ask.byUserId)}</b></>} · {t("projectSteps.daysAgo", { count: Math.max(0, S.day - ask.day) })}</span>
+            </div>)}
+            {step.column === "done" && !step.dropped
+              ? <div className={styles.doneLine}><span className={styles.doneIcon}>{DONE_ICON}</span><span>{t("projectSteps.doneOn", { date: f(step.doneDay ?? step.movedDay) })}{step.dueDay !== null && (step.doneDay ?? step.movedDay) !== step.dueDay && ` · ${t((step.doneDay ?? step.movedDay) < step.dueDay ? "projectSteps.doneEarly" : "projectSteps.doneLate", { count: Math.abs(step.dueDay - (step.doneDay ?? step.movedDay)) })}`}</span></div>
+              : step.ownerUserId || step.owner
+                ? <div className={styles.cardFoot}><span>{step.owner}</span>{step.dueDay !== null && <span className={styles.due} data-tone={step.dueDay < S.day ? "late" : step.column === "doing" ? "soon" : undefined}>{step.dueDay < S.day ? `${t("projects.lateShort")} · ${f(step.dueDay)}` : step.column === "doing" ? t("projectSteps.dueIn", { date: f(step.dueDay), count: step.dueDay - S.day }) : f(step.dueDay)}</span>}</div>
+                : <div className={styles.cardFoot}><span className={styles.nobodyLine}>{t("projectSteps.noOwner")}{actorUserId && rights.editStep(step) && <> · <button type="button" className={styles.take} onClick={() => takeIt(step)}>{t("projectSteps.takeItArrow")}</button></>}</span>{step.dueDay !== null && <span className={styles.due} data-tone={step.dueDay < S.day ? "late" : undefined}>{f(step.dueDay)}</span>}</div>}
             {rights.moveStep(step) && !step.dropped && <button type="button" className={styles.grip} aria-label={t("projectSteps.dragStep", { text: step.text })} tabIndex={-1} onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); dragRef.current = step.id; setDrag(step.id); setGhost({ x: e.clientX, y: e.clientY }); }} onPointerMove={point} onPointerUp={drop} onPointerCancel={end}>⠿</button>}
           </article></div>)}
           {line(null)}
-          {column === "done" && older > 0 && filter.hideOldDone && groupBy === "status" && <button type="button" className={styles.quiet} onClick={() => setFilter({ ...filter, hideOldDone: false })}>{t("projectSteps.olderDone", { count: older })}</button>}
-          {composer ? <Composer key={`${lane.id}-${column}`} {...{ p, column, team }} ownerUserId={groupBy === "person" ? lane.ownerUserId : null} onCancel={() => setAdding(null)} onBlocked={(step) => { setBlocked({ step, target }); setAdding(null); }} /> : rights.addStep && <button type="button" className={styles.add} aria-label={t("projects.addStepTo", { column: columnLabel(column, locale) })} onClick={() => setAdding({ column, lane: lane.id })}>+ {t("projectSteps.addStep")}</button>}
+          {column === "done" && older > 0 && filter.hideOldDone && groupBy === "status" && <button type="button" className={styles.older} onClick={() => setFilter({ ...filter, hideOldDone: false })}>{t("projectSteps.showOlder", { count: older })}</button>}
+          {composer ? <Composer key={`${lane.id}-${column}`} {...{ p, column, team }} ownerUserId={groupBy === "person" ? lane.ownerUserId : null} onCancel={() => setAdding(null)} onBlocked={(step) => { setBlocked({ step, target }); setAdding(null); }} /> : rights.addStep && <button type="button" className={styles.add} aria-label={t("projects.addStepTo", { column: columnLabel(column, locale) })} onClick={() => setAdding({ column, lane: lane.id })}>{PLUS_ICON}{t("projectSteps.addStep")}</button>}
         </div>;
       })}</div>}
     </div>)}
