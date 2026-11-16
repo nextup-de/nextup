@@ -39,6 +39,9 @@ export type OverviewIdeaProps = {
   // On a phone (OverviewPhone) the same page without the close button (the bar has back), and the
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).
   variant?: "desk" | "phone";
+  /** As a page of its project (tools/IdeaTool): the project's head above already says the title, and its (i) who raised it and
+   *  when, so the card starts at the stages. */
+  inProject?: boolean;
   onOpenScore?: (i: number) => void;
   /** The people on it, before the decision: where a saved edit goes (null: read only). */
   edit?: { onSave: (changes: IdeaChanges) => void } | null;
@@ -123,7 +126,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
     <div className={s.div22}>
       <div className={s.div23}>
         <div className={s.div24}>
-          <div className={s.div25}>
+          {!p.inProject && <><div className={s.div25}>
             <span className={s.raised}>{t("team.ideaRaised", { raised: p.raised, dept: p.dept })}</span>
             {!phone && p.onClose && (
               <button type="button" className={s.closeOverview2} onClick={p.onClose} title={t("team.ideaCloseOverview")} aria-label={t("team.ideaBackOverview")}>
@@ -135,7 +138,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
             <input className={s.titleInput} value={draft?.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("team.ideaEditTitle")} maxLength={200} autoFocus onKeyDown={(e) => keys(e, true)} />
           ) : (
             <h1 className={s.title2} data-editable={editable ? "true" : undefined} title={editable} onDoubleClick={() => open("title")}>{p.title}</h1>
-          )}
+          )}</>}
           <div className={s.div26}>
             {p.steps.map((st, i) => (
               <div key={st.label} className={s.div27}>
