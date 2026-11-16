@@ -59,13 +59,13 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const shipped = mine.filter((m) => m.status === "Shipped").length;
   // Badges: what is waiting on this person right now.
   const counts = { inbox: inboxTotal(ctx), decisions: decisionsWaiting(D).length };
-  // Profile numbers per role: what this person sent (member), what sits on their desk and what they
-  // decided (leader), what waits on them (manager). A manager raises nothing, so "0 raised" is noise.
+  // Profile numbers per role: what this person sent (member), what they decided (leader). What waits on
+  // someone is the bar's badge, so the menu does not count it again (DESIGN_RULES §9); a manager gets none.
   const decided = D.cases.filter((c) => ctx.actorUserId !== null && c.decided?.byUserId === ctx.actorUserId).length;
   const stats: [number, string][] = role === "manager"
-    ? [[counts.decisions, t("shell.statDecisionsWaiting", { count: counts.decisions })]]
+    ? []
     : role === "leader"
-      ? [[counts.inbox, t("shell.statInInbox")], [decided, t("shell.statDecided")]]
+      ? [[decided, t("shell.statDecided")]]
       : [[mine.length, t("shell.statRaised")], [shipped, t("shell.statShipped")]];
   const sent = role !== "manager"; // members and leaders raise things; the footer link follows them
 
@@ -110,18 +110,13 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                   <span className={styles.meName}>{who.name}</span>
                   <span className={styles.meLine}>{who.line}</span>
                   {email && <span className={styles.meLine}>{email}</span>}
+                  {/* Only worth a line when it differs from the name: the employee posts under a handle. */}
+                  {anon && <span className={styles.meLine}>{t("shell.othersSeeYouAs", { handle: actor })}</span>}
                 </span>
               </div>
-              <div className={styles.meStats}>
-                <span><strong>{persona.role.label}</strong></span>
-                {stats.filter(([n]) => n > 0).map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
-              </div>
-              {/* Only worth showing when it differs from the header: the employee posts under a handle. */}
-              {anon && (
-                <div className={styles.mePreview}>
-                  <span className={styles.mePreviewLabel}>{t("shell.othersSeeYou")}</span>
-                  <span className={styles.mePreviewName}>{actor}</span>
-                  <span className={styles.meLine}>{t("shell.anonymousHidden")}</span>
+              {stats.some(([n]) => n > 0) && (
+                <div className={styles.meStats}>
+                  {stats.filter(([n]) => n > 0).map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
                 </div>
               )}
               <div className={styles.meFoot}>
@@ -132,7 +127,6 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                   {adminMenuLinks({ role, serverMode: ctx.serverMode, prefix: tenant.prefix, consoleHref: tenant.consoleHref ?? null }).map((l) => (
                     <Link key={l.key} href={l.href} className={styles.meLink} onClick={() => setPop(null)}>{t(l.key)} <span aria-hidden="true">→</span></Link>
                   ))}
-                  {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.myReports")} <span aria-hidden="true">→</span></Link>}
                 </span>
                 <button type="button" className={styles.logout} onClick={logout}>{t("shell.logOut")}</button>
               </div>

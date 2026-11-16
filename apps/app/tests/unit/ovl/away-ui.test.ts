@@ -37,13 +37,13 @@ const demoCtx = (state: State, serverMode = true) => ({
 beforeEach(() => { ctx.value = demoCtx(stateOf()); });
 
 describe("the away card", () => {
-  it("shows the own current span with End, the dialog to set one and nothing to take back", () => {
+  it("shows the own current span with End and the dialog to set one; with nothing to take back that block is not drawn", () => {
     ctx.value = demoCtx(stateOf({ away: [{ awayId: "away1", userId: "u_a", from: 25, to: 30, setBy: "u_a", endedDay: null }] }));
     const out = view("en", h(AwayCard));
     expect(out).toContain("Away until day 30");
     expect(out).toContain('data-testid="away-end"');
-    expect(out).toContain("Nothing to take back.");
-    expect(out).toContain("Cases handed on while you were away");
+    expect(out).not.toContain("Cases handed on while you were away");
+    expect(out).not.toContain('data-testid="away-takeback"');
     // Another person's span is not shown.
     ctx.value = demoCtx(stateOf({ away: [{ awayId: "away2", userId: "u_b", from: 25, to: 30, setBy: "u_b", endedDay: null }] }));
     expect(view("en", h(AwayCard))).not.toContain("away-end");
@@ -57,7 +57,7 @@ describe("the away card", () => {
     expect(out).toContain("Shorter changeover");
     expect(out).toContain('data-testid="away-takeback-c1"');
     expect(out).not.toContain("Line three"); // touched in the log only: a comment counts
-    expect(out).not.toContain("Nothing to take back.");
+    expect(out).toContain("Cases handed on while you were away");
     expect(view("de", h(AwayCard))).toContain("Zurücknehmen");
   });
 
