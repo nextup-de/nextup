@@ -37,7 +37,7 @@ test("HUB acceptance: change the range, save a doc for the team, add a link", as
 
   await test.step("the lead adds a Doc to the Files page and writes a line that saves", async () => {
     await page.goto("/acme/projects/pj2?page=files");
-    await page.getByRole("button", { name: "+ Add tool", exact: true }).click();
+    await page.getByRole("button", { name: "+ Add a tool to this page", exact: true }).click();
     await page.getByRole("dialog", { name: "Add tool" }).getByRole("button", { name: /^Doc/ }).click();
     await expect(page.getByRole("dialog", { name: "Add tool" })).toHaveCount(0);
     const body = page.getByRole("textbox", { name: "Document content" });

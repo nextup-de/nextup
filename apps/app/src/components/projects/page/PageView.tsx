@@ -2,7 +2,7 @@
 import { Fragment, useState } from "react";
 import type { ProjectPage, ReducedProject } from "@/features/projects/types";
 import type { JiraRow } from "@/features/projects/views";
-import { hasDefaultTitle, isJiraTool } from "@/features/projects/pages";
+import { hasDefaultTitle } from "@/features/projects/pages";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/client";
 import { PageHead } from "@/components/ui/elements/PageHead";
@@ -27,18 +27,12 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
   const { stepHints } = useProjectHints(p);
   const [stepOpen, setStepOpen] = useState(false);
   const [addAt, setAddAt] = useState<number | null>(null);
-  const name = (tool: ProjectPage["tools"][number]) => tool.title ?? t(`projectPages.tool${tool.kind[0].toUpperCase()}${tool.kind.slice(1)}` as MessageKey);
   // Only the reserved defaults carry message keys; a team's title is always literal text.
   const title = hasDefaultTitle(page) ? t(page.title as MessageKey) : page.title;
-  const allSynced = page.tools.length > 0 && page.tools.every((tool) => isJiraTool(tool.kind)) && p.sync?.system === "jira" && p.sync.on;
   const onAddAt = (index: number) => { if (editor) setAddAt(index); };
   return <div className={styles.page}>
     <PageHead {...headOf(page.tools[0]?.kind, { p, jira, t, editor, title, onAddStep: () => setStepOpen(true), onFilesUpload: () => window.dispatchEvent(new CustomEvent(FILES_UPLOAD)), onFilesSource: () => window.dispatchEvent(new CustomEvent(FILES_SOURCE)) })}>
-      {page.tools.length > 0 && <p className={styles.summary}>
-        {t("projectPages.toolsCount", { count: page.tools.length })} · {page.tools.map(name).join(", ")}
-        {allSynced && <> · <span className={styles.sync}>⟳ {t("projectPages.allSyncedWithJira")}</span></>}
-      </p>}
-      {editor && <button type="button" className="nh-btn nh-btn-secondary nh-btn-sm" onClick={() => onAddAt(page.tools.length)}>+ {t("projectPages.addTool")}</button>}
+      {/* The slot a tool fills with its own controls (HeadSlot); empty, the head shows no row. Tools are added below. */}
       <div id={headRowId(page.id)} />
     </PageHead>
     {page.tools.map((tool, index) => <Fragment key={tool.id}>

@@ -25,7 +25,8 @@ beforeEach(() => { mocks.editor = true; vi.clearAllMocks(); });
 it("PGB stacked page: renders tools in order, their names, insertion points and import with final props", () => {
   const out = render();
   expect(out).toContain(">Steps</h1>");
-  expect(out).toContain("2 tools · Board, List");
+  expect(out).not.toContain("2 tools ·"); // the head carries no tool summary and no Add tool button: tools are added below
+  expect(out).not.toContain(">+ Add tool<");
   expect(out.indexOf('data-tool="steps.board"')).toBeLessThan(out.indexOf('data-tool="steps.list"'));
   expect(out.match(/Add a tool here/g)).toHaveLength(2);
   expect(out).toContain("Add a tool to this page");
@@ -47,12 +48,11 @@ it("PGB stacked page: viewers get the same tool stack without changing controls"
   expect(mocks.imported).toHaveBeenCalledWith({ p, editor: false });
 });
 
-it("PGB stacked page: Jira summary requires every tool to be a Jira tool on a syncing project", () => {
+it("PGB stacked page: the head has no summary row, also on a project syncing with Jira (each tool says its own sync)", () => {
   const syncing = { ...p, sync: { system: "jira" as const, on: true, day: 0, by: "lead" } };
-  expect(render({ ...props, p: syncing })).toContain("All synced with Jira");
-  expect(render({ ...props, p: { ...syncing, sync: { ...syncing.sync, on: false } } })).not.toContain("All synced with Jira");
-  expect(render({ ...props, p: syncing, page: { ...props.page, tools: [...props.page.tools, { ...READY_PAGES[2].tools[2], kind: "doc" as const }] } })).not.toContain("All synced with Jira");
-  expect(render({ ...props, p: syncing, page: { ...props.page, tools: [] } })).not.toContain("All synced with Jira");
+  const out = render({ ...props, p: syncing });
+  expect(out).not.toContain("All synced with Jira");
+  expect(out).not.toContain("tools ·");
 });
 
 it("PGB stacked page: saved default titles translate and custom titles remain literal", () => {
@@ -60,7 +60,7 @@ it("PGB stacked page: saved default titles translate and custom titles remain li
   expect(render({ ...props, p: saved })).toContain(">Steps</h1>");
   const out = render({ ...props, p: saved, page: { ...props.page, title: "Parts review", tools: [{ ...props.page.tools[0], title: "Our board" }] } });
   expect(out).toContain(">Parts review</h1>");
-  expect(out).toContain("1 tool · Our board");
+  expect(out).toContain(">Our board</section>"); // the tool's own title, on its section
 });
 
 it("PGB add points: shared picker hides Agent, disables a singleton and allows another doc", () => {
