@@ -11,8 +11,9 @@ import { StepPanel } from "../../steps/StepPanel";
 import type { JiraRow } from "@/features/projects/views";
 import styles from "./Timeline.module.css";
 import { useT } from "@/i18n/client";
+import { useDayMap } from "../calendar/days";
 
-const COLUMN_PX = 96;
+const COLUMN_PX = 160;
 const UNIT: Record<TimelineScale, number> = { weeks: 7, months: 30, quarters: 91 };
 type Drag = { stepId: string; part: "move" | "start" | "end"; x: number; days: number };
 type Line = { kind: "group"; group: TimelineGroup } | { kind: "row"; row: TimelineRow };
@@ -41,7 +42,7 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
   const syncing = p.sync?.system === "jira" && p.sync.on;
   const step = (id: string) => p.steps.find((s) => s.id === id);
   const lines: Line[] = view.groups.flatMap((g): Line[] => [...(groupBy === "none" ? [] : [{ kind: "group" as const, group: g }]), ...g.rows.map((row) => ({ kind: "row" as const, row }))]);
-  const colLabel = { todo: t("projectPlan.timelineTodo"), doing: t("projectPlan.timelineDoing"), blocked: t("projectPlan.timelineBlocked"), done: t("projectPlan.timelineDone") } satisfies Record<StepColumn, string>;
+  const colLabel = { todo: t("projectPlan.timelineTodo"), doing: t("projectPlan.timelineDoing"), blocked: t("projectPlan.timelineBlockedAfter"), done: t("projectPlan.timelineDone") } satisfies Record<StepColumn, string>;
   const groupTitle = (g: TimelineGroup) => groupBy === "milestone" ? g.title ?? t("projectPlan.timelineNoMilestone")
     : groupBy === "person" ? (g.userId ? seed.seats.find((s) => s.userId === g.userId)?.label ?? g.userId : t("projectPlan.timelineNoOwner")) : g.column ? colLabel[g.column] : "";
 
@@ -72,6 +73,15 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
     if (change) apply(drag.stepId, change);
   };
 
+  const map = useDayMap();
+  const todayNumber = Number((map.dateOf(S.day) ?? "").slice(8)) || "";
+  /** What Paper writes after a bar: who a step waits on, or that it is blocked. */
+  const after = (row: TimelineRow): string | null => {
+    const s = step(row.stepId);
+    if (!s || row.column === "done") return null;
+    if (row.column === "blocked") return s.waitingOn?.name ? `${t("projectPlan.timelineBlockedAfter")} · ${s.waitingOn.name}` : t("projectPlan.timelineBlockedAfter");
+    return s.waitingOn?.name ? t("projectPlan.timelineWaitingOn", { name: s.waitingOn.name }) : null;
+  };
   const preview = (row: TimelineRow) => {
     const s = drag?.stepId === row.stepId ? step(row.stepId) : undefined;
     const change = s && drag ? dragEdit(s, { part: drag.part, days: drag.days }) : null;
@@ -83,12 +93,13 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
     <div className={styles.head}>
       <h2 className="nh-sr">{t("projectPlan.timeline")}</h2>
       <HeadSlot page={page} tool={tool}><div className={styles.controls}>
-        <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => scroller.current?.scrollTo({ left: Math.max(0, dayLeft(S.day) - COLUMN_PX * 2), behavior: "smooth" })}>{t("projectPlan.calToday")}</button>
+        <button type="button" className={styles.control} onClick={() => scroller.current?.scrollTo({ left: Math.max(0, dayLeft(S.day) - COLUMN_PX), behavior: "smooth" })}>{t("projectPlan.calToday")}</button>
         <label className={styles.group}>{t("projectPlan.timelineGroupBy")}:
-          <select className="nh-input nh-select" value={groupBy} onChange={(e) => setGroupBy(TIMELINE_GROUPS.find((g) => g === e.target.value) ?? "milestone")}>
+          <select className={styles.groupSelect} value={groupBy} onChange={(e) => setGroupBy(TIMELINE_GROUPS.find((g) => g === e.target.value) ?? "milestone")}>
             {TIMELINE_GROUPS.map((g) => <option key={g} value={g}>{g === "milestone" ? t("projectPlan.fieldMilestone") : g === "person" ? t("projectPlan.timelineGroupPerson") : g === "status" ? t("projectPlan.groupStatus") : t("projectPlan.timelineGroupNone")}</option>)}
           </select>
         </label>
+        <span className={styles.spacer} />
         <div className={styles.scale} role="radiogroup" aria-label={t("projectPlan.scaleLabel")}>
           {TIMELINE_SCALES.map((sc) => <button key={sc} type="button" role="radio" aria-checked={scale === sc} data-on={scale === sc ? "true" : undefined} onClick={() => setScale(sc)}>{sc === "weeks" ? t("projectPlan.scaleWeeks") : sc === "months" ? t("projectPlan.scaleMonths") : t("projectPlan.scaleQuarters")}</button>)}
         </div>
@@ -100,7 +111,7 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
       <div className={styles.left}>
         <div className={styles.leftHead}>{t("projectPlan.timelineStep")}</div>
         {lines.map((line) => line.kind === "group"
-          ? <div key={line.group.id} className={styles.groupRow}><strong>{groupTitle(line.group)}</strong><span className={styles.muted}>· {t("projectPlan.timelineDoneOf", { done: line.group.done, total: line.group.total })}</span></div>
+          ? <div key={line.group.id} className={styles.groupRow}><span className={styles.diamond} aria-hidden="true">◆</span><strong>{groupTitle(line.group)}</strong><span className={styles.muted}>· {t("projectPlan.timelineDoneOf", { done: line.group.done, total: line.group.total })}</span></div>
           : <div key={line.row.stepId} className={styles.stepRow} data-done={line.row.column === "done" ? "true" : undefined}>
               {line.row.key && <span className={styles.key}>{line.row.key}</span>}
               <span className={styles.stepText}>{line.row.text}</span>
@@ -109,10 +120,16 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
       </div>
       <div className={styles.scroller} ref={scroller}>
         <div className={styles.grid} role="group" aria-label={t("projectPlan.timelineGrid")} style={{ width: view.columns.length * COLUMN_PX }}>
-          <div className={styles.gridHead}>{view.columns.map((c) => <span key={c.start} className={styles.colHead} style={{ width: COLUMN_PX }}>{f(c.start)}</span>)}</div>
-          <span className={styles.today} style={{ left: dayLeft(S.day) }} aria-hidden="true" />
+          <div className={styles.gridHead}>{view.columns.map((c, i) => <span key={c.start} className={styles.colHead} data-now={c.start <= S.day && S.day < (view.columns[i + 1]?.start ?? Infinity) || undefined} style={{ width: COLUMN_PX }}>{f(c.start)}</span>)}</div>
+          <span className={styles.today} style={{ left: dayLeft(S.day) }} aria-hidden="true"><span className={styles.todayBadge}>{todayNumber}</span></span>
           {lines.map((line) => line.kind === "group"
-            ? <div key={line.group.id} className={styles.groupLane} />
+            ? <div key={line.group.id} className={styles.groupLane}>{(() => {
+                const rows = line.group.rows;
+                if (!rows.length) return null;
+                const from = Math.min(...rows.map((r) => r.bar.start)), to = Math.max(...rows.map((r) => r.bar.end));
+                const width = Math.max(dayPx, (to - from) * dayPx);
+                return <><span className={styles.groupTrack} style={{ left: dayLeft(from), width }} /><span className={styles.groupFill} style={{ left: dayLeft(from), width: width * (line.group.total ? line.group.done / line.group.total : 0) }} /></>;
+              })()}</div>
             : <div key={line.row.stepId} className={styles.lane}>
                 {(() => {
                   const bar = preview(line.row);
@@ -121,8 +138,9 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
                   return <div className={styles.bar} data-tone={line.row.tone} data-dragging={dragging ? "true" : undefined} style={{ left: dayLeft(bar.start), width: Math.max(dayPx, (bar.end - bar.start) * dayPx) }}
                     onPointerDown={(e) => { if (e.target === e.currentTarget) begin(e, line.row, "move"); }} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
                     {editable && <span className={styles.handle} data-side="start" role="presentation" aria-label={t("projectPlan.timelineDragStart", { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "start"); }} onPointerMove={move} onPointerUp={end} />}
-                    <button type="button" className={styles.barOpen} aria-label={t("projectPlan.timelineOpenStep", { step: line.row.text })} onClick={() => setOpen(line.row.stepId)}>{line.row.text}</button>
+                    <button type="button" className={styles.barOpen} aria-label={t("projectPlan.timelineOpenStep", { step: line.row.text })} onClick={() => setOpen(line.row.stepId)}>{line.row.late && line.row.column !== "done" ? t("projectPlan.timelineLateBy", { count: Math.max(1, S.day - (step(line.row.stepId)?.dueDay ?? S.day)) }) : ""}</button>
                     {editable && <span className={styles.handle} data-side="end" role="presentation" aria-label={t("projectPlan.timelineDragEnd", { step: line.row.text })} onPointerDown={(e) => { e.stopPropagation(); begin(e, line.row, "end"); }} onPointerMove={move} onPointerUp={end} />}
+                    {after(line.row) && <span className={styles.after} data-tone={line.row.tone}>{after(line.row)}</span>}
                     {dragging && <span className={styles.dragLabel} role="status">{t("projectPlan.timelineSpan", { from: f(bar.start), to: f(bar.end), days: bar.end - bar.start, was: line.row.bar.end - line.row.bar.start })}</span>}
                   </div>;
                 })()}
