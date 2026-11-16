@@ -1,17 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useDemo } from "@/components/dashboard/DemoProvider";
 import { timePerColumn } from "@/features/projects/flow-view";
 import type { ReducedProject } from "@/features/projects/types";
-import { baselineText, fmtNumber, measureSourceLine } from "@/features/projects/views";
+import { baselineText, fmtNumber } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
-import { PersonFace } from "@/components/ui/elements";
+import { Pill } from "@/components/dashboard/shared/primitives";
 import { VerdictChip } from "../../parts";
 import { ResultPanel } from "./ResultPanel";
 import styles from "./Results.module.css";
 
 export function Results({ p }: { p: ReducedProject }) {
-  const { S, f } = useDemo();
   const t = useT();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -22,14 +20,8 @@ export function Results({ p }: { p: ReducedProject }) {
   }, [open]);
   const baseline = p.baseline && !p.baseline.none ? p.baseline : null;
   const latest = p.measures.filter((m) => !m.sentBack).reduce<typeof p.measures[number] | null>((last, m) => !last || m.day >= last.day ? m : last, null);
-  const next = p.checks.filter((c) => !c.measured || p.measures.some((m) => m.check === c.check && m.sentBack)).sort((a, b) => a.dueDay - b.dueDay)[0];
-  const owner = p.leadUserId ? S.seats.find((s) => s.userId === p.leadUserId)?.label ?? p.lead : p.lead;
-  const confirmer = latest?.confirmedByUserId ? S.seats.find((s) => s.userId === latest.confirmedByUserId)?.label : null;
-  const confirmation = latest ? latest.sourceKind !== "typed"
-    ? measureSourceLine(latest, { by: latest.by, confirmedBy: confirmer ?? "", day: f }, t)
-    : latest.confirmed
-      ? confirmer ? t("projectHub.resultsConfirmedBy", { name: confirmer, date: f(latest.confirmedDay ?? latest.day) }) : t("projectResult.raiserConfirmed")
-      : t("projectHub.resultsAwaitingConfirmation") : null;
+  // One status, one chip (DESIGN_RULES §9): a typed number nobody confirmed yet reads "Not confirmed yet", not its verdict.
+  const unconfirmed = latest !== null && !latest.confirmed && latest.sourceKind !== "system";
   const title = p.goal?.goal || baseline?.metric || p.title;
   const times = timePerColumn(p).filter((row) => row.medianDays !== null && row.medianDays > 0);
   const maxDays = Math.max(1, ...times.map((row) => row.medianDays ?? 0));
@@ -37,17 +29,14 @@ export function Results({ p }: { p: ReducedProject }) {
 
   return (
     <div className={styles.results} aria-label={t("projectHub.resultsAriaLabel")}>
-      <p className={styles.hint}>{t("projectHub.resultsHint")}</p>
       <button type="button" className={`${styles.card} ${styles.resultCard}`} aria-label={t("projectHub.resultsOpen")} aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <span className={styles.main}>
-          <span className={styles.heading}><span className={styles.title}>{title}</span><VerdictChip verdict={latest?.verdict ?? "not measured"} /></span>
+          <span className={styles.heading}><span className={styles.title}>{title}</span>{unconfirmed ? <Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill> : <VerdictChip verdict={latest?.verdict ?? "not measured"} />}</span>
           <span className={styles.progressLine}>
             <span><span className={styles.muted}>{t("projectHub.resultsBaseline")}</span> {p.baseline ? baselineText(p.baseline, locale) : t("projectHub.resultsEmpty")}</span>
             {baseline && latest && <><span aria-hidden="true">→</span><span><span className={styles.muted}>{t("projectHub.resultsActual")}</span> <strong>{fmtNumber(latest.value, locale)} {baseline.unit}</strong></span></>}
           </span>
-          {confirmation && <span className={styles.muted}>{confirmation}</span>}
         </span>
-        {next && <span className={styles.owner}><span className={styles.who}>{owner && <PersonFace name={owner} size="sm" />}<span>{owner || t("projectHub.overviewNoOwner")}</span></span><span className={styles.muted}>{t("projectHub.resultsCheckAfterDays", { days: next.check })}</span><span className={styles.muted}>{t("projectHub.resultsCheckDue", { date: f(next.dueDay) })}</span></span>}
       </button>
       {times.length > 0 && <section className={styles.card} aria-label={t("projectHub.resultsColumnChartAriaLabel")}>
         <div className={styles.chartHeading}><h2 className={styles.title}>{t("projectHub.resultsColumnTime")}</h2><span className={styles.muted}>{t("projectHub.resultsMedianDays")}</span></div>

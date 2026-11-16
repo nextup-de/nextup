@@ -313,7 +313,12 @@ a.key:hover { text-decoration: underline; }
 .baseline { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; align-items: flex-start; }
 .big { font-size: var(--nh-fs-xl); font-weight: 600; color: var(--nh-ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .check { border-top: 1px solid var(--nh-line-soft); margin-top: 12px; padding-top: 11px; }
-.checkHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.checkHead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 32px; }
+.movement { font-weight: 600; color: var(--nh-ink); font-variant-numeric: tabular-nums; }
+.checkMove { margin-left: auto; }
+.checkLine { margin: 6px 0 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.foldRow { flex-basis: 100%; min-width: 0; }
+.foldRow :global(.nh-field) { flex: 0 1 160px; }
 .result { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
 .change { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); font-variant-numeric: tabular-nums; }
 .measureForm { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; margin-top: 10px; }

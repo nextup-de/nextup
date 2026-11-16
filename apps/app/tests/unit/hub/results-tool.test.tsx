@@ -29,18 +29,21 @@ function render(p: ReducedProject, locale: "en" | "de" = "en", panel = false) {
   }) }));
 }
 
-it("Results card shows the real baseline and latest measurement, verdict, next check and confirmation state", () => {
+it("Results card shows the real baseline and latest measurement and one chip: the verdict once confirmed, not confirmed before (DESIGN_RULES §9)", () => {
   const p = { ...project(), measures: [measure()], checks: [{ check: 90, opensDay: 90, dueDay: 95, measured: false, late: false }] };
   const markup = render(p);
-  for (const label of ["Wait time", "Baseline", "Measured value", "50 hours", "30", "better", "Awaiting confirmation", "Check after 90 days", 'aria-haspopup="dialog"']) expect(markup).toContain(label);
+  for (const label of ["Wait time", "Baseline", "Measured value", "50 hours", "30", "Not confirmed yet", 'aria-haspopup="dialog"']) expect(markup).toContain(label);
+  // The check's date, the owner and a second "not confirmed" sentence live in the drawer's check rows, not on the card.
+  for (const gone of [">better<", "Awaiting confirmation", "Check after 90 days", "Due ", "What this project changes"]) expect(markup).not.toContain(gone);
   expect(markup).not.toContain("Add result");
   expect(markup).not.toContain("How long a step sits in each column");
   const de = render(p, "de");
-  for (const label of ["Ausgangswert", "Gemessener Wert", "besser", "Ergebnis öffnen"]) expect(de).toContain(label);
+  for (const label of ["Ausgangswert", "Gemessener Wert", "Noch nicht bestätigt", "Ergebnis öffnen"]) expect(de).toContain(label);
+  expect(render({ ...p, measures: [measure({ confirmed: true })] })).toContain("better");
 });
 
 it("Results card excludes a sent-back measurement and keeps a genuine zero result", () => {
-  const p = { ...project(), measures: [measure({ value: 0 }), measure({ day: 40, value: 999, sentBack: true, verdict: "worse" })] };
+  const p = { ...project(), measures: [measure({ value: 0, confirmed: true }), measure({ day: 40, value: 999, sentBack: true, verdict: "worse" })] };
   const markup = render(p);
   expect(markup).toContain("better");
   expect(markup).toContain("0 hours");

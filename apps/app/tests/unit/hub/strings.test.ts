@@ -13,9 +13,9 @@ const groups = {
   ],
   results: [
     "Title", "AriaLabel", "Open", "Empty", "Baseline", "Target", "Actual",
-    "MeasureChecks", "CheckAfterDays", "CheckEmpty", "Verdict", "VerdictBetter",
+    "MeasureChecks", "CheckEmpty", "Verdict", "VerdictBetter",
     "VerdictSame", "VerdictWorse", "VerdictPending", "Confirmation",
-    "AwaitingConfirmation", "ConfirmedBy", "Questioned", "EnterMeasure", "Confirm",
+    "Questioned", "EnterMeasure", "Confirm",
     "Question", "Reenter", "Reward", "RewardClaim", "RewardEmpty", "ColumnTime",
     "MedianDays", "ColumnTimeEmpty", "ColumnChartAriaLabel",
   ],
@@ -62,7 +62,6 @@ it("HUB strings: interpolations and plural pairs agree across languages", () => 
     expect(placeholders(projectHub.de[key]), key).toEqual(placeholders(projectHub.en[key]));
   }
   expect(placeholders(projectHub.en.checklistProgress)).toEqual(["done", "total"]);
-  expect(placeholders(projectHub.en.resultsConfirmedBy)).toEqual(["date", "name"]);
   expect(placeholders(projectHub.en.activityStepMoved)).toEqual(["from", "name", "step", "to"]);
   for (const catalog of [projectHub.en, projectHub.de]) {
     expect(placeholders(catalog.teamSteps_one)).toEqual(["count"]);

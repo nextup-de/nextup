@@ -46,6 +46,11 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 }
 
 /** The project page's Results page (the first to open it adds it): the measure card and the reward panel are there. */
+/** Who typed the number, its deadline and "Send it back" sit in the check row's Details fold (DESIGN_RULES §9). */
+async function openDetails(page: Page, check = 30) {
+  await page.locator(`[data-name="measure-details-${check}"] > summary`).filter({ visible: true }).click();
+}
+
 async function openResults(page: Page) {
   await addPages(page, `/${SLUG}/projects/${projectId}`, ["Results"]);
   await (await projectPages(page)).getByRole("link", { name: /^Results/ }).click();
@@ -208,17 +213,21 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
   test("the lead types the 30-day result with a CO₂ figure; it is not confirmed and the lead cannot confirm it", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
     await openResults(page);
-    await vis(page, "measure-type-30").click();
-    await page.getByLabel(/The number now/).filter({ visible: true }).fill(RESULT);
+    await page.getByLabel(/The number now/).filter({ visible: true }).fill(RESULT); // inline, one filled Record (DESIGN_RULES §9)
+    await page.locator('[data-name="measure-more-30"] > summary').filter({ visible: true }).click(); // impact and note are folded
     await page.getByLabel("CO₂ per year (kg)").filter({ visible: true }).fill(CO2);
-    await page.getByRole("button", { name: "Record the measure" }).click();
+    await page.getByRole("button", { name: "Record", exact: true }).filter({ visible: true }).click();
 
-    await expect(vis(page, "measure-source-30")).toContainText(`Typed by ${LEAD} · not confirmed`); // the page names the holder's seat label (the person), not the role
-    await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until"); // decision Q6.15: it has a date
+    await expect(vis(page, "measure-waiting-30")).toContainText("Not confirmed yet"); // one chip carries the status
+    await openDetails(page);
+    await expect(vis(page, "measure-source-30")).toContainText(`Typed by ${LEAD}`); // the page names the holder's seat label (the person), not the role
+    await expect(vis(page, "measure-source-30")).not.toContainText("not confirmed"); // said once, by the chip
+    await expect(vis(page, "measure-deadline-30")).toContainText("Waiting for a second person until"); // decision Q6.15: it has a date
     await expect(page.getByRole("main")).toContainText(/1[ ,.’']?200/); // the CO₂ figure
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.reload();
     await page.getByRole("button", { name: "Open result", exact: true }).click(); // a reload closes the result drawer
+    await openDetails(page);
     await expect(vis(page, "measure-source-30")).toBeVisible();
     await expect(page.getByTestId("measure-confirm-30")).toHaveCount(0);
     await page.context().close();
@@ -232,11 +241,11 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await expect(waiting).toContainText("a second person checks the number");
     await expect(waiting).toContainText(/Due /);
     await openResults(page);
-    await expect(vis(page, "measure-waiting-30")).toContainText("Waiting for a second person until");
-    await vis(page, "measure-confirm-30").click();
-    await page.getByRole("button", { name: "Yes, the number is right" }).click();
+    await openDetails(page);
+    await expect(vis(page, "measure-deadline-30")).toContainText("Waiting for a second person until");
+    await vis(page, "measure-confirm-30").click(); // one click (DESIGN_RULES §9)
 
-    await expect(vis(page, "measure-source-30")).toContainText(`Confirmed by`);
+    await expect(page.getByTestId("measure-source-30")).toContainText(`Confirmed by`);
     await expect(page.getByRole("main")).toContainText(/better/i);
     await expect(page.getByRole("main")).toContainText(/Reward due by (your|the company.s) rule/);
 
