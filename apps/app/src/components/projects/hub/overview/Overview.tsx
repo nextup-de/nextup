@@ -14,7 +14,8 @@ import { resultView } from "@/features/projects/result-view";
 import { usePageActs } from "../../page/usePageActs";
 import { useFormat, useLocale, useT } from "@/i18n/client";
 import { shows } from "@/lib/utils/quiet";
-import { BaselinePanel } from "../../ProjectMeasure";
+import { BaselinePanel, MeasurePanel } from "../../ProjectMeasure";
+import { unconfirmedOf } from "@/features/projects/confirm";
 import { useProjectHints } from "../../draft/useProjectHints";
 import { HeadSlot } from "../../tools/HeadSlot";
 import { RangeMenu } from "./RangeMenu";
@@ -38,6 +39,9 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
   const range = parseOverviewRange(params.get("range"));
   const viewerOnTeam = actorUserId !== null && (p.leadUserId === actorUserId || p.memberUserIds.includes(actorUserId));
   const facts = overviewFacts(p, { range, day: S.day, viewerOnTeam });
+  // A number that waits for a second person is shown where the inbox's "Confirm the result" lands (Kevin, 16 Nov 2026):
+  // a project starts with Overview, Idea and Files, so the Results page is often not there to confirm it on.
+  const resultWaits = unconfirmedOf(p).length > 0;
   const columnLabel: Record<StepColumn, string> = { todo: t("projectHub.overviewToDo"), doing: t("projectHub.overviewDoing"), blocked: t("projectHub.overviewBlocked"), done: t("projectHub.overviewDone") };
   const total = COLUMNS.reduce((n, c) => n + facts.columns[c], 0);
   const lines = new Map(timelineOf(p, locale).map((l) => [l.id, l]));
@@ -104,6 +108,7 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
       <div className={styles.grid}>
       <div className={styles.main}>
       {facts.showBaseline && <BaselinePanel p={p} hint={baseHint} />}
+      {resultWaits && <MeasurePanel p={p} />}
 
       {noSteps ? <section className={styles.card} data-empty="true" aria-label={t("projectHub.overviewStartTitle")}>
         <h3 className={styles.cardTitle}>{t("projectHub.overviewStartTitle")}</h3>
