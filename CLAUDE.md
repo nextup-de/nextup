@@ -38,6 +38,9 @@ src/lib/            db client, small utils.   src/server/actions/  server action
 - **Events, not edits.** When the case store lands (`features/cases`), state
   changes by appending an event and re-reducing — the same rule the demo had.
   Never store display text as state; store facts, build sentences at render.
+- **Design rules are fixed:** `docs/DESIGN_RULES.md`. Read it before any UI change. A PR that breaks a rule changes,
+  never the rule or its test. Above all §8: ideas and projects are separate. No idea is ever shown under Projects;
+  an idea lives in the Inbox, the Ideas tab and the Feed, and becomes a project only after the last yes.
 - **Styling:** tokens in `src/styles/tokens.css`, shared primitives (`nh-*`) in
   `src/app/globals.css`, page/component styles in a sibling `*.module.css`.
   No Tailwind, no styled-components, no inline style objects beyond a one-off.
