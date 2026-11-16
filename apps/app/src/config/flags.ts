@@ -77,7 +77,7 @@ export const FLAGS = {
   overviewList: {
     description: "The Projects tab as one Overview list: your open ideas and your projects together, list or grid, with pills, search and sort. Off: projects only",
     owner: "Sam",
-    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    defaults: { demo: true, sandbox: true, pilot: false, live: false },
     added: "2026-11-16",
     removeBy: "2027-01-31",
   },
