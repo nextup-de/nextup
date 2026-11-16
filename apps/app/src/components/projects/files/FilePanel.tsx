@@ -5,9 +5,9 @@ import type { FileKind, FileRow } from "@/features/files/items";
 import { linkedSteps } from "@/features/files/view";
 import type { MessageKey } from "@/i18n";
 import { useLocale, useT } from "@/i18n/client";
-import { fileVersionsAction } from "@/server/actions/project-files";
 import { FileIcon } from "./FileIcon";
 import { sizeText, whoWhen } from "./FolderPanel";
+import { useFilesSource } from "./source";
 import type { FilesPartProps } from "./types";
 import styles from "./Panel.module.css";
 
@@ -33,6 +33,7 @@ export function FilePanel({ state, actions }: FilesPartProps) {
   const locale = useLocale();
   const { S } = useDemo();
   const { p, selected, dialog, editor } = state;
+  const { versions } = useFilesSource(p.id);
   const [copied, setCopied] = useState(false);
   const [opening, setOpening] = useState(false);
   const [count, setCount] = useState<number | null>(null);
@@ -42,9 +43,9 @@ export function FilePanel({ state, actions }: FilesPartProps) {
   useEffect(() => {
     if (!id) return;
     let stale = false;
-    void fileVersionsAction(p.id, id).then((a) => { if (!stale) setCount(a.state === "ok" ? a.versions.length : null); }).catch(() => { if (!stale) setCount(null); });
+    void versions(id).then((a) => { if (!stale) setCount(a.state === "ok" ? a.versions.length : null); }).catch(() => { if (!stale) setCount(null); });
     return () => { stale = true; };
-  }, [p.id, id]);
+  }, [versions, id]);
 
   if (!selected || selected.isFolder || dialog?.kind === "history") return null;
   const row = selected;

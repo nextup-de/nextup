@@ -2,13 +2,12 @@
 import { useEffect, useState } from "react";
 import { PersonFace } from "@/components/ui/elements";
 import type { FileRow } from "@/features/files/items";
-import { listDemoFolder } from "@/features/demo/files-demo";
-import { projectFolderAction } from "@/server/actions/project-files";
 import { linkedSteps } from "@/features/files/view";
 import { useLocale, useT } from "@/i18n/client";
 import { teamOf } from "../parts";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { FileIcon } from "./FileIcon";
+import { useFilesSource } from "./source";
 import type { FilesPartProps } from "./types";
 import styles from "./Panel.module.css";
 
@@ -49,8 +48,9 @@ export function InsideStrip({ rows, more, onSelect, onMore }: { rows: FileRow[];
 export function FolderPanel({ state, actions }: FilesPartProps) {
   const t = useT();
   const locale = useLocale();
-  const { seed, serverMode } = useDemo();
+  const { seed } = useDemo();
   const { p, folder, selected, loaded, path, editor } = state;
+  const { list } = useFilesSource(p.id);
   const folderRow: FileRow | null = selected?.isFolder ? selected : null;
   const here = folderRow === null;
   // A selected folder's own files, for the Inside strip: read from the same place the page reads, keyed by the folder they belong to.
@@ -59,10 +59,9 @@ export function FolderPanel({ state, actions }: FilesPartProps) {
   useEffect(() => {
     if (below === null) return;
     let stale = false;
-    const answer = serverMode ? projectFolderAction(p.id, below) : Promise.resolve(listDemoFolder(below));
-    void answer.then((a) => { if (!stale) setGot({ key: below, rows: a.state === "ok" ? a.rows : [] }); }).catch(() => { if (!stale) setGot({ key: below, rows: [] }); });
+    void list(below).then((a) => { if (!stale) setGot({ key: below, rows: a.state === "ok" ? a.rows : [] }); }).catch(() => { if (!stale) setGot({ key: below, rows: [] }); });
     return () => { stale = true; };
-  }, [below, serverMode, p.id]);
+  }, [below, list]);
   // What the panel describes: the selected folder's row, or the open folder's rows as loaded.
   const inside = here ? loaded : got && got.key === below ? got.rows : [];
   const total = inside.reduce((n, row) => n + row.size, 0);

@@ -6,15 +6,36 @@
 // must never read as another company's real internal problems. Days are relative to `today`.
 import type { Role } from "@/config/roles";
 import type { SeatRow } from "@/features/auth/identity";
-import type { SeedEvent } from "@/features/cases/events";
+import { newId, type CaseEvent, type EventLog, type NewEvent, type SeedEvent } from "@/features/cases/events";
+import { FOLDER_ACTOR } from "@/features/files/folder-actor";
+import { projectFolder } from "@/features/files/link";
 import type { ZiRow } from "@/features/metrics/types";
-import type { SeedProject } from "@/features/projects/types";
+import type { ReducedProject, SeedProject } from "@/features/projects/types";
+import { DEMO_FOLDER } from "./files-demo";
 import type { Buddy, Dept, Idea, Initiative, Ledger, Metrics, OrgPerson, Outcome, Problem, Route, Seed, SeedCase, SeedGoal, SeedRole, SpendRule, Stall, WaitingOn } from "./types";
 
 export const SAMPLE_PREFIX = "sample-";
 
 /** Is this event's target part of the sample data? Those events stay in this browser. */
 export const isSampleId = (id: string | null | undefined): boolean => Boolean(id?.startsWith(SAMPLE_PREFIX));
+
+/**
+ * The folder job for what lives in this browser. Every real project links its idea's SharePoint folder at the yes
+ * (server/files/auto-folder.ts), but the job never sees a sample project: so each one that has no folder yet gets the
+ * demo's (features/demo/files-demo.ts), written as the job writes it.
+ */
+export function sampleFolderLinks(projects: readonly Pick<ReducedProject, "id" | "links">[]): NewEvent[] {
+  return projects.filter((p) => isSampleId(p.id) && !projectFolder(p))
+    .map((p) => ({ type: "project.linked", actor: FOLDER_ACTOR, actorUserId: null, target: p.id, payload: { ...DEMO_FOLDER } }));
+}
+
+/** `log` with those links appended on `day`. A project the log links already is left out, so running twice writes once; nothing to add returns `log` itself. */
+export function withSampleFolders(log: EventLog, projects: readonly Pick<ReducedProject, "id" | "links">[], day: number): EventLog {
+  const have = new Set(log.events.filter((e) => e.type === "project.linked" && e.payload.system === "sharepoint" && !e.payload.stepId).map((e) => e.target));
+  const add = sampleFolderLinks(projects).filter((l) => !have.has(l.target));
+  if (add.length === 0) return log;
+  return { ...log, events: log.events.concat(add.map((l): CaseEvent => ({ id: newId("e"), ts: Date.now(), day, type: l.type, actor: l.actor, actorUserId: null, target: l.target, payload: l.payload ?? {} }))) };
+}
 
 export type SampleViewer = { userId: string | null; name: string; handle: string | null; role: Role };
 
@@ -179,6 +200,9 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
     ({ type, day: day(n), actor, actorUserId: actor === me || actor === raiser ? uid : null, ...(payload ? { payload } : {}) });
   // An event on the project a seeded yes opens: it rides on the case row, since that project has no row of its own.
   const onProject = (projectId: string, e: SeedEvent): SeedEvent => ({ ...e, target: projectId });
+  // A project's folder is linked the day it opens, as the folder job does for a real one (sampleFolderLinks covers those opened later).
+  // Added last in each row, so the seed ids of the events before it stay what they were; the reducer orders by day.
+  const folder = (n: number): SeedEvent => ev("project.linked", n, FOLDER_ACTOR, { ...DEMO_FOLDER });
 
   const seats: SeatRow[] = [
     { id: "sample-seat-plant", roleId: "sample-role-plant", label: BOSS, userId: null, sort: 900 },
@@ -264,6 +288,7 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
         // A yes that opens a draft and asks the viewer to lead it (plan SET, D8 to D11).
         ev("case.decided", -2, "N. Demir", { answer: "yes", note: "Yes. Agree the tray count with the supplier first.", projectId: "sample-pj2", lead: me, leadUserId: uid,
           title: "Returnable trays for door modules", draft: true, raiserNote: "Your tray idea is a go. The lead sets it up with the supplier now." }),
+        onProject("sample-pj2", folder(-2)),
       ] },
 
     // Raised by the viewer and answered with a reasoned no: not now, what would change it, and the day it comes back (plan NOR).
@@ -291,6 +316,7 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
           approvals: [{ kind: "budget", roleId: "sample-role-desk", coversUpToEur: 5000 }], stepDueDay: day(2), costEur: 4800, decidingRoleId: "sample-role-qua",
           projectId: "sample-pj7", lead: "L. Becker", title: "Leak-test fixtures, line 2", note: "Yes from Quality, if final assembly's budget carries the €4,800.",
         }),
+        onProject("sample-pj7", folder(-3)),
       ] },
     // A draft someone else leads and is setting up: template, goal and baseline are in, and the viewer is invited onto the team (plan SET, D12 to D17).
     { id: "sample-c13", kind: "idea", title: "A gauge check at the start of every paint-shop shift", from: "A. Schulz", fromDept: "Paint shop, shift B",
@@ -303,6 +329,7 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
         onProject("sample-pj5", ev("project.goal", -5, "T. Richter", { goal: "Find a drifting film-thickness gauge within the shift it drifts.", doneWhen: "Every shift in the paint shop checks the gauge at start for four weeks.", doneBy: day(30) })),
         onProject("sample-pj5", ev("project.baseline", -4, "T. Richter", { metric: "film-thickness faults found at the weekly audit", unit: "per week", value: 9, better: "down", source: "Paint-shop audit log, 8 weeks" })),
         ...(uid ? [onProject("sample-pj5", ev("project.invited", -2, "T. Richter", { userId: uid, role: "member" }))] : []),
+        onProject("sample-pj5", folder(-6)),
       ] },
     // Decided long ago; the project it became is the viewer's to lead (below).
     { id: "sample-c14", kind: "idea", title: "Pick-to-light for the clip boxes at station 18", from: "L. Becker", fromDept: "Battery pack line",
@@ -442,7 +469,8 @@ export function withSampleData(base: Seed, viewer: SampleViewer, today: number):
 
   return {
     ...base,
-    depts: DEPTS, people, problems: PROBLEMS, ideas, initiatives, outcomes: OUTCOMES, cases, projects, waitingOn: WAITING_ON, buddies: BUDDIES,
+    depts: DEPTS, people, problems: PROBLEMS, ideas, initiatives, outcomes: OUTCOMES, cases, waitingOn: WAITING_ON, buddies: BUDDIES,
+    projects: projects.map((p) => ({ ...p, seedEvents: [...(p.seedEvents ?? []), folder(p.openedDay - today)] })),
     stall: STALL, ledger: LEDGER, metrics: METRICS, goals: GOALS, spend: base.spend ?? SPEND, briefs: undefined,
     seats: [...base.seats, ...seats], roles: [...(base.roles ?? []), ...ROLES], routes: [...base.routes, ...routes],
     leaders: [...new Set([...base.leaders, desk])],
