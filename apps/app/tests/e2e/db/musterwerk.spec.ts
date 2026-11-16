@@ -11,7 +11,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Browser, Page } from "@playwright/test";
-import { confirmSheet, expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { confirmSheet, expect, passSecondFactor, publishIdea, test, yourMove } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { generateMusterwerk } from "../../../prisma/generators/musterwerk";
 
@@ -137,7 +137,7 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
     const row = desk.getByRole("main").getByText(TITLE).first();
     await expect(row).toBeVisible();
     await row.click();
-    await desk.getByRole("button", { name: "Ask a question" }).click();
+    await (await yourMove(desk, "Ask a question")).click();
     await confirmSheet(desk, "Which shift, and since when does the pressure drop?", "Send the question");
 
     const member = await signIn(browser, raiser);

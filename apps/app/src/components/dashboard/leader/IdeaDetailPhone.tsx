@@ -3,11 +3,12 @@
 // in over the inbox, in three pages you swipe (or tap) between - Idea, AI, Feed - under a bar that
 // holds back, the page switch and ↑/↓ to the next idea. The AI page opens on the five scores as a
 // strip of rings; a ring opens its reasoning in a bottom sheet, and so do people, departments and
-// the decision. Sources fold into one row. The decision sits in a dock at the bottom, where the
+// "Your move". Sources fold into one row. "Your move" opens from a dock at the bottom, where the
 // thumb is. Same pieces as IdeaDetail (IdeaParts).
 import { useEffect, useId, useRef, useState } from "react";
 import type { IdeaBrief } from "@/features/ideas/brief";
-import { AiBrief, Blocks, Chevron, DecisionList, FeedBody, FileChip, initialsOf, PanelRow, PersonCard, Sources, Sparkle, StatusBox, type IdeaProps } from "./IdeaParts";
+import { AiBrief, Blocks, Chevron, deskMoves, FeedBody, FileChip, initialsOf, PanelRow, PersonCard, Sources, Sparkle, type IdeaProps } from "./IdeaParts";
+import { YourMove } from "@/components/inbox/YourMove";
 import base from "./IdeaDetail.module.css";
 import styles from "./IdeaDetailPhone.module.css";
 import { avatarTone } from "@/lib/avatar";
@@ -41,7 +42,7 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const pager = useRef<HTMLDivElement>(null);
   const thumb = useRef<HTMLSpanElement>(null);
-  const rec = brief.actions.find((d) => d.key === brief.rec);
+  const live = brief.actions.some((d) => d.live);
 
   // The page switch follows the finger: the thumb tracks the scroll, the label snaps when it lands.
   const onScroll = () => {
@@ -141,11 +142,9 @@ export function IdeaDetailPhone({ idea, brief, status, feed, onDecide, onComment
 
       <footer className={styles.dock}>
         <span className={styles.dockText}>
-          {status ? <><span className={styles.dockLabel}>{status.label}</span><span className={styles.dockSub}>{status.sub || status.lines[0]}</span></>
-            : rec ? <><span className={styles.dockLabel}><Sparkle size={12} />{t("leader.aiSuggests")}</span><span className={styles.dockSub}>{rec.label}</span></>
-            : <span className={styles.dockLabel}>{t("leader.nothingToDecide")}</span>}
+          {status ? <span className={styles.dockLabel}>{status.label}</span> : !live ? <span className={styles.dockLabel}>{t("leader.nothingToDecide")}</span> : null}
         </span>
-        {brief.actions.length > 0 && <button type="button" className={styles.decide} onClick={() => setSheet({ kind: "decide" })}>{t("leader.decide")}</button>}
+        {live && <button type="button" className={styles.decide} onClick={() => setSheet({ kind: "decide" })}>{t("inbox.yourMove")}</button>}
       </footer>
 
       {sheet && <PhoneSheet brief={brief} feed={feed} sheet={sheet} setSheet={setSheet} status={status} decide={decide} srcId={uid + "-score"} />}
@@ -237,14 +236,8 @@ function PhoneSheet({ brief, feed, sheet, setSheet, status, decide, srcId }: { b
       </>
     );
   } else {
-    label = t("leader.yourDecision");
-    body = (
-      <>
-        <h2 className={base.sideTitle}>{t("leader.yourDecision")}</h2>
-        <StatusBox status={status} />
-        <DecisionList brief={brief} onDecide={decide} />
-      </>
-    );
+    label = t("inbox.yourMove");
+    body = <YourMove status={status?.label} lines={status?.lines} moves={deskMoves(brief, decide)} />;
   }
   return (
     <>

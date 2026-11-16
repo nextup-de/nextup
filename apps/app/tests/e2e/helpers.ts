@@ -211,6 +211,19 @@ export async function answerRail(page: Page) {
   await expect(open).toHaveCount(0);
 }
 
+/**
+ * A move in "Your move" (components/inbox/YourMove, DESIGN_RULES §9): its button when it is in view (the filled one, or a
+ * quiet yes or no), else its item under More, which this opens.
+ */
+export async function yourMove(page: Page, name: string | RegExp): Promise<Locator> {
+  const card = page.getByTestId("your-move");
+  await expect(card).toBeVisible();
+  const button = card.getByRole("button", { name });
+  if (await button.count()) return button.first();
+  await card.getByRole("button", { name: "More", exact: true }).click();
+  return card.getByRole("menuitem", { name });
+}
+
 /** The sheet that opens for "No, and why", "Ask a question", "Answer …". */
 export const sheet = (page: Page) => page.getByRole("dialog").filter({ has: page.locator("textarea") });
 

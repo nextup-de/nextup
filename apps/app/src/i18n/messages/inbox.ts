@@ -50,6 +50,8 @@ export const inbox = defineMessages({
     closeItem: "Back to the inbox",
     openLink: "Open",
     markFailed: "Could not mark the notices as read.",
+    yourMove: "Your move",
+    more: "More",
   },
   de: {
     title: "Eingang",
@@ -98,5 +100,7 @@ export const inbox = defineMessages({
     closeItem: "Zurück zum Eingang",
     openLink: "Öffnen",
     markFailed: "Die Mitteilungen konnten nicht als gelesen markiert werden.",
+    yourMove: "Sie sind dran",
+    more: "Mehr",
   },
 });

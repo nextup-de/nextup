@@ -5,7 +5,7 @@
 // It makes its own company straight in the database ("e2e-<time>", sandbox stage = real-people rules) and
 // deletes it afterwards, so it leaves acme and everyone's codes alone on a shared dev database.
 import type { Browser, Page } from "@playwright/test";
-import { confirmSheet, expect, passSecondFactor, publishIdea, test, vis } from "../helpers";
+import { confirmSheet, expect, passSecondFactor, publishIdea, test, vis, yourMove } from "../helpers";
 import { createTestCompany, deleteTestCompany, emailOf } from "./company-fixture";
 
 const SLUG = `e2e-${Date.now().toString(36)}`;
@@ -78,7 +78,7 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     const row = leader.getByRole("main").getByText(title).first();
     await expect(row).toBeVisible();
     await row.click();
-    await leader.getByRole("button", { name: "Ask a question" }).click();
+    await (await yourMove(leader, "Ask a question")).click();
     await confirmSheet(leader, "Which fitter - from line 2 or from maintenance?", "Send the question");
 
     await member.goto(`/${SLUG}/team`);
