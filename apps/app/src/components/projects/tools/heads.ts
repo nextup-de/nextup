@@ -46,6 +46,7 @@ export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProp
   list: jiraHead,
   calendar: jiraHead,
   timeline: jiraHead,
+  milestones: jiraHead,
   files: ({ p, t, title, editor, onFilesUpload, onFilesSource }) => ({ ...filesHead(p, t, { onUpload: onFilesUpload, canUpload: editor, onOpenSource: onFilesSource }), title }),
 };
 

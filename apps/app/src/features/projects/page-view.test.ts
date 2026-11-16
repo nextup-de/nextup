@@ -33,8 +33,8 @@ it("PGB tool menu: a viewer is offered no changing item", () => {
 it("PGB add tool: lists every kind with its tag when the company has Jira, no tags without", () => {
   const withJira = addToolOptions([three], three, { query: "", jiraOn: true, agent: true });
   expect(withJira.map((o) => o.kind)).toEqual([...TOOL_KINDS]);
-  expect(withJira.filter((o) => o.tag === "jira").map((o) => o.kind)).toEqual(["board", "list", "calendar", "timeline"]);
-  expect(withJira.filter((o) => o.tag === "nextup")).toHaveLength(TOOL_KINDS.length - 4);
+  expect(withJira.filter((o) => o.tag === "jira").map((o) => o.kind)).toEqual(["board", "list", "calendar", "timeline", "milestones"]);
+  expect(withJira.filter((o) => o.tag === "nextup")).toHaveLength(TOOL_KINDS.length - 5);
   expect(addToolOptions([three], three, { query: "", jiraOn: false, agent: true }).every((o) => o.tag === null)).toBe(true);
 });
 

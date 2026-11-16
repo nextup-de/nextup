@@ -36,8 +36,8 @@ it("ToolSection collapsed hides the body and offers Expand; a title replaces the
 });
 
 it("ToolSection gives a viewer no grip, no collapse button and no changing menu item", () => {
-  const html = render(page.tools[2], { editor: false });
+  const html = render({ ...page.tools[2], kind: "doc" }, { editor: false });
   expect(html).not.toContain("⋮⋮");
   expect(html).not.toContain(t("projectPages.collapse"));
-  expect(html).not.toContain(t("projectPages.toolMenuLabel", { tool: t("projectPages.toolMilestones") }));
+  expect(html).not.toContain(t("projectPages.toolMenuLabel", { tool: t("projectPages.toolDoc") }));
 });

@@ -58,7 +58,7 @@ export function AddToolMenu({ p, page, jira, agent, index, onClose }: AddToolMen
         <span className={rows.glyph} aria-hidden="true">{TOOL_GLYPH[kind]}</span>
         <span className={rows.grow}>{name(kind)}</span>
         {taken ? <span className={styles.tag}>{t("projectPages.alreadyInProject")}</span>
-          : tag && <span className={`${styles.tag} ${rows.tag}`} data-tag={tag}>{tag === "jira" ? `⟳ ${t("projectPages.tagJira")}` : t("projectPages.tagNextUpOnly")}</span>}
+          : tag && <span className={`${styles.tag} ${rows.tag}`} data-tag={tag} title={tag === "jira" && kind === "milestones" ? t("projectJsy.tagMilestonesTitle") : undefined}>{tag === "jira" ? `⟳ ${t("projectPages.tagJira")}` : t("projectPages.tagNextUpOnly")}</span>}
       </button>)}
       {options.length === 0 && <p className={styles.summary}>{t("projectPages.noToolsFound")}</p>}
     </div>

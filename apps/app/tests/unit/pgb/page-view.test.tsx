@@ -51,7 +51,7 @@ it("PGB stacked page: Jira summary requires every tool to be a Jira tool on a sy
   const syncing = { ...p, sync: { system: "jira" as const, on: true, day: 0, by: "lead" } };
   expect(render({ ...props, p: syncing })).toContain("All synced with Jira");
   expect(render({ ...props, p: { ...syncing, sync: { ...syncing.sync, on: false } } })).not.toContain("All synced with Jira");
-  expect(render({ ...props, p: syncing, page: { ...props.page, tools: [...props.page.tools, READY_PAGES[2].tools[2]] } })).not.toContain("All synced with Jira");
+  expect(render({ ...props, p: syncing, page: { ...props.page, tools: [...props.page.tools, { ...READY_PAGES[2].tools[2], kind: "doc" as const }] } })).not.toContain("All synced with Jira");
   expect(render({ ...props, p: syncing, page: { ...props.page, tools: [] } })).not.toContain("All synced with Jira");
 });
 

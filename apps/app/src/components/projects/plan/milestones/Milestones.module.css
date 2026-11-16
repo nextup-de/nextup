@@ -52,3 +52,8 @@
 .error { margin: 0; color: var(--nh-danger); }
 .milestones :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 @media (width < 760px) { .dates { grid-template-columns: 1fr; } }
+
+.version { padding: 2px 8px; border-radius: var(--radius-xs); background: var(--nh-app-ground); color: var(--nh-ink); font-size: var(--nh-fs-xs); font-weight: 600; text-decoration: none; }
+a.version:hover { text-decoration: underline; }
+.version[data-waiting] { font-weight: 500; color: var(--nh-ink); }
+.version[data-problem] { color: var(--nh-problem); }
