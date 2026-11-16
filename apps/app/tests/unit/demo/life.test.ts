@@ -73,7 +73,8 @@ describe("Musterwerk's working day", () => {
     expect(state.projects.length).toBeGreaterThan(5);
     expect(state.projects.some((p) => p.status === "running" && p.steps.length === 4)).toBe(true);
     expect(state.projects.some((p) => p.measures.length > 0)).toBe(true);
-    expect(state.projects.every((p) => p.baseline !== null)).toBe(true);
+    // Every project the simulation started took its baseline first; a draft still in setup may not have one yet.
+    expect(state.projects.every((p) => p.baseline !== null || (p.draft && p.status === "planning"))).toBe(true);
   });
 
   it("leaves a real person's desk to them, with every idea of their route waiting", () => {
