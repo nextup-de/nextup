@@ -63,3 +63,18 @@ it("WHAT HAPPENS NEXT stays away when every step is done, and asks for the first
   const none = wrap(h(NextPanel, { p: project({ steps: [] }) }));
   expect(none).toContain("Add the first one on the board");
 });
+
+it("DONE CARD carries what comes next: a recognised project says where it stands and offers no button", () => {
+  const markup = render(project({ status: "recognised", steps: [step("a", { column: "done", doneDay: -5 })] }));
+  expect(markup).toContain("The one step is done");
+  expect(markup).toContain("Recognised");
+  expect(markup).not.toContain("Mark it done");
+});
+
+it("DONE CARD while running: no button for a viewer the rights refuse, and no status line either", () => {
+  // The button follows resultView(...).done.can, the same check as Manage › Mark it done; the e2e demo walks the lead's side.
+  const markup = render(project({ steps: [step("a", { column: "done", doneDay: -5 })] }));
+  expect(markup).toContain("The one step is done");
+  expect(markup).not.toContain("Mark it done");
+  expect(markup).not.toContain("data-testid=\"overview-stands\"");
+});

@@ -8,7 +8,9 @@ import { DEFAULT_OVERVIEW_RANGE, overviewFacts, parseOverviewRange, type Overvie
 import type { ProjectPage, ReducedProject, StepColumn, ToolInstance } from "@/features/projects/types";
 import { fmtNumber, timelineOf } from "@/features/projects/views";
 import { ADDABLE_PAGES, pagesOf } from "@/features/projects/pages";
-import { useRights } from "../../parts";
+import { idViewerOf, nextLine, useRights } from "../../parts";
+import { DoneSheet } from "../../result/DoneSheet";
+import { resultView } from "@/features/projects/result-view";
 import { usePageActs } from "../../page/usePageActs";
 import { useFormat, useLocale, useT } from "@/i18n/client";
 import { shows } from "@/lib/utils/quiet";
@@ -21,7 +23,8 @@ import styles from "./Overview.module.css";
 const COLUMNS: StepColumn[] = ["todo", "doing", "blocked", "done"];
 
 export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance; jiraSynced?: boolean; aside?: ReactNode }) {
-  const { S, f, actorUserId, href, flag } = useDemo();
+  const ctx = useDemo();
+  const { S, f, actorUserId, href, flag } = ctx;
   const rights = useRights(p);
   const pageActs = usePageActs(p);
   const t = useT();
@@ -62,6 +65,10 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
   const allDone = !noSteps && facts.columns.done > 0 && facts.columns.todo + facts.columns.doing + facts.columns.blocked === 0;
   const doneDays = p.steps.flatMap((s) => !s.dropped && s.column === "done" && s.doneDay !== null ? [s.doneDay] : []);
   const lastDoneDay = doneDays.length ? Math.max(...doneDays) : null;
+  // With every step done the card carries what comes next (Kevin, 16 Nov 2026): while the project runs, who may mark it done gets the
+  // same sheet as Manage › Mark it done; after that, the line says where the project stands. No new right: resultView decides.
+  const markDone = allDone ? resultView(p, S, idViewerOf(ctx), S.day, locale).done : null;
+  const [marking, setMarking] = useState(false);
   const tilesShown = shows(facts.tiles.doneInRange) || shows(facts.tiles.waiting) || shows(facts.tiles.late) || shows(facts.tiles.stuck) || facts.tiles.nextDue !== null;
   const stepsPage = pagesOf(p, { agent: flag("agent") }).find((x) => x.tools.some((tool) => tool.kind === "board" || tool.kind === "list")) ?? null;
   const readySteps = ADDABLE_PAGES.find((x) => x.id === "steps") ?? null;
@@ -108,6 +115,9 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
         {/* Every step is done (Kevin, 16 Nov 2026): one calm card, no full bar and no legend of zeros. */}
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewAllDone", { count: facts.columns.done })}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {lastDoneDay !== null && <p className={styles.muted}>{t("projectHub.overviewLastDone", { date: f(lastDoneDay) })}</p>}
+        {markDone?.can ? (marking ? <DoneSheet p={p} done={markDone} onClose={() => setMarking(false)} />
+          : <p><button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setMarking(true)}>{t("projects.markDoneEllipsis")}</button></p>)
+          : p.status !== "running" && <p className={styles.muted} data-testid="overview-stands">{nextLine(p, S.day, f, false, t, locale)}</p>}
       </section> : <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>
