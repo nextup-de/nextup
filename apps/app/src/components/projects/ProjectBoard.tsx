@@ -29,7 +29,6 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
   const r = useRights(p);
   const send = useSend(p);
   const cols = board(p);
-  const counted = p.steps.filter((s) => !s.dropped).length; // D31: a dropped step counts in no total
   const team = teamOf(p, seed.seats);
   const mine = (s: Step) => actorUserId !== null && s.ownerUserId === actorUserId;
   const [filter, setFilter] = useState("all"); // "all" | "mine" | "unowned" | an owner's user id
@@ -129,7 +128,6 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
       <div className={styles.boardHead}>
         <div className={styles.boardTitle}>
           <h2 id={"board-" + p.id} className={styles.h2}>{t("projects.boardTitle")}</h2>
-          <span className={styles.muted}>{counted ? t("projects.boardDone", { done: cols.done.length, total: counted }) : t("projects.boardNoSteps")}</span>
         </div>
         {p.steps.length > 0 && (
           <div className={styles.filters} role="group" aria-label={t("projects.filterLabel")}>
@@ -146,13 +144,9 @@ export function ProjectBoard({ p, hints, jira }: { p: ReducedProject; hints: Ste
         )}
       </div>
 
-      {!r.addStep && !p.steps.some((s) => r.moveStep(s)) && p.steps.length > 0 && (
-        <p className={styles.readOnly}>{t("projects.readOnly")}</p>
-      )}
-
       {hints.length > 0 && r.addStep && (
         <div className={styles.suggest} role="group" aria-label={t("projects.suggestedSteps")}>
-          <div className={styles.suggestHead}>{t("projects.suggestedSteps")} <span className={styles.muted}>{t("projects.suggestedFrom")}</span></div>
+          <div className={styles.suggestHead}>{t("projects.suggestedSteps")}</div>
           {hints.map((h) => (
             <div key={h.text} className={styles.suggestRow}>
               <span className={styles.suggestLabel}>{h.label}</span>
