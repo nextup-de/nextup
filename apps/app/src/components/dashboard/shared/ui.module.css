@@ -32,7 +32,7 @@
 /* a stat inside a card: hairline above, no box — a card never holds another box */
 .tile { border-top: 1px solid var(--nh-line-soft); padding: 10px 0 0; min-width: 0; }
 .tileV { font-size: var(--nh-fs-xl); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.025em; }
-.tileV[data-hot="true"] { color: #b23c07; }
+.tileV[data-hot="true"] { color: var(--nh-warn); }
 .tileL { font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 2px; line-height: 1.35; }
 .tileClick { cursor: pointer; }
 .tileClick:hover .tileTitle { color: var(--nh-brand); }
@@ -41,14 +41,15 @@
 
 /* status / trend / reason pills */
 .pill { display: inline-block; border-radius: 7px; padding: 4px 9px; font-size: var(--nh-fs-xs); font-weight: 700; white-space: nowrap; letter-spacing: 0.01em; }
-.pill[data-tone="accent"] { background: #ffe7dc; color: #b23c07; }
-.pill[data-tone="ink"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
-.pill[data-tone="ok"] { background: #dcf3e3; color: #116634; }
-.pill[data-tone="grey"] { background: #ecebe6; color: #3d3d3a; }
+/* Status tokens only (DESIGN_RULES §9): accent is "needs you", ok is good; blue is never a status, so ink is a strong neutral. */
+.pill[data-tone="accent"] { background: var(--nh-warn-tint); color: var(--nh-warn); }
+.pill[data-tone="ink"] { background: var(--nh-fill-2); color: var(--nh-ink); }
+.pill[data-tone="ok"] { background: var(--nh-ok-tint); color: var(--nh-ok); }
+.pill[data-tone="grey"] { background: var(--nh-fill); color: var(--nh-ink-2); }
 .pill[data-tone="soft"] { background: var(--nh-fill); color: var(--nh-ink-2); font-weight: 600; }
 .pill[data-tone="ghost"] { background: transparent; color: var(--nh-mute); font-weight: 600; }
 .pill[data-tone="none"] { background: transparent; color: var(--nh-mute); font-weight: 500; }
-.pill[data-tone="purple"] { background: #e8e4ff; color: #4b3bb3; }
+.pill[data-tone="purple"] { background: var(--nh-idea-tint); color: var(--nh-idea); }
 
 /* selectable list rows */
 .row { display: flex; gap: 13px; align-items: stretch; padding: 13px 0 12px; border-top: 1px solid #f0efea; cursor: pointer; background: transparent; }
@@ -107,7 +108,7 @@
 .stat { padding: 10px 18px 9px; min-width: 0; border-left: 1px solid var(--nh-line-soft); }
 .stat:first-child { border-left: 0; }
 .statV { font-size: var(--nh-fs-xl); font-weight: 800; letter-spacing: -0.025em; color: var(--nh-ink); }
-.statV[data-hot="true"] { color: #b23c07; }
+.statV[data-hot="true"] { color: var(--nh-warn); }
 .statL { font-size: var(--nh-fs-xs); color: var(--nh-mute); margin-top: 3px; line-height: 1.35; }
 
 
