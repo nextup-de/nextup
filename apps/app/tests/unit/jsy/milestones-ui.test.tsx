@@ -75,6 +75,23 @@ it("JSY milestone jira: an imported version is a read-only link and never waits,
   expect(both).toContain(t("projectJsy.writeFailed"));
 });
 
+it("JSY milestone jira: the sync's codes read as sentences in both languages, and a held write over the budget says it goes next", () => {
+  for (const locale of ["en", "de"] as const) {
+    const t = createT(locale);
+    const perm = card(project([ms({ sync: { state: "failed", op: "create", why: "permission" } })]), row("synced"), locale);
+    expect(perm).toContain(t("projectJsy.writeFailed"));
+    expect(perm).not.toContain(t("projectJsy.versionWaiting"));
+    expect(perm).toContain(locale === "en" ? "Administer Projects" : "Projekte verwalten");
+    expect(perm).not.toMatch(/: permission"/);
+    const refused = card(project([ms({ external: owned, sync: { state: "failed", op: "update", why: "refused" } })]), row("synced"), locale);
+    expect(refused).toContain(t("projectJsy.writeFailed"));
+    expect(refused).toContain(`href="${owned.url}"`);
+    const cap = card(project([ms({ sync: { state: "pending", op: "create", why: "cap" } })]), row("synced"), locale);
+    expect(cap).toContain(t("projectJsy.writePending"));
+    expect(cap).toContain(locale === "en" ? "next sync" : "nächsten Abgleich");
+  }
+});
+
 const head = (kind: "milestones" | "files" | "results", jira: JiraRow, editor = true) => headOf(kind, { p: project([]), jira, t: createT("en"), editor, title: "Plan", onAddStep: () => {}, onFilesUpload: () => {}, onFilesSource: () => {} } as HeadProps);
 
 it("JSY jira tags: only milestones join the Jira tools, so the three tag users tag it and nothing else new, and only when the company has Jira", () => {

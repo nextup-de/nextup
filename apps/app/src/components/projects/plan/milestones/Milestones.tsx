@@ -109,9 +109,17 @@ function VersionChips({ m }: { m: Milestone }) {
   return <>
     {ext && <a className={styles.version} data-mode={ext.mode} href={ext.url} target="_blank" rel="noopener noreferrer" aria-label={`${t("projectJsy.versionOpen")}: ${m.title}`} title={ext.mode === "imported" ? t("projectJsy.importedHint") : t("projectJsy.versionOpen")}>{t("projectJsy.versionChip", { key: ext.key })}</a>}
     {!ext && !write && <span className={styles.version} data-waiting title={t("projectJsy.versionWaitingTitle")}>{t("projectJsy.versionWaiting")}</span>}
-    {write?.state === "pending" && <span className={styles.version} data-waiting title={t("projectJsy.writePendingTitle")}>{t("projectJsy.writePending")}</span>}
-    {write?.state === "failed" && <span className={styles.version} data-problem title={t("projectJsy.writeFailedTitle", { why: write.why ?? "" })}>{t("projectJsy.writeFailed")}</span>}
+    {write?.state === "pending" && <span className={styles.version} data-waiting title={write.why === "cap" ? t("projectJsy.writePendingCap") : t("projectJsy.writePendingTitle")}>{t("projectJsy.writePending")}</span>}
+    {write?.state === "failed" && <span className={styles.version} data-problem title={t("projectJsy.writeFailedTitle", { why: whyText(t, write.why) })}>{t("projectJsy.writeFailed")}</span>}
   </>;
+}
+
+/** The sync stores a code (server/jira/round.ts); older marks may carry plain text, shown as it is. */
+function whyText(t: ReturnType<typeof useT>, why: string | undefined): string {
+  if (why === "permission") return t("projectJsy.writeWhyPermission");
+  if (why === "refused") return t("projectJsy.writeWhyRefused");
+  if (why === "owner") return t("projectJsy.writeWhyOwner");
+  return why ?? "";
 }
 
 function CreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (input: { title: string; startDay?: number | null; dueDay: number; note?: string }) => unknown }) {

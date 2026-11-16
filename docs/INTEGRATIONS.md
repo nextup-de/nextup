@@ -210,8 +210,16 @@ creates.
   (`server/jira/test.ts`). Cloud lists versions paged (`/project/{key}/version`), Data Center in one array
   (`/project/{key}/versions`); writes are the same on both.
 - **On screen**: the Milestones tool (now a Jira tool, `isJiraTool`) shows each milestone's version chip
-  (link, or "waiting"). The `sync {state: pending|failed}` field and its chips exist, but no round writes
-  it yet, so they never show from real data.
+  (link, or "waiting"), and what did not reach Jira. The round marks it with a sync-only
+  `project.milestone.edited {milestoneId, sync}`, appended only when the mark changes:
+  - `failed` with `why: "permission"` when *Administer Projects* is missing. This replaces "waiting", since
+    nothing is created without the permission. The mark clears once the write goes out.
+  - `pending` with `why: "cap"` for a write over the round's budget.
+  - `failed` with `why: "refused"` for a permanent 4xx, or `"owner"` when the version is not marked for the
+    milestone any more. Either stays until a later write of that milestone goes through.
+  - `pending` with `why: "retry"` for anything else.
+
+  `sync: null` clears the mark. `why` is a code; the chip words it (`projectJsy.writeWhy*`).
 - **Attachments** (`server/jira/attachments.ts`): the Files tool lists a project's Jira attachments under
   its SharePoint list, read-only (`components/projects/files/JiraAttachments.tsx`), when the
   `projectPages` flag is on and the viewer may read the project (`server/actions/project-attachments.ts`).

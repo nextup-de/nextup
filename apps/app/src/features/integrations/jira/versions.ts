@@ -154,7 +154,12 @@ export type VersionPushPlan = {
   pending: { milestones: string[]; steps: string[] };
   /** The smallest seq of an event whose job was not planned for a reason that may pass (cap, permission, link not there yet), or null. */
   deferredSeq: number | null;
+  /** Milestones whose create or update was not planned this round, and why: the round marks them so the Milestones tool can say so. */
+  held: HeldWrite[];
 };
+
+/** A milestone write the plan held back: `permission` (no Administer Projects) or `cap` (over this round's write budget). */
+export type HeldWrite = { projectId: string; milestoneId: string; op: "create" | "update"; why: "permission" | "cap" };
 
 type PushOpts = { enabledAt: Date | null; cal?: CalendarSpec; clock?: JiraDayClock; administer: boolean; maxWrites?: number };
 const clockOf = (o: { cal?: CalendarSpec; clock?: JiraDayClock }): JiraDayClock => o.clock ?? { mode: "workdays", calendar: o.cal ?? { region: "DE", workdays: [1, 2, 3, 4, 5], extraHolidays: [], extraWorkdays: [] } };
@@ -182,6 +187,7 @@ export function planVersionPush(state: Projects, versions: readonly JiraVersion[
   const fixes: VersionJob[] = [];
   const deferred: number[] = [];
   const noAdmin: number[] = [];
+  const held: HeldWrite[] = [];
   let missingAdmin = false;
 
   const byProject = new Map<string, SeqEvent[]>();
@@ -211,7 +217,7 @@ export function planVersionPush(state: Projects, versions: readonly JiraVersion[
         warn(`Milestone "${m.title}" of ${p.id} has no usable dates, so no Jira version is created for it.`);
         continue;
       }
-      if (!opts.administer) { missingAdmin = true; continue; }
+      if (!opts.administer) { missingAdmin = true; held.push({ projectId: p.id, milestoneId: m.id, op: "create", why: "permission" }); continue; }
       const name = nameFor(m.title, p.id, m.id, versions, null, reserved);
       reserved.add(lower(name));
       creates.push({ kind: "create", milestoneId: m.id, projectId: p.id, name, description: withMarker(noteOf(m.note), p.id, m.id), startDate, releaseDate, released: m.shipped });
@@ -254,7 +260,7 @@ export function planVersionPush(state: Projects, versions: readonly JiraVersion[
       if (!Object.keys(patch).length) continue;
       pendingMilestones.add(m.id);
       const seq = Math.min(...pending.map(([, e]) => e.seq));
-      if (!opts.administer) { missingAdmin = true; noAdmin.push(seq); continue; }
+      if (!opts.administer) { missingAdmin = true; noAdmin.push(seq); held.push({ projectId: p.id, milestoneId: m.id, op: "update", why: "permission" }); continue; }
       if (patch.name) reserved.add(lower(patch.name));
       writes.push({ kind: "update", seq, milestoneId: m.id, projectId: p.id, versionId: v.id, patch });
     }
@@ -305,11 +311,14 @@ export function planVersionPush(state: Projects, versions: readonly JiraVersion[
   // A step whose milestone edit was dropped by the cap stays pending as well.
   const all = deferred.length ? Math.min(...deferred) : null;
   for (const w of ordered.slice(room)) if (w.kind === "update") pendingMilestones.add(w.milestoneId);
+  for (const c of creates.slice(cap)) if (c.kind === "create") held.push({ projectId: c.projectId, milestoneId: c.milestoneId, op: "create", why: "cap" });
+  for (const w of ordered.slice(room)) if (w.kind === "update") held.push({ projectId: w.projectId, milestoneId: w.milestoneId, op: "update", why: "cap" });
   return {
     jobs: [...kept, ...adopts, ...keptWrites, ...fixes],
     warnings,
     pending: { milestones: [...pendingMilestones], steps: [...pendingSteps] },
     deferredSeq: all,
+    held,
   };
 }
 
