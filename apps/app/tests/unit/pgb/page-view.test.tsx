@@ -70,3 +70,12 @@ it("PGB add points: shared picker hides Agent, disables a singleton and allows a
   expect(out).toMatch(/data-taken="true" disabled=""><span[^>]*>[^<]*<\/span><span[^>]*>Idea/); // every project has its Idea
   expect(out).toMatch(/<button(?![^>]*disabled)[^>]*><span[^>]*>[^<]*<\/span><span[^>]*>Doc/);
 });
+
+it("PGB fills page: a page's first Board fills the page; a Board further down, or another first tool, keeps its frame", async () => {
+  const { fillsPage } = await import("@/features/projects/page-view");
+  const steps = READY_PAGES[1];
+  expect(fillsPage(steps, steps.tools[0])).toBe(true);
+  expect(fillsPage(steps, steps.tools[1])).toBe(false);
+  expect(fillsPage({ tools: [steps.tools[1], steps.tools[0]] }, steps.tools[0])).toBe(false);
+  expect(fillsPage(READY_PAGES[2], READY_PAGES[2].tools[0])).toBe(false);
+});

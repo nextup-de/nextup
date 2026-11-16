@@ -47,7 +47,7 @@ it("STP board: cards expose their key, waiting-on text and accessible checklist 
     checklist: [{ id: "a", text: "Prepare", done: true }, { id: "b", text: "Test", done: false }],
   })]);
   expect(markup).toContain("KAN-17");
-  expect(markup).toContain("Waiting on Supplier");
+  expect(markup).toContain("Waiting on <b>Supplier</b>");
   expect(markup).toContain('aria-label="Steps inside · 1 of 2 done"');
   expect(markup).toContain('aria-label="Open step: Test alerts"');
 });
@@ -57,5 +57,5 @@ it("STP board: hides Done older than fourteen days behind the explicit Show chip
   const markup = render("en", [step("Recent done", { column: "done", movedDay: 0 }), step("Older done card", { column: "done", movedDay: -100 })]);
   expect(markup).toContain("Recent done");
   expect(markup).not.toContain("Older done card");
-  expect(markup).toContain("1 older done · Show");
+  expect(markup).toContain("Show 1 older →");
 });
