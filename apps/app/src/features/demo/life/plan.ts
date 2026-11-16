@@ -87,7 +87,9 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
   for (const c of state.cases) {
     if (!c.open || c.decided || c.withdrawn) continue;
     const route = c.assigneeSeatId ? routeByHolder.get(c.assigneeSeatId) : undefined;
-    const owner = route?.owner ?? null;
+    // A case the clock passed on (deadline, overflow, one level up) sits on a seat that owns no route: its holder decides it.
+    const seat = route || !c.assigneeSeatId ? undefined : state.seats.find((x) => x.id === c.assigneeSeatId);
+    const owner = route?.owner ?? (seat?.userId ? personById.get(seat.userId) ?? null : null);
     if (!owner) continue;
     const old = generated.test(c.id);
     if (humans.has(owner.id) && !old) continue;
