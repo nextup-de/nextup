@@ -17,7 +17,8 @@ const ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follo
 /** Up to two initials of a display name, for the round mark in front of a person. */
 const initialsOf = (name: string) => name.split(/[\s.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
-export function InvitePanel({ p }: { p: ReducedProject }) {
+/** `bare`: inside a team block that has its own title: no second heading and no line about nobody invited yet. */
+export function InvitePanel({ p, bare = false }: { p: ReducedProject; bare?: boolean }) {
   const { act, seed, S, actorUserId } = useDemo();
   const t = useT();
   const r = useRights(p);
@@ -34,8 +35,8 @@ export function InvitePanel({ p }: { p: ReducedProject }) {
 
   return (
     <section className={styles.section} aria-labelledby={"invites-" + p.id}>
-      <h2 id={"invites-" + p.id} className={styles.h2}>{t("projectDraft.teamTitle")}</h2>
-      {p.invites.length === 0 && p.followerUserIds.length === 0 && <p className={styles.muted}>{t("projectDraft.teamNone")}</p>}
+      <h2 id={"invites-" + p.id} className={bare ? "nh-sr" : styles.h2}>{t("projectDraft.teamTitle")}</h2>
+      {!bare && p.invites.length === 0 && p.followerUserIds.length === 0 && <p className={styles.muted}>{t("projectDraft.teamNone")}</p>}
       <ul className={styles.list}>
         {p.invites.map((i) => (
           <InviteRow key={i.id} p={p} invite={i} name={nameOf(i.userId)} focus={mine?.id === i.id} />

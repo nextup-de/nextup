@@ -14,7 +14,8 @@ import { InvitePanel } from "./draft/DraftInvites";
 import { peopleOf, teamOf, useRights, useSend, withIds } from "./parts";
 import styles from "./Projects.module.css";
 
-export function TeamPanel({ p }: { p: ReducedProject }) {
+/** `bare`: inside the Overview's Team line, which carries the title and the head count: one team block (DESIGN_RULES §9). */
+export function TeamPanel({ p, bare = false }: { p: ReducedProject; bare?: boolean }) {
   const { act, seed } = useDemo();
   const t = useT();
   const r = useRights(p);
@@ -32,11 +33,11 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
   const load = (userId: string | null) => userId === null ? 0 : p.steps.filter((s) => s.ownerUserId === userId && s.column !== "done").length;
 
   return (
-    <section className={styles.railSection} aria-labelledby={"team-" + p.id}>
-      <div className={styles.panelHead}>
+    <section className={bare ? undefined : styles.railSection} aria-labelledby={bare ? undefined : "team-" + p.id} aria-label={bare ? t("projects.teamTitle") : undefined}>
+      {!bare && <div className={styles.panelHead}>
         <h2 id={"team-" + p.id} className={styles.h3}>{t("projects.teamTitle")}</h2>
         <span className={styles.muted}>{t("projects.peopleCount", { count: team.length })}</span>
-      </div>
+      </div>}
       <ul className={styles.people}>
         {team.map((m, k) => (
           <li key={m.userId ?? m.name} className={styles.person}>
@@ -68,7 +69,7 @@ export function TeamPanel({ p }: { p: ReducedProject }) {
         </form>
       )}
       {/* A project a draft opened keeps inviting after the start (P6.5): a sponsor can still be named, an invitee still answers. */}
-      {p.draft && live && <InvitePanel p={p} />}
+      {p.draft && live && <InvitePanel p={p} bare={bare} />}
     </section>
   );
 }
