@@ -14,22 +14,25 @@ vi.mock("@/components/projects/tools/registry", () => ({ TOOL_REGISTRY: new Prox
 
 const t = createT("en");
 const jira = { state: "synced", siteUrl: "https://j.example", projectKey: "NUP" } as JiraRow;
-const page = READY_PAGES[2];
+// The Calendar further down its page keeps its frame (a page's first Jira tool fills the page instead, FILLS_PAGE).
+const plan = READY_PAGES[2];
+const page = { ...plan, tools: [plan.tools[2], plan.tools[0], plan.tools[1]] };
+const calendar = plan.tools[0];
 const base = { steps: [{ id: "s", dueDay: 3 }, { id: "t", dueDay: null }], links: [], sync: { system: "jira", on: true }, pages: null } as unknown as ReducedProject;
 const render = (tool: ToolInstance, { editor = true, p = base } = {}) => renderToStaticMarkup(h(I18nProvider, { locale: "en", children: h(ToolSection, { p, page, tool, jira, editor, hints: [], index: 0, count: page.tools.length, onAddAt: vi.fn() }) }));
 
 it("ToolSection head shows name, the Jira line only while syncing, the count line and the controls", () => {
-  const html = render(page.tools[0]);
+  const html = render(calendar);
   expect(html).toContain(t("projectPages.toolCalendar"));
   expect(html).toContain(t("projectPages.syncedWithJira"));
   expect(html).toContain(t("projectPages.datedStepsCount", { count: 1 }));
   expect(html).toContain(t("projectPages.collapse"));
   expect(html).toContain("data-testid");
-  expect(render(page.tools[0], { p: { ...base, sync: null } })).not.toContain(t("projectPages.syncedWithJira"));
+  expect(render(calendar, { p: { ...base, sync: null } })).not.toContain(t("projectPages.syncedWithJira"));
 });
 
 it("ToolSection collapsed hides the body and offers Expand; a title replaces the name", () => {
-  const html = render({ ...page.tools[0], collapsed: true, title: "Q3" });
+  const html = render({ ...calendar, collapsed: true, title: "Q3" });
   expect(html).not.toContain("data-testid");
   expect(html).toContain(t("projectPages.expand"));
   expect(html).toContain("Q3");
