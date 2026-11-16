@@ -21,6 +21,7 @@ export type DecisionFilters = { period: "30" | "90" | "year" | "all"; answer: ""
 type Props = {
   /** The company's paths as links see them (companyPrefix): "/acme" in path mode, "" on a one-company stack. */
   t: T; base: string; lines: DecisionLine[]; total: number; page: number; pageSize: number;
+  /** `filtered`: the page's own flag; the log tells an empty list from a filtered one by `filters` itself. */
   filters: DecisionFilters; projectsOn: boolean; filtered: boolean;
 };
 
@@ -35,7 +36,7 @@ function href(base: string, f: DecisionFilters, page: number): string {
   return `${base}/decisions${qs ? `?${qs}` : ""}`;
 }
 
-export function DecisionLog({ t, base, lines, total, page, pageSize, filters, projectsOn, filtered }: Props) {
+export function DecisionLog({ t, base, lines, total, page, pageSize, filters, projectsOn }: Props) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   const role = (l: DecisionLine) => (l.roleFormer ? t("decisions.formerRole") : l.roleTitle ?? t("decisions.roleManager"));
@@ -58,7 +59,7 @@ export function DecisionLog({ t, base, lines, total, page, pageSize, filters, pr
       ) : noneRecent ? (
         <p className={styles.empty} data-testid="decisions-empty">{t("decisions.emptyRecent")} <Link href={href(base, { ...filters, period: "all" }, 1)} className={styles.allLink}>{t("decisions.showEverything")}</Link></p>
       ) : lines.length === 0 ? (
-        <p className={styles.empty} data-testid="decisions-empty">{filtered ? t("decisions.noMatch") : t("decisions.empty")}</p>
+        <p className={styles.empty} data-testid="decisions-empty">{t("decisions.noMatch")}</p>
       ) : (
         <>
           <table className={styles.table}>
