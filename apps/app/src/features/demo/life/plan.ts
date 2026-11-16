@@ -11,7 +11,7 @@
 // generator's own old cases are cleared out regardless, since nobody is waiting for them.
 //
 // The people the team demos from (`focus`: Kevin Schmid and Julia Rossi) get something to click every working day: the
-// first idea of the day lands on a desk they hold, they are invited to discuss one of the colleagues' new ideas, and they
+// one who holds a desk gets an idea of their own on it every day, they are invited to discuss one of the colleagues' new ideas, and they
 // join new projects (at most two running at a time) with a step of their own, which waits five working days for them
 // before the lead moves it. Every project the simulation opens is planned with dated steps and two milestones.
 import type { CaseEventType, EventPayload } from "@/features/cases/events";
@@ -133,23 +133,33 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
   const weighted = staffed.flatMap((x) => (humans.has(x.owner!.id) ? [x, x, x] : [x]));
   const count = r.int(2, 4);
   const raised: { id: string; route: LifeRoute }[] = [];
-  for (let n = 0; n < count && raisers.length; n++) {
-    const fresh = (key: string) => ideasFor(key).filter((i) => !openTitles.has(i.title));
-    const candidates = weighted.filter((x) => fresh(x.key).length > 0);
-    if (candidates.length === 0) break;
-    // The first idea of the day goes to a desk a focus person holds, so they always have one to decide.
-    const focused = n === 0 ? candidates.filter((x) => focus.has(x.owner!.id)) : [];
-    const route = r.pick(focused.length ? focused : candidates);
+  const fresh = (key: string) => ideasFor(key).filter((i) => !openTitles.has(i.title));
+  const day = `${slug}-l${iso.replaceAll("-", "")}-`;
+  const raise = (key: string, id: string, route: LifeRoute) => {
     const idea = r.pick(fresh(route.key));
     openTitles.add(idea.title);
     const raiser = r.pick(raisers);
-    const id = `${slug}-l${iso.replaceAll("-", "")}-${n}`;
-    at(`raise:${n}`, "case.raised", raiser, id, {
+    at(key, "case.raised", raiser, id, {
       title: idea.title, body: idea.body, upside: idea.upside, routeId: route.key, assignee: route.owner!.name, assigneeRoleHolderId: route.holderId,
       fromDept: raiser.dept, kind: "idea", reason: "keywords",
       proposal: { routeId: route.key, confidence: r.int(70, 95), source: "keywords", version: "musterwerk-life" },
     });
     raised.push({ id, route });
+  };
+  // Every focus person who holds a desk gets an idea of their own each working day, so each of them always has one to decide
+  // (Kevin, 16 Nov 2026: one idea a day shared between the two left one of them without buttons). Not when today's ideas
+  // already put one on their desk (a run earlier the same day).
+  if (raisers.length) {
+    focusPeople.forEach((f, k) => {
+      const route = staffed.find((x) => x.owner!.id === f.id && fresh(x.key).length > 0);
+      if (!route || state.cases.some((c) => c.id.startsWith(day) && c.assigneeSeatId === route.holderId)) return;
+      raise(`raise:focus:${f.id}`, `${day}f${k}`, route);
+    });
+  }
+  for (let n = 0; n < count && raisers.length; n++) {
+    const candidates = weighted.filter((x) => fresh(x.key).length > 0);
+    if (candidates.length === 0) break;
+    raise(`raise:${n}`, `${day}${n}`, r.pick(candidates));
   }
 
   // 4. A colleague asks the focus people to discuss one of today's ideas on a desk of their own (not one a focus person or a real person holds).
