@@ -34,7 +34,8 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
   const when = (d: Date) => format.date(d, "dateTime");
   return (
     <section className={styles.wrap}>
-      {!admin && (offline ? <PageHeader title={t("report.listTitle")} lede={t("report.listSub")} /> : <><h1 className="nh-sr">{t("report.listTitle")}</h1><p className={styles.lede}>{t("report.listSub")}</p></>)}
+      {/* Named by its tab; no lede: the empty sentence says what the page is for. */}
+      {!admin && (offline ? <PageHeader title={t("report.listTitle")} /> : <h1 className="nh-sr">{t("report.listTitle")}</h1>)}
 
       <SectionCard>
       {offline ? (
@@ -56,14 +57,13 @@ export function ReportsView({ tickets, screenshotBase, offline, admin = false }:
                 </div>
                 <p className={styles.text}>{tk.description}</p>
                 {tk.expected && <p className={styles.expected}><strong>{t("report.expected")}</strong> {tk.expected}</p>}
+                {/* On "My reports" the reporter is the reader, so only someone else is named; the assignee shows once there is one. */}
                 <div className={styles.meta}>
                   {when(tk.createdAt)}
-                  {" · "}
-                  {t("report.createdBy", { who: tk.openedBy ? personLabel(tk.openedBy) : admin ? `${tk.reporterName ?? t("report.anAdmin")} (${tk.reporterRole})` : t("report.you") })}
-                  {" · "}
-                  <span className={styles.assignee} data-assigned={tk.assignee ? "yes" : "no"}>
+                  {tk.openedBy || admin ? <>{" · "}{t("report.createdBy", { who: tk.openedBy ? personLabel(tk.openedBy) : `${tk.reporterName ?? t("report.anAdmin")} (${tk.reporterRole})` })}</> : null}
+                  {tk.assignee || admin ? <>{" · "}<span className={styles.assignee} data-assigned={tk.assignee ? "yes" : "no"}>
                     {tk.assignee ? t("report.assignedTo", { who: personLabel(tk.assignee) }) : t("report.notAssigned")}
-                  </span>
+                  </span></> : null}
                   {admin ? ` · ${tk.forwarded ? t("report.atAdmin") : t("report.notForwarded")}` : ""}
                 </div>
                 {tk.hasScreenshot && screenshotBase ? (
