@@ -9,7 +9,8 @@
 .deskCell { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
 .deskCell > .panel { grid-column: 1 / -1; }
 .level { display: inline-block; padding: 2px 8px; border-radius: 10px; background: var(--nh-fill); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); }
-.level[data-level="up"], .level[data-level="overflow"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.level[data-level="triage"], .level[data-level="up"] { background: var(--nh-warn-tint); color: var(--nh-warn); }
+.level[data-level="overflow"] { background: var(--nh-danger-tint); color: var(--nh-danger); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
 .button { height: 30px; padding-inline: 10px; border: 0; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-xs); font-weight: 600; cursor: pointer; }
 .button:hover { background: var(--nh-brand-line); }
