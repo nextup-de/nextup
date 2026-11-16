@@ -12,6 +12,10 @@ const STEPS = [
   ["projectFiles.ncStep3Title", "projectFiles.ncStep3Hint"],
 ] as const;
 
+/** The page header's 'Synced … ago' listens for this: the list says when it last read its folder well. */
+export const FILES_SYNCED = "nextup:files-synced";
+export type FilesSynced = { projectId: string; at: Date };
+
 /** When each folder was last read well, so the offline banner can say how old the list is. */
 const lastRead = new Map<string, Date>();
 export const lastReadOf = (projectId: string, path: readonly string[]): Date | null => lastRead.get(projectId + "/" + path.join("/")) ?? null;
@@ -23,7 +27,12 @@ export function FileStates({ state, actions }: FilesPartProps) {
   const { href } = useDemo();
   const { answer, folder, p, path, loaded, editor } = state;
   const key = p.id + "/" + path.join("/");
-  useEffect(() => { if (answer !== "loading" && answer.state === "ok") lastRead.set(key, new Date()); }, [answer, key]);
+  useEffect(() => {
+    if (answer === "loading" || answer.state !== "ok") return;
+    const at = new Date();
+    lastRead.set(key, at);
+    window.dispatchEvent(new CustomEvent<FilesSynced>(FILES_SYNCED, { detail: { projectId: p.id, at } }));
+  }, [answer, key, p.id]);
 
   if (answer === "loading") return <p className={styles.hint} role="status" data-testid="files-file-states">{t("projectFiles.loading")}</p>;
   const name = path[path.length - 1] ?? (folder?.key || t("projectFiles.sourceTitle"));

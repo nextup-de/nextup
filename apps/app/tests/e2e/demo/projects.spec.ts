@@ -4,7 +4,7 @@
 // measure check; then the manager finds no reward due on the unconfirmed typed measures. Demo mode: one browser
 // plays every person via the dev panel, on acme's seeded P-4 (T. Vogel's, from c9's yes).
 import type { Locator, Page } from "@playwright/test";
-import { addPages, expect, test } from "../helpers";
+import { addPages, expect, filesSheet, test } from "../helpers";
 
 const FIRST = "Move the spare bench from line 1 next to the press for two weeks";
 const TYPED = "Time the queue at five shift starts";
@@ -410,9 +410,13 @@ test("the project page shows the idea it came from and its connected tools", asy
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await page.goto("/acme/projects/pj4?page=files");
-  await expect(page.getByRole("heading", { name: "The idea" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Files and sources" })).toBeVisible();
+  // The Files page shows files only; the idea, its sources and the connected tools sit behind the gear (Paper 7.1-7.3).
+  await page.getByRole("button", { name: "Page settings", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: /^The idea/ })).toHaveAttribute("href", /\/projects\/pj4\?page=overview$/);
+  await page.keyboard.press("Escape");
+  await expect((await filesSheet(page, /^Sources/)).getByRole("heading", { name: "Files and sources" })).toBeVisible();
   await page.goto("/acme/projects/pj2?page=files");
+  await filesSheet(page, /^Connected tools/);
   const tools = page.getByRole("region", { name: "Connected tools" });
   await expect(tools).toContainText("Two-way sync");
   await expect(tools.getByRole("link", { name: "FS-9" })).toBeVisible();
@@ -434,6 +438,7 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
   await test.step("a project that is not sent offers Send to Jira, and says what it will create", async () => {
     await expect(stepCard(page, FIRST)).not.toContainText("waiting for Jira");
     await projectPage(page, "files");
+    await filesSheet(page, /^Connected tools/);
     await expect(tools).toContainText("Two-way sync");
     await expect(tools).toContainText("Creates an epic in NUP and 1 issue");
   });
@@ -459,6 +464,7 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
 
   await test.step("an existing issue is linked to a step by its key", async () => {
     await projectPage(page, "files");
+    await filesSheet(page, /^Connected tools/);
     await tools.getByRole("button", { name: "Add another link to Jira" }).click();
     const form = page.getByRole("form", { name: "Link a Jira issue" });
     await form.getByLabel("Jira issue key").fill("nup");
@@ -473,6 +479,7 @@ test("the lead sends a project to Jira, links an issue and stops the sync - all 
 
   await test.step("Stop syncing takes the project off Jira and offers Send again", async () => {
     await projectPage(page, "files");
+    await filesSheet(page, /^Connected tools/);
     await tools.getByRole("button", { name: "Stop syncing" }).click();
     await expect(tools.getByRole("button", { name: "Send to Jira" })).toBeVisible();
     await projectPage(page, "steps");
@@ -485,6 +492,7 @@ test("only the lead (or a manager) gets the Jira buttons", async ({ page }) => {
   await viewAs(page, "Employee");
   await page.goto("/acme/projects/pj2?page=files");
   // The Employee raised the idea behind P-2 and is not on its team: they work on its pages like the team, but the Jira link stays the lead's.
+  await filesSheet(page, /^Connected tools/);
   await expect(page.getByRole("region", { name: "Connected tools" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Send to Jira|Stop syncing/ })).toHaveCount(0);
 });

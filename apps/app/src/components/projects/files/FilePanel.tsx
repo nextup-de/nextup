@@ -69,7 +69,7 @@ export function FilePanel({ state, actions }: FilesPartProps) {
     <div className={styles.row}>
       <a className={styles.secondary} href={row.webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.inBrowser")}</a>
       <a className={styles.secondary} href={row.webUrl + (row.webUrl.includes("?") ? "&" : "?") + "download=1"} download={row.name}>{t("projectFiles.download")}</a>
-      <button type="button" className={styles.secondary} data-icon="true" aria-label={t("projectFiles.copyLink")} title={t("projectFiles.copyLink")} onClick={() => void copy()}>⧉</button>
+      <button type="button" className={styles.secondary} data-icon="true" aria-label={t("projectFiles.copyLink")} title={t("projectFiles.copyLink")} onClick={() => void copy()}><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.8 9.2l2.4-2.4M7.6 4.6l.9-.9a2.4 2.4 0 0 1 3.4 3.4l-.9.9M8.4 11.4l-.9.9a2.4 2.4 0 0 1-3.4-3.4l.9-.9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg></button>
     </div>
     {copied && <p className={styles.toast} role="status"><strong>{t("projectFiles.linkCopied")}</strong> · {t("projectFiles.linkCopiedWho")}</p>}
     <div className={styles.meta}>

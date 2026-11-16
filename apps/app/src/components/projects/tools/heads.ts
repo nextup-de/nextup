@@ -24,6 +24,8 @@ export type HeadProps = {
   /** The Files page: its list reads these as window events (a part of the Files page, not of the page header). */
   onFilesUpload: () => void;
   onFilesSource: () => void;
+  /** "3 min ago": when the Files list last read its folder (the pill's 'Synced … ago'). */
+  filesSyncedAgo?: string;
 };
 
 /** The Jira pill and 'Open in Jira ↗' of a step tool: only while the project's JiraRow is synced (D10). */
@@ -47,7 +49,7 @@ export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProp
   calendar: jiraHead,
   timeline: jiraHead,
   milestones: jiraHead,
-  files: ({ p, t, title, editor, onFilesUpload, onFilesSource }) => ({ ...filesHead(p, t, { onUpload: onFilesUpload, canUpload: editor, onOpenSource: onFilesSource }), title }),
+  files: ({ p, t, title, editor, onFilesUpload, onFilesSource, filesSyncedAgo }) => ({ ...filesHead(p, t, { onUpload: onFilesUpload, canUpload: editor, onOpenSource: onFilesSource, ...(filesSyncedAgo ? { syncedAgo: filesSyncedAgo } : {}) }), title }),
 };
 
 /** The head of a page: its first tool's entry, or the title only. */

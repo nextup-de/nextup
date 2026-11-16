@@ -36,13 +36,13 @@ export function IdeaFilesView({ items }: { items: IdeaFile[] }) {
               const kind = kindOf(f.name);
               return <tr key={f.name + i} tabIndex={0} className={list.row} data-selected={picked === i || undefined}
                 onClick={() => setPicked(picked === i ? null : i)} onKeyDown={(e) => { if (e.key === "Enter") setPicked(i); if (e.key === "Escape") setPicked(null); }}>
-                <td className={list.nameCell}>
-                  <FileIcon kind={kind} size={28} />
+                <td className={list.nameCell}><span className={list.nameInner}>
+                  <FileIcon kind={kind} size={30} />
                   <span className={list.nameText}>
                     <span className={list.name}>{f.name}</span>
                     <span className={list.kind}>{t(kindKey(kind))}</span>
                   </span>
-                </td>
+                </span></td>
                 <td>{f.meta}</td>
               </tr>;
             })}</tbody>

@@ -20,13 +20,17 @@ export type PageHeadProps = {
   source?: PageHeadSource;
   open?: { label: string; href: string };
   primary?: { label: string; icon?: ReactNode; onClick: () => void; disabled?: boolean; hint?: string };
+  /** What sits after the primary button: the Files page's settings gear (frame 7.1). */
+  extra?: ReactNode;
   /** The filter row of the page's tool. */
   children?: ReactNode;
 };
 
-export function PageHead({ title, source, open, primary, children }: PageHeadProps) {
+const CLOUD = <svg width="16" height="16" viewBox="0 0 16 16" focusable="false"><path d="M4.5 12.5H11.6C12.9 12.5 13.9 11.5 13.9 10.2C13.9 9 13 8 11.8 7.9C11.5 6 9.9 4.6 8 4.6C6.4 4.6 5 5.6 4.5 7C3.1 7.1 2.1 8.3 2.1 9.7C2.1 11.3 3.1 12.5 4.5 12.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>;
+
+export function PageHead({ title, source, open, primary, extra, children }: PageHeadProps) {
   const pill = source && <>
-    <span className={s.mark} data-system={source.system} aria-hidden="true">{source.system === "sharepoint" ? "☁" : source.system === "jira" ? "⇄" : source.label.slice(0, 1)}</span>
+    <span className={s.mark} data-system={source.system} aria-hidden="true">{source.system === "sharepoint" ? CLOUD : source.system === "jira" ? "⇄" : source.label.slice(0, 1)}</span>
     <span className={s.sourceName}>{source.label}</span>
     {source.key && <span className={s.key}>{source.key}</span>}
     <span className={s.dot} data-state={source.state} aria-hidden="true" />
@@ -42,7 +46,8 @@ export function PageHead({ title, source, open, primary, children }: PageHeadPro
       </div>
       <div className={s.actions}>
         {open && <a className={s.open} href={open.href} target="_blank" rel="noreferrer noopener">{open.label} <span aria-hidden="true">↗</span></a>}
-        {primary && <button type="button" className={s.primary} onClick={primary.onClick} disabled={primary.disabled} title={primary.hint}>{primary.icon}{primary.label}</button>}
+        {primary && <button type="button" className={s.primary} onClick={primary.onClick} disabled={primary.disabled} title={primary.hint}>{primary.icon && <span aria-hidden="true">{primary.icon}</span>}{primary.label}</button>}
+        {extra}
       </div>
     </div>
     {children && <div className={s.row}>{children}</div>}

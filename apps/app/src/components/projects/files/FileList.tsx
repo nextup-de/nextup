@@ -51,12 +51,12 @@ export function FileList({ state, actions }: FilesPartProps) {
     else if (e.key === "Backspace" && state.path.length > 0) { e.preventDefault(); actions.goTo(state.path.length - 1); }
   };
   if (state.rows.length === 0 && state.loaded.length > 0) return <p className={styles.none}>{t("projectFiles.emptyFilter")}</p>;
-  return <div className={styles.listWrap} data-testid="files-list">
+  return <div className={styles.listWrap} data-testid="files-list" data-edge="">
     <table className={styles.table}>
       <thead><tr>
         <th scope="col" aria-sort={state.sort.field === "name" ? (state.sort.direction === "asc" ? "ascending" : "descending") : "none"}><button type="button" onClick={() => actions.setSort(flip("name"))}>{t("projectFiles.colName")}{arrow("name")}</button></th>
         <th scope="col" className={styles.linkedCol}>{t("projectFiles.colLinked")}</th>
-        <th scope="col" aria-sort={state.sort.field === "changed" ? (state.sort.direction === "asc" ? "ascending" : "descending") : "none"}><button type="button" onClick={() => actions.setSort(flip("changed"))}>{t("projectFiles.colChanged")}{arrow("changed")}</button></th>
+        <th scope="col" className={styles.changedCol} aria-sort={state.sort.field === "changed" ? (state.sort.direction === "asc" ? "ascending" : "descending") : "none"}><button type="button" onClick={() => actions.setSort(flip("changed"))}>{t("projectFiles.colChanged")}{arrow("changed")}</button></th>
         <th scope="col" className={styles.sizeCol} aria-sort={state.sort.field === "size" ? (state.sort.direction === "asc" ? "ascending" : "descending") : "none"}><button type="button" onClick={() => actions.setSort(flip("size"))}>{t("projectFiles.colSize")}{arrow("size")}</button></th>
         <th scope="col" className={styles.menuCol} />
       </tr></thead>
@@ -65,17 +65,19 @@ export function FileList({ state, actions }: FilesPartProps) {
         const picked = state.selected?.id === row.id;
         return <tr key={row.id} tabIndex={0} className={styles.row} data-selected={picked || undefined} data-folder={row.isFolder || undefined}
           onClick={() => actions.select(picked ? null : row)} onDoubleClick={() => actions.open(row)} onKeyDown={(e) => move(e, row)} title={t("projectFiles.hoverTip")}>
-          <td className={styles.nameCell}>
-            <FileIcon kind={row.kind} size={28} />
+          <td className={styles.nameCell}><span className={styles.nameInner}>
+            <FileIcon kind={row.kind} size={30} />
             <span className={styles.nameText}>
               <span className={styles.name}>{row.name}</span>
               <span className={styles.kind}>{row.isFolder ? t("projectFiles.folderFiles", { count: row.childCount }) : t(KIND_KEY[row.kind])}</span>
             </span>
-          </td>
-          <td className={styles.linkedCol}>{steps.length === 0 ? "—" : <><span className={styles.chip}>{steps[0].key}</span>{steps.length > 1 && <span className={styles.more}>+{steps.length - 1}</span>}</>}</td>
-          <td>{changedText(row, locale, now, t("common.today"))}</td>
-          <td className={styles.sizeCol}>{formatSize(row.size, row.isFolder)}</td>
-          <td className={styles.menuCol}><button type="button" className={styles.dots} aria-label={t("projectFiles.rowMenu", { name: row.name })} aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); actions.openDialog({ kind: "row-menu", row }); }}>⋮</button></td>
+          </span></td>
+          <td className={styles.linkedCol}>{steps.length === 0 ? <span className={styles.empty}>—</span> : <><span className={styles.chip}>{steps[0].key}</span>{steps.length > 1 && <span className={styles.more}>+{steps.length - 1}</span>}</>}</td>
+          <td className={styles.changedCol}>{changedText(row, locale, now, t("common.today"))}</td>
+          <td className={styles.sizeCol}>{row.isFolder ? <span className={styles.empty}>—</span> : formatSize(row.size)}</td>
+          <td className={styles.menuCol}><button type="button" className={styles.dots} aria-label={t("projectFiles.rowMenu", { name: row.name })} aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); actions.openDialog({ kind: "row-menu", row }); }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="8" cy="3.5" r="1.2" /><circle cx="8" cy="8" r="1.2" /><circle cx="8" cy="12.5" r="1.2" /></svg>
+          </button></td>
         </tr>;
       })}</tbody>
     </table>
