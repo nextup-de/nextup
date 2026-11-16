@@ -42,6 +42,25 @@ export function SectionCard({ title, hint, action, name, children }: {
   );
 }
 
+/**
+ * One line that opens (DESIGN_RULES §9, "folded by default"): `summary` is the section's answer and stays in view,
+ * `meta` a short fact at its right (a count, a date), the rest waits inside. Closed unless `open`. A native
+ * <details>: it works without script, and a search in the page opens it.
+ */
+export function Fold({ summary, meta, open, name, children }: {
+  summary: React.ReactNode; meta?: React.ReactNode; open?: boolean; name?: string; children?: React.ReactNode;
+}) {
+  return (
+    <details className={s.fold} open={open} data-testid="fold" data-name={name}>
+      <summary>
+        <span className={s.foldLabel}>{summary}</span>
+        {meta ? <span className={s.foldMeta}>{meta}</span> : null}
+      </summary>
+      <div className={s.foldBody}>{children}</div>
+    </details>
+  );
+}
+
 export type TabItem = { key: string; label: string; href: string; count?: number };
 
 /** Views of one list. The current tab has aria-current. */
