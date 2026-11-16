@@ -8,6 +8,7 @@ import { DEMO_CLOCK, type ClockSpec } from "@/features/clock";
 import { dateOfWorkday } from "@/features/clock/calendar";
 import { breakdown } from "@/features/metrics/breakdown";
 import { hiddenTiles, periodRange, scopeCases, unitSubtree, waitLedger } from "@/features/metrics/ledger";
+import { kpiProjectsOf, savedPerYear } from "@/features/metrics/impact";
 import { stalledOf } from "@/features/metrics/stalled";
 import type { DashboardData, LedgerCase, LedgerFacts, LedgerInput, MetricsOrg, Period } from "@/features/metrics/types";
 import { overrideRate } from "@/features/routing/override";
@@ -191,19 +192,22 @@ export async function ledgerInputs(companyId: string, period: Period): Promise<L
       raiserUnitId: raiserRole ? unitOfRole.get(raiserRole) ?? null : v.fromUserId ? unitOfMember.get(v.fromUserId) ?? null : null,
     });
   }
-  return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo", stalled: await stalledProjects(companyId, cases) };
+  return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo", ...(await projectFacts(companyId, cases)) };
 }
 
 /**
- * The projects whose stalled escalation stands today (plan RES, D22), from the company's log reduced once as the pages and the
- * pilot report reduce it, each in the unit its first source case counts in. Only a count per unit leaves this reader.
+ * From the company's log reduced once, as the pages and the pilot report reduce it: the projects whose stalled escalation
+ * stands today (plan RES, D22), each in the unit its first source case counts in, and every project with its results for
+ * the impact figures (features/metrics/impact.ts). Only counts and sums per unit leave the readers that use them.
  */
-async function stalledProjects(companyId: string, cases: LedgerCase[]): Promise<LedgerInput["stalled"]> {
+async function projectFacts(companyId: string, cases: LedgerCase[]): Promise<Pick<LedgerInput, "stalled" | "projects">> {
   const company = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { slug: true } });
   const [seed, seats, log] = await Promise.all([loadSeed(company.slug), loadSeats(companyId), loadLog(companyId)]);
-  if (!seed) return [];
+  if (!seed) return { stalled: [], projects: [] };
   const unitOfCase = new Map(cases.map((c) => [c.caseId, c.unitId]));
-  return stalledOf(reduce({ ...seed, seats }, log).projects, (id) => unitOfCase.get(id) ?? null);
+  const raiserUnitOf = new Map(cases.map((c) => [c.caseId, c.raiserUnitId]));
+  const projects = reduce({ ...seed, seats }, log).projects;
+  return { stalled: stalledOf(projects, (id) => unitOfCase.get(id) ?? null), projects: kpiProjectsOf(projects, (id) => raiserUnitOf.get(id) ?? null) };
 }
 
 const NO_FACTS: LedgerFacts = { answers: { yes: 0, yesProject: 0, question: 0, handed: 0, no: 0 }, override: { proposed: 0, overridden: 0, rate: null } };
@@ -244,5 +248,7 @@ export async function dashboardData(companyId: string, input: DashboardInput): P
     scopeHidden: scope.hidden,
     aiOff: ai.settings.choice === "off",
     demoClock: now.demoClock,
+    // What confirmed results save, in the same unit scope; nothing while the scope is too small to show (D6).
+    saved: scope.hidden ? null : savedPerYear(now.projects ?? [], period, inScope === null ? null : (u) => u !== null && inScope.has(u)),
   };
 }

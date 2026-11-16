@@ -29,9 +29,10 @@
 .root [data-accent="pastPromise"] { --acc: var(--nh-bench-impact); }
 .root [data-accent="escalated"] { --acc: var(--nh-warn); }
 .root [data-accent="overruled"] { --acc: var(--nh-mute); }
+.root [data-accent="saved"] { --acc: var(--nh-ok); }
 .tiles { --cols: 6; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 16px; }
 .tiles[data-count="5"] { --cols: 5; }
-.tiles[data-count="4"], .tiles[data-count="2"] { --cols: 4; }
+.tiles[data-count="4"], .tiles[data-count="2"], .tiles[data-count="7"] { --cols: 4; }
 .tiles[data-count="3"], .tiles[data-count="1"] { --cols: 3; }
 .tile {
   position: relative; overflow: hidden; min-width: 0; text-align: left; font: inherit; color: inherit; border: 0; cursor: pointer;
@@ -70,6 +71,14 @@
 .monthVal { min-height: 1.4em; font-size: var(--nh-fs-sm); font-weight: 600; }
 .monthBar { width: 100%; max-width: 56px; background: var(--acc); border-radius: 10px; transform-origin: bottom; animation: dGrowY 600ms cubic-bezier(.2,.8,.2,1) backwards; }
 .monthBar[data-base="true"] { background: var(--nh-progress-open); }
+/* "Saved per year": the calculation, one row per counted result, then the sum. */
+.calc { display: flex; flex-direction: column; }
+.calcRow, .calcSum { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(96px, auto); gap: 4px 16px; align-items: baseline; padding: 10px 0; font-size: var(--nh-fs-md); }
+.calcRow + .calcRow { border-top: 1px solid var(--nh-line-soft); }
+.calcSum { border-top: 1px solid var(--nh-line); font-weight: 650; }
+.calcName { min-width: 0; overflow-wrap: anywhere; }
+.calcName a { color: var(--nh-brand-ink); text-decoration: none; }
+.calcName a:hover { text-decoration: underline; }
 .splitRow { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 90px; gap: 12px; align-items: center; font-size: var(--nh-fs-sm); }
 .track { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--acc) 12%, white); overflow: hidden; }
 .fill { display: block; height: 100%; background: var(--acc); border-radius: 4px; transform-origin: left; animation: dGrowX 600ms cubic-bezier(.2,.8,.2,1) backwards; }
@@ -198,6 +207,9 @@
   .tr[data-head="true"] > :nth-child(4) { text-align: right; }
   .groupCell { grid-column: 2 / -1; }
   .splitRow { grid-template-columns: minmax(0, 1fr) 70px; }
+  .calcRow, .calcSum { grid-template-columns: minmax(0, 1fr) auto; }
+  .calcRow > :nth-child(2) { grid-column: 1; grid-row: 2; }
+  .calcSum > :nth-child(2) { display: none; }
   .splitRow .track { display: none; }
   .fieldRow { grid-template-columns: 1fr; }
   .sections { padding: 4px 16px; }

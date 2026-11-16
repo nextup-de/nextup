@@ -4,7 +4,8 @@
 import { DEMO_CLOCK } from "@/features/clock";
 import type { T } from "@/i18n";
 import { breakdown } from "./breakdown";
-import { hiddenTiles, periodRange, scopeCases, waitLedger } from "./ledger";
+import { savedPerYear } from "./impact";
+import { hiddenTiles, periodRange, scopeCases, unitSubtree, waitLedger } from "./ledger";
 import type { Baseline, DashboardData, LedgerFacts, LedgerInput, Period, PilotMetricKey, Tile, TileId, TrendMonth } from "./types";
 
 /** One point of the "cases raised per month" line, in the chart's 0-100 box. */
@@ -177,6 +178,7 @@ const NO_FACTS: LedgerFacts = { answers: { yes: 0, yesProject: 0, question: 0, h
 export function dashboardFromInput(input: LedgerInput, kind: "30d" | "quarter" | "golive", unitId: string | null, baseline: Baseline | null, aiOff: boolean): DashboardData {
   const period: Period = periodRange(kind, input.today, DEMO_CLOCK, baseline) ?? (periodRange("30d", input.today, DEMO_CLOCK, baseline) as Period);
   const scope = scopeCases(input, unitId);
+  const inScope = unitId === null ? null : unitSubtree(input, unitId);
   const scoped: LedgerInput = { ...input, cases: scope.cases, facts: unitId === null ? input.facts : NO_FACTS };
   const before = baseline ? { period: { from: baseline.fromDay, to: baseline.toDay }, input: { ...input, cases: scope.cases } } : null;
   const ledger = waitLedger(scoped, period, before, baseline?.imported ?? {});
@@ -188,5 +190,6 @@ export function dashboardFromInput(input: LedgerInput, kind: "30d" | "quarter" |
     scopeHidden: scope.hidden,
     aiOff,
     demoClock: true,
+    saved: scope.hidden ? null : savedPerYear(input.projects ?? [], period, inScope === null ? null : (u) => u !== null && inScope.has(u)),
   };
 }
