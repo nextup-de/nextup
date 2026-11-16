@@ -57,7 +57,7 @@ it("REQ scaffold reopening a stepped request removes an untouched step and keeps
   expect(moved.requests[0]).toMatchObject({ state: "stepped", stepId: "s_r" });
 });
 
-it("REQ scaffold a company member outside the team may answer a shared form; its raiser also adds steps", () => {
+it("REQ scaffold a company member outside the team may answer a shared form and nothing else", () => {
   const events = log(saved(), answered());
   expect(asUser("u_js", events, "project.form.answered", { formId: "fm", formRev: 1, requestId: "q2", answers: { f_what: "x" } }).ok).toBe(true);
   expect(asUser(null, events, "project.form.answered", { formId: "fm", formRev: 1, requestId: "q2", answers: { f_what: "x" } }).ok).toBe(false);
@@ -66,10 +66,8 @@ it("REQ scaffold a company member outside the team may answer a shared form; its
     ["project.request.declined", { requestId: "q1", why: "no" }],
     ["project.request.stepped", { requestId: "q1", step: { stepId: "s_x", text: "t", column: "todo" } }],
     ["project.request.reopened", { requestId: "q1" }],
+    ["project.step.added", { stepId: "s_y", text: "t" }],
   ] as const) expect(asUser("u_js", events, type, payload).ok, type).toBe(false);
-  // Who raised the idea works on its project like the team (pages, steps); an employee who is neither does not.
-  expect(asUser("u_js", events, "project.step.added", { stepId: "s_y", text: "t" }).ok).toBe(true);
-  expect(asUser("u_xx", events, "project.step.added", { stepId: "s_y", text: "t" }).ok).toBe(false);
   const private_ = log(saved({ shared: false }));
   expect(asUser("u_js", private_, "project.form.answered", { formId: "fm", formRev: 1, requestId: "q2", answers: { f_what: "x" } }).ok).toBe(false);
   const stopped = events.concat(ev("project.stopped", "L. Brandt", "p_one", { why: "enough" }, 18));

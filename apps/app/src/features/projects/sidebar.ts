@@ -61,9 +61,16 @@ export function mayEditIdeaPages(who: { userId: string | null }): boolean {
   return who.userId !== null;
 }
 
-/** May this person write the idea's next version (case.revised)? Everyone signed in who can open it, while it is open and after its yes. */
-export function mayReviseIdea(c: { decided: { answer: "yes" | "no" } | null; withdrawn: unknown }, userId: string | null): boolean {
-  return userId !== null && !c.withdrawn && (c.decided === null || c.decided.answer === "yes");
+/** May this person write the idea's next version (case.revised)? The same rule as features/cases/permissions.ts (Kevin,
+ *  16 Nov 2026): while it is open the person who raised it, after its yes the lead of its project; never after a no. */
+export function mayReviseIdea(
+  c: { id: string; fromUserId: string | null; decided: { answer: "yes" | "no" } | null; withdrawn: unknown },
+  userId: string | null,
+  projects: readonly { sources: readonly string[]; leadUserId: string | null }[],
+): boolean {
+  if (userId === null || c.withdrawn) return false;
+  if (c.decided === null) return c.fromUserId === userId;
+  return c.decided.answer === "yes" && projects.find((p) => p.sources.includes(c.id))?.leadUserId === userId;
 }
 
 // ── The pages of one project or idea ────────────────────────────────────────────────────────────────────────

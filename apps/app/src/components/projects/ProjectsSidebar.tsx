@@ -324,7 +324,7 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
 }
 
 function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
-  const { href, log, me, act, showToast } = useDemo();
+  const { S, href, log, me, act, showToast } = useDemo();
   const t = useT();
   const params = useSearchParams();
   const editor = mayEditIdeaPages({ userId: me.userId });
@@ -339,7 +339,7 @@ function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
       back={t("projects.sbBack")} onBack={onBack}
       head={<Head mark={<StageMark stage={stage} />} title={c.title}
         // Whoever may revise it double-clicks the title to rename it: it goes out as its next version, as on the page.
-        onRename={mayReviseIdea(c, me.userId) ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
+        onRename={mayReviseIdea(c, me.userId, S.projects) ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
   );
 }
 
