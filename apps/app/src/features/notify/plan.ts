@@ -169,7 +169,7 @@ export function planNotices(ev: PlanEvent, ctx: PlanCtx): PlannedDraft[] {
       if (!p) continue;
       const mail = p.email && !sentTo.has(p.email) ? p.email : null;
       if (mail) sentTo.add(mail);
-      notify(p, { key: `loop:${ev.id}:${p.id}`, template: `loop.${ev.type}`, locale: p.locale, subject: n.subject, text: n.text, link: null, data: { eventId: ev.id, subjectId: ev.target } },
+      notify(p, { key: `loop:${ev.id}:${p.id}`, template: `loop.${ev.type}`, locale: p.locale, subject: n.subject, text: n.text, link: n.link, data: { eventId: ev.id, subjectId: ev.target } },
         `loop:${ev.id}:${p.id}:app`, mail, false);
     }
   }

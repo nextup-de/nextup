@@ -13,6 +13,7 @@ import { BulkBar } from "@/components/overload/BulkBar";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
 import { inboxCounts, inboxItems, type CommentsInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
+import { noticesBesideItems, type NoticeView } from "@/features/inbox/notices";
 import { agentForInbox } from "@/features/inbox/sources/agent";
 import { deskLoads } from "@/features/overload/load";
 import { triageFor } from "@/features/overload/bulk";
@@ -26,8 +27,6 @@ import { markNoticesReadAction } from "@/server/actions/notices";
 import { useOpenItem } from "./useOpenItem";
 import styles from "./InboxPage.module.css";
 
-/** A notice as the page shows it: plain values, so it crosses from the server page. */
-export type NoticeView = { id: string; subject: string; text: string; link: string | null; createdAt: string; read: boolean };
 
 const ASKS: readonly InboxAsk[] = ["decide", "confirm", "part"];
 const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", confirm: "inbox.sectionConfirm", part: "inbox.askPart" };
@@ -115,12 +114,14 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const leaveSelecting = () => { setSelecting(false); setSelected(new Set()); };
   const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
-  const unread = notices.filter((n) => !n.read && !readIds.has(n.id));
+  // A notice about a row of the list above is that row's echo: the row is where to act, so the notice waits until it is gone.
+  const shown = noticesBesideItems(notices, items);
+  const unread = shown.filter((n) => !n.read && !readIds.has(n.id));
   const markAll = () => start(async () => {
     const r = await markNoticesReadAction(tenant.slug);
     if (!r.ok) { setFailed(true); return; }
     setFailed(false);
-    setReadIds(new Set(notices.map((n) => n.id)));
+    setReadIds(new Set(notices.map((n) => n.id))); // the server marked every one, the hidden echoes too
     router.refresh();
   });
   const markOne = (id: string) => start(async () => {
@@ -217,9 +218,9 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
         name="inbox-notices"
         action={serverMode && unread.length > 0 ? <button type="button" className={styles.markAll} onClick={markAll} disabled={pending}>{t("inbox.markAllRead")}</button> : undefined}
       >
-        {notices.length === 0 ? <p className={styles.empty}>{t("inbox.noticesEmpty")}</p> : (
+        {shown.length === 0 ? <p className={styles.empty}>{t("inbox.noticesEmpty")}</p> : (
           <ul className={styles.notices}>
-            {notices.map((n) => {
+            {shown.map((n) => {
               const isRead = n.read || readIds.has(n.id);
               return (
                 <li key={n.id} className={styles.notice} data-testid="inbox-notice" data-read={isRead ? "true" : "false"}>

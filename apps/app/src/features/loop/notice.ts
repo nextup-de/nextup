@@ -16,6 +16,10 @@ import { OVERLOAD_NOTICES } from "./notice/overload";
 import { PROJECT_NOTICES } from "./notice/project";
 import type { EventArg, NoticeCtx } from "./notice/shared";
 
+/** An idea a desk can still say yes or no to: open, in discussion or waiting on a question; not decided, withdrawn or merged. */
+const undecided = (c: ReducedCase) =>
+  c.decided === null && c.withdrawn === null && c.merged === null && (c.status === "open" || c.status === "discussion" || c.status === "asked");
+
 /** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
 export type Person = { id: string; name: string; email: string; handle?: string | null; manager?: boolean };
 
@@ -24,8 +28,12 @@ export type NoticePerson = Omit<Person, "email"> & { email: string | null };
 
 type Args = { ev: EventArg; state: State; people: Person[]; baseUrl: string };
 
-/** One notice to one person, kept by user id; `to` is their address when they have one. */
-export type LoopNotice = { userId: string; to: string | null; subject: string; text: string };
+/**
+ * One notice to one person, kept by user id; `to` is their address when they have one. `link` is where its in-app copy
+ * opens (Kevin, 16 Nov 2026: a notice that can only be marked read is a dead end): the decision bar of an idea for its desk,
+ * else the case or project it is about, else the first address of the app in its text; null when it names none.
+ */
+export type LoopNotice = { userId: string; to: string | null; subject: string; text: string; link: string | null };
 
 /** One language for all mails, or the language of each recipient by address. */
 export type MailLocale = Locale | ((email: string) => Locale);
@@ -61,10 +69,17 @@ export function loopNotices({ ev, state, people, baseUrl }: { ev: EventArg; stat
     if (!p || (ev.actorUserId && who === ev.actorUserId) || seen.has(p.id)) return;
     seen.add(p.id);
     const t = createT(localeOf(p));
-    out.push({ userId: p.id, to: p.email || null, subject: subject(t), text: [`${p.name},`, "", ...lines(t)].join("\n") });
+    // The desk of an idea still to decide is sent to the idea itself, where the "Your decision" bar is (#958), in the mail too.
+    const decides = kase !== undefined && undecided(kase) && deskOf(kase.assigneeSeatId).includes(p.id);
+    const body = [`${p.name},`, "", ...lines(t)].join("\n");
+    const text = decides ? body.split(caseLink(kase)).join(decideLink(kase)) : body;
+    const link = decides ? decideLink(kase) : kase ? caseLink(kase) : project ? projectLink(project) : firstAppLink(text);
+    out.push({ userId: p.id, to: p.email || null, subject: subject(t), text, link });
   };
   const caseLink = (c: ReducedCase) => `${baseUrl}/cases/${encodeURIComponent(c.id)}`;
+  const decideLink = (c: ReducedCase) => `${baseUrl}/idea?id=${encodeURIComponent(c.id)}`;
   const projectLink = (p: ReducedProject) => `${baseUrl}/projects/${encodeURIComponent(p.id)}`;
+  const firstAppLink = (text: string) => text.split(/\s+/).find((w) => w.startsWith(baseUrl + "/")) ?? null;
   const kase = ev.target ? state.cases.find((c) => c.id === ev.target) : undefined;
   const project = ev.target ? state.projects.find((p) => p.id === ev.target) : undefined;
   const pl = ev.payload;
