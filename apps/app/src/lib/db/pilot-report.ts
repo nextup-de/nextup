@@ -3,19 +3,16 @@
 // handle or importer id (D2): people are only counted, and imported baselines keep their source label and times.
 import { dateOfWorkday, workdayOf } from "@/features/clock/calendar";
 import { pilotMetrics } from "@/features/metrics/pilot";
-import { kpiProjectsOf } from "@/features/metrics/impact";
 import { ziKpis } from "@/features/metrics/zi";
 import { PILOT_METRIC_KEYS, type Baseline, type KpiProject, type PilotReport, type Period } from "@/features/metrics/types";
 import { loadBaseline } from "./baseline";
 import { loadCalendar } from "./calendar";
 import { getDb } from "./client";
-import { loadSeed } from "./companies";
-import { companyDay, loadLog } from "./events";
-import { loadSeats } from "./holders";
+import { companyDay } from "./events";
 import { ledgerInputs } from "./metrics";
 import { loadCompanyRules } from "./rules";
 
-/** The company's projects from its log, as the pages reduce them (D7: only `Measure.confirmed` counts later): read with the ledger, mapped by `kpiProjectsOf`. */
+/** The company's projects from its log, as the pages reduce them (D7: only `Measure.confirmed` counts later): read with the ledger, mapped by `kpiProjectsOf` (features/metrics/impact.ts). */
 export async function kpiProjects(companyId: string, period: Period): Promise<KpiProject[]> {
   return (await ledgerInputs(companyId, period)).projects ?? [];
 }
