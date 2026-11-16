@@ -390,7 +390,7 @@ export const PROJECTS: SeedProject[] = [
       { type: 'project.step.moved', day: -160, actor: 'L. Brandt', payload: { stepId: 's2', to: 'done' } },
       { type: 'project.done', day: -157, actor: 'L. Brandt', payload: { note: 'Live at Ulm for every new hire' } },
       { type: 'project.measured', day: -125, actor: 'L. Brandt', payload: { check: 30, value: 11, source: 'HR onboarding log, 4 hires' } },
-      { type: 'project.measured', day: -66, actor: 'L. Brandt', payload: { check: 90, value: 11, source: 'HR onboarding log, 9 hires', impact: { savingEurPerYear: 96000 } } },
+      { type: 'project.measured', day: -66, actor: 'L. Brandt', payload: { check: 90, value: 11, source: 'HR onboarding log, 9 hires', impact: { hoursPerYear: 1700 } } },
       { type: 'project.measure.confirmed', day: -61, actor: 'B. Hartmann', payload: { check: 90 } },
       { type: 'project.rewarded', day: -60, actor: 'B. Hartmann', payload: { rule: 'thanks', note: 'Thanked at the Ulm site meeting' } }
     ] },
@@ -440,7 +440,7 @@ export const PROJECTS: SeedProject[] = [
 export const SEED: Seed = {
   clock: DEMO_CLOCK,
   seats: [], goals: DEMO_GOALS, spend: DEMO_RULES.spend,
-  promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS,
+  promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS, hourCostEur: 45,
   depts: DEPTS, people: PEOPLE, problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES,
   personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: [...CASES, ...PROJECT_CASES], waitingOn: WAITING_ON, buddies: BUDDIES,
   stall: STALL, ledger: LEDGER, metrics: METRICS, views: VIEWS, projects: PROJECTS

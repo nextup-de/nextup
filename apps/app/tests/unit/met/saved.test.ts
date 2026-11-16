@@ -8,7 +8,7 @@ import type { KpiProject, LedgerInput } from "@/features/metrics/types";
 type M = KpiProject["measures"][number];
 // A confirmed result on day 60 unless the test says otherwise; an unconfirmed one has no confirmation day.
 const m = (o: Partial<M> = {}): M => {
-  const r = { verified: true, better: true, eur: null, kwh: null, co2Kg: null, scrap: null, check: 30, ...o };
+  const r = { verified: true, better: true, eur: null, kwh: null, co2Kg: null, scrap: null, hours: null, check: 30, ...o };
   return { confirmedDay: r.verified ? 60 : null, ...r };
 };
 const project = (id: string, o: Partial<KpiProject> = {}): KpiProject => ({
@@ -19,8 +19,8 @@ const ledger: LedgerInput = {
   cases: [], facts: { answers: { yes: 0, yesProject: 0, question: 0, handed: 0, no: 0 }, override: { proposed: 0, overridden: 0, rate: null } },
   org: { units: [], roles: [] }, promiseDays: 5, today: 100, demoClock: false, stalled: [],
 };
-const pilotSavings = (projects: KpiProject[]) =>
-  pilotMetrics({ ledger, projects, period, peopleInScope: 50, baseline: null, imported: {} }).find((x) => x.key === "verifiedSavingsEur")!.value;
+const pilotSavings = (projects: KpiProject[], hourCostEur: number | null = null) =>
+  pilotMetrics({ ledger, projects, period, peopleInScope: 50, baseline: null, imported: {}, hourCostEur }).find((x) => x.key === "verifiedSavingsEur")!.value;
 
 describe("Saved per year", () => {
   it("sums only the results a second person confirmed with a better verdict, one row per result, biggest first", () => {
@@ -33,8 +33,8 @@ describe("Saved per year", () => {
     const saved = savedPerYear(projects, period, null)!;
     expect(saved.eur).toBe(62000);
     expect(saved.rows).toEqual([
-      { projectId: "b", title: "Project b", check: 90, eur: 50000 },
-      { projectId: "a", title: "Project a", check: 30, eur: 12000 },
+      { projectId: "b", title: "Project b", check: 90, eur: 50000, hours: null, rate: null },
+      { projectId: "a", title: "Project a", check: 30, eur: 12000, hours: null, rate: null },
     ]);
     expect([saved.co2Kg, saved.kwh, saved.scrap]).toEqual([400, 9000, 120]);
   });
@@ -75,7 +75,7 @@ describe("Saved per year", () => {
 
   it("takes per project only its latest confirmed check: a 90-day figure replaces the 30-day one, a worse 90-day check counts nothing", () => {
     const both = project("a", { doneDay: 10, measures: [m({ eur: 10000, check: 30, confirmedDay: 40 }), m({ eur: 12000, check: 90, confirmedDay: 95 })] });
-    expect(savedPerYear([both], period, null)!.rows).toEqual([{ projectId: "a", title: "Project a", check: 90, eur: 12000 }]);
+    expect(savedPerYear([both], period, null)!.rows).toEqual([{ projectId: "a", title: "Project a", check: 90, eur: 12000, hours: null, rate: null }]);
     // Seen from a period that ended before the 90-day confirmation, the 30-day figure is the latest.
     expect(savedPerYear([both], { from: 0, to: 60 }, null)!.eur).toBe(10000);
     const worse = project("b", { measures: [m({ eur: 10000, check: 30, confirmedDay: 40 }), m({ eur: 0, check: 90, better: false, confirmedDay: 95 })] });
@@ -104,5 +104,35 @@ describe("the two counting rules", () => {
     const after = project("after", { doneDay: 50, measures: [m({ eur: 5000, confirmedDay: 150 })] }); // finished in, confirmed after
     expect(savedPerYear([before, after], period, null)!.eur).toBe(8000);
     expect(pilotSavings([before, after])).toBe(5000);
+  });
+});
+
+// Hours into euros (Kevin, 16 Nov: one company value, "what an hour of work costs").
+describe("hours saved per year", () => {
+  it("are priced with the company's hour cost only where a result has no euro figure of its own", () => {
+    const hours = project("h", { measures: [m({ hours: 1200 })] });
+    const both = project("e", { measures: [m({ eur: 10000, hours: 500 })] }); // its own euros win, the hours never add
+    const saved = savedPerYear([hours, both], period, null, 45)!;
+    expect(saved.eur).toBe(54000 + 10000);
+    expect(saved.rows).toEqual([
+      { projectId: "h", title: "Project h", check: 30, eur: 54000, hours: 1200, rate: 45 },
+      { projectId: "e", title: "Project e", check: 30, eur: 10000, hours: null, rate: null },
+    ]);
+    expect(saved.unpricedHours).toBe(0);
+  });
+
+  it("stay hours while no hour cost is set: no euros from them, and alone they draw no tile", () => {
+    const hours = project("h", { measures: [m({ hours: 1200 })] });
+    expect(savedPerYear([hours], period, null, null)).toBeNull();
+    const saved = savedPerYear([hours, project("e", { measures: [m({ eur: 10000 })] })], period, null, null)!;
+    expect(saved.eur).toBe(10000);
+    expect(saved.unpricedHours).toBe(1200);
+  });
+
+  it("are priced the same way in the pilot report, and unconfirmed hours stay out of the sum", () => {
+    const projects = [project("h", { measures: [m({ hours: 1200 }), m({ hours: 800, verified: false, check: 90 })] })];
+    expect(pilotSavings(projects, 45)).toBe(54000);
+    expect(pilotSavings(projects, null)).toBe(0);
+    expect(savedPerYear(projects, period, null, 45)!.unconfirmedEur).toBe(36000);
   });
 });

@@ -9,6 +9,13 @@ export type ImpactMeasure = KpiProject["measures"][number];
 
 const inPeriod = (d: number | null, p: Period): d is number => d !== null && d >= p.from && d <= p.to;
 
+/**
+ * What a result saves in euros per year: its own euro figure, else its hours priced with the company's hour cost (one
+ * value for the whole company, Settings › Rules). Never both, so nothing counts twice; no hour cost, no euros from hours.
+ */
+export const euroOf = (m: ImpactMeasure, hourCostEur: number | null): number | null =>
+  m.eur ?? (m.hours != null && hourCostEur !== null && hourCostEur > 0 ? m.hours * hourCostEur : null);
+
 /** D7: a result counts for savings, energy, CO2 and outcomes only when a second person confirmed it and its verdict is "better". */
 export const countsAsVerified = (m: ImpactMeasure): boolean => m.verified && m.better;
 
@@ -58,6 +65,7 @@ export function kpiProjectsOf(projects: readonly ReducedProject[], raiserUnitOf:
       kwh: m.impact?.energyKwhPerYear ?? null,
       co2Kg: m.impact?.co2KgPerYear ?? null,
       scrap: m.impact?.scrapPartsPerYear ?? null,
+      hours: m.impact?.hoursPerYear ?? null,
       check: m.check,
       confirmedDay: m.confirmedDay,
     })),
@@ -70,22 +78,27 @@ export function kpiProjectsOf(projects: readonly ReducedProject[], raiserUnitOf:
 /**
  * "Saved per year" on the Dashboard: the results DASHBOARD_RULE counts in the period (in the unit scope, when one is
  * chosen), each a figure per year, summed by `verifiedSum` (D7: confirmed by a second person, verdict better). One row
- * per counted result with a euro figure; CO2, energy and scrap as totals. A "better" result nobody has confirmed yet is
- * never in the sum: it is reported apart, as `unconfirmedEur`, whatever its period. Null when no confirmed result saved a euro.
+ * per counted result with a euro figure (`euroOf`: its own, else its hours times the hour cost); CO2, energy and scrap as
+ * totals; hours that have no hour cost to price them as hours. A "better" result nobody has confirmed yet is never in the
+ * sum: it is reported apart, as `unconfirmedEur`, whatever its period. Null when no confirmed result saved a euro.
  */
-export function savedPerYear(projects: readonly KpiProject[], period: Period, inScope: ((unitId: string | null) => boolean) | null): Saved | null {
+export function savedPerYear(projects: readonly KpiProject[], period: Period, inScope: ((unitId: string | null) => boolean) | null, hourCostEur: number | null = null): Saved | null {
   const scoped = projects.filter((p) => inScope === null || inScope(p.raiserUnitId));
   const confirmed = countedIn(scoped, period, DASHBOARD_RULE);
-  const eur = verifiedSum(confirmed, (m) => m.eur) ?? 0;
+  const eur = verifiedSum(confirmed, (m) => euroOf(m, hourCostEur)) ?? 0;
   if (eur <= 0) return null;
-  const rows = confirmed.flatMap((p) => p.measures.filter((m) => countsAsVerified(m) && (m.eur ?? 0) > 0)
-    .map((m): SavedRow => ({ projectId: p.projectId ?? p.caseId, title: p.title ?? "", check: m.check ?? null, eur: m.eur ?? 0 })));
+  const rows = confirmed.flatMap((p) => p.measures.filter((m) => countsAsVerified(m) && (euroOf(m, hourCostEur) ?? 0) > 0)
+    .map((m): SavedRow => {
+      const priced = m.eur == null; // the euros are the hours times the hour cost
+      return { projectId: p.projectId ?? p.caseId, title: p.title ?? "", check: m.check ?? null, eur: euroOf(m, hourCostEur) ?? 0, hours: priced ? m.hours ?? null : null, rate: priced ? hourCostEur : null };
+    }));
   return {
     rows: rows.sort((a, b) => b.eur - a.eur),
     eur,
     co2Kg: verifiedSum(confirmed, (m) => m.co2Kg) ?? 0,
     kwh: verifiedSum(confirmed, (m) => m.kwh) ?? 0,
     scrap: verifiedSum(confirmed, (m) => m.scrap) ?? 0,
-    unconfirmedEur: scoped.flatMap((p) => p.measures.filter((m) => !m.verified && m.better)).reduce((t, m) => t + (m.eur ?? 0), 0),
+    unconfirmedEur: scoped.flatMap((p) => p.measures.filter((m) => !m.verified && m.better)).reduce((t, m) => t + (euroOf(m, hourCostEur) ?? 0), 0),
+    unpricedHours: hourCostEur === null || hourCostEur <= 0 ? verifiedSum(confirmed, (m) => (m.eur == null ? m.hours : null)) ?? 0 : 0,
   };
 }

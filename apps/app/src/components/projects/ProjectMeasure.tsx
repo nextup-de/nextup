@@ -189,6 +189,7 @@ const IMPACT_FIELDS = [
   ["co2KgPerYear", "projects.impactCo2Field"],
   ["energyKwhPerYear", "projects.impactEnergyField"],
   ["scrapPartsPerYear", "projects.impactScrapField"],
+  ["hoursPerYear", "projects.impactHoursField"],
 ] as const;
 
 function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: MeasureFlags | undefined }) {
@@ -364,6 +365,8 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
             </span>
           )}
           {impactLines(m.impact, locale).map((line) => <span key={line} className={styles.muted}>{line}</span>)}
+          {/* impactLines (features/projects/views.ts, a rights file) lists four figures; the hours are drawn here. */}
+          {m.impact?.hoursPerYear !== undefined && <span className={styles.muted}>{t("projects.impactHours", { value: fmtNumber(m.impact.hoursPerYear, locale) })}</span>}
           {m.questions.map((q, i) => <span key={i} className={styles.muted}>{t("projectResult.measureSentBack", { date: f(q.day), why: q.why })}</span>)}
           {m.reentered && m.previous.length > 0 && (
             <span className={styles.muted} data-testid={"measure-reentered-" + c.check}>
