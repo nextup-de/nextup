@@ -84,10 +84,10 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
 
     <div className={styles.columns}>
       <div className={styles.mainColumn}>
-        <SectionCard title={t("profile.yourWork")} name="work">
-          {work.length ? <div className={styles.workList}>{shown.shown.map((item) => <Link className={styles.workItem} href={item.href} key={item.type + item.id}><span className={styles.workIcon}>{item.type === "problemRaised" ? "P" : item.type === "collaboration" ? "↗" : "✳"}</span><span className={styles.workText}><strong>{item.title}</strong><small>{t(WORK_LABEL[item.type])}</small></span><span className={styles.status}>{item.status}</span><span className={styles.arrow} aria-hidden="true">→</span></Link>)}</div> : <div className={styles.empty}>{t("profile.noWork")}</div>}
+        {work.length > 0 && <SectionCard title={t("profile.yourWork")} name="work">
+          <div className={styles.workList}>{shown.shown.map((item) => <Link className={styles.workItem} href={item.href} key={item.type + item.id}><span className={styles.workIcon}>{item.type === "problemRaised" ? "P" : item.type === "collaboration" ? "↗" : "✳"}</span><span className={styles.workText}><strong>{item.title}</strong><small>{t(WORK_LABEL[item.type])}</small></span><span className={styles.status}>{item.status}</span><span className={styles.arrow} aria-hidden="true">→</span></Link>)}</div>
           <ShowAll list={shown} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
-        </SectionCard>
+        </SectionCard>}
 
         {/* Absence (plan OVL, D19, D31): the own span and what to take back, then the people the viewer may set away; both are hidden in the demo. */}
         <AwayCard />
