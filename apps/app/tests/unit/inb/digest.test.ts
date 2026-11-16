@@ -64,7 +64,7 @@ describe("INB digest", () => {
   it("lists the question asked of a member and the confirm for a lead", () => {
     const member = digest("u_lb", 2)!;
     expect(itemIds(member)).toContain("question:c_ask");
-    expect(member.text).toContain(`${BASE}/cases/c_ask`);
+    expect(member.text).toContain(`${BASE}/idea?id=c_ask`);
     const lead = digest("u_hs", TYPED)!;
     expect(itemIds(lead)).toContain("confirm:p_one");
     expect(lead.text).toContain(`${BASE}/projects/p_one`);

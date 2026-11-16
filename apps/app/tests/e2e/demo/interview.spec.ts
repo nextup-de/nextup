@@ -10,7 +10,7 @@
 // the live check against a stack that is already up (`npm run e2e:live`, playwright.live.config.ts),
 // where the company has a database and the demo login. Everything else is the same clicks.
 import type { Page } from "@playwright/test";
-import { aiMessages, answerCoach, answerRail, expect, holdNextReply, publishTo, showSidebar, START, test } from "../helpers";
+import { aiMessages, answerCoach, answerRail, expect, holdNextReply, publishTo, showSidebar, START, test, yourMove } from "../helpers";
 
 const TITLE = "A shared setup cart for line 3, so a changeover never waits for tools";
 const SHOWN = "A shared setup cart for line 3"; // the title NextUp makes of it: cut at a natural break (features/ideas/coach.ts finishTitle)
@@ -100,12 +100,14 @@ test("the interview script: employee raises, team leader finds it, manager sees 
   });
 
   await test.step("employee: sees the details of the case", async () => {
-    await expect(page).toHaveURL(/\/cases\/c_\w+$/);
+    await expect(page).toHaveURL(/\/idea\?id=c_\w+$/); // the idea's one page (16 Nov 2026)
     const main = page.getByRole("main");
     await expect(main).toContainText(SHOWN);
-    await expect(main).toContainText(MORE[0]);
-    await expect(main).toContainText("5 d left on the promise");
-    await expect(main).toContainText(/T\. Vogel\s*on whose desk it is/);
+    // The idea card (one idea page, 16 Nov 2026): the answer's two halves as label and text, the desk and the promise.
+    await expect(main).toContainText("It serves the changeover goal");
+    await expect(main).toContainText(MORE[0].split(": ")[1]);
+    await expect(main).toContainText(/of the 5-day promise/);
+    await expect(main).toContainText(/On the desk of[\s\S]*T\. Vogel/);
     // "What happened": the log so far is one line.
     await expect(main.getByRole("listitem").filter({ hasText: "raised this" })).toBeVisible();
   });
@@ -130,9 +132,11 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(detail.getByRole("heading", { name: SHOWN, level: 1 })).toBeVisible();
     await expect(detail).toContainText(MORE[0]);
     await expect(detail).toContainText("5 d left");
-    await expect(leader.getByRole("region", { name: "What the AI found" })).toBeVisible();
-    const decision = leader.getByRole("region", { name: "Your decision" });
-    for (const name of [/^Yes, do it/, "No, and why", "Ask a question"]) await expect(decision.getByRole("button", { name })).toBeVisible();
+    // What the AI found is one fold under the text (quiet screens, DESIGN_RULES §9).
+    await expect(leader.getByTestId("fold").filter({ hasText: "What the AI found" })).toBeVisible();
+    const decision = leader.getByRole("region", { name: "Your move" });
+    for (const name of [/^Yes, do it/, "No, and why"]) await expect(decision.getByRole("button", { name })).toBeVisible();
+    await expect(await yourMove(leader, "Ask a question")).toBeVisible(); // in view or under More
   });
 
   await test.step("manager: the Dashboard", async () => {
@@ -140,7 +144,9 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(leader).toHaveURL(/\/dashboard$/);
     const main = leader.getByRole("main");
     await expect(main.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
-    for (const name of ["Open cases per stage", "Cases raised per month", "How cases were answered"]) await expect(main.getByRole("heading", { name, level: 3 })).toBeVisible();
+    // The charts wait behind their lines (DESIGN_RULES §9): Trend and Answers open on a click.
+    for (const fold of ["trend", "answers"]) await main.locator(`[data-name="${fold}"] > summary`).click();
+    for (const name of ["Open cases per stage", "Cases per month", "How cases were answered"]) await expect(main.getByRole("heading", { name, level: 3 })).toBeVisible();
     // No unit or role card here: the demo's cases name no unit, and a breakdown of zeros is left out
     // (features/metrics/breakdown-view.ts, tests/unit/met/breakdown-view.test.ts).
     await expect(main.getByRole("button", { name: /^Idea to decision/ })).toBeVisible();

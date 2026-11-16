@@ -1,5 +1,5 @@
 // UIP-E1: the case page (a real case with events in it), My cases, the Decision log and a Person page pass
-// the page sweep with a section card, at 1440 and 375 px.
+// the page sweep with a section card, at 1440 and 375 px. The case page is the idea's one page, /idea?id= (16 Nov 2026).
 import { expect, test, vis } from "../helpers";
 import { workdayOf } from "../../../src/features/clock/calendar";
 import { loadCalendar } from "../../../src/lib/db/calendar";
@@ -59,14 +59,22 @@ test.afterAll(async () => {
 test("UIP cases", async ({ page, browser }) => {
   await signIn(page, company, MANAGER.name);
   const memberId = company.people[MEMBER.name].id;
-  await sweepPages(page, [`/${SLUG}/cases/${OPEN.id}`, `/${SLUG}/cases/${DECIDED.id}`, `/${SLUG}/team`, `/${SLUG}/people/${memberId}`]);
+  const idea = (id: string) => `/${SLUG}/idea?id=${id}`;
+  await sweepPages(page, [idea(OPEN.id), idea(DECIDED.id), `/${SLUG}/team`, `/${SLUG}/people/${memberId}`]);
   await sweepPages(page, [`/${SLUG}/decisions`], { title: false }); // a tab of Projects: the tab names it
 
   await test.step("the case page shows its title, its events and takes a note", async () => {
+    // The sweep ends at phone width; the idea page and its Chats page are read on a laptop.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    // One idea page, /idea?id= (16 Nov 2026): the title is the idea card's h1, and a note goes in the idea's Chats.
     await page.goto(`/${SLUG}/cases/${OPEN.id}`);
-    await expect(page.locator("h1")).toHaveText(OPEN.title);
+    await expect(page).toHaveURL(new RegExp(`/idea\\?id=${OPEN.id}$`));
+    await expect(page.getByRole("heading", { level: 1, name: OPEN.title, exact: true })).toBeVisible();
     await expect(vis(page, "section-card").filter({ hasText: "What happened" })).toContainText("Which lines would start?");
-    await page.getByLabel("Comment").fill("Checked on site.");
+    await page.goto(`${idea(OPEN.id)}&page=chats`);
+    await page.getByRole("button", { name: "Switch chat" }).click();
+    await page.getByRole("dialog", { name: "Chats" }).getByRole("button", { name: /^From the feed/ }).click();
+    await page.getByLabel("Add a comment", { exact: true }).fill("Checked on site.");
     await page.getByRole("button", { name: "Post", exact: true }).click();
     await expect(page.getByText("Checked on site.")).toBeVisible();
   });
@@ -86,7 +94,7 @@ test("UIP cases", async ({ page, browser }) => {
     await own.locator("#code").fill(company.people[MEMBER.name].code);
     await own.getByRole("button", { name: "Log in", exact: true }).click();
     await own.waitForURL((url) => !/\/login/.test(url.pathname));
-    await sweepPages(own, [`/${SLUG}/team`, `/${SLUG}/cases/${OPEN.id}`]);
+    await sweepPages(own, [`/${SLUG}/team`, idea(OPEN.id)]);
     await own.goto(`/${SLUG}/team`);
     await expect(own.getByRole("article", { name: OPEN.title })).toBeVisible();
     await context.close();

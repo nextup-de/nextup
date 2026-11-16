@@ -10,6 +10,8 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { DashboardView } from "@/components/dashboard/team/DashboardView";
 import { visibleProjectsFor } from "@/features/projects/views";
+import { listedProject, projectItem } from "@/features/overview/items";
+import { OverviewList } from "./overview/OverviewList";
 import { useT } from "@/i18n/client";
 import { ProjectsList } from "./ProjectsView";
 import { idViewerOf } from "./parts";
@@ -17,7 +19,8 @@ import styles from "./Projects.module.css";
 
 export type HubTab = "projects" | "ideas";
 
-export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases?: boolean }) {
+/** `raiserInactive`: the open idea's raiser has left (D20); the server knows, the idea page passes it on. */
+export function ProjectsHub({ tab, linkCases = false, raiserInactive = false }: { tab: HubTab; linkCases?: boolean; raiserInactive?: boolean }) {
   const ctx = useDemo();
   const t = useT();
   const { S, ready, demo, flag, href } = ctx;
@@ -26,20 +29,31 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
   const movesOn = tab === "projects" && oldIdea !== null && flag("projects");
   useEffect(() => { if (movesOn && oldIdea) router.replace(href("/idea?id=" + encodeURIComponent(oldIdea))); }, [movesOn, oldIdea, router, href]);
   if (!ready || movesOn) return <PageSkeleton kind={tab === "ideas" || movesOn ? "dashboard" : "list"} />;
-  if (!flag("projects")) return <DashboardView linkCases={linkCases} />;
+  if (!flag("projects")) return <DashboardView linkCases={linkCases} raiserInactive={raiserInactive} />;
 
   if (tab === "ideas") {
     return (
       <div className={styles.hub} data-wide="true">
         <h1 className="nh-sr">{t("projects.hubIdeas")}</h1>
         <section aria-label={t("projects.hubIdeas")}>
-          <DashboardView linkCases={linkCases} embedded title={<h2 className={styles.hubTitle}>{t("projects.hubIdeas")}</h2>} />
+          <DashboardView linkCases={linkCases} raiserInactive={raiserInactive} embedded title={<h2 className={styles.hubTitle}>{t("projects.hubIdeas")}</h2>} />
         </section>
       </div>
     );
   }
 
   const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
+  if (tab === "projects" && flag("overviewList")) {
+    // The Overview list (Paper "Overview · final + interactions"), projects only: ideas live in the Inbox and the Ideas tab,
+    // never under Projects (Kevin, 16 Nov 2026).
+    const items = projects.filter(listedProject).map((p) => projectItem(p, S.day, ctx.actorUserId));
+    return (
+      <div className={styles.hub} data-wide="true">
+        <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
+        <section className={styles.hubProjects} aria-label={t("projects.ovTitle")}><OverviewList items={items} /></section>
+      </div>
+    );
+  }
   return (
     <div className={styles.hub} data-wide="true">
       <h1 className="nh-sr">{t("projects.pageTitle")}</h1>

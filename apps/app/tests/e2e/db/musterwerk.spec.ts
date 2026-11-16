@@ -11,7 +11,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Browser, Page } from "@playwright/test";
-import { confirmSheet, expect, passSecondFactor, publishIdea, test } from "../helpers";
+import { confirmSheet, expect, passSecondFactor, publishIdea, test, yourMove } from "../helpers";
 import { getDb } from "../../../src/lib/db/client";
 import { generateMusterwerk } from "../../../prisma/generators/musterwerk";
 
@@ -137,7 +137,7 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
     const row = desk.getByRole("main").getByText(TITLE).first();
     await expect(row).toBeVisible();
     await row.click();
-    await desk.getByRole("button", { name: "Ask a question" }).click();
+    await (await yourMove(desk, "Ask a question")).click();
     await confirmSheet(desk, "Which shift, and since when does the pressure drop?", "Send the question");
 
     const member = await signIn(browser, raiser);
@@ -185,6 +185,8 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
     await expect(page.getByText(TITLE)).toHaveCount(0);
     const body = await page.request.get(url(`/cases/${caseId}`));
     expect(await body.text()).not.toContain(TITLE);
+    // /cases/<id> moves on to the idea's one page, /idea?id= (16 Nov 2026): that address keeps it from them too.
+    expect(await (await page.request.get(url(`/idea?id=${caseId}`))).text()).not.toContain(TITLE);
     // The owner, by contrast, gets the case from the same address.
     const desk = await signIn(browser, owner);
     expect(await (await desk.request.get(url(`/cases/${caseId}`))).text()).toContain(TITLE);

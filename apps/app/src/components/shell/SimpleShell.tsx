@@ -5,13 +5,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
+import { adminMenuLinks, hasSideView, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
 import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
 import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxTotal, mineRows } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
+import { AreaFrame } from "./AreaFrame";
 import { NavSearch, navLabel } from "./NavSearch";
 import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
@@ -30,9 +31,14 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const area = sectionTabAt(pathname.slice(tenant.prefix.length), { role, serverMode: ctx.serverMode, flag: ctx.flag });
   // The Projects area (its tabs and every project's page) sits next to the projects sidebar, which then carries the tabs.
   const projectId = ctx.flag("projects") ? projectIdAt(pathname.slice(tenant.prefix.length)) : null;
-  const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null; // an idea opens next to the sidebar too
+  // An idea's page (/cases/<id>, or /idea?id=) keeps the sidebar for its own pages, but it is no part of Projects (Kevin and
+  // Sam, 16 Nov 2026): it belongs to the Inbox, where ideas are decided, and its sidebar shows that idea alone.
+  const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null;
+  const onIdea = ctx.flag("projects") && (caseId !== null || pathname === tenant.prefix + "/idea");
   const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
-  const inProjects = projectsArea !== null || projectId !== null || caseId !== null;
+  const inProjects = projectsArea !== null || projectId !== null || onIdea;
+  // Any other area with several pages lists them in its own side view (AreaFrame); the strip then shows on a phone only.
+  const sideArea = area && !inProjects && hasSideView(area.section) ? area : null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -56,13 +62,13 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const shipped = mine.filter((m) => m.status === "Shipped").length;
   // Badges: what is waiting on this person right now.
   const counts = { inbox: inboxTotal(ctx), decisions: decisionsWaiting(D).length };
-  // Profile numbers per role: what this person sent (member), what sits on their desk and what they
-  // decided (leader), what waits on them (manager). A manager raises nothing, so "0 raised" is noise.
+  // Profile numbers per role: what this person sent (member), what they decided (leader). What waits on
+  // someone is the bar's badge, so the menu does not count it again (DESIGN_RULES §9); a manager gets none.
   const decided = D.cases.filter((c) => ctx.actorUserId !== null && c.decided?.byUserId === ctx.actorUserId).length;
   const stats: [number, string][] = role === "manager"
-    ? [[counts.decisions, t("shell.statDecisionsWaiting", { count: counts.decisions })]]
+    ? []
     : role === "leader"
-      ? [[counts.inbox, t("shell.statInInbox")], [decided, t("shell.statDecided")]]
+      ? [[decided, t("shell.statDecided")]]
       : [[mine.length, t("shell.statRaised")], [shipped, t("shell.statShipped")]];
   const sent = role !== "manager"; // members and leaders raise things; the footer link follows them
 
@@ -81,9 +87,10 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {visibleSimpleNav(role, ctx.flag, counts).map((n) => {
             const href = tenant.prefix + n.href;
-            // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
-            const inOverview = pathname === tenant.prefix + "/overview" || pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/");
-            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area?.section === "projects") || (n.href === "/raise" && area?.section === "ideas");
+            // Without projects a case opens from the Overview, so its page counts as the Overview. With projects it counts as the Inbox.
+            const inOverview = pathname === tenant.prefix + "/overview" || (!onIdea && (pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/")));
+            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area?.section === "projects")
+              || (n.href === "/inbox" && (area?.section === "inbox" || onIdea)) || (n.href === "/raise" && area?.section === "ideas");
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>
@@ -106,18 +113,13 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                   <span className={styles.meName}>{who.name}</span>
                   <span className={styles.meLine}>{who.line}</span>
                   {email && <span className={styles.meLine}>{email}</span>}
+                  {/* Only worth a line when it differs from the name: the employee posts under a handle. */}
+                  {anon && <span className={styles.meLine}>{t("shell.othersSeeYouAs", { handle: actor })}</span>}
                 </span>
               </div>
-              <div className={styles.meStats}>
-                <span><strong>{persona.role.label}</strong></span>
-                {stats.filter(([n]) => n > 0).map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
-              </div>
-              {/* Only worth showing when it differs from the header: the employee posts under a handle. */}
-              {anon && (
-                <div className={styles.mePreview}>
-                  <span className={styles.mePreviewLabel}>{t("shell.othersSeeYou")}</span>
-                  <span className={styles.mePreviewName}>{actor}</span>
-                  <span className={styles.meLine}>{t("shell.anonymousHidden")}</span>
+              {stats.some(([n]) => n > 0) && (
+                <div className={styles.meStats}>
+                  {stats.filter(([n]) => n > 0).map(([n, label]) => <span key={label}><strong>{n}</strong> {label}</span>)}
                 </div>
               )}
               <div className={styles.meFoot}>
@@ -128,7 +130,6 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
                   {adminMenuLinks({ role, serverMode: ctx.serverMode, prefix: tenant.prefix, consoleHref: tenant.consoleHref ?? null }).map((l) => (
                     <Link key={l.key} href={l.href} className={styles.meLink} onClick={() => setPop(null)}>{t(l.key)} <span aria-hidden="true">→</span></Link>
                   ))}
-                  {ctx.serverMode && <Link href={tenant.prefix + "/reports"} className={styles.meLink} onClick={() => setPop(null)}>{t("shell.myReports")} <span aria-hidden="true">→</span></Link>}
                 </span>
                 <button type="button" className={styles.logout} onClick={logout}>{t("shell.logOut")}</button>
               </div>
@@ -136,10 +137,14 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </header>
-      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} />}
+      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} side={sideArea !== null} />}
 
       <main className={styles.content}>
-        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId}>{children}</ProjectsFrame> : children}</div>
+        <div className={styles.contentInner}>
+          {inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId} idea={onIdea}>{children}</ProjectsFrame>
+            : sideArea ? <AreaFrame section={sideArea.section} active={sideArea.tab}>{children}</AreaFrame>
+            : children}
+        </div>
       </main>
 
       {pop && <div className={styles.backdrop} onClick={() => setPop(null)} />}

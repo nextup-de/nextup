@@ -1,11 +1,12 @@
 "use client";
 // The Feed: the Claude Design handoff "Idea Feed", its markup and classes 1:1 (dc-convert ->
-// Feed.module.css). Closed, a grid of cards - a cover with the case's key number, the title, who
-// backs it - filtered by site and department and sorted by support or age. A card opens the idea page
-// (/cases/<id>), the one home of an idea; ?id= goes there straight away.
+// Feed.module.css). Closed, a grid of cards - who raised it, where and when (once), a cover with the case's
+// key number, the title and Support with its count - filtered by department chips, with site, unit and sort in
+// one Filter menu (DESIGN_RULES §9). A card opens the idea page (/idea?id=), the one home of an idea; ?id= goes there straight away.
 // Facts: the cases this viewer may see (derive.visibleTo), "this affects me too" as Support
 // (act.affect), comments (act.comment). Covers come from a fixed library (features/cases/thumbs.ts).
-// Each card shows the case's latest event (features/cases/feed.ts latestActivity); nothing here is a stand-in.
+// A card shows the case's latest event (features/cases/feed.ts latestActivity) only when it moved after it was raised:
+// the raise is the "when" already on the card. Nothing here is a stand-in.
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useCaseNames } from "@/components/cases/useCaseNames";
@@ -15,7 +16,7 @@ import { DeptChip, PersonFace, ShowAll, useCapped } from "@/components/ui/elemen
 import { deptTone } from "@/lib/dept-tone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { archiveOf, inView, type ListView } from "@/features/cases/discussion";
-import { deptChips, FEED_SORT_KEY, FEED_SORTS, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, supportSummary, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
+import { deptChips, FEED_SORT_KEY, FEED_SORTS, feedCover, feedStage, inDept, inSite, inUnit, latestActivity, siteFilters, sortFeed, isMe as isBacker, unitFilters, type Activity, type Backer, type FeedSort } from "@/features/cases/feed";
 import type { ReducedCase } from "@/features/cases/reducer";
 import { dashboardRow, raisedWith } from "@/features/cases/rows";
 import { affectedOn, commentsOn } from "@/features/cases/selectors";
@@ -24,6 +25,7 @@ import { useT } from "@/i18n/client";
 import type { T } from "@/i18n";
 import s from "./Feed.module.css";
 import { libraryCoverFor, sampleCoverFor } from "@/features/cases/thumbs";
+import { ideaPath } from "@/features/ideas/page-path";
 
 const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
 const ALL_UNITS = "*"; // the "every unit" filter value; shown as feed.allUnits
@@ -54,7 +56,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const [site, setSite] = useState(ALL_SITES);
   const [unit, setUnit] = useState(ALL_UNITS);
   const [sort, setSort] = useState<FeedSort>("relevant");
-  const [menu, setMenu] = useState<"dept" | "site" | "unit" | "sort" | null>(null);
+  const [menu, setMenu] = useState<"dept" | "filter" | null>(null);
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -90,34 +92,28 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const bySite = visible.filter((x) => inSites(x, site) && (unit === ALL_UNITS || inUnit(unitIdOf(x.c), unit)));
   const list = sortFeed(bySite.filter((x) => inDept(x.tags, dept)), sort, log.day);
   const cards = useCapped(list, [view, dept, site, unit, sort].join("|"));
-  const siteName = sites.find((x) => x.id === site)?.name ?? t("team.feedAllSites");
-  const unitName = units.find((x) => x.id === unit)?.name ?? t("feed.allUnits");
+  const filtered = [site !== ALL_SITES, unit !== ALL_UNITS, sort !== "relevant"].filter(Boolean).length; // how many Filter choices differ from the start
   const deptCount = (d: string) => bySite.filter((x) => x.tags.includes(d)).length;
   const { chips: deptChipNames, more: moreDepts } = deptChips(seed, deptCount, dept); // at most three, the rest in a menu
   const chips = ["All", ...deptChipNames];
 
-  const open = (id: string) => router.push(href("/cases/" + encodeURIComponent(id)));
+  const open = (id: string) => router.push(href(ideaPath(id)));
   const support = (x: Item) => { act.affect(x.c.id); };
-  // The latest-event line: what last happened, by whom (their desk role, else the event's label), and when.
-  const latestLine = (c: ReducedCase, a: Activity | null): string => {
-    const when = ago(t, log.day - (a?.day ?? c.raisedDay));
-    if (!a || a.kind === "raised") return t("feed.latestRaised", { when });
+  // The latest-event line: what last happened, by whom (their desk role, else the event's label), and when. None
+  // while the raise is the latest: the card already says when it was raised.
+  const latestLine = (a: Activity | null): string | null => {
+    if (!a || a.kind === "raised") return null;
+    const when = ago(t, log.day - a.day);
     const who = (a.role ? names.roleTitle(a.role) : "") || a.label || t("feed.theDesk");
     const key = { read: "feed.latestRead", asked: "feed.latestAsked", yes: "feed.latestYes", no: "feed.latestNo", handed: "feed.latestHanded", discussion: "feed.latestDiscussion", escalated: "feed.latestEscalated" } as const;
     return t(key[a.kind], { who, when });
-  };
-  // The card's supporters line: a unit is named only with at least MIN_GROUP supporters from it.
-  const supportersLine = (x: Item): string => {
-    const sum = supportSummary(x.backing.map((b) => ({ ...b, unit: deptNameOf(b.name) || null })), me);
-    return sum.kind === "none" ? t("feed.supportersNone") : sum.kind === "you" ? t("feed.supportersYou")
-      : sum.kind === "unit" ? t("feed.supportersUnit", { count: sum.count, unit: sum.unit }) : t("feed.supportersCount", { count: sum.count });
   };
   // Supporter avatars: up to three, you first once you back it.
   const avatars = (x: Item) => (x.supported ? [{ name: actor, me: true }, ...x.backing.filter((b) => !isBacker(b, me)).map((b) => ({ name: b.name, me: false }))] : x.backing.map((b) => ({ name: b.name, me: false }))).slice(0, 3);
 
   // An old address with ?id= (a notice, a shared link) goes on to the idea page, when the viewer may open that case.
   const forward = ready && initialId ? D.cases.find((k) => k.id === initialId && canOpen(ctx, k))?.id ?? null : null;
-  useEffect(() => { if (forward) router.replace(href("/cases/" + encodeURIComponent(forward))); }, [forward, router, href]);
+  useEffect(() => { if (forward) router.replace(href(ideaPath(forward))); }, [forward, router, href]);
 
   // Escape closes the open menu.
   const onKey = useEffectEvent((e: KeyboardEvent) => {
@@ -166,53 +162,44 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
           <div className={s.div5}>
             {menu && <div className={s.closeMenu} onClick={() => setMenu(null)} aria-hidden="true" />}
             <div className={s.div6}>
-              <button type="button" className={s.toggleSite} onClick={() => setMenu(menu === "site" ? null : "site")} aria-expanded={menu === "site"} aria-haspopup="menu">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-                {siteName}
+              <button type="button" className={s.toggleSort} onClick={() => setMenu(menu === "filter" ? null : "filter")} aria-expanded={menu === "filter"} aria-haspopup="menu" data-testid="feed-filter">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+                {t("feed.filter")}{quietCount(filtered, s.count)}
               </button>
-              {menu === "site" && (
-                <div className={s.div7} data-first="true" role="menu">
-                  {[{ id: ALL_SITES, name: t("team.feedAllSites") }, ...sites].map((x) => (
-                    <button key={x.id} type="button" role="menuitemradio" aria-checked={site === x.id} className={s.pick} data-on={site === x.id ? "true" : undefined} onClick={() => { setSite(x.id); setUnit(ALL_UNITS); setMenu(null); }}>
-                      <span className={s.label}>{x.name}</span>
-                      {quietCount(visible.filter((v) => inSites(v, x.id)).length, s.count)}
-                      <span className={s.check}>{site === x.id ? "✓" : ""}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {units.length > 0 && (
-              <div className={s.div6}>
-                <button type="button" className={s.toggleSite} onClick={() => setMenu(menu === "unit" ? null : "unit")} aria-expanded={menu === "unit"} aria-haspopup="menu">
-                  {unitName}
-                </button>
-                {menu === "unit" && (
-                  <div className={s.div7} role="menu">
-                    {[{ id: ALL_UNITS, name: t("feed.allUnits") }, ...units].map((x) => (
-                      <button key={x.id} type="button" role="menuitemradio" aria-checked={unit === x.id} className={s.pick} data-on={unit === x.id ? "true" : undefined} onClick={() => { setUnit(x.id); setMenu(null); }}>
+              {/* Site, unit and sort in one menu; it stays open while the reader picks, Escape or a click outside closes it. */}
+              {menu === "filter" && (
+                <div className={s.div7} data-first="true" role="menu" aria-label={t("feed.filter")}>
+                  <div className={s.group} role="group" aria-label={t("feed.filterSite")}>
+                    <span className={s.groupHead} aria-hidden="true">{t("feed.filterSite")}</span>
+                    {[{ id: ALL_SITES, name: t("team.feedAllSites") }, ...sites].map((x) => (
+                      <button key={x.id} type="button" role="menuitemradio" aria-checked={site === x.id} className={s.pick} data-on={site === x.id ? "true" : undefined} onClick={() => { setSite(x.id); setUnit(ALL_UNITS); }}>
                         <span className={s.label}>{x.name}</span>
-                        {quietCount(visible.filter((v) => inSites(v, site) && (x.id === ALL_UNITS || inUnit(unitIdOf(v.c), x.id))).length, s.count)}
-                        <span className={s.check}>{unit === x.id ? "✓" : ""}</span>
+                        {quietCount(visible.filter((v) => inSites(v, x.id)).length, s.count)}
+                        <span className={s.check}>{site === x.id ? "✓" : ""}</span>
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
-            <div className={s.div6}>
-              <button type="button" className={s.toggleSort} onClick={() => setMenu(menu === "sort" ? null : "sort")} aria-expanded={menu === "sort"} aria-haspopup="menu">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" /></svg>
-                {t(FEED_SORT_KEY[sort])}
-              </button>
-              {menu === "sort" && (
-                <div className={s.div7} role="menu">
-                  {FEED_SORTS.map((k) => (
-                    <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} className={s.pick} data-on={sort === k ? "true" : undefined} onClick={() => { setSort(k); setMenu(null); }}>
-                      <span className={s.label}>{t(FEED_SORT_KEY[k])}</span>
-                      <span className={s.check}>{sort === k ? "✓" : ""}</span>
-                    </button>
-                  ))}
+                  {units.length > 0 && (
+                    <div className={s.group} role="group" aria-label={t("feed.filterUnit")}>
+                      <span className={s.groupHead} aria-hidden="true">{t("feed.filterUnit")}</span>
+                      {[{ id: ALL_UNITS, name: t("feed.allUnits") }, ...units].map((x) => (
+                        <button key={x.id} type="button" role="menuitemradio" aria-checked={unit === x.id} className={s.pick} data-on={unit === x.id ? "true" : undefined} onClick={() => setUnit(x.id)}>
+                          <span className={s.label}>{x.name}</span>
+                          {quietCount(visible.filter((v) => inSites(v, site) && (x.id === ALL_UNITS || inUnit(unitIdOf(v.c), x.id))).length, s.count)}
+                          <span className={s.check}>{unit === x.id ? "✓" : ""}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className={s.group} role="group" aria-label={t("feed.filterSort")}>
+                    <span className={s.groupHead} aria-hidden="true">{t("feed.filterSort")}</span>
+                    {FEED_SORTS.map((k) => (
+                      <button key={k} type="button" role="menuitemradio" aria-checked={sort === k} className={s.pick} data-on={sort === k ? "true" : undefined} onClick={() => setSort(k)}>
+                        <span className={s.label}>{t(FEED_SORT_KEY[k])}</span>
+                        <span className={s.check}>{sort === k ? "✓" : ""}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -227,7 +214,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
         <div className={s.div9}>
           {cards.shown.map((x, k) => {
-            const { c } = x, st = feedStage(c, ctx.locale);
+            const { c } = x, st = feedStage(c, ctx.locale), latest = latestLine(x.activity);
             // Until covers are generated per idea (docs/AI_COVERS.md): the sample idea's own picture and
             // text, else a library picture with its text (features/cases/thumbs.ts).
             const pic = sampleCoverFor(c) ?? libraryCoverFor(c.id);
@@ -259,8 +246,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
                   </div>
                 </div>
                 <h3 className={s.title}>{c.title}</h3>
-                <span className={s.latest} data-testid="feed-latest">{latestLine(c, x.activity)}</span>
-                <span className={s.supporters}>{supportersLine(x)}</span>
+                {latest && <span className={s.latest} data-testid="feed-latest">{latest}</span>}
                 <div className={s.div14}>
                   <div className={s.div15}>
                     {avatars(x).map((a) => <PersonFace key={a.name} name={a.name} size="sm" />)}
@@ -282,7 +268,6 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
         </div>
         <ShowAll list={cards} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
         {!list.length && <div className={s.div16}>{visible.length ? t("team.feedNoMatch") : split && view === "archive" ? t("team.feedNoArchive") : t("feed.emptyFeed")}</div>}
-        <p className={s.windowNote}>{t("feed.windowFooter")}</p>
       </div>
     </div>
   );

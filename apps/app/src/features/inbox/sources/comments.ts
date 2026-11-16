@@ -9,6 +9,7 @@ import { invitedTo } from "@/features/cases/discussion";
 import { onDeskOf } from "@/features/cases/selectors";
 import type { InboxItem } from "../types";
 import type { AgentInboxInput } from "./agent";
+import { ideaPath } from "@/features/ideas/page-path";
 
 export type CommentsInboxInput = AgentInboxInput & { events?: readonly CaseEvent[] | null };
 
@@ -29,7 +30,7 @@ export function commentItems(input: CommentsInboxInput): InboxItem[] {
     const unread = (others.get(c.id) ?? []).filter((at) => at > (mineAt.get(c.id) ?? -1)).length;
     if (unread === 0) continue;
     if (!onDeskOf(c, me) && !invitedTo(c, me) && c.fromUserId !== me.userId) continue;
-    out.push({ id: `comment:${c.id}`, ask: "part", kind: "comment", caseId: c.id, title: c.title, href: `/cases/${encodeURIComponent(c.id)}`, dueDay: null, late: false, dueSoon: false, pinned: false, deskRoleId: null, count: unread });
+    out.push({ id: `comment:${c.id}`, ask: "part", kind: "comment", caseId: c.id, title: c.title, href: ideaPath(c.id), dueDay: null, late: false, dueSoon: false, pinned: false, deskRoleId: null, count: unread });
   }
   return out;
 }

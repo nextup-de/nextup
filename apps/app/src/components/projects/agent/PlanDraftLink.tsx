@@ -9,6 +9,7 @@ import { agentStateOf } from "@/features/agent/reduce";
 import type { ReducedProject } from "@/features/projects/types";
 import { useT } from "@/i18n/client";
 import styles from "./Agent.module.css";
+import { ideaPath } from "@/features/ideas/page-path";
 
 export function PlanDraftLink({ p }: { p: ReducedProject }) {
   const ctx = useDemo();
@@ -21,7 +22,7 @@ export function PlanDraftLink({ p }: { p: ReducedProject }) {
   if (!maySeePlanExists({ userId: ctx.actorUserId, role: ctx.role, me: ctx.me }, kase, ctx.seed.seats ?? [])) return null;
   return (
     <p className={styles.hint} data-testid="plan-draft-link">
-      <Link href={href("/cases/" + kase.id)} className={styles.link}>{t("projectAgent.planLink")}</Link>
+      <Link href={href(ideaPath(kase.id))} className={styles.link}>{t("projectAgent.planLink")}</Link>
     </p>
   );
 }

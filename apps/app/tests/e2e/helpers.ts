@@ -86,7 +86,7 @@ export async function answerCoach(page: Page, text: string) {
 export async function showSidebar(page: Page) {
   const show = page.getByRole("button", { name: "Show sidebar" });
   await expect(async () => {
-    if (await show.isVisible()) await show.click();
+    if (await show.isVisible()) await show.click({ timeout: 1_000 }).catch(() => undefined);
     await expect(show).toBeHidden({ timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 }
@@ -97,11 +97,13 @@ export async function showSidebar(page: Page) {
  */
 export async function projectPages(page: Page): Promise<Locator> {
   const nav = page.locator('nav[aria-label="Project pages"]:visible, nav[aria-label="Pages"]:visible, nav[aria-label="Project sections"]:visible');
-  // Right after a load the Show button can be there before the page listens to it: click until the pages show.
+  // Right after a load the Show button can be there before the page listens to it: click until the pages show. The server
+  // draws the sidebar hidden and the browser then opens it if it was open before, so the button can go while it is
+  // clicked: a short click that gives up, and the next round looks again.
   await expect(async () => {
     if ((await nav.count()) === 0) {
       const show = page.getByRole("button", { name: "Show sidebar" });
-      if (await show.isVisible()) await show.click();
+      if (await show.isVisible()) await show.click({ timeout: 1_000 }).catch(() => undefined);
     }
     await expect(nav.first()).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
@@ -207,6 +209,19 @@ export async function answerRail(page: Page) {
   const open = page.locator('[data-rail-seg][data-s="open"], [data-rail-seg][data-s="active"]');
   for (let i = 0; i < 20 && (await open.count()) > 0; i++) await answerCoach(page, RAIL_ANSWERS[i % RAIL_ANSWERS.length]);
   await expect(open).toHaveCount(0);
+}
+
+/**
+ * A move in "Your move" (components/inbox/YourMove, DESIGN_RULES §9): its button when it is in view (the filled one, or a
+ * quiet yes or no), else its item under More, which this opens.
+ */
+export async function yourMove(page: Page, name: string | RegExp): Promise<Locator> {
+  const card = page.getByTestId("your-move");
+  await expect(card).toBeVisible();
+  const button = card.getByRole("button", { name });
+  if (await button.count()) return button.first();
+  await card.getByRole("button", { name: "More", exact: true }).click();
+  return card.getByRole("menuitem", { name });
 }
 
 /** The sheet that opens for "No, and why", "Ask a question", "Answer …". */

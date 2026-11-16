@@ -111,6 +111,8 @@ export type ProjectAct = {
   // A result that closes properly (plan RES): each one event, except stopAndReturn.
   /** Send a typed result back (D14). */
   question: (projectId: string, check: number, why: string) => void;
+  /** A second person confirms a typed result (D14): the revision named when the result has one. */
+  confirmMeasure: (projectId: string, check: number, measureEventId?: string | null) => void;
   /** A second person confirms the baseline number (D16). */
   confirmBaseline: (projectId: string) => void;
   /** Ask the sponsor for help on a step (D19). */
@@ -219,6 +221,7 @@ export function projectActs(d: ActDeps): ProjectAct {
     update: (id, text, week) => emit("project.update", id, { text, week }),
     changeLead: (id, to, why) => emit("project.lead.changed", id, { to: to.name, toUserId: to.userId, ...(why ? { why } : {}) }),
     question: (id, check, why) => emit("project.measure.questioned", id, { check, why }),
+    confirmMeasure: (id, check, measureEventId) => emit("project.measure.confirmed", id, measureEventId ? { check, measureEventId } : { check }),
     confirmBaseline: (id) => emit("project.baseline.confirmed", id),
     askHelp: (id, stepId, text) => emit("project.help.asked", id, { stepId, text }),
     reopen: (caseId, why) => emit("case.reopened", caseId, { why }),

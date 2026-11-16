@@ -6,10 +6,10 @@
 .period { height: 32px; padding-inline: 12px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; white-space: nowrap; }
 .period[data-on="true"] { background: #fff; color: var(--nh-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
 .period:focus-visible, .export:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.export { height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
-.export:hover:not(:disabled) { background: var(--nh-brand-hover); }
+/* Export is not the viewer's next move, so it is quiet: the page has no filled button (DESIGN_RULES §9). */
+.export { height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; background: var(--nh-fill); color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.export:hover:not(:disabled) { background: var(--nh-line); }
 .export:disabled { opacity: 0.5; cursor: default; }
-.dates { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 /* Each figure keeps one colour: the tile's top edge, its number, its bar and its column. */
 .page [data-kpi="participation"] { --k: var(--nh-brand); }
 .page [data-kpi="ideasPer100"] { --k: var(--nh-idea); }
@@ -17,7 +17,7 @@
 .page [data-kpi="days"] { --k: var(--nh-bench-impact); }
 .page [data-kpi="savings"] { --k: #12a1a1; }
 .page [data-kpi="energy"] { --k: #e9a100; }
-.page [data-kpi="co2"] { --k: #2f8f5b; }
+.page [data-kpi="co2"] { --k: var(--nh-ok); }
 .page [data-kpi="premiums"] { --k: #c2410c; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .tile { position: relative; overflow: hidden; min-width: 0; padding: 16px 16px 14px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--k) 9%, white), var(--nh-card) 70%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 14%, transparent); }
@@ -28,7 +28,6 @@
 .cellBar { display: inline-flex; align-items: center; gap: 8px; }
 .cellBar .meter { width: 56px; margin-top: 0; }
 .table thead th[data-kpi] { color: color-mix(in srgb, var(--k) 70%, var(--nh-ink)); }
-.hiddenLine { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .label { margin-top: 2px; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
 .scroll { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-md); }

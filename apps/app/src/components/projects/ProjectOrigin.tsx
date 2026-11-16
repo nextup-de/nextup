@@ -10,6 +10,7 @@ import { raisedWith } from "@/features/cases/rows";
 import type { ReducedProject } from "@/features/projects/types";
 import { useT } from "@/i18n/client";
 import styles from "./Projects.module.css";
+import { ideaPath } from "@/features/ideas/page-path";
 
 export function OriginPanel({ p }: { p: ReducedProject }) {
   const { S, f } = useDemo();
@@ -67,7 +68,7 @@ export function FilesPanel({ p }: { p: ReducedProject }) {
   const t = useT();
   const rows = p.sources.map((id) => {
     const c = S.cases.find((x) => x.id === id);
-    if (c) return { id, title: c.title, to: href("/cases/" + id), files: raisedWith(c).attachments };
+    if (c) return { id, title: c.title, to: href(ideaPath(id)), files: raisedWith(c).attachments };
     const i = S.ideas.find((x) => x.id === id);
     return { id, title: i?.title ?? id, to: i ? href("/ideas?id=" + id) : null, files: 0 };
   });
@@ -83,7 +84,6 @@ export function FilesPanel({ p }: { p: ReducedProject }) {
           </li>
         ))}
       </ul>
-      <Link href={href("/overview")} className={styles.link}>{t("projects.allIdeas")}</Link>
     </section>
   );
 }

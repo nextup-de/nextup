@@ -1,6 +1,6 @@
 # Design rules
 
-> **Updated 2026-11-12.** The fixed rules every screen follows. Kevin decides them; a PR that breaks one changes, not
+> **Updated 2026-11-16.** The fixed rules every screen follows. Kevin decides them; a PR that breaks one changes, not
 > the rule. Each rule names where it is enforced. "Not tested" means no check guards it yet, so reviewers must.
 
 NextUp is a quiet product: one question per screen, nothing drawn that has nothing to say. When a design choice is
@@ -24,7 +24,7 @@ still calls black the action colour (Visual Foundations), this file and its own 
 | Nothing empty is drawn: no empty card, section, inbox group or dashboard row. With nothing at all, the page says so in one sentence. | INB acceptance (`tests/e2e/db/inb.spec.ts`) for the inbox; elsewhere not tested |
 | The ideas sidebar is one quiet line per idea: no date, no preview, no Draft badge (a dashed circle marks a draft). | `tests/unit/design/ideas-sidebar.test.ts` |
 | Detail views use one structure: sections are a grey heading separated by space, not by lines; key/value blocks and lists share one grouped-list style. | not tested |
-| One row of controls per list: at most two levels of "where am I" (top pills, page tabs); everything else is a filter in that row; empty departments go behind "More". | not tested |
+| One row of controls per list: at most two levels of "where am I" (the bar's pills, the pages in the side view); everything else is a filter in that row; empty departments go behind "More". | not tested |
 
 ## 2. Numbers and data
 
@@ -53,7 +53,7 @@ still calls black the action colour (Visual Foundations), this file and its own 
 |---|---|
 | One inbox, `/<company>/inbox`, for every role; a member sees it in the nav only while something waits. Order: pinned, late, due soon, the rest. The badge never adds overlapping counts. | INB acceptance; [INBOX.md](INBOX.md) |
 | The shell is chosen per role (members: simple bar; leaders and managers: rail and top bar). Roles, homes and nav are config (`ROLE_HOME`, `NAV`), never hard-coded in a page. | `tests/unit/design/roles-config.test.ts` (leaders and managers still have the simple shell: listed there) |
-| A section-tab strip appears only with two or more tabs. Tab strips never show a vertical scrollbar. | `tests/unit/design/section-tabs.test.ts`; `tests/e2e/demo/design-guard.spec.ts` |
+| **An area's pages sit in its side view** on a laptop or monitor: the same side view in every area, on the left, hidden at the start and opened by the button at the top left; open in one area, it is open in all. No strip of tabs repeats it there. A phone has no side view and keeps the strip. Either appears only with two or more pages; a strip never shows a vertical scrollbar. Kevin, 16 Nov 2026: every area. Projects, Dashboard and Profile have it; Inbox and Ideas keep the strip until their own lists sit in the side view (`SIDE_VIEW_SECTIONS` in `config/nav.ts`). | `tests/unit/design/side-view.test.tsx`; `tests/unit/design/section-tabs.test.ts`; `tests/e2e/demo/design-guard.spec.ts`; `tests/e2e/db/design-guard.spec.ts` |
 | Everything works below 760px; nothing scrolls sideways; nothing scales with the window (no `zoom`, no vw/vh). | `mobile.spec.ts`; checkDesign; `fluid.test.ts`; [RESPONSIVE.md](RESPONSIVE.md) |
 | Floor pages: no app shell, light theme, touch targets at least 48px (main buttons 64px), a DE / EN switch. | `tests/unit/design/floor.test.ts` (the DE / EN buttons are 40px: listed there) |
 
@@ -75,6 +75,47 @@ still calls black the action colour (Visual Foundations), this file and its own 
 | No blue outside `tokens.css`: changing `--nh-brand` changes it everywhere. The colour allowlist can only shrink. | `design-guard.spec.ts`; `colors.test.ts` |
 | Font sizes only from the scale 12/13/15/17/20/24/28/34 (16 for inputs); nothing under 12px; no raw px, rem or calc font sizes. | `fluid.test.ts`; Stylelint |
 | Motion respects reduced motion. Focused fields get the blue focus ring (`--nh-brand-focus`). | `tests/unit/design/motion-focus.test.ts` (eleven style files still animate without a reduced-motion rule: listed there) |
+
+## 8. Ideas and projects are separate
+
+Decided by Kevin and Sam on 16 Nov 2026 (`nextup-context/decisions/2026-11-16_ideen-projekte-getrennt.md`). The line
+between them is the **last yes**: before it the thing is an idea, after it a project. Nothing on screen blurs that line.
+
+**The way from idea to project**
+
+1. **Idea.** Raised on the Ideas tab. It has exactly one page, where its approval and its discussion happen. The raiser
+   follows it under Ideas › Mine; whoever must decide finds it in the Inbox; the Feed shows it to everyone.
+2. **Approval.** The desk says yes first, then up to 3 named approvers vote at once. One no goes back to the raiser with
+   its reason; the raiser may change the idea and send it again.
+3. **Setup (project draft).** Only after the last yes. The lead takes it, invites people and takes the baseline. From
+   here on it lives under Projects.
+4. **Project.** The team works on it: steps, plan, results, files.
+
+| Rule | Enforced by |
+|---|---|
+| **Four places, one job each:** Ideas = raise and follow, Inbox = decide, Feed = social, Projects = do. | this file; not tested as a whole |
+| **No idea under Projects.** Projects lists projects only, in every list, tab, filter, pill and sidebar, for every role and behind every flag. A waiting idea never sits next to a project. | `tests/unit/projects-area/no-ideas.test.tsx`; e2e `the Projects page lists projects only…` (`tests/e2e/demo/projects.spec.ts`) |
+| **One page per idea: `/idea?id=<id>`.** It carries the card, the approval line, the moves and the history. Every link in the app goes there; `/cases/<id>` only moves on to it. An idea has the pages Idea, Files and Chats, never "Add page". | `tests/unit/inb/items.test.ts`, `tests/unit/inb/notice-view.test.ts` (the links) |
+| **An idea's page belongs to the Inbox.** On `/cases/<id>` and `/idea?id=` the bar marks the Inbox; the sidebar shows that idea's own pages and the way back to the Inbox, never the projects list or the Projects tabs. Closing an idea goes to the Inbox. | `tests/unit/design/section-tabs.test.ts`; e2e `an idea opened from the ideas table…` (`tests/e2e/demo/projects.spec.ts`) |
+| **Decisions (every yes and no) is a tab of the Inbox,** not of Projects. | `tests/unit/loop/decisions-nav.test.ts` |
+| **A project draft appears under Projects only after the last yes,** never at the first. | GAT tests (`tests/unit/gat/parallel.test.ts`) |
+| **A project's Idea page is its origin, read only:** who raised it, why, who said yes, what was discussed. It carries no project actions (Start, Manage, Mark done) and the project's own head (title, status, "Your move") stays above it. The project's moves live in its head and on its Overview. | not tested |
+| **Where a design wants ideas and projects on one screen** ("everything I have going on"), that screen is the Inbox (what needs me) or Ideas › Mine (what I raised), never Projects. | not tested |
+
+## 9. One fact once, folded by default
+
+Decided by Kevin on 16 Nov 2026, after a project's Measure section named one date three times and "not confirmed"
+twice. A screen answers two questions: what is the state, and what do I press. Everything else waits behind a fold.
+The screen-by-screen findings and the target per screen are in `docs/plans/2026-11-16_quiet-screens/`.
+
+| Rule | Enforced by |
+|---|---|
+| **One name per place.** A page is named once: by its pill in the bar, its entry in the side view or its heading, never by two of them on one screen. A project's or an idea's title is shown once. | not tested |
+| **One fact, once per screen.** A date, a person, a status or a count appears in one place. A status has one carrier: a chip, a colour or a sentence, never two of them. | not tested |
+| **No grey text that explains.** Muted text carries a fact the reader needs to act: who, when, how much. A line that says how NextUp works, or repeats the heading in other words, goes. | not tested |
+| **Folded by default.** A section shows one line with its answer; the rest opens on demand (`Fold` in `components/ui/elements`). A form appears after its button was pressed. Open without asking is only the one thing the viewer has to do now. | `tests/unit/design/fold.test.tsx` for the element; screens not tested |
+| **One filled button per screen.** The one filled blue button is the viewer's next move. Every other action is a quiet button, a link or sits in the "⋯" menu. Without a next move there is no filled button. A button that does nothing yet is not drawn. | not tested |
+| **Status colours are the status tokens.** Good is `--nh-ok`, needs you is `--nh-warn`, late or worse is `--nh-danger`. Blue is for actions and selection, never for a status. No screen keeps a palette of its own. | not tested |
 
 ## 7. Never
 

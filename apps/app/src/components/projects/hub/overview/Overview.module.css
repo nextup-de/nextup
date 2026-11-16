@@ -2,6 +2,7 @@
 .head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--nh-gap); }
 .title { margin: 0; font-size: var(--nh-fs-xl); font-weight: 600; }
 .actions { display: flex; align-items: center; gap: var(--nh-space); }
+.controls { display: flex; align-items: center; justify-content: flex-end; gap: var(--nh-space); }
 .status { margin: 0; min-height: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
 .status:empty { display: none; }
 .muted { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
@@ -31,6 +32,10 @@
 .share { min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }
 .share:hover { text-decoration: underline; }
 .cardTitle { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; line-height: 22px; }
+/* The viewer's one move (NextMove): the panel it holds sits in the card without its own rule above. */
+.card[data-move] > section { padding: 0; border-top: 0; }
+.moveRow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; }
+.moveRow .cardTitle { flex: 1 1 auto; }
 .card p { margin: 0; }
 .chartHead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--nh-space); }
 .stack { display: flex; gap: 3px; height: 10px; }

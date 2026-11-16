@@ -1,5 +1,4 @@
 .results { display: flex; flex-direction: column; gap: var(--nh-gap); min-width: 0; }
-.hint { margin: 0; color: var(--nh-ink-2); font-size: var(--nh-fs-md); line-height: 22px; }
 .card { padding: 24px; border: 0; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); color: var(--nh-ink); }
 .resultCard { display: flex; gap: 24px; width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .resultCard:hover { background: var(--nh-surface); }
@@ -9,8 +8,6 @@
 .title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; line-height: 22px; overflow-wrap: anywhere; }
 .progressLine { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 16px; }
 .muted { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.owner { display: flex; flex-direction: column; flex: 0 0 200px; gap: 10px; padding-left: 24px; border-left: 1px solid var(--nh-line-soft); color: var(--nh-ink); font-size: var(--nh-fs-sm); line-height: 16px; }
-.who { display: flex; align-items: center; gap: 8px; }
 .chartHeading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--nh-space); }
 .bars { display: flex; flex-direction: column; gap: var(--nh-gap); margin-top: var(--nh-gap); }
 .barRow { display: grid; grid-template-columns: calc(var(--nh-space) * 11) minmax(0, 1fr) calc(var(--nh-space) * 6); align-items: center; gap: var(--nh-space); font-size: var(--nh-fs-sm); }
@@ -23,9 +20,6 @@
 .drawer::backdrop { background: transparent; }
 .drawerHead { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); padding: var(--nh-gap) var(--nh-pad-card); border-bottom: 1px solid var(--nh-line-soft); }
 .drawerBody { display: flex; flex-direction: column; align-items: stretch; gap: var(--nh-gap); padding: var(--nh-pad-card); }
-.detailMeta { display: flex; flex-direction: column; gap: var(--nh-space); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); }
-.detailTitle { margin: 0; font-size: var(--nh-fs-xl); overflow-wrap: anywhere; }
 @media (max-width: 760px) {
   .resultCard { flex-direction: column; }
-  .owner { flex-basis: auto; padding-left: 0; border-left: 0; }
 }

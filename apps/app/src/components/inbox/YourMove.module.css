@@ -1,0 +1,20 @@
+/* "Your move": one card, one status line, at most one filled button, quiet yes and no, More for the rest. */
+.card { display: flex; flex-direction: column; gap: 12px; padding: var(--nh-pad-card-sm); border-radius: var(--radius-md, 18px); background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / 0.06); }
+.title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
+.status { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
+.line { margin: -6px 0 0; font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--nh-ink-2); overflow-wrap: anywhere; }
+.quote { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--nh-surface); font-size: var(--nh-fs-md); line-height: 1.45; color: var(--nh-ink); overflow-wrap: anywhere; }
+
+.quietRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.quiet { min-width: 0; white-space: normal; text-align: center; line-height: 1.2; }
+.quiet[data-danger="true"], .item[data-danger="true"] { color: var(--nh-danger); }
+
+.more { position: relative; align-self: flex-start; }
+.moreBtn { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 2px; border: 0; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); cursor: pointer; }
+.moreBtn::after { content: ""; width: 6px; height: 6px; margin-bottom: 3px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.moreBtn[aria-expanded="true"]::after { margin: 3px 0 0; transform: rotate(-135deg); }
+.moreBtn:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; border-radius: 6px; }
+.menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 20; display: flex; flex-direction: column; min-width: 200px; padding: 6px; border-radius: 12px; background: #fff; box-shadow: 0 10px 30px rgb(0 0 0 / 14%); }
+.item { min-height: 36px; padding: 6px 10px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: var(--nh-fs-sm); text-align: left; color: var(--nh-ink); cursor: pointer; }
+.item:hover { background: var(--nh-fill); }
+.item:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; }

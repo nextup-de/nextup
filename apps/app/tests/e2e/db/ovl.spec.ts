@@ -268,7 +268,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       hugo = await signIn(browser, HOLDER_A);
       await hugo.goto(`/${SLUG}/profile`);
       await expect(vis(hugo, "away-card")).toBeVisible();
-      await expect(vis(hugo, "away-takeback-none")).toBeVisible();
+      await expect(hugo.getByTestId("away-takeback"), "nothing to take back draws no block").toHaveCount(0);
       await vis(hugo, "away-open").click();
       await hugo.getByTestId("away-from").fill(iso(D));
       await hugo.getByTestId("away-to").fill(iso(D + 1));
@@ -420,6 +420,11 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
     const rowOf = (page: Page, roleId: string) => cardOf(page).locator(`[data-testid="desk-load-row"][data-role="${roleId}"]`);
     /** The cells of a desk's row: open, per holder, late, pinned. */
     const cellsOf = (row: ReturnType<typeof rowOf>) => row.locator("td");
+    /** A desk's actions sit in its row's "···" menu (DESIGN_RULES §9). */
+    const pick = async (row: ReturnType<typeof rowOf>, action: string) => {
+      await row.getByTestId("desk-menu").locator("summary").click();
+      await row.getByRole("menuitem", { name: action }).click();
+    };
     const noNames = async (page: Page) => {
       for (const p of PEOPLE) await expect(cardOf(page), `the card names no person (${p.name})`).not.toContainText(p.name);
     };
@@ -440,7 +445,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       await expect(cardOf(page).locator("[data-testid=desk-load-row]"), "only the desk the viewer may share the load of").toHaveCount(1);
 
       // The cover first: two passes take the desk from 20 to 19 per holder, below "up", and the seat above may share the load only while it is up (D28).
-      await row.getByTestId("desk-appoint-cover").click();
+      await pick(row, "Appoint a cover for the desk");
       await row.getByTestId("desk-cover-seat").selectOption(seat.d);
       await row.getByTestId("desk-cover-save").click();
       await expect(page.getByText("The cover is set.")).toBeVisible();
@@ -448,7 +453,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       expect(cover).toHaveLength(1);
       expect(cover[0]).toMatchObject({ actorUserId: id[ABOVE], payload: { roleId: role.b, seatId: seat.d } });
 
-      await row.getByTestId("desk-pass-bulk").click();
+      await pick(row, "Pass cases on in one go");
       const bar = row.getByTestId("bulk-bar");
       await bar.getByRole("checkbox").nth(0).check();
       await bar.getByRole("checkbox").nth(1).check();
@@ -500,11 +505,13 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
     await test.step("a company admin sees every loaded desk on the Dashboard card, the pinned case counted on its desk, without a name", async () => {
       const page = await signIn(browser, ADMIN);
       await page.goto(`/${SLUG}/dashboard`);
+      // On the Dashboard the card is one line that opens, drawn because a desk is loaded.
+      await page.locator('[data-name="desk-load"] > summary').filter({ visible: true }).click();
       await expect(cardOf(page)).toBeVisible();
       for (const r of [role.b, role.o, role.t, role.s2]) await expect(rowOf(page, r), `the row of ${r}`).toBeVisible();
       await expect(rowOf(page, role.o)).toHaveAttribute("data-level", "overflow");
       await expect(cellsOf(rowOf(page, role.s2)).nth(4), "the pinned case is counted on the desk it sits on").toHaveText("1");
-      await expect(cellsOf(rowOf(page, role.b)).nth(4)).toHaveText("0");
+      await expect(cellsOf(rowOf(page, role.b)).nth(4), "no 0 is drawn (DESIGN_RULES §2)").toHaveText("");
       await noNames(page);
       await page.context().close();
     });

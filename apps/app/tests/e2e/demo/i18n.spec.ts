@@ -32,15 +32,15 @@ const ROUTES: Route[] = [
   { file: "[company]/(app)/projects/[projectId]/page.tsx", path: "/acme/projects/pj2" },
   { file: "[company]/(app)/inbox/page.tsx", path: "/acme/inbox", as: "Team leader" },
   { file: "[company]/(app)/leader/page.tsx", path: "/acme/leader", lands: "/acme/inbox", as: "Team leader" },
-  { file: "[company]/(app)/cases/[caseId]/page.tsx", path: `/acme/cases/${CASE}`, as: "Manager" },
+  { file: "[company]/(app)/cases/[caseId]/page.tsx", path: `/acme/cases/${CASE}`, lands: `/acme/idea?id=${CASE}`, as: "Manager" },
   { file: "[company]/(app)/dashboard/page.tsx", path: "/acme/dashboard", as: "Manager" },
   { file: "[company]/(app)/manager/page.tsx", path: "/acme/manager", lands: "/acme/dashboard", as: "Manager" },
-  { file: "[company]/(app)/overview/page.tsx", path: "/acme/overview", as: "Manager" },
+  { file: "[company]/(app)/overview/page.tsx", path: "/acme/overview", lands: "/acme/inbox", as: "Manager" },
   { file: "[company]/(app)/collaboration/page.tsx", path: "/acme/collaboration", lands: "/acme/projects/collaboration", as: "Manager" },
   { file: "[company]/(app)/projects/collaboration/page.tsx", path: "/acme/projects/collaboration", as: "Manager" },
   { file: "[company]/(app)/feed/page.tsx", path: "/acme/feed", as: "Manager" },
   { file: "[company]/(app)/decisions/page.tsx", path: "/acme/decisions", as: "Manager" },
-  { file: "[company]/(app)/idea/page.tsx", path: "/acme/idea", lands: "/acme/overview", as: "Manager" },
+  { file: "[company]/(app)/idea/page.tsx", path: "/acme/idea", lands: "/acme/inbox", as: "Manager" },
   { file: "[company]/(app)/ideas/page.tsx", path: "/acme/ideas" },
   { file: "[company]/(app)/problems/page.tsx", path: "/acme/problems", lands: "/acme/feed", as: "Manager" },
   { file: "[company]/(app)/progress/page.tsx", path: "/acme/progress", lands: "/acme/projects/progress", as: "Manager" },
@@ -63,7 +63,7 @@ const ROUTES: Route[] = [
   { file: "demo/(app)/collaboration/page.tsx", path: "/demo/collaboration", lands: "/demo/projects/collaboration", as: "Manager" },
   { file: "demo/(app)/projects/collaboration/page.tsx", path: "/demo/projects/collaboration", as: "Manager" },
   { file: "demo/(app)/feed/page.tsx", path: "/demo/feed", as: "Manager" },
-  { file: "demo/(app)/idea/page.tsx", path: "/demo/idea", lands: "/demo/overview", as: "Manager" },
+  { file: "demo/(app)/idea/page.tsx", path: "/demo/idea", lands: "/demo/inbox", as: "Manager" },
   { file: "demo/(app)/ideas/page.tsx", path: "/demo/ideas" },
   { file: "demo/(app)/problems/page.tsx", path: "/demo/problems", lands: "/demo/feed", as: "Manager" },
   { file: "demo/(app)/progress/page.tsx", path: "/demo/progress", lands: "/demo/projects/progress", as: "Manager" },
@@ -207,6 +207,7 @@ test.describe("LNG acceptance: every route renders in German without an English 
   test("the language switch on the profile page turns a page without a cookie to German", async ({ page }) => {
     await page.goto("/acme/profile");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.locator('[data-name="language"] > summary').click(); // Language is one line that opens (DESIGN_RULES §9)
     await page.getByRole("radio", { name: "Deutsch" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
   });

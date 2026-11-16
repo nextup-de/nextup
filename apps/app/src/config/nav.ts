@@ -34,7 +34,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Ideas", href: "/raise" },
     { label: "Inbox", href: "/inbox", count: "inbox" },
     { label: "Feed", href: "/feed" },
-    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
+    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of the Inbox while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
@@ -42,7 +42,7 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
     { label: "Dashboard", href: "/dashboard" },
     { label: "Inbox", href: "/inbox", count: "inbox" }, // what is asked of the manager: their desk, results to confirm, rewards due
     { label: "Feed", href: "/feed" },
-    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of Projects while that is on
+    { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of the Inbox while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
   ],
@@ -52,14 +52,13 @@ export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
  * The tabs of the Projects area, shown in a strip under the bar. Each page in the area is named by its tab, so
  * no page repeats it as a title. `labelKey` is a message key; `roles`: only these roles see the tab.
  */
-export type ProjectsTabKey = "overview" | "decisions" | "collaboration" | "progress";
+export type ProjectsTabKey = "overview" | "collaboration" | "progress";
 export type ProjectsTabItem = {
   key: ProjectsTabKey; href: string; roles?: readonly Role[];
-  labelKey: "shell.navOverview" | "decisions.tab" | "shell.navCollaboration" | "shell.navProgress";
+  labelKey: "shell.navOverview" | "shell.navCollaboration" | "shell.navProgress";
 };
 export const PROJECTS_TABS: ProjectsTabItem[] = [
   { key: "overview", labelKey: "shell.navOverview", href: "/projects" },
-  { key: "decisions", labelKey: "decisions.tab", href: "/decisions", roles: ["leader", "manager"] },
   { key: "collaboration", labelKey: "shell.navCollaboration", href: "/projects/collaboration" },
   { key: "progress", labelKey: "shell.navProgress", href: "/projects/progress" },
 ];
@@ -70,7 +69,8 @@ export function projectsTabsFor(role: Role): ProjectsTabItem[] {
 
 /** Which tab an address (relative to /[company]) is, or null outside the area: a project's own page has its own tabs. */
 export function projectsTabAt(path: string): ProjectsTabKey | null {
-  if (path === "/overview" || path === "/idea") return "overview"; // an idea opens in place, on the same page as the table
+  // Ideas are not part of Projects (Kevin and Sam, 16 Nov 2026): an idea's page (/idea, /cases/<id>) and the old ideas
+  // table (/overview, which moves on to the Inbox while projects is on) are no tab here.
   return PROJECTS_TABS.find((tab) => tab.href === path)?.key ?? null;
 }
 
@@ -79,13 +79,18 @@ export function projectsTabAt(path: string): ProjectsTabKey | null {
  * tabs, and more than about six pages keep a side menu (Settings, the IT console). `needsServer`: the page needs the
  * database, so the offline demo has no such page.
  */
-export type SectionKey = "projects" | "dashboard" | "profile" | "ideas";
+export type SectionKey = "projects" | "inbox" | "dashboard" | "profile" | "ideas";
 export type SectionTabItem = {
   key: string; href: string; roles?: readonly Role[]; needsServer?: boolean;
-  labelKey: ProjectsTabItem["labelKey"] | "metrics.dashTitle" | "kpis.tab" | "shell.myProfile" | "shell.myReports" | "ideas.tabRaise" | "ideas.tabMine";
+  labelKey: ProjectsTabItem["labelKey"] | "shell.navInbox" | "decisions.tab" | "metrics.dashTitle" | "kpis.tab" | "shell.myProfile" | "shell.myReports" | "ideas.tabRaise" | "ideas.tabMine";
 };
 export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
   projects: PROJECTS_TABS,
+  // Where ideas are decided, and every yes and no so far (with projects on; without, Decisions has its own place in the bar).
+  inbox: [
+    { key: "inbox", labelKey: "shell.navInbox", href: "/inbox" },
+    { key: "decisions", labelKey: "decisions.tab", href: "/decisions", roles: ["leader", "manager"] },
+  ],
   dashboard: [
     { key: "ledger", labelKey: "metrics.dashTitle", href: "/dashboard" },
     { key: "kpis", labelKey: "kpis.tab", href: "/dashboard/kpis", roles: ["manager"], needsServer: true },
@@ -101,6 +106,14 @@ export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
   ],
 };
 
+/**
+ * The sections whose pages sit in the area's side view (components/shell/AreaFrame.tsx) on a laptop or monitor, as the
+ * Projects area has them: no strip of tabs under the bar repeats them there (Kevin, 16 Nov 2026: every area). A phone
+ * keeps the strip. A section joins this list in the PR that moves its page's own list into the side view.
+ */
+export const SIDE_VIEW_SECTIONS: readonly SectionKey[] = ["dashboard", "profile"];
+export const hasSideView = (section: SectionKey): boolean => SIDE_VIEW_SECTIONS.includes(section);
+
 export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMode: boolean }): SectionTabItem[] {
   return SECTION_TABS[section].filter((tab) => (!tab.roles || tab.roles.includes(who.role)) && (!tab.needsServer || who.serverMode));
 }
@@ -109,6 +122,10 @@ export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMod
 export function sectionTabAt(path: string, who: { role: Role; serverMode: boolean; flag: (key: FlagKey) => boolean }): { section: SectionKey; tab: string } | null {
   const projects = who.flag("projects") ? projectsTabAt(path) : null;
   if (projects) return { section: "projects", tab: projects };
+  if (who.flag("projects")) {
+    const tab = SECTION_TABS.inbox.find((item) => item.href === path);
+    if (tab) return sectionTabsFor("inbox", who).length > 1 ? { section: "inbox", tab: tab.key } : null;
+  }
   for (const section of ["dashboard", "profile", "ideas"] as const) {
     const tab = SECTION_TABS[section].find((item) => item.href === path);
     if (tab) return sectionTabsFor(section, who).length > 1 ? { section, tab: tab.key } : null;

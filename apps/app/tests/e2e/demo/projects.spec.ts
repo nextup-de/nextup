@@ -99,13 +99,16 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   await viewAs(page, "Team leader");
   await expect(page).toHaveURL(/\/acme\/inbox$/);
 
-  await test.step("the lead finds P-4 under Planning", async () => {
+  await test.step("the lead finds P-4, in Planning, on the Overview", async () => {
     await page.getByRole("link", { name: "Projects", exact: true }).click();
-    const planning = page.getByRole("region", { name: "Planning" });
-    await expect(planning).toContainText("Take the baseline");
-    await planning.getByRole("link", { name: /P-4 Second deburring bench/ }).click();
+    // The Overview list (flag overviewList, on for demo companies): one row per idea or project.
+    const row = page.getByRole("row").filter({ has: page.getByRole("link", { name: /P-4 Second deburring bench/ }) });
+    await expect(row).toContainText("Planning");
+    await expect(row).toContainText("Your move");
+    await row.getByRole("link", { name: /P-4 Second deburring bench/ }).click();
     await expect(page).toHaveURL(/\/acme\/projects\/pj4$/);
-    await expect(page.getByRole("status").filter({ hasText: "Your move" })).toContainText("Take the baseline");
+    // The Overview opens with the lead's one move as one card (DESIGN_RULES §9): the baseline, with its filled Save.
+    await expect(page.getByRole("region", { name: "Your move" })).toContainText("Save the baseline");
   });
 
   await test.step("adds a step the brief suggests and one of their own", async () => {
@@ -121,10 +124,11 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
 
   await test.step("Start stays locked until the baseline is taken", async () => {
     await projectPage(page, "overview");
-    await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Start the project" }), "a button that does nothing yet is not drawn (DESIGN_RULES §9)").toHaveCount(0);
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
+    await page.locator('[data-name="baseline-more"] > summary').click(); // which way is better and the source are folded (DESIGN_RULES §9)
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();
@@ -158,7 +162,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     // The card is on the project's own Overview page (`project-overview`), not on `?page=overview`, which is the Idea page.
     await projectPage(page, "overview");
     const doneCard = page.getByRole("region", { name: "All 2 steps done" });
-    await doneCard.getByRole("button", { name: "Mark it done…" }).click();
+    await expect(doneCard).toBeVisible();
+    await page.getByRole("region", { name: "Your move" }).getByRole("button", { name: "Mark it done…" }).click(); // the one move, in its card
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("form", { name: "Mark the project done" }).getByRole("button", { name: "Mark it done", exact: true }).click();
     await expect(doneCard.getByTestId("overview-stands"), "past running: the card says where it stands, no button").toBeVisible();
@@ -167,11 +172,11 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await projectPage(page, "results");
     await openResult(page);
     const check30 = page.getByRole("group", { name: "30-day check" });
-    await expect(check30).toContainText("Opens");
+    await expect(check30).toContainText("opens"); // before it opens the row is its date and nothing else (DESIGN_RULES §9)
     await plus30WithResult(page);
     await check30.getByLabel(/The number now/).fill("12");
     await expect(check30.getByRole("status")).toContainText("better");
-    await check30.getByRole("button", { name: "Record the measure" }).click();
+    await check30.getByRole("button", { name: "Record", exact: true }).click(); // the number is typed inline, one filled Record
     await expect(check30).toContainText("25 → 12 minutes");
     await expect(check30).toContainText("−52 %");
   });
@@ -180,7 +185,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await plus30WithResult(page, 2);
     const check90 = page.getByRole("group", { name: "90-day check" });
     await check90.getByLabel(/The number now/).fill("14");
-    await check90.getByRole("button", { name: "Record the measure" }).click();
+    await check90.getByRole("button", { name: "Record", exact: true }).click();
     await expect(check90).toContainText("25 → 14 minutes");
     await expect(head(page)).toContainText(/4-series\s*Measured/); // the sidebar's status under the title; the head is on the Idea page
     // The lead does not record a reward: that is the manager's.
@@ -195,7 +200,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.goto("/acme/projects/pj4?page=results");
     await expect(head(page)).toContainText(/4-series\s*Measured/);
     await openResult(page);
-    await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
+    await expect(page.getByRole("region", { name: "Reward" }), "the Reward is not drawn before a reward is due (DESIGN_RULES §9)").toHaveCount(0);
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });
 });
@@ -218,6 +223,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
+    await page.locator('[data-name="baseline-more"] > summary').click(); // which way is better and the source are folded (DESIGN_RULES §9)
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();
@@ -263,77 +269,64 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 });
 
-// Projects shows projects only (Kevin and Sam, 16 Nov 2026); the ideas table keeps its old address, /overview.
-test("the Projects page shows projects only; the ideas table stays at /overview", async ({ page }) => {
+// Projects shows projects only (Kevin and Sam, 16 Nov 2026, docs/DESIGN_RULES.md §8): the Overview list (flag overviewList,
+// on for demo companies) lists projects and no idea, and the old ideas table (/overview) moves on to the Inbox.
+test("the Projects page lists projects only; the old ideas table moves to the Inbox", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toHaveCount(0);
+  const list = page.getByRole("table", { name: "Overview" });
+  await expect(list.getByRole("link", { name: /^P-\d+ / }).first()).toBeVisible();
+  await expect(page.locator('main a[href*="/idea?id="]')).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /^Ideas/ })).toHaveCount(0);
   await expect(page.getByRole("table", { name: "Problems and ideas" })).toHaveCount(0);
   await page.goto("/acme/overview");
-  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
 });
 
-test("an idea opened from the ideas table has its own address, /idea?id=", async ({ page }) => {
-  const idea = /\/acme\/idea\?id=[^&]+$/;
-  const projects = /\/acme\/overview$/;
+// Each idea has one page, /idea?id= (Kevin, 16 Nov 2026): it counts as the Inbox, and its old addresses land on it.
+test("an idea has one address, /idea?id=, and counts as the Inbox", async ({ page }) => {
+  const inbox = /\/acme\/inbox$/;
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/overview");
-  const table = page.getByRole("table", { name: "Problems and ideas" });
-  const row = table.getByRole("row").nth(1);
-  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
-  await row.click();
-  await expect(page).toHaveURL(idea);
-  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await page.goto("/acme/idea?id=c1");
+  await expect(page).toHaveURL(/\/acme\/idea\?id=c1$/);
+  const heading = page.getByRole("main").getByRole("heading", { level: 1 }).first();
   await expect(heading).toBeVisible();
+  const title = (await heading.innerText()).trim();
+  const named = page.getByRole("heading", { name: title, level: 1 }).first();
   const at = page.url();
 
-  // A reload and a link land on the same idea; the nav still shows where it opened from.
+  // A reload lands on the same idea; the nav shows the Inbox, never Projects.
   await page.reload();
-  await expect(heading).toBeVisible();
+  await expect(named).toBeVisible();
   await expect(page).toHaveURL(at);
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /^Inbox/ })).toHaveAttribute("aria-current", "page");
 
-  // Closing goes to the table; Back reopens the idea and Forward closes it again.
+  // Closing goes to the Inbox; Back reopens the idea and Forward closes it again.
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(projects);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(inbox);
   await page.goBack();
   await expect(page).toHaveURL(at);
-  await expect(heading).toBeVisible();
+  await expect(named).toBeVisible();
   await page.goForward();
-  await expect(page).toHaveURL(projects);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(inbox);
 
-  // The nav link leaves an idea opened in place for the projects, and the old addresses still land on the idea.
-  await table.getByRole("row").nth(1).click();
-  await expect(page).toHaveURL(idea);
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
-  await expect(page).toHaveURL(/\/acme\/projects$/);
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
-  const id = new URL(at).searchParams.get("id") ?? "";
-  for (const old of ["/acme/projects", "/acme/overview"]) {
-    await page.goto(old + "?id=" + encodeURIComponent(id));
+  // The old addresses land on the idea's one page.
+  for (const old of ["/acme/cases/c1", "/acme/projects?id=c1"]) {
+    await page.goto(old);
     await expect(page).toHaveURL(at);
-    await expect(heading).toBeVisible();
+    await expect(named).toBeVisible();
   }
 });
 
 test("Back right after closing an idea reopens it, on a slow machine too", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/overview");
-  const table = page.getByRole("table", { name: "Problems and ideas" });
-  const row = table.getByRole("row").nth(1);
-  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
-  await row.click();
-  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await page.goto("/acme/idea?id=c1");
+  const heading = page.getByRole("main").getByRole("heading", { level: 1 }).first();
   await expect(heading).toBeVisible();
   await page.reload();
   await expect(heading).toBeVisible();
@@ -341,10 +334,9 @@ test("Back right after closing an idea reopens it, on a slow machine too", async
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/acme\/overview$/);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(/\/acme\/inbox$/); // opened at its own address, it closes to the Inbox
   await page.goBack();
-  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await expect(page).toHaveURL(/\/acme\/idea\?id=c1$/);
   await expect(heading).toBeVisible({ timeout: 15_000 });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
 });

@@ -22,9 +22,10 @@ import styles from "./PageView.module.css";
 export const FILES_UPLOAD = "nextup:files-upload";
 export const FILES_SOURCE = "nextup:files-source";
 
-export type PageViewProps = { p: ReducedProject; page: ProjectPage; jira: JiraRow; agent: boolean };
+/** `titled`: false under the project's own head (its Overview), where the page's name would only repeat the side view (DESIGN_RULES §9). */
+export type PageViewProps = { p: ReducedProject; page: ProjectPage; jira: JiraRow; agent: boolean; titled?: boolean };
 
-export function PageView({ p, page, jira, agent }: PageViewProps) {
+export function PageView({ p, page, jira, agent, titled = true }: PageViewProps) {
   const t = useT();
   const { addStep: editor } = useRights(p);
   const { stepHints } = useProjectHints(p);
@@ -38,11 +39,11 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
   const syncedAgo = useFilesSyncedAgo(p.id);
   const Browser = files ? TOOL_REGISTRY.files : null;
   return <div className={styles.page}>
-    <PageHead {...headOf(page.tools[0]?.kind, { p, jira, t, editor, title, onAddStep: () => setStepOpen(true), onFilesUpload: () => window.dispatchEvent(new CustomEvent(FILES_UPLOAD)), onFilesSource: () => window.dispatchEvent(new CustomEvent(FILES_SOURCE)), ...(files && syncedAgo ? { filesSyncedAgo: syncedAgo } : {}) })}
+    {titled && <PageHead {...headOf(page.tools[0]?.kind, { p, jira, t, editor, title, onAddStep: () => setStepOpen(true), onFilesUpload: () => window.dispatchEvent(new CustomEvent(FILES_UPLOAD)), onFilesSource: () => window.dispatchEvent(new CustomEvent(FILES_SOURCE)), ...(files && syncedAgo ? { filesSyncedAgo: syncedAgo } : {}) })}
       extra={files ? <FilesSettings p={p} page={page} jira={jira} editor={editor} hints={stepHints} onAddTool={() => onAddAt(page.tools.length)} /> : <div id={headActionsId(page.id)} className={styles.actionsSlot} />}>
       {/* The slot a tool fills with its own controls (HeadSlot); empty, the head shows no row. Tools are added below; a Files page has none. */}
       {!files && <div id={headRowId(page.id)} className={styles.slot} />}
-    </PageHead>
+    </PageHead>}
     {files && Browser && <Browser p={p} page={page} tool={page.tools[0]} jira={jira} editor={editor} hints={stepHints} />}
     {!files && page.tools.map((tool, index) => <Fragment key={tool.id}>
       <ToolSection p={p} page={page} tool={tool} jira={jira} editor={editor} hints={stepHints} index={index} count={page.tools.length} onAddAt={onAddAt} />

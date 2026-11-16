@@ -21,12 +21,12 @@ describe("decision log links", () => {
     const base = companyPrefix("musterwerk", { TENANT_MODE: "single", COMPANY_SLUG: "musterwerk" });
     expect(base).toBe("");
     const links = hrefs(render(base));
-    expect(links).toEqual(expect.arrayContaining(["/cases/c1", "/projects/p_c1", "/decisions?page=2"]));
+    expect(links).toEqual(expect.arrayContaining(["/idea?id=c1", "/projects/p_c1", "/decisions?page=2"]));
     expect(links.some((h) => h.includes("musterwerk"))).toBe(false);
   });
 
   it("in path mode: the slug in front, as before", () => {
     const links = hrefs(render(companyPrefix("acme", { TENANT_MODE: "path" })));
-    expect(links).toEqual(expect.arrayContaining(["/acme/cases/c1", "/acme/projects/p_c1", "/acme/decisions?page=2"]));
+    expect(links).toEqual(expect.arrayContaining(["/acme/idea?id=c1", "/acme/projects/p_c1", "/acme/decisions?page=2"]));
   });
 });

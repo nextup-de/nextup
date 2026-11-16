@@ -48,7 +48,12 @@ const STATUS_LABEL = { open: "dashboard.statusSent", discussion: "dashboard.stat
 const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", ink: "green", ok: "green", grey: "grey", soft: "grey", ghost: "grey", none: "grey", purple: "grey" };
 
 /** `raiserInactive`: the server says the person who raised it by name has left (D20); false in the demo and without a database. */
-export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: string; raiserInactive?: boolean }) {
+/**
+ * `embedded`: drawn under the idea card on the idea's one page (/idea?id=, Kevin 16 Nov 2026). The card already shows the
+ * title, the text, who raised it, the desk, the versions and the chats, so they are left out here; what stays is what only
+ * this view has: the approval line, the moves, the routing, cost and the history.
+ */
+export function CaseDetailView({ caseId, raiserInactive = false, embedded = false }: { caseId: string; raiserInactive?: boolean; embedded?: boolean }) {
   const ctx = useDemo();
   const related = useRelatedCase();
   const { S, log, href, ready, f, me, role, act, openSheet, showToast, tenant, flag } = ctx;
@@ -60,10 +65,11 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
   const [withdrawing, setWithdrawing] = useState(false); // the raiser's "Withdraw" line is open (decision Q1.14)
   const [withdrawWhy, setWithdrawWhy] = useState("");
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
-  if (!ready) return <PageSkeleton kind="detail" />;
+  if (!ready) return embedded ? null : <PageSkeleton kind="detail" />;
   const c = S.cases.find((x) => x.id === caseId);
   // Someone else's case reads exactly like a missing one - the title is not leaked either way.
   if (!c || !canOpen(ctx, c)) {
+    if (embedded) return null;
     return (
       <div className={styles.page}>
         <PageHeader title={t("dashboard.detailNoCase")} lede={t("dashboard.detailNoCaseSub", { id: caseId })} />
@@ -91,7 +97,7 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
   const chain = [c.handed.length ? c.handed[0].from : c.assignee, ...c.handed.map((h) => h.to)];
   if (c.escalated) chain.push(c.escalated.to);
   // Back: where the visitor came from when it was inside the app, otherwise the dashboard.
-  const back = () => { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) router.back(); else router.push(href("/overview")); };
+  const back = () => { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) router.back(); else router.push(href(flag("projects") ? "/inbox" : "/overview")); };
   const share = async () => {
     try { await navigator.clipboard.writeText(window.location.href); showToast(t("dashboard.detailLinkCopied")); }
     catch { showToast(window.location.href); }
@@ -131,25 +137,27 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
 
   return (
     <>
-    <div className={styles.page}>
-    <button type="button" className={styles.back} onClick={back}>← {t("common.back")}</button>
-    <PageHeader
+    <div className={styles.page} data-embedded={embedded || undefined}>
+    {!embedded && <button type="button" className={styles.back} onClick={back}>← {t("common.back")}</button>}
+    {!embedded && <PageHeader
       title={c.title}
       lede={`${t(c.kind === "idea" ? "dashboard.detailIdea" : "dashboard.detailProblem")} · ${c.id}`}
       action={<button type="button" className={styles.soft} onClick={share}>{t("dashboard.detailCopyLink")}</button>}
-    />
+    />}
     {flag("projects") && <ArchiveBanner c={c} />}
     <div className={styles.split}>
       <div className={styles.stack}>
       <SectionCard name="case">
         {/* A withdrawn idea promises no answer any more (decision Q1.14). */}
         {seesRouting(c, me, role) && !c.withdrawn && <AnswerPromise c={c} />}
-        <div className={styles.meta}>
+        {/* Embedded, the card names the raiser; a raiser who has left is marked here (D20), as the quote did. */}
+        {embedded && raiserInactive && !isHandle(c.from) && <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from} <span className={styles.inactive} data-testid="raiser-inactive">({t("caseSee.inactive")})</span></div>}
+        {!embedded && <div className={styles.meta}>
           <span className={styles.chip} data-tone={CHIP_TONE[statusTone(translate("en", STATUS_LABEL[c.status]))]}>{t(STATUS_LABEL[c.status])}</span>
           <span className={styles.chip} data-tone={CHIP_TONE[reasonTone(c.reason)]}>{c.reason}</span>
           <span className={styles.small}>{t("dashboard.detailRaised", { date: f(c.raisedDay), clock })}</span>
-        </div>
-        <div className={styles.quote}>
+        </div>}
+        {!embedded && <div className={styles.quote}>
           {c.body && <div className={styles.quoteText}>{c.body}</div>}
           <div className={styles.quoteBy}><PersonFace name={c.from} size="sm" /> {c.from}{raiserInactive && !isHandle(c.from) && <> <span className={styles.inactive} data-testid="raiser-inactive">({t("caseSee.inactive")})</span></>}{c.fromDept ? <> · <DeptChip name={c.fromDept} /></> : null}{extra.attachments > 0 && <> · {t("dashboard.detailScreenshots", { count: extra.attachments })}</>}</div>
           {shots.length > 0 && (
@@ -163,9 +171,9 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
             </div>
           )}
           {extra.attachments > 0 && shots.length === 0 && <div className={styles.shotsGone}>{t("dashboard.detailShotsGone")}</div>}
-        </div>
+        </div>}
         <CaseRelations c={c} />
-        <div className={styles.desks}>
+        {!embedded && <div className={styles.desks}>
           <span className={styles.label}>{t("dashboard.detailDesks")}</span>
           <span className={styles.chain}>
             {chain.map((name, i) => (
@@ -176,18 +184,18 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
             ))}
             {c.escalated && <span className={styles.auto}>{t("dashboard.detailAutoEscalated")}</span>}
           </span>
-        </div>
+        </div>}
         {seesRouting(c, me, role) && <CaseRouting c={c} />}
         <ReviewBlock c={c} />
         <CostField c={c} />
         <ApproverLine c={c} />
         <ApprovalsBlock c={c} />
-        <div className={styles.tiles}>
+        {!embedded && <div className={styles.tiles}>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.assignee}</div><div className={styles.tileL}>{t("dashboard.detailOnDesk")}{c.escalated ? " " + t("dashboard.detailAlso", { to: c.escalated.to }) : ""}</div></div>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.route ? c.route.type : t("dashboard.detailNoRoute")}</div><div className={styles.tileL}>{c.route ? t("dashboard.detailDeputyBuddy", { deputy: c.route.deputy, buddy: c.route.buddy }) : t("dashboard.detailTriage")}</div></div>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.upside || t("dashboard.detailNotEstimated")}</div><div className={styles.tileL}>{t("dashboard.detailCostWaiting")}</div></div>
           <div className={styles.tile}><div className={styles.tileTitle}>{c.shipped ? c.shipped.outcome : c.building?.expected ? t("dashboard.detailExpected", { x: c.building.expected }) : t("dashboard.detailPending")}</div><div className={styles.tileL}>{t("dashboard.detailOutcome")}</div></div>
-        </div>
+        </div>}
       </SectionCard>
       {talk && <DiscussionPanel c={c} />}
       <VersionsPanel c={c} mine={mine} />
@@ -252,7 +260,7 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
           <div key={a.name} className={styles.corr}>{t("dashboard.detailAsLead", { who: isMe(a.userId) ? t("dashboard.detailYouCap") : a.name, why: a.why ?? "", date: f(a.day) })}</div>
         ))}
         <div className={styles.thread}>
-          {comments.map((m) => (
+          {!embedded && comments.map((m) => (
             <div key={m.id} className={styles.comment}>
               <PersonFace name={m.by} size="sm" />
               <div className={styles.commentBody}>
@@ -263,7 +271,7 @@ export function CaseDetailView({ caseId, raiserInactive = false }: { caseId: str
           ))}
           {project ? (
             <div className={styles.moved}>{t("dashboard.detailArchivedMoved")} <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
-          ) : hiddenDraft ? null : (
+          ) : hiddenDraft || embedded ? null : (
           <div className={styles.noteRow}>
             <input className={styles.note} value={note} onChange={(e) => setNote(e.target.value)} placeholder={comments.length ? t("dashboard.detailAddThread") : t("dashboard.detailAddKnow")} aria-label={t("dashboard.detailComment")}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendNote(); } }} />

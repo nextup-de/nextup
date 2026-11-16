@@ -17,7 +17,7 @@ vi.mock("@/components/projects/draft/useProjectHints", () => ({ useProjectHints:
 const t = createT("en");
 const tool = (id: string): ToolInstance => ({ id, kind: "overview", title: null, collapsed: false, content: null, rev: 0 });
 const page: ProjectPage = { id: "overview", title: "Overview", icon: "home", tools: [tool("a"), tool("b")] };
-const p = { id: "pj1", status: "running", startedDay: 0, openedDay: 0, leadUserId: "u1", memberUserIds: [], steps: [], history: [], baseline: null } as unknown as ReducedProject;
+const p = { id: "pj1", status: "running", startedDay: 0, openedDay: 0, leadUserId: "u1", memberUserIds: [], steps: [], measures: [], history: [], baseline: null } as unknown as ReducedProject;
 const render = (node: React.ReactNode, locale: "en" | "de" = "en") => renderToStaticMarkup(h(I18nProvider, { locale, children: node }));
 
 it("FIL tool rows: without the page header's slot (the server render) the controls stay where the tool wrote them", () => {

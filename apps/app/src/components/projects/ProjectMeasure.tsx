@@ -5,6 +5,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { Pill } from "@/components/dashboard/shared/primitives";
+import { Fold } from "@/components/ui/elements";
 import { newId, type EventPayload } from "@/features/cases/events";
 import { CONFIRM_DAYS } from "@/features/projects/confirm";
 import { suggestedReward } from "@/features/loop/rules";
@@ -28,7 +30,7 @@ const num = (s: string): number | null => {
 
 export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHint | null }) {
   const ctx = useDemo();
-  const { act, f, S, serverMode, tenant, showToast, actorUserId } = ctx;
+  const { act, f, S, serverMode, tenant, showToast } = ctx;
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
@@ -74,27 +76,24 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
 
   return (
     <section className={styles.panel} aria-labelledby={"baseline-" + p.id}>
-      <div className={styles.panelHead}>
-        <h2 id={"baseline-" + p.id} className={styles.h2}>{t("projects.stageBaseline")}</h2>
-        <span className={styles.muted}>{b ? t("projects.baselineTaken", { day: f(b.day), name: b.by }) : t("projects.baselineBefore")}</span>
-      </div>
+      <h2 id={"baseline-" + p.id} className={styles.h2}>{t("projects.stageBaseline")}</h2>
+      {/* The number, one chip, one button (DESIGN_RULES §9); who took it, what it measures and its source wait in Details. */}
       {b && (
-        <div className={styles.baseline}>
-          <div className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</div>
-          <div className={styles.muted}>{b.none ? b.why : baselineText(b, locale).split(" · ").slice(1).join(" · ") + (b.source ? " · " + t("projects.baselineSourceIs", { source: b.source }) : "")}</div>
-          {r.baseline && !editing && <button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button>}
+        <div className={styles.checkHead}>
+          <span className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</span>
+          {bv.needsConfirm && <span data-testid="baseline-waits"><Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill></span>}
+          {bv.needsConfirm && bv.canConfirm && (
+            <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} data-testid="baseline-confirm" onClick={confirmBaseline}>{t("projectResult.baselineConfirm")}</button>
+          )}
         </div>
       )}
-      {b && !b.none && bv.confirmed && (
-        <p className={styles.muted} data-testid="baseline-confirmed">{t("projectResult.baselineConfirmed", { name: bv.confirmed.byName, date: f(bv.confirmed.day) })}</p>
-      )}
-      {b && bv.needsConfirm && (
-        <div data-testid="baseline-waits">
-          <p className={styles.muted}>{t("projectResult.baselineWaits")}</p>
-          {bv.canConfirm
-            ? <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" data-testid="baseline-confirm" onClick={confirmBaseline}>{t("projectResult.baselineConfirm")}</button>
-            : actorUserId !== null && (actorUserId === p.leadUserId || actorUserId === b.byUserId) && <p className={styles.muted}>{t("projectResult.baselineNotYou")}</p>}
-        </div>
+      {b && !editing && (
+        <Fold summary={t("projects.checkDetails")} name="baseline-details">
+          <span className={styles.muted}>{b.none ? b.why : baselineText(b, locale).split(" · ").slice(1).join(" · ") + (b.source ? " · " + t("projects.baselineSourceIs", { source: b.source }) : "")}</span>
+          <span className={styles.muted}>{t("projects.baselineTaken", { day: f(b.day), name: b.by })}</span>
+          {!b.none && bv.confirmed && <span className={styles.muted} data-testid="baseline-confirmed">{t("projectResult.baselineConfirmed", { name: bv.confirmed.byName, date: f(bv.confirmed.day) })}</span>}
+          {r.baseline && <span><button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button></span>}
+        </Fold>
       )}
       {!b && !r.baseline && <p className={styles.emptyLine}>{t("projects.baselineNotTaken")}</p>}
       {open && (
@@ -102,17 +101,10 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
           {hint && !none && (
             <div className={styles.suggestRow}>
               <span className={styles.suggestLabel}>{t("projects.suggested")}</span>
-              <span className={styles.suggestText}>
-                {hint.metric}{hint.unit ? ", " + hint.unit : ""}{hint.better ? ", " + betterText(hint.better, locale) : ""}
-                {hint.goal && <span className={styles.muted}> · {t("projects.fromGoal", { goal: hint.goal })}</span>}
-              </span>
+              <span className={styles.suggestText}>{hint.metric}{hint.unit ? ", " + hint.unit : ""}{hint.better ? ", " + betterText(hint.better, locale) : ""}</span>
               <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={applyHint}>{t("projects.useIt")}</button>
             </div>
           )}
-          <label className="nh-check">
-            <input type="checkbox" checked={none} onChange={(e) => setNone(e.target.checked)} />
-            {t("projects.noNumberIsPossible")}
-          </label>
           {none ? (
             <label className="nh-field">
               <span className="nh-label">{t("projects.whyNot")}</span>
@@ -132,17 +124,28 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
                 <span className="nh-label">{t("projects.unit")}</span>
                 <input className={`nh-input ${styles.input}`} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t("projects.unitPlaceholder")} />
               </label>
-              <fieldset className={`${styles.radios} ${styles.wide}`}>
-                <legend className="nh-label">{t("projects.whichWay")}</legend>
-                <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "down"} onChange={() => setBetter("down")} />{t("projects.lowerIsBetter")}</label>
-                <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "up"} onChange={() => setBetter("up")} />{t("projects.higherIsBetter")}</label>
-              </fieldset>
-              <label className={`nh-field ${styles.wide}`}>
-                <span className="nh-label">{t("projects.baselineSource")}</span>
-                <input className={`nh-input ${styles.input}`} value={source} onChange={(e) => setSource(e.target.value)} placeholder={t("projects.sourcePlaceholder")} />
-              </label>
             </div>
           )}
+          {/* Which way is better, the source and "no number is possible" are asked for, not shown (DESIGN_RULES §9). */}
+          <Fold summary={t("projects.baselineMore")} name="baseline-more">
+            {!none && (
+              <>
+                <fieldset className={styles.radios}>
+                  <legend className="nh-label">{t("projects.whichWay")}</legend>
+                  <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "down"} onChange={() => setBetter("down")} />{t("projects.lowerIsBetter")}</label>
+                  <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "up"} onChange={() => setBetter("up")} />{t("projects.higherIsBetter")}</label>
+                </fieldset>
+                <label className="nh-field">
+                  <span className="nh-label">{t("projects.baselineSource")}</span>
+                  <input className={`nh-input ${styles.input}`} value={source} onChange={(e) => setSource(e.target.value)} placeholder={t("projects.sourcePlaceholder")} />
+                </label>
+              </>
+            )}
+            <label className="nh-check">
+              <input type="checkbox" checked={none} onChange={(e) => setNone(e.target.checked)} />
+              {t("projects.noNumberIsPossible")}
+            </label>
+          </Fold>
           <span className={styles.actionRow}>
             <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projects.saveBaseline")}</button>
             {editing && <button type="button" className={styles.quiet} onClick={() => setEditing(false)}>{t("common.cancel")}</button>}
@@ -158,20 +161,16 @@ export function MeasurePanel({ p }: { p: ReducedProject }) {
   const { S } = ctx;
   const t = useT();
   const view = measureView(p, S, idViewerOf(ctx), S.day);
-  const days = S.rules.measureDays.join(" " + t("projects.andWord") + " ");
   if (!measureShown(S.rules)) return null;
+  const noNumber = p.baseline?.none === true && p.doneDay !== null;
+  const stoppedFirst = p.checks.length === 0 && !noNumber && p.stopped !== null;
+  // Nothing empty is drawn (DESIGN_RULES §1): without a check, a stop or a "no number possible" the panel has nothing to say.
+  if (p.checks.length === 0 && !noNumber && !stoppedFirst) return null;
   return (
     <section className={styles.panel} aria-labelledby={"measure-" + p.id}>
-      <div className={styles.panelHead}>
-        <h2 id={"measure-" + p.id} className={styles.h2}>{t("projects.measureTitle")}</h2>
-        <span className={styles.muted}>{t("projects.measureSub")}</span>
-      </div>
-      {p.baseline?.none && p.doneDay !== null && (
-        <p className={styles.emptyLine}>{t("projects.notMeasuredNoNumber")} {p.baseline.why}</p>
-      )}
-      {p.checks.length === 0 && !(p.baseline?.none && p.doneDay !== null) && (
-        <p className={styles.emptyLine}>{p.stopped ? t("projects.stoppedBeforeMeasured") : t("projects.checksOpen", { days })}</p>
-      )}
+      <h2 id={"measure-" + p.id} className={styles.h2}>{t("projects.measureTitle")}</h2>
+      {noNumber && <p className={styles.emptyLine}>{t("projects.notMeasuredNoNumber")} {p.baseline?.none ? p.baseline.why : ""}</p>}
+      {stoppedFirst && <p className={styles.emptyLine}>{t("projects.stoppedBeforeMeasured")}</p>}
       {p.checks.map((c) => <Check key={c.check} p={p} c={c} flags={view.measures.find((x) => x.check === c.check)} />)}
     </section>
   );
@@ -202,8 +201,7 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
   const [impact, setImpact] = useState<Record<string, string>>({});
-  const [mode, setMode] = useState<"type" | "import" | null>(serverMode ? null : "type"); // demo mode has only one way in, so the form is open
-  const [confirming, setConfirming] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [sendingBack, setSendingBack] = useState(false);
   const [backWhy, setBackWhy] = useState("");
   const [importMsg, setImportMsg] = useState<string[]>([]);
@@ -213,6 +211,10 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
   const lastQuestion = m?.questions[m.questions.length - 1];
   const unit = p.baseline && !p.baseline.none && p.baseline.unit ? " " + p.baseline.unit : "";
   const isOpen = S.day >= c.opensDay;
+  const mayRecord = isOpen && !resultStands && r.measure(c.check);
+  // One date per row (DESIGN_RULES §9): when it opens before that, when it is due while it waits for its number, none once a number stands.
+  const date = !isOpen ? t("projects.checkOpens", { day: f(c.opensDay) }) : !resultStands ? t("projects.checkDue", { day: f(c.dueDay) }) : null;
+  const canConfirm = resultStands && !m.confirmed && r.confirm(c.check);
   const v = num(value);
   const preview = v !== null ? verdictOf(p.baseline, v, S.rules.tolerancePct) : null;
   const label = (userId: string | null, fallback: string) => seed.seats.find((s) => s.userId === userId)?.label ?? fallback;
@@ -241,7 +243,7 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
         if (res.ok) router.refresh(); else showToast(res.error);
       });
     });
-    if (went) { setValue(""); setNote(""); setImpact({}); setMode(null); }
+    if (went) { setValue(""); setNote(""); setImpact({}); }
   };
 
   const importFile = async (file: File | undefined) => {
@@ -271,62 +273,104 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
     if (went) { setSendingBack(false); setBackWhy(""); }
   };
 
+  // One click (Kevin, 16 Nov 2026): the button's title says what confirming means.
   const confirm = (x: Measure) => {
     const payload: EventPayload = { check: x.check, ...(x.eventId ? { measureEventId: x.eventId } : {}) };
     send("project.measure.confirmed", payload, () => {
+      if (!serverMode) { act.project.confirmMeasure(p.id, x.check, x.eventId); return; }
       void appendEventAction({ slug: tenant.slug, id: newId("e"), type: "project.measure.confirmed", target: p.id, payload }).then((res) => {
         if (res.ok) router.refresh(); else showToast(res.error);
       });
     });
-    setConfirming(false);
   };
 
+  const checkName = t("projects.checkName", { check: c.check });
   return (
-    <div className={styles.check} role="group" aria-label={t("projects.checkName", { check: c.check })}>
+    <div className={styles.check} role="group" aria-label={checkName}>
+      {/* One row (Kevin, 16 Nov 2026): the check, its number or its one date, one chip, and for who may confirm one filled button. */}
       <div className={styles.checkHead}>
-        <span className={styles.strong}>{t("projects.checkName", { check: c.check })}</span>
-        <span className={styles.muted}>{t("projects.checkDates", { opens: f(c.opensDay), due: f(c.dueDay) })}</span>
-        {c.late && <span className={styles.due} data-late="true">{p.escalated?.what === "measure" ? t("projects.checkLateWith", { name: p.escalated.to }) : t("projects.checkLate")}</span>}
+        <span className={styles.strong}>{checkName}</span>
+        {resultStands ? (
+          <>
+            <span className={styles.movement}>{movement(p.baseline, m, locale)}</span>
+            {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
+            {m.confirmed ? <VerdictChip verdict={m.verdict} /> : <span data-testid={"measure-waiting-" + c.check}><Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill></span>}
+            {canConfirm && (
+              <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} data-testid={"measure-confirm-" + c.check} title={t("projects.confirmAsk")} onClick={() => confirm(m)}>{t("projects.confirmResult")}</button>
+            )}
+          </>
+        ) : (
+          <>
+            {date && <span className={styles.muted}>{date}</span>}
+            {isOpen && c.late && <span className={styles.due} data-late="true">{p.escalated?.what === "measure" ? t("projects.checkLateWith", { name: p.escalated.to }) : t("projects.checkLate")}</span>}
+          </>
+        )}
       </div>
       {m?.sentBack && (
-        <div className={styles.result} data-testid={"measure-sentback-" + c.check}>
-          <span className={styles.muted}>{t("projectResult.measureSentBack", { date: f(lastQuestion?.day ?? m.day), why: lastQuestion?.why ?? "" })}</span>
-        </div>
+        <p className={styles.checkLine} data-testid={"measure-sentback-" + c.check}>{t("projectResult.measureSentBack", { date: f(lastQuestion?.day ?? m.day), why: lastQuestion?.why ?? "" })}</p>
       )}
-      {resultStands ? (
-        <div className={styles.result}>
-          <span className={styles.big}>{movement(p.baseline, m, locale)}</span>
-          {m.confirmed ? <VerdictChip verdict={m.verdict} /> : (
-            <span className={styles.muted} data-testid={"measure-waiting-" + c.check}>
-              {/* A second person has CONFIRM_DAYS working days (decision Q6.15); the demo has no second person. */}
-              {!serverMode || m.sourceKind === "system" ? t("projects.verdictNotConfirmed")
-                : S.day > m.day + CONFIRM_DAYS ? t("projects.verdictWaitingLate", { day: f(m.day + CONFIRM_DAYS) })
-                : t("projects.verdictWaiting", { day: f(m.day + CONFIRM_DAYS) })}
+      {mayRecord && (
+        <form className={styles.measureForm} aria-label={t("projects.recordCheck", { check: c.check })} onSubmit={submit}>
+          <label className="nh-field">
+            <span className="nh-label">{t("projects.numberNow")}{unit ? " (" + unit.trim() + ")" : ""}</span>
+            <input className={`nh-input ${styles.input}`} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
+          </label>
+          <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={v === null}>{t("projects.recordShort")}</button>
+          {serverMode && (
+            <button type="button" className={styles.quietLink} data-testid={"measure-import-" + c.check} aria-expanded={importing} onClick={() => setImporting(!importing)}>{t("projects.importFromFile")}</button>
+          )}
+          {preview && (
+            <span className={styles.preview} role="status">
+              {t("projects.readsAs")} <VerdictChip verdict={preview.verdict} /> {changeText(preview.changePct, locale)}
             </span>
           )}
-          {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
+          <div className={styles.foldRow}>
+            <Fold summary={t(serverMode ? "projects.impactAndNote" : "projects.noteSummary")} name={"measure-more-" + c.check}>
+              <label className={`nh-field ${styles.grow}`}>
+                <span className="nh-label">{t("projects.noteField")}</span>
+                <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.baselineSource")} />
+              </label>
+              {serverMode && IMPACT_FIELDS.map(([key, msg]) => (
+                <label key={key} className="nh-field">
+                  <span className="nh-label">{t(msg)}</span>
+                  <input className={`nh-input ${styles.input}`} inputMode="decimal" value={impact[key] ?? ""} onChange={(e) => setImpact({ ...impact, [key]: e.target.value })} />
+                </label>
+              ))}
+            </Fold>
+          </div>
+        </form>
+      )}
+      {mayRecord && importing && serverMode && (
+        <div className={styles.measureForm}>
+          <label className={`nh-field ${styles.grow}`}>
+            <span className="nh-label">{t("projects.importFileLabel")}</span>
+            <input className={`nh-input ${styles.input}`} type="file" accept=".csv,text/csv,text/plain" onChange={(e) => { const input = e.target; void importFile(input.files?.[0]).then(() => { input.value = ""; }); }} />
+          </label>
+          {importMsg.length > 0 && <ul className={styles.muted} role="status">{importMsg.map((line, i) => <li key={i}>{line}</li>)}</ul>}
+        </div>
+      )}
+      {resultStands && (
+        // Who typed it, its deadline, the impact, the history and "Send it back" wait behind one fold (DESIGN_RULES §9).
+        <Fold summary={t("projects.checkDetails")} name={"measure-details-" + c.check}>
           <span className={styles.muted} data-testid={"measure-source-" + c.check}>
-            {measureSourceLine(m, { by: label(m.byUserId, m.by), confirmedBy: label(m.confirmedByUserId, ""), day: f }, t)}
+            {m.sourceInfo.kind === "typed" && !m.confirmed
+              ? t("projects.srcTypedBy", { role: label(m.byUserId, m.by) })
+              : measureSourceLine(m, { by: label(m.byUserId, m.by), confirmedBy: label(m.confirmedByUserId, ""), day: f }, t)}
           </span>
+          {/* A second person has CONFIRM_DAYS working days (decision Q6.15); a number from a system needs nobody. */}
+          {!m.confirmed && serverMode && m.sourceKind !== "system" && (
+            <span className={styles.muted} data-testid={"measure-deadline-" + c.check}>
+              {S.day > m.day + CONFIRM_DAYS ? t("projects.verdictWaitingLate", { day: f(m.day + CONFIRM_DAYS) }) : t("projects.verdictWaiting", { day: f(m.day + CONFIRM_DAYS) })}
+            </span>
+          )}
           {impactLines(m.impact, locale).map((line) => <span key={line} className={styles.muted}>{line}</span>)}
+          {m.questions.map((q, i) => <span key={i} className={styles.muted}>{t("projectResult.measureSentBack", { date: f(q.day), why: q.why })}</span>)}
           {m.reentered && m.previous.length > 0 && (
             <span className={styles.muted} data-testid={"measure-reentered-" + c.check}>
               {t("projectResult.measureReentered", { date: f(m.day), value: fmtNumber(m.previous[m.previous.length - 1].value, locale) + unit })}
             </span>
           )}
           {m.managerOnly && !m.confirmed && <span className={styles.muted} data-testid={"measure-manageronly-" + c.check}>{t("projectResult.measureManagerOnly")}</span>}
-          {flags?.sponsorMay && serverMode && <span className={styles.muted}>{t("projectResult.measureSponsorMay")}</span>}
-          {serverMode && !m.confirmed && r.confirm(c.check) && (
-            confirming ? (
-              <span className={styles.actionRow} role="group">
-                <span>{t("projects.confirmAsk", { value: movement(p.baseline, m, locale), check: c.check })}</span>
-                <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => confirm(m)}>{t("projects.confirmYes")}</button>
-                <button type="button" className={styles.quiet} onClick={() => setConfirming(false)}>{t("common.cancel")}</button>
-              </span>
-            ) : (
-              <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-confirm-" + c.check} onClick={() => setConfirming(true)}>{t("projects.confirmResult")}</button>
-            )
-          )}
           {flags?.canQuestion && !m.confirmed && (
             sendingBack ? (
               <form className={styles.actionRow} aria-label={t("projectResult.measureSendBack")} onSubmit={(e) => { e.preventDefault(); sendBack(m); }}>
@@ -338,56 +382,10 @@ function Check({ p, c, flags }: { p: ReducedProject; c: CheckDue; flags: Measure
                 <button type="button" className={styles.quiet} onClick={() => { setSendingBack(false); setBackWhy(""); }}>{t("common.cancel")}</button>
               </form>
             ) : (
-              <button type="button" className={styles.quiet} data-testid={"measure-sendback-" + c.check} onClick={() => setSendingBack(true)}>{t("projectResult.measureSendBack")}</button>
+              <span><button type="button" className={styles.quiet} data-testid={"measure-sendback-" + c.check} onClick={() => setSendingBack(true)}>{t("projectResult.measureSendBack")}</button></span>
             )
           )}
-        </div>
-      ) : !isOpen ? (
-        <p className={styles.muted}>{t("projects.opensDay", { day: f(c.opensDay) })}</p>
-      ) : r.measure(c.check) ? (
-        <div>
-          <span className={styles.actionRow}>
-            <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-type-" + c.check} aria-expanded={mode === "type"} onClick={() => setMode(mode === "type" ? null : "type")}>{m?.sentBack ? t("projectResult.measureReenter") : t("projects.typeNumber")}</button>
-            {serverMode && (
-              <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid={"measure-import-" + c.check} aria-expanded={mode === "import"} onClick={() => setMode(mode === "import" ? null : "import")}>{t("projects.importFromFile")}</button>
-            )}
-          </span>
-          {mode === "type" && (
-            <form className={styles.measureForm} aria-label={t("projects.recordCheck", { check: c.check })} onSubmit={submit}>
-              <label className="nh-field">
-                <span className="nh-label">{t("projects.numberNow")}{p.baseline && !p.baseline.none && p.baseline.unit ? " (" + p.baseline.unit + ")" : ""}</span>
-                <input className={`nh-input ${styles.input}`} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
-              </label>
-              <label className={`nh-field ${styles.grow}`}>
-                <span className="nh-label">{t("projects.noteField")}</span>
-                <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.baselineSource")} />
-              </label>
-              {serverMode && IMPACT_FIELDS.map(([key, msg]) => (
-                <label key={key} className="nh-field">
-                  <span className="nh-label">{t(msg)}</span>
-                  <input className={`nh-input ${styles.input}`} inputMode="decimal" value={impact[key] ?? ""} onChange={(e) => setImpact({ ...impact, [key]: e.target.value })} />
-                </label>
-              ))}
-              <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={v === null}>{t("projects.move_measure")}</button>
-              {preview && (
-                <span className={styles.preview} role="status">
-                  {t("projects.readsAs")} <VerdictChip verdict={preview.verdict} /> {changeText(preview.changePct, locale)}
-                </span>
-              )}
-            </form>
-          )}
-          {mode === "import" && serverMode && (
-            <div className={styles.measureForm}>
-              <label className={`nh-field ${styles.grow}`}>
-                <span className="nh-label">{t("projects.importFileLabel")}</span>
-                <input className={`nh-input ${styles.input}`} type="file" accept=".csv,text/csv,text/plain" onChange={(e) => { const input = e.target; void importFile(input.files?.[0]).then(() => { input.value = ""; }); }} />
-              </label>
-              {importMsg.length > 0 && <ul className={styles.muted} role="status">{importMsg.map((line, i) => <li key={i}>{line}</li>)}</ul>}
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className={styles.muted}>{t("projects.openSince", { day: f(c.opensDay) })}</p>
+        </Fold>
       )}
     </div>
   );
@@ -405,64 +403,70 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
   const [amount, setAmount] = useState<string | null>(null); // null: still the rule's suggestion
   const [note, setNote] = useState("");
   if (!rewardShown(S.rules)) return null;
-  const waiting = !p.reward && !p.rewardDue && rule.kind !== "none" && p.doneDay !== null && !p.stopped;
-  if (!p.reward && !p.rewardDue && !waiting && !(p.status === "measured" && rule.kind === "none")) return null;
+  // Not drawn before a reward is due (DESIGN_RULES §9): no "a reward is due after…" and no "this company gives none".
+  if (!p.reward && !p.rewardDue) return null;
 
   const suggested = suggestedReward(rule, num(saving));
   const takesAmount = rule.kind === "fixed" || rule.kind === "share";
   const shown = amount ?? (suggested !== null ? String(suggested) : "");
+  const shownAmount = takesAmount ? num(shown) : null;
   const handle = persona.who.handle;
-  // While a reward is due, recognition is due by a date (D17).
+  const anon = handle !== null && actorUserId !== null && p.authorUserIds.includes(actorUserId);
+  // While a reward is due, recognition is due by a date (D17): the one due line.
   const recognitionDay = measureView(p, S, idViewerOf(ctx), S.day).recognitionDueDay;
+  const record = (e: React.FormEvent) => {
+    e.preventDefault();
+    send("project.rewarded", {}, () => act.project.reward(p.id, rule.kind, shownAmount ?? undefined, note.trim() || undefined));
+  };
 
   return (
     <section className={styles.panel} aria-labelledby={"reward-" + p.id}>
-      <div className={styles.panelHead}>
-        <h2 id={"reward-" + p.id} className={styles.h2}>{t("projects.rewardTitle")}</h2>
-        <span className={styles.muted}>{t("projects.rewardSub")}</span>
-      </div>
-      {!p.reward && recognitionDay !== null && <p className={styles.muted} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>}
+      <h2 id={"reward-" + p.id} className={styles.h2}>{t("projects.rewardTitle")}</h2>
       {p.reward ? (
-        <div className={styles.baseline}>
-          <div className={styles.strong}>{p.reward.amount !== null ? euros(p.reward.amount, locale) : p.reward.rule === "thanks" ? t("projects.ruleThanks") : p.reward.rule}</div>
-          <div className={styles.muted}>{t("projects.rewardRecorded", { day: f(p.reward.day), name: p.reward.by })}{p.reward.note ? ": " + p.reward.note : ""}</div>
-          {p.claimed ? (
-            <div className={styles.muted}>{t("projects.rewardClaimed", { day: f(p.claimed.day) })}</div>
-          ) : r.claim ? (
-            <div className={styles.claim}>
-              <span>{handle && actorUserId !== null && p.authorUserIds.includes(actorUserId) ? t("projects.claimAnon", { handle }) : t("projects.claimPlain")}</span>
-              <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => send("project.claimed", {}, () => act.project.claim(p.id))}>{t("projects.claimBtn")}</button>
-            </div>
-          ) : null}
-        </div>
-      ) : waiting ? (
-        <p className={styles.emptyLine}>{t("projects.rewardNotDueYet")}</p>
-      ) : rule.kind === "none" ? (
-        <p className={styles.emptyLine}>{t("projects.rewardNone")}</p>
+        <>
+          <div className={styles.checkHead}>
+            <span className={styles.big}>{p.reward.amount !== null ? euros(p.reward.amount, locale) : p.reward.rule === "thanks" ? t("projects.ruleThanks") : p.reward.rule}</span>
+            {p.claimed && <Pill tone="soft">{t("projects.rewardClaimedChip")}</Pill>}
+            {!p.claimed && r.claim && (
+              <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} title={anon && handle ? t("projects.claimAnon", { handle }) : undefined}
+                onClick={() => send("project.claimed", {}, () => act.project.claim(p.id))}>{t("projects.claimBtn")}</button>
+            )}
+          </div>
+          <Fold summary={t("projects.checkDetails")} name="reward-details">
+            <span className={styles.muted}>{t("projects.rewardRecorded", { day: f(p.reward.day), name: p.reward.by })}{p.reward.note ? ": " + p.reward.note : ""}</span>
+            {p.claimed && <span className={styles.muted}>{t("projects.rewardClaimed", { day: f(p.claimed.day) })}</span>}
+          </Fold>
+        </>
       ) : r.reward ? (
-        <form className={styles.form} aria-label={t("projects.move_reward")}
-          onSubmit={(e) => { e.preventDefault(); const a = takesAmount ? num(shown) : null; send("project.rewarded", {}, () => act.project.reward(p.id, rule.kind, a ?? undefined, note.trim() || undefined)); }}>
-          <div className={styles.due}>{t("projects.rewardDueYours", { rule: rewardRuleText(rule, locale) })}</div>
-          {rule.kind === "share" && (
+        <form className={styles.form} aria-label={t("projects.move_reward")} onSubmit={record}>
+          {recognitionDay !== null && <p className={styles.checkLine} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>}
+          <span className={styles.actionRow}>
+            <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{shownAmount !== null ? t("projects.recordRewardAmount", { amount: euros(shownAmount, locale) }) : t("projects.move_reward")}</button>
+          </span>
+          <Fold summary={t("projects.rewardChange")} name="reward-change">
+            <span className={styles.muted}>{t("projects.rewardDueYours", { rule: rewardRuleText(rule, locale) })}</span>
+            {rule.kind === "share" && (
+              <label className="nh-field">
+                <span className="nh-label">{t("projects.yearlySaving")}</span>
+                <input className={`nh-input ${styles.input}`} inputMode="decimal" value={saving} onChange={(e) => { setSaving(e.target.value); setAmount(null); }} />
+              </label>
+            )}
+            {takesAmount && (
+              <label className="nh-field">
+                <span className="nh-label">{t("projects.amount")}</span>
+                <input className={`nh-input ${styles.input}`} inputMode="decimal" value={shown} onChange={(e) => setAmount(e.target.value)} />
+              </label>
+            )}
             <label className="nh-field">
-              <span className="nh-label">{t("projects.yearlySaving")}</span>
-              <input className={`nh-input ${styles.input}`} inputMode="decimal" value={saving} onChange={(e) => { setSaving(e.target.value); setAmount(null); }} />
+              <span className="nh-label">{t("projects.noteOptional")}</span>
+              <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.notePlaceholder")} />
             </label>
-          )}
-          {takesAmount && (
-            <label className="nh-field">
-              <span className="nh-label">{t("projects.amount")}{suggested !== null ? " - " + t("projects.ruleSuggests", { amount: euros(suggested, locale) }) : ""}</span>
-              <input className={`nh-input ${styles.input}`} inputMode="decimal" value={shown} onChange={(e) => setAmount(e.target.value)} />
-            </label>
-          )}
-          <label className="nh-field">
-            <span className="nh-label">{t("projects.noteOptional")}</span>
-            <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.notePlaceholder")} />
-          </label>
-          <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projects.move_reward")}</button></span>
+          </Fold>
         </form>
+      ) : recognitionDay !== null ? (
+        <p className={styles.checkLine} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>
       ) : (
-        <p className={styles.emptyLine}>{t("projects.rewardDueCompany", { rule: rewardRuleText(rule, locale) })}</p>
+        <p className={styles.checkLine}>{t("projects.rewardDueCompany", { rule: rewardRuleText(rule, locale) })}</p>
       )}
     </section>
   );

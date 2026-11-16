@@ -1,9 +1,10 @@
 "use client";
-// The idea-management KPI report (MET D20): company tiles, one row per unit, a period picker and a CSV export.
-// Props in, JSX out; the numbers come from the server actions. A unit under 5 raisers is left out and only
-// counted in one line; a figure that is empty or zero everywhere is left out too. Each figure keeps its colour.
+// The KPI report (MET D20): company tiles, one row per unit, a period picker and a CSV export. Named once, "KPIs"
+// (DESIGN_RULES §9). Props in, JSX out; the numbers come from the server actions. A unit under 5 raisers is left out
+// and only counted on the line "How this is counted", which holds the baseline and the counting rules folded; a
+// figure that is empty or zero everywhere is left out too. Each figure keeps its colour.
 import { useState, useTransition } from "react";
-import { Banner, DeptChip, PageHeader, SectionCard } from "@/components/ui/elements";
+import { Banner, DeptChip, Fold, PageHeader, SectionCard } from "@/components/ui/elements";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { SAMPLE_KPIS } from "@/features/demo/sample-data";
 import { useLocale, useT } from "@/i18n/client";
@@ -86,28 +87,23 @@ export function KpisView({ slug, initial }: { slug: string; initial: KpisData })
       {serverMode ? <><h1 className="nh-sr">{t("kpis.title")}</h1>{tools}</> : <PageHeader title={t("kpis.title")} action={tools} />}
       {error && <div data-testid="kpis-error"><Banner tone="error">{t(error === "load" ? "kpis.loadFailed" : "kpis.exportFailed")}</Banner></div>}
 
-      <SectionCard title={t("kpis.company")} name="kpis-company">
-        {data.fromDate && data.toDate && <p className={styles.dates} data-testid="kpis-dates">{data.fromDate} – {data.toDate}</p>}
+      <SectionCard name="kpis-company">
         {!data.available ? (
           <div data-testid="kpis-unavailable"><Banner tone="info">{t("kpis.unavailable")}</Banner></div>
         ) : view.allHidden ? (
           <div data-testid="kpis-all-hidden"><Banner tone="quiet">{t("kpis.tooFew")} · {t("kpis.tooFewWhy")}</Banner></div>
         ) : (
-          <>
-            {tiles.length > 0 && (
-              <section className={styles.tiles} aria-label={t("kpis.company")} data-testid="kpis-tiles">
-                {tiles.map((c) => (
-                  <div key={c.id} className={styles.tile} data-kpi={c.id} data-testid={`kpis-tile-${c.id}`}>
-                    <div className={styles.value}>{c.value}</div>
-                    <div className={styles.label}>{c.label}</div>
-                    {c.share !== null && <div className={styles.meter} aria-hidden="true"><span style={{ width: c.share + "%" }} /></div>}
-                  </div>
-                ))}
-              </section>
-            )}
-            {view.projectsOffLine && <div data-testid="kpis-projects-off"><Banner tone="quiet">{view.projectsOffLine}</Banner></div>}
-            {data.baselineSource && <div data-testid="kpis-baseline"><Banner tone="quiet">{t(baselineKey)}</Banner></div>}
-          </>
+          tiles.length > 0 && (
+            <section className={styles.tiles} aria-label={t("kpis.company")} data-testid="kpis-tiles">
+              {tiles.map((c) => (
+                <div key={c.id} className={styles.tile} data-kpi={c.id} data-testid={`kpis-tile-${c.id}`}>
+                  <div className={styles.value}>{c.value}</div>
+                  <div className={styles.label}>{c.label}</div>
+                  {c.share !== null && <div className={styles.meter} aria-hidden="true"><span style={{ width: c.share + "%" }} /></div>}
+                </div>
+              ))}
+            </section>
+          )
         )}
       </SectionCard>
 
@@ -142,8 +138,14 @@ export function KpisView({ slug, initial }: { slug: string; initial: KpisData })
           </div>
         </SectionCard>
       )}
-      {data.available && !view.allHidden && hiddenUnits > 0 && <p className={styles.hiddenLine} data-testid="kpis-hidden-units">{t("kpis.hiddenUnits", { count: hiddenUnits })}</p>}
-      <p className={styles.foot} data-testid="kpis-footnote">{t("kpis.footnote")}</p>
+      <div data-testid="kpis-footnote">
+        <Fold name="kpis-counting" summary={t("kpis.howCounted")}
+          meta={data.available && !view.allHidden && hiddenUnits > 0 ? <span data-testid="kpis-hidden-units">{t("kpis.hiddenUnits", { count: hiddenUnits })}</span> : undefined}>
+          {data.available && view.projectsOffLine && <p className={styles.foot} data-testid="kpis-projects-off">{view.projectsOffLine}</p>}
+          {data.available && data.baselineSource && <p className={styles.foot} data-testid="kpis-baseline">{t(baselineKey)}</p>}
+          <p className={styles.foot}>{t("kpis.footnote")}</p>
+        </Fold>
+      </div>
     </div>
   );
 }

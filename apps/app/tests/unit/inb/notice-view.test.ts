@@ -11,7 +11,7 @@ describe("noticeView", () => {
     expect(noticeView(row({ link: "https://acme.test/idea?id=c_1" })).link).toBe("https://acme.test/idea?id=c_1");
   });
   it("an older loop notice without a link opens its case or project", () => {
-    expect(noticeView(row()).link).toBe("/cases/c_1");
+    expect(noticeView(row()).link).toBe("/idea?id=c_1");
     expect(noticeView(row({ template: "loop.project.started", data: { subjectId: "p_1" } })).link).toBe("/projects/p_1");
   });
   it("one about nothing it can name stays without a link", () => {

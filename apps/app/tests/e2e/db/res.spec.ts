@@ -235,7 +235,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
       await setupStep(page, "Baseline");
       await expect(page.getByTestId("baseline-confirm"), "the lead has no confirm button").toHaveCount(0);
-      await expect(page.getByTestId("baseline-waits")).toContainText("The sponsor or the route's deputy confirms it");
+      await expect(page.getByTestId("baseline-waits")).toContainText("Not confirmed yet"); // one chip; no sentence about who confirms (DESIGN_RULES §9)
       await page.context().close();
       // The server says the same: not the lead, and not the start.
       const lead = { name: LEAD, id: id.lead, role: "leader" as const };
@@ -353,10 +353,9 @@ test.describe("RES acceptance: a result that closes properly", () => {
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
       await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
-      await page.getByTestId(`measure-type-${CHECK_DAYS}`).click();
-      const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
+      const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` }); // the input is inline, no button opens it (DESIGN_RULES §9)
       await form.getByLabel("The number now").fill(String(FIRST));
-      await form.getByRole("button", { name: "Record the measure" }).click();
+      await form.getByRole("button", { name: "Record", exact: true }).click();
       await expect.poll(async () => (await eventsOf("project.measured", projectId)).length).toBe(1);
       expect((await eventsOf("project.measured", projectId))[0]).toMatchObject({ actorUserId: id.lead, payload: { check: CHECK_DAYS, value: FIRST } });
       await expect(page.getByTestId(`measure-waiting-${CHECK_DAYS}`)).toBeVisible();
@@ -368,6 +367,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       page = await signIn(browser, DEPUTY);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
       await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
+      await page.locator(`[data-name="measure-details-${CHECK_DAYS}"] > summary`).click(); // "Send it back" waits in the row's Details fold
       await page.getByTestId(`measure-sendback-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: "Send it back" });
       await form.getByLabel("What looks wrong?").fill(BACK_WHY);
@@ -388,10 +388,9 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
       await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toContainText(BACK_WHY);
-      await page.getByTestId(`measure-type-${CHECK_DAYS}`).click();
       const form = page.getByRole("form", { name: `Record the ${CHECK_DAYS}-day measure` });
       await form.getByLabel("The number now").fill(String(SECOND));
-      await form.getByRole("button", { name: "Record the measure" }).click();
+      await form.getByRole("button", { name: "Record", exact: true }).click();
       await expect.poll(async () => (await eventsOf("project.measured", projectId)).length, { timeout: 30_000 }).toBe(2); // the drawer's save then a full refresh: slower under parallel workers
       await expect(page.getByTestId(`measure-reentered-${CHECK_DAYS}`)).toContainText(String(FIRST));
       await expect(page.getByTestId(`measure-sentback-${CHECK_DAYS}`)).toHaveCount(0);
@@ -411,8 +410,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       page = await signIn(browser, SPONSOR);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=results`);
       await page.getByRole("button", { name: "Open result", exact: true }).click(); // the measure checks sit in the result drawer (HUB, #888)
-      await page.getByTestId(`measure-confirm-${CHECK_DAYS}`).click();
-      await page.getByRole("button", { name: "Yes, the number is right" }).click();
+      await page.getByTestId(`measure-confirm-${CHECK_DAYS}`).click(); // one click (DESIGN_RULES §9): the button's title says what confirming means
       await expect.poll(async () => (await eventsOf("project.measure.confirmed", projectId)).length).toBe(1);
       expect((await eventsOf("project.measure.confirmed", projectId))[0]).toMatchObject({ actorUserId: id.sponsor, payload: { check: CHECK_DAYS } });
       await expect(page.getByTestId("recognition-due")).toContainText("Recognition due by");

@@ -3,7 +3,7 @@
 // asks one question -> the employee answers -> the leader says no, with a reason -> the employee
 // sees the no, the reason and the name. Demo mode: one browser plays every person via the dev panel.
 import type { Page } from "@playwright/test";
-import { confirmSheet, expect, publishIdea, sheet, test } from "../helpers";
+import { confirmSheet, expect, publishIdea, sheet, test, yourMove } from "../helpers";
 
 const TITLE = "The Friday shift plan leaves line 3 with no overtime hours for the changeover";
 // The reason of a no: at least 40 characters, as the company's rule asks (NOR, D17).
@@ -37,12 +37,12 @@ test("a raised problem goes round the whole loop", async ({ page }) => {
   });
 
   await test.step("the leader asks one question and the clock pauses", async () => {
-    await page.getByRole("button", { name: "Ask a question" }).click();
+    await (await yourMove(page, "Ask a question")).click();
     // Confirm stays a hint until there is a question to send.
     await expect(sheet(page).getByRole("button", { name: "Type the question" })).toBeVisible();
     await confirmSheet(page, "Which shift - early or late?", "Send the question");
-    // The inbox detail (#102) says "Waiting for <who> · clock paused at 0 d" under "Your question is out".
-    await expect(page.getByText(/Waiting for .+ · clock paused at 0 d/)).toBeVisible();
+    // "Your move" says the question is out (the chip says the clock is paused; quiet screens, DESIGN_RULES §9).
+    await expect(page.getByTestId("your-move")).toContainText("Your question is out");
     await expect(page.getByRole("button", { name: "Yes, do it" })).toHaveCount(0);
   });
 

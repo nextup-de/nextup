@@ -23,7 +23,7 @@ test("UIP kpis and profile", async ({ page }) => {
 
   await test.step("the KPI report switches period and keeps its parts", async () => {
     await page.goto(`/${SLUG}/dashboard/kpis`);
-    await expect(page.locator("h1")).toHaveText("Idea management figures");
+    await expect(page.locator("h1")).toHaveText("KPIs"); // one name per page (DESIGN_RULES §9): the tab says KPIs too
     await page.getByTestId("kpis-period-lastYear").click();
     await expect(page.getByTestId("kpis-period-lastYear")).toHaveAttribute("data-on", "true");
     await expect(page.getByTestId("kpis-footnote")).toBeVisible();
@@ -32,6 +32,7 @@ test("UIP kpis and profile", async ({ page }) => {
   await test.step("the profile shows the person and a mail switch saves and goes back", async () => {
     await page.goto(`/${SLUG}/profile`);
     await expect(page.getByRole("heading", { name: MANAGER.name })).toBeVisible();
+    await page.locator('[data-name="mails"] > summary').click(); // Mails is one line that opens (DESIGN_RULES §9)
     const mails = page.getByRole("switch", { name: /Discussions and projects/ });
     const before = await mails.isChecked();
     await mails.click();

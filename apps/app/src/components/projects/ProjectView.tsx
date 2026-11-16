@@ -43,6 +43,7 @@ import { ProjectMenu, ProjectSheet, type HeadSheet } from "./head/ProjectMenu";
 import { useDismiss } from "./head/useDismiss";
 import head from "./head/Head.module.css";
 import styles from "./Projects.module.css";
+import { ideaPath } from "@/features/ideas/page-path";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
 export function ProjectView({ projectId, jira, tab }: { projectId: string; jira: JiraStatusView | null; tab: ProjectTab }) {
@@ -107,9 +108,12 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const ideaOnly = page?.tools.length === 1 && page.tools[0].kind === "idea";
   // An open draft starts and stops from its setup (Getting ready), so its other pages carry the title alone.
   const draft = isOpenDraft(p);
-  // The project's own head (title, Manage, ⓘ, Start) sits on the Idea page. The Overview carries it until the project runs (the
-  // baseline and Start live there); a running project's Overview is a page like the Jira ones (Paper "Jira pages · new header").
-  const home = !draft && (page?.tools.some((tool) => tool.kind === "idea" || (tool.kind === "overview" && p.status !== "running")) ?? false);
+  // The project's own head (title, Manage, ⓘ) sits on the Idea page and on the Overview, at every stage: the project's title once,
+  // the page's own name in the side view only (DESIGN_RULES §9). The Overview holds the viewer's next move as one card (NextMove);
+  // the Idea page points to it.
+  const overview = pages.find((x) => x.tools.some((tool) => tool.kind === "overview")) ?? null;
+  const onOverview = page !== undefined && page.id === overview?.id;
+  const home = !draft && (onOverview || (page?.tools.some((tool) => tool.kind === "idea") ?? false));
   // An invitation is answered in the Team tool; a project without one answers it on its home page (the inbox link lands there).
   const answerHere = home && pendingInviteOf(p, actorUserId) !== null && !pages.some((x) => x.tools.some((tool) => tool.kind === "team"));
   return <>
@@ -119,17 +123,17 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
           : <div className={styles.hero}><Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link></div>}
     </div>
     {page && <>
-      {home && !ideaOnly && <PageMove p={p} />}
+      {home && !onOverview && !ideaOnly && <PageMove p={p} overviewId={overview?.id ?? null} />}
       {answerHere && <InvitePanel p={p} />}
       {ideaOnly && home ? <IdeaHome p={p} jira={jira} page={page} />
         : ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
-        : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} />}
+        : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} titled={!(home && page.tools[0]?.kind === "overview")} />}
     </>}
   </>;
 }
 
-/** Keep the viewer's next move visible on pages that contain the overview tool. */
-function PageMove({ p }: { p: ReducedProject }) {
+/** On the Idea page, the viewer's next move as one line that leads to the Overview, where its button is. */
+function PageMove({ p, overviewId }: { p: ReducedProject; overviewId: string | null }) {
   const ctx = useDemo();
   const r = useRights(p);
   const t = useT();
@@ -140,7 +144,8 @@ function PageMove({ p }: { p: ReducedProject }) {
   if ((!mine && !escalatedToMe) || !move) return null;
   return <div role="status"><Banner tone="info">
     <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>{" "}
-    {escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale)}
+    {escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk"))
+      : overviewId ? <Link href={ctx.href(`/projects/${p.id}?page=${overviewId}`)} className={styles.link}>{moveLabel(move, locale)} →</Link> : moveLabel(move, locale)}
   </Banner></div>;
 }
 
@@ -168,7 +173,7 @@ function TabView({ p, jira: row, asked }: { p: ReducedProject; jira: JiraRow; as
   const shown: ProjectTab | null = custom ? null : tab;
   return <>
     <div className={styles.top}>
-      <Header p={p} jira={row} />
+      <Header p={p} jira={row} start />
       <Tabs p={p} tab={tab} agent={agent.view !== null} />
     </div>
       {custom && <CustomPageView storeId={p.id} from={pagesFrom} page={custom} editor={r.addStep} />}
@@ -246,11 +251,11 @@ function Tabs({ p, tab, agent }: { p: ReducedProject; tab: ProjectTab; agent: bo
   return <TabBar items={items} current={tab} label={t("projects.tabsLabel")} />;
 }
 
-/** The head says what the project is and the one thing to do: the title and, right of it, Start (while planned), Manage
+/** The head says what the project is: the title and, right of it, Start (while planned, in the tab view; project pages hold it in the Overview's move card), Manage
  *  (move the date, pause, done, stop) and an (i) that opens the details on request (status, where it came from, who
  *  leads it, the tools). Under the title: the done-by date, the states that need a move, and the sheet Manage opened.
  *  On a laptop or monitor the sidebar is the way back; a phone keeps the back link. */
-function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
+function Header({ p, jira, start = false }: { p: ReducedProject; jira: JiraRow; start?: boolean }) {
   const { href } = useDemo();
   const t = useT();
   const [sheet, setSheet] = useState<HeadSheet | null>(null);
@@ -259,7 +264,7 @@ function Header({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
       <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
       <PageHeader
         title={p.title}
-        action={<div className={head.tools}><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>}
+        action={<div className={head.tools}>{start && <StartButton p={p} />}<ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>}
       />
       {/* A project that keeps moving (plan MOV): the done-by date, a pause, and No lead when the lead left. */}
       <DoneByLine p={p} />
@@ -278,7 +283,7 @@ function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   useDismiss(box);
   const sourceOf = (id: string) => {
     const c = S.cases.find((x) => x.id === id);
-    if (c) return { title: c.title, to: href("/cases/" + id) };
+    if (c) return { title: c.title, to: href(ideaPath(id)) };
     const i = S.ideas.find((x) => x.id === id);
     return i ? { title: i.title, to: href("/ideas?id=" + id) } : { title: id, to: null };
   };
