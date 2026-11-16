@@ -9,6 +9,7 @@ const KIND_SELECTOR = /\[data-(kind|type)\s*=\s*["']?(idea|problem)["']?\]/i;
 /** Style files that tint something by the kind of a case. Each needs the shape or the words to carry the meaning too. */
 const TINTED_ALLOWED: Record<string, string> = {
   "src/components/shell/SimpleShell.module.css": "the search result mark tints by kind, and NavSearch.tsx draws a different icon for each kind (checked below)",
+  "src/components/dashboard/team/Overview.module.css": "the band on an open idea tints by kind, and its chip says the kind in words (team.ideaKind / team.ideaKindProblem in DashboardView.tsx IdeaKind)",
 };
 
 describe("DESIGN problem and idea", () => {

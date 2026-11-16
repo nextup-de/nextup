@@ -337,7 +337,7 @@ function IdeaPages({ c, onBack }: { c: ReducedCase; onBack: () => void }) {
       tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
       tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : k === "overview" ? <PageGlyph icon="star" /> : <TabIcon k={k} />, count: counts[k] })}
       back={t("projects.sbBack")} onBack={onBack}
-      head={<Head mark={<StageMark stage={stage} />} title={c.title}
+      head={<Head mark={<StageMark stage={stage} />} title={c.title} status={c.decided || c.withdrawn ? undefined : t(c.kind === "problem" ? "projects.sbProblemKind" : "projects.sbIdeaKind")}
         // Whoever may revise it double-clicks the title to rename it: it goes out as its next version, as on the page.
         onRename={mayReviseIdea(c, me.userId, S.projects) ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
   );
