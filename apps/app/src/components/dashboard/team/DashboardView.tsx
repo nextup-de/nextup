@@ -346,7 +346,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
                 {view === "idea" && (inPage ? <p className={s.kindOrigin}>{t("team.ideaKindOrigin")}</p> : <IdeaKind c={c} />)}
                 {view === "idea" && deskItem && <DeskDecision brief={deskItem.brief} status={deskItem.status} onDecide={deskItem.onDecide} />}
                 {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
-                {view === "files" && <IdeaFilesView items={ideaProps.files} />}
+                {view === "files" && <IdeaFilesView items={ideaProps.files} folder={c.folder} />}
                 {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}
               </div>
             )}

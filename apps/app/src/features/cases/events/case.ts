@@ -11,7 +11,7 @@ export const CASE_EVENT_TYPES = [
   "case.checkin", "case.withdrawn", "case.reopened", "case.appealed", "case.appeal.decided", "case.invite.declined", "case.merged", "case.linked",
 ] as const;
 
-/** Every case.* type, with the fields it carries; the app list above plus the internal case.unanswered (the clock's) and the seed-only case.building and case.shipped. */
+/** Every case.* type, with the fields it carries; the app list above plus the internal case.unanswered (the clock's) and case.folder (the folder job's) and the seed-only case.building and case.shipped. */
 export type CaseAreaEventType =
   | "case.raised" // { title, body, routeId, assignee, assigneeRoleHolderId?, fromDept, kind?, reason?, upside?, affected?, attachments?, proposal?, visibility?, seenBy?, follows? }  follows: the case this one follows up (plan SEE, D15); proposal.sameAs / proposal.related: the cases the raise looked like (D16)
   | "case.read" // -
@@ -30,6 +30,7 @@ export type CaseAreaEventType =
   | "case.invite.declined" // { why? }  an invited person says the discussion is not for them: off the list, no view item (D14)
   | "case.merged" // { into, note? }  the desk closes this undecided case as a duplicate of `into` (plan SEE, D17): status merged, no notice, no unmerge
   | "case.linked" // { to }  the desk marks this case and `to` (the other case's id) as related: both stay as they are, no unlink (plan SEE, D17)
+  | "case.folder" // { system: 'sharepoint', url }  the idea's own SharePoint folder; internal: only the folder job appends it, as actor system:files (server/files/auto-folder.ts)
   | "case.unanswered" // {}  the raiser did not answer in time: the case is open on the desk again. internal: only the scheduler appends it, as actor system:clock (features/clock/due.ts)
   | "case.building" // { days, expected? }            (seed history)
   | "case.shipped" // { outcome, outcomeNote }        (seed history)
