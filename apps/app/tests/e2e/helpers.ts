@@ -128,6 +128,21 @@ export async function addPages(page: Page, path: string, titles: string[]) {
   await page.goto(path);
 }
 
+/**
+ * The Files page shows the file browser alone; the rest of the page sits behind the gear in its header (Paper
+ * "Files · 3", 7.1-7.3). Opens the gear's row (Connected tools, Sources, or one of the page's tools) and returns its sheet.
+ */
+export async function filesSheet(page: Page, row: string | RegExp): Promise<Locator> {
+  // The sheet covers the gear while it is open: '‹ Page settings' goes back to the menu, as a person would.
+  const open = page.getByTestId("files-settings-sheet");
+  if (await open.count()) await open.getByRole("button", { name: /Page settings/ }).click();
+  else await page.getByRole("button", { name: "Page settings", exact: true }).click();
+  await page.getByRole("menu", { name: "Page settings" }).getByRole("menuitem", { name: row }).click();
+  const sheet = page.getByTestId("files-settings-sheet");
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+
 /** A project draft's setup step ("Lead", "Template", "Team", "Goal", "Baseline", "Start"): the page shows one step at a time. */
 export async function setupStep(page: Page, name: "Lead" | "Template" | "Team" | "Goal" | "Baseline" | "Start") {
   const line = page.getByTestId("draft-progress").getByRole("button", { name: new RegExp("^" + name) });

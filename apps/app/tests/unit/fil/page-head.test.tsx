@@ -15,6 +15,9 @@ vi.mock("@/components/projects/page/ToolSection", () => ({ ToolSection: () => nu
 vi.mock("@/components/projects/page/BrowserPagesImport", () => ({ BrowserPagesImport: () => null }));
 vi.mock("@/components/projects/steps/CreateStepDialog", () => ({ CreateStepDialog: () => null }));
 vi.mock("@/components/projects/page/AddToolMenu", () => ({ AddToolMenu: () => null }));
+// A Files page draws the browser itself and the gear (Paper 7.1); both are tested on their own.
+vi.mock("@/components/projects/tools/registry", () => ({ TOOL_REGISTRY: { files: () => null } }));
+vi.mock("@/components/projects/files/FilesSettings", () => ({ FilesSettings: () => h("button", { "data-testid": "files-settings" }), useFilesSyncedAgo: () => "3 minutes ago" }));
 
 const t = createT("en");
 const tool = (kind: ToolKind): ToolInstance => ({ id: "t-" + kind, kind, title: null, collapsed: false, content: null, rev: 0 });
@@ -55,6 +58,10 @@ it("FIL page head: the Files page shows the SharePoint pill, Open in SharePoint 
   expect(html).toContain(`${t("projectFiles.openInSharePoint")} <span`);
   expect(html).toContain('href="https://plant.sharepoint.com/sites/p/Shared"');
   expect(html).toContain(t("projectFiles.upload"));
+  // The gear sits after + Upload, the pill says when the list last read the folder, and the head carries no tool row.
+  expect(html.indexOf('data-testid="files-settings"')).toBeGreaterThan(html.indexOf(t("projectFiles.upload")));
+  expect(html).toContain(t("projectFiles.synced", { ago: "3 minutes ago" }));
+  expect(html).not.toContain(t("projectPages.toolsCount", { count: 1 }));
   expect(render("files", off, "Files", { ...p, links: [] } as unknown as ReducedProject)).not.toContain(t("projectFiles.openInSharePoint"));
   mocks.editor = false;
   expect(render("files", off, "Files")).not.toContain(">" + "+" + "</span>");

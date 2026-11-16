@@ -1,0 +1,37 @@
+/* The Files page's gear, its menu and the side sheet (Paper "Files · 3", frames 7.1-7.3). */
+.wrap { position: relative; display: inline-flex; }
+.gear { position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--nh-line); border-radius: var(--radius-sm); background: var(--nh-card); color: var(--nh-ink-2); cursor: pointer; }
+.gear:hover { background: var(--nh-fill); }
+.gear[data-open] { background: var(--nh-line); border-color: #c7c7cc; }
+.gear:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+/* 7.1: the hover tip under the gear. */
+.gear::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: -6px; z-index: 20; padding: 6px 10px; border-radius: var(--radius-xs); background: var(--nh-brand-deep); color: var(--nh-on-brand); font-size: var(--nh-fs-xs); font-weight: 400; line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; }
+.gear:hover:not([data-open])::after { opacity: 1; }
+
+/* 7.2: "On this page". */
+.menu { position: absolute; top: calc(100% + 16px); right: 0; z-index: 30; display: flex; flex-direction: column; width: 280px; max-width: calc(var(--nh-screen-w) - 32px); padding: 6px; border-radius: 10px; background: var(--nh-card); box-shadow: 0 1px 3px rgb(0 0 0 / 8%), 0 10px 30px rgb(0 0 0 / 12%); }
+.menuHead { padding: 6px 10px 4px; color: var(--nh-mute-2); font-size: var(--nh-fs-xs); line-height: 16px; }
+.item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--nh-ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.item:hover, .item:focus-visible { background: var(--nh-fill); outline: none; }
+.text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.name { color: var(--nh-ink); font-size: var(--nh-fs-sm); line-height: 16px; }
+.sub { overflow: hidden; color: var(--nh-mute-2); font-size: var(--nh-fs-xs); line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.end { flex: 0 0 16px; color: var(--nh-mute-2); font-size: var(--nh-fs-sm); line-height: 16px; text-align: right; }
+.rule { height: 1px; margin: 6px 4px; background: var(--nh-line-soft); }
+.add { color: var(--nh-brand-ink); font-size: var(--nh-fs-sm); font-weight: 600; line-height: 16px; }
+
+/* 7.3: the sheet over the files, from the right edge. */
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; display: flex; flex-direction: column; gap: 24px; width: min(408px, 100%); overflow-y: auto; padding: 28px; border-left: 1px solid var(--nh-line); background: var(--nh-card); box-shadow: -12px 0 40px rgb(0 0 0 / 10%); color: var(--nh-ink); }
+.sheetHead { display: flex; flex-direction: column; gap: 6px; }
+.sheetBar { display: flex; align-items: center; justify-content: space-between; }
+.back { padding: 0; border: 0; background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; line-height: 16px; cursor: pointer; }
+.close { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--nh-mute); font: inherit; font-size: var(--nh-fs-lg); line-height: 18px; cursor: pointer; }
+.close:hover { background: var(--nh-fill); }
+.back:focus-visible, .close:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.sheetTitle { margin: 0; color: var(--nh-ink); font-size: var(--nh-fs-xl); font-weight: 600; line-height: 26px; letter-spacing: -0.01em; }
+.sheetSub { margin: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); line-height: 18px; }
+/* The old panels keep their bodies; the sheet's title replaces their own heading row. */
+.body { min-width: 0; padding-top: 4px; border-top: 1px solid var(--nh-line-soft); }
+.body section { padding: 0; border: 0; }
+.body > section > div:first-child:has(> h2) { display: none; }
+@media (max-width: 760px) { .sheet { padding: 20px 16px; } .menu { right: auto; left: 0; } }

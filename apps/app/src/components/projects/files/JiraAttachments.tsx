@@ -66,7 +66,7 @@ export function AttachmentsGroup({ p, answer, onRetry }: { p: ReducedProject; an
           const step = row.stepId ? p.steps.find((s) => s.id === row.stepId) : undefined;
           const meta = row.who ? t("projectJsy.attachmentMeta", { size: formatSize(row.size), who: row.who, date: when(row.created) }) : `${formatSize(row.size)} · ${when(row.created)}`;
           return <li key={`${row.issueKey}:${row.id}`} className={styles.row}>
-            <FileIcon kind={kindOf(row.filename)} size={28} />
+            <FileIcon kind={kindOf(row.filename)} size={30} />
             <span className={styles.text}><span className={styles.name}>{row.filename}</span><span className={styles.meta}>{meta}</span></span>
             {step && <span className={styles.chip}>{stepKey(step)}</span>}
             {row.openUrl && <a className={styles.open} href={row.openUrl} target="_blank" rel="noopener noreferrer">{t("projectJsy.attachmentOpen")} <span aria-hidden="true">↗</span></a>}
