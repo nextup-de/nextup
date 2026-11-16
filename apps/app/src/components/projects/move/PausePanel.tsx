@@ -11,15 +11,12 @@ import { useSend } from "../parts";
 import styles from "./Move.module.css";
 import { useMoveView } from "./useMoveView";
 
+/** While paused: the banner, with Resume for whoever may. Pausing starts from the head's Manage menu (PauseForm). */
 export function PausePanel({ p }: { p: ReducedProject }) {
-  const { act, S, f } = useDemo();
+  const { act, f } = useDemo();
   const t = useT();
   const v = useMoveView(p);
   const send = useSend(p);
-  const [open, setOpen] = useState(false);
-  const [inDays, setInDays] = useState("");
-  const [why, setWhy] = useState("");
-
   if (v.paused) {
     return (
       <div className={styles.stack} role="status" data-testid="paused-banner">
@@ -32,35 +29,38 @@ export function PausePanel({ p }: { p: ReducedProject }) {
       </div>
     );
   }
-  if (!v.canPause) return null;
+  return null;
+}
+
+/** The sheet to pause: for how many days (at most PAUSE_MAX_DAYS) and why. Opened from the head's Manage menu. */
+export function PauseForm({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
+  const { act, S, f } = useDemo();
+  const t = useT();
+  const send = useSend(p);
+  const [inDays, setInDays] = useState("");
+  const [why, setWhy] = useState("");
 
   const n = inDays.trim() === "" ? NaN : Math.floor(Number(inDays));
   const until = Number.isFinite(n) && n >= 1 && n <= PAUSE_MAX_DAYS ? S.day + n : null;
-  const close = () => { setOpen(false); setInDays(""); setWhy(""); };
 
   return (
-    <div>
-      {!open && <div className={styles.line}><button type="button" className={styles.quiet} onClick={() => setOpen(true)}>{t("projectMove.pauseOpen")}</button></div>}
-      {open && (
-        <form
-          className={styles.form} aria-label={t("projectMove.pauseTitle")}
-          onSubmit={(e) => { e.preventDefault(); if (until !== null && why.trim() && send("project.paused", { why: why.trim(), untilDay: until }, () => act.project.pause(p.id, why.trim(), until))) close(); }}
-        >
-          <label className={styles.field}>
-            <span className={styles.label}>{t("projectMove.pauseInDays", { max: PAUSE_MAX_DAYS })}</span>
-            <input className={`nh-input ${styles.input} ${styles.short}`} type="number" min={1} max={PAUSE_MAX_DAYS} inputMode="numeric" value={inDays} onChange={(e) => setInDays(e.target.value)} autoFocus />
-            {until !== null && <span className={styles.hint}>{t("projectMove.pauseUntil", { date: f(until) })}</span>}
-          </label>
-          <label className={styles.field}>
-            <span className={styles.label}>{t("projectMove.whyLabel")}</span>
-            <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder={t("projectMove.whyPlaceholder")} maxLength={400} />
-          </label>
-          <span className={styles.row}>
-            <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={until === null || !why.trim()}>{t("projectMove.pauseSave")}</button>
-            <button type="button" className={styles.quiet} onClick={close}>{t("common.cancel")}</button>
-          </span>
-        </form>
-      )}
-    </div>
+    <form
+      className={styles.sheet} aria-label={t("projectMove.pauseTitle")}
+      onSubmit={(e) => { e.preventDefault(); if (until !== null && why.trim() && send("project.paused", { why: why.trim(), untilDay: until }, () => act.project.pause(p.id, why.trim(), until))) onClose(); }}
+    >
+      <label className={styles.field}>
+        <span className={styles.label}>{t("projectMove.pauseInDays", { max: PAUSE_MAX_DAYS })}</span>
+        <input className={`nh-input ${styles.input} ${styles.short}`} type="number" min={1} max={PAUSE_MAX_DAYS} inputMode="numeric" value={inDays} onChange={(e) => setInDays(e.target.value)} autoFocus />
+        {until !== null && <span className={styles.hint}>{t("projectMove.pauseUntil", { date: f(until) })}</span>}
+      </label>
+      <label className={styles.field}>
+        <span className={styles.label}>{t("projectMove.whyLabel")}</span>
+        <input className={`nh-input ${styles.input}`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder={t("projectMove.whyPlaceholder")} maxLength={400} />
+      </label>
+      <span className={styles.row}>
+        <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={until === null || !why.trim()}>{t("projectMove.pauseSave")}</button>
+        <button type="button" className={styles.quiet} onClick={onClose}>{t("common.cancel")}</button>
+      </span>
+    </form>
   );
 }

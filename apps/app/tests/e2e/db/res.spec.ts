@@ -313,6 +313,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${projectId}`);
+      await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
       await page.getByRole("button", { name: "Mark it done…" }).click();
       const sheet = page.getByRole("form", { name: "Mark the project done" });
       await expect(sheet.getByTestId("done-when")).toContainText("Three shifts in a row without waiting for the crane");

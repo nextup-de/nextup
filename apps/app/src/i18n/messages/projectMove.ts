@@ -42,7 +42,7 @@ export const projectMove = defineMessages({
     // The project page (MOV-U1): the done-by date, a pause, No lead, how we work and the weekly update.
     doneByLine: "Done by {date}",
     doneByLateTag: "late",
-    doneByMove: "Move",
+    doneByMove: "Move the done-by date…",
     doneByMoveTitle: "Move the done-by date",
     doneByInDays: "New date: in how many working days from today?",
     doneByNew: "That is {date}.",
@@ -146,7 +146,7 @@ export const projectMove = defineMessages({
     permSystemOnly: "Dieses Ereignis schreibt nur das System.",
     doneByLine: "Fertig bis {date}",
     doneByLateTag: "überfällig",
-    doneByMove: "Verschieben",
+    doneByMove: "Fertig-bis-Datum verschieben…",
     doneByMoveTitle: "Fertig-bis-Datum verschieben",
     doneByInDays: "Neues Datum: in wie vielen Arbeitstagen ab heute?",
     doneByNew: "Das ist der {date}.",

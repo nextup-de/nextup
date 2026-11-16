@@ -1,5 +1,5 @@
 /* The ends of a project (plan RES-U1): the Done sheet, the stop choice and the raiser's panel. Tokens from src/styles/tokens.css. */
-.sheet { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; max-width: 560px; padding: 14px 16px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); background: var(--nh-bg); }
+.sheet { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; max-width: 560px; padding: 14px 16px; border: 1px solid var(--nh-line); border-radius: 12px; background: var(--nh-card); }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
 .input { height: 38px; font-size: var(--nh-fs-sm); padding: 0 11px; }
