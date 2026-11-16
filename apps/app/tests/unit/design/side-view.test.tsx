@@ -33,6 +33,13 @@ describe("DESIGN side view", () => {
     expect(out).not.toContain("the page&#x27;s list");
   });
 
+  it("the Inbox starts open, so the walk through it is in view (Kevin, 17 Nov 2026; one constant in AreaFrame)", () => {
+    const out = render(h(AreaFrame, { section: "inbox", active: "inbox", children: h("p", null, "the page") }));
+    expect(out).toContain('data-sb="open"');
+    expect(out).toContain('aria-label="Hide sidebar"');
+    expect(out).not.toContain('aria-label="Show sidebar"');
+  });
+
   it("the strip of a side-view section is marked, so only a phone draws it; other strips are not", () => {
     const strip = (section: SectionKey, active: string, side: boolean) => render(h(SectionTabs, { section, active, side }));
     expect(strip("dashboard", "ledger", true)).toContain('data-side="true"');

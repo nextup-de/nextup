@@ -1,8 +1,8 @@
 "use client";
 // One side view per area (DESIGN_RULES §4): the area's pages on the left, edge to edge under the bar, as the Projects
-// area has them (components/projects/ProjectsFrame.tsx). It starts hidden, the calm start; one button at the top left
-// brings it back. The choice is remembered in this browser under the key Projects already keeps, so the side view is
-// open or hidden in every area alike. On a laptop or monitor it is the area's only navigation: the strip of tabs under
+// area has them (components/projects/ProjectsFrame.tsx). It starts hidden, the calm start, save in the areas of
+// OPEN_AT_START; one button at the top left brings it back. The choice is remembered in this browser under the key
+// Projects already keeps, so once made the side view is open or hidden in every area alike. On a laptop or monitor it is the area's only navigation: the strip of tabs under
 // the bar is not drawn (SectionTabs, `side`). A phone has no side view and keeps the strip.
 // A page puts its own list under the pages with <AreaSideSlot>: the inbox's open items, the raiser's ideas.
 import Link from "next/link";
@@ -15,7 +15,14 @@ import s from "./AreaFrame.module.css";
 
 const KEY = "nh.projectsSidebar"; // one choice for every area
 const listeners = new Set<() => void>();
-const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
+// Where the side view starts open until the viewer chooses: the Inbox, so the walk through it is in view beside an open
+// idea (Kevin, 17 Nov 2026; he is asked whether it stays). Every other area starts hidden.
+const OPEN_AT_START: readonly SectionKey[] = ["inbox"];
+type Sb = "open" | "hidden";
+const startOf = (section: SectionKey): Sb => (OPEN_AT_START.includes(section) ? "open" : "hidden");
+const readSb = (section: SectionKey): Sb => {
+  try { const v = window.localStorage.getItem(KEY); return v === "open" || v === "hidden" ? v : startOf(section); } catch { return startOf(section); }
+};
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 /** Where a page's own list goes: the box under the pages. Null while the side view is hidden. */
@@ -24,8 +31,8 @@ const SlotContext = createContext<HTMLElement | null>(null);
 export function AreaFrame({ section, active, children }: { section: SectionKey; active: string; children: React.ReactNode }) {
   const { href, role, serverMode } = useDemo();
   const t = useT();
-  const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
-  const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
+  const sb = useSyncExternalStore(subscribeSb, () => readSb(section), () => startOf(section));
+  const set = (v: Sb) => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const pages = sectionTabsFor(section, { role, serverMode });
 

@@ -1,8 +1,8 @@
 "use client";
 // The one inbox (plan INB): what is asked of this person in three asks - Decide, Approve or confirm, Do my part - from
 // `inboxItems`, each group headed by its count, and the notices below when there are any. A decide item opens in place
-// with the same detail the leader inbox uses, in the old leader inbox's layout (InboxOpen: the avatar rail beside the
-// item); every other item goes to its own page. Same for every role, in the demo and on a company. Quiet (DESIGN_RULES
+// with the same detail the leader inbox uses, the walk through the inbox in the side view beside it (InboxOpen); every
+// other item goes to its own page. Same for every role, in the demo and on a company. Quiet (DESIGN_RULES
 // §9): the bar names the page, so its heading is for screen readers only; a row is its title and one fact.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,19 +14,22 @@ import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { SectionCard } from "@/components/ui/elements";
-import { inboxItems, type CommentsInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
+import { inboxItems, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { noticesBesideItems, type NoticeView } from "@/features/inbox/notices";
-import { agentForInbox } from "@/features/inbox/sources/agent";
 import { deskLoads } from "@/features/overload/load";
 import { triageFor } from "@/features/overload/bulk";
 import { projectDesk } from "@/features/inbox/sources/projects";
+import { inboxWalk, openIdOf as openId, opensInPlace } from "@/features/inbox/walk";
 import { moveLabel } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
 import { markNoticesReadAction } from "@/server/actions/notices";
-import { InboxOpen, type RailItem } from "./InboxOpen";
+import { commentsOn } from "@/features/cases/selectors";
+import { raisedWith } from "@/features/cases/rows";
+import { InboxOpen } from "./InboxOpen";
+import { inboxInputOf } from "./inboxInput";
 import { useOpenItem } from "./useOpenItem";
 import styles from "./InboxPage.module.css";
 
@@ -45,10 +48,8 @@ const CAUSE: Record<NonNullable<InboxItem["cause"]>, MessageKey> = {
   reopened: "caseNo.cameBack", passed: "caseNo.passedToYou", back: "inbox.causeBack", up: "inbox.causeUp", moved: "caseNo.movedToYou",
 };
 // A decide item is opened by the id of its case or idea (the ?id= of its link). A project's own decide item (a stalled project, one with no
-// lead) has no case detail: its row is the link to the project page (plan MOV, D28).
-// A second look is answered on its case page (a link), not in this list's pane.
-const opensInPlace = (i: InboxItem) => i.projectId === undefined && i.kind !== "appeal";
-const openId = (i: InboxItem) => i.caseId ?? i.id.slice(i.id.indexOf(":") + 1);
+// lead) has no case detail: its row is the link to the project page (plan MOV, D28). A second look is answered on its
+// case page (a link), not in this list's pane (features/inbox/walk.ts).
 
 const PHONE = "(max-width: 760px)";
 const onPhoneChange = (fn: () => void) => { const m = window.matchMedia(PHONE); m.addEventListener("change", fn); return () => m.removeEventListener("change", fn); };
@@ -58,7 +59,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
-  const { S, me, seed, role, demo, flag, ready, href, serverMode, tenant } = ctx;
+  const { S, me, ready, href, serverMode, tenant } = ctx;
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const [readIds, setReadIds] = useState<ReadonlySet<string>>(new Set());
@@ -77,11 +78,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
 
   if (!ready) return <PageSkeleton kind="inbox" />;
 
-  const input: CommentsInboxInput & { role: typeof role } = {
-    state: S, me, seats: seed.seats ?? [], today: S.day, demo, role, flags: { projects: flag("projects"), discussion: flag("discussion") },
-    agent: agentForInbox(ctx.log, S, { flagOn: flag("agent"), serverMode, demo }),
-    events: ctx.log.events, // the unread comments are read from the log (plan REM, I1)
-  };
+  const input = inboxInputOf(ctx);
   const items = inboxItems(input);
   const desk = projectDesk(input);
   // Why a case is back on the list: its plain cause, a pass who passed it (plan REM, I1). The pass's reason is in the open item.
@@ -97,7 +94,6 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     if (d && i.kind === "confirm") return `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}`;
     return d ? moveLabel(d.move, locale) : i.kind === "case" ? "" : t(KIND[i.kind]);
   };
-  const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
   // A case to decide on a desk may be selected; one desk at a time, the first selection fixes it.
   const selectable = (i: InboxItem) => i.ask === "decide" && i.kind === "case" && i.caseId !== undefined && i.projectId === undefined;
   const deskOf = (i: InboxItem) => i.deskRoleId ?? "-";
@@ -126,7 +122,10 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   // Who raised each item to decide, the fact its row shows: the idea's proposer ("C. Ilg, Ops") or the case's raiser.
   const ideaBy = new Map(inboxIdeas(ctx).map((x) => [x.id, x.proposedBy.split(", ")[0]]));
   const whoOf = (i: InboxItem) => { const id = openId(i); return ideaBy.get(id) ?? S.cases.find((c) => c.id === id)?.from ?? ""; };
-  const rail: RailItem[] = decide.map((i) => ({ id: openId(i), title: i.title, late: i.late }));
+  // The walk through the inbox beside the open item, and the open idea's pages under its row (features/inbox/walk.ts).
+  const walk = inboxWalk(items);
+  const openCase = cid !== null ? S.cases.find((c) => c.id === cid) : undefined;
+  const counts = openCase ? { files: raisedWith(openCase).attachments || undefined, chats: commentsOn(ctx.log, openCase.id).length || undefined } : {};
 
   // One fact per row (DESIGN_RULES §9): why it is back on the list, else who raised what is to decide here, else what is asked.
   const factOf = (i: InboxItem): string => {
@@ -167,7 +166,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   if (isOpen && !phone && cid !== null) {
     return (
       <div className={styles.page}>
-        <InboxOpen items={rail} openId={cid} detail={detail} onPick={pick} onClose={() => setCid(null)} sheetOpen={!!ctx.sheet} />
+        <InboxOpen items={walk} openId={cid} counts={counts} detail={detail} onPick={pick} onClose={() => setCid(null)} sheetOpen={!!ctx.sheet} />
       </div>
     );
   }
