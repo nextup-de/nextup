@@ -42,7 +42,7 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
   expect(await segs.count()).toBeLessThanOrEqual(20);
   await expect(page.locator('[data-rail-seg][aria-label$="asking now"]')).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled(); // points on the rail are still open
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // points on the rail are still open: not drawn yet (DESIGN_RULES §9)
 });
 
 test("develop it, keep it as a draft, publish it", async ({ page }) => {

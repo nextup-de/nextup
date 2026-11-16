@@ -678,9 +678,8 @@ function RaisePage({ script = false }: { script?: boolean }) {
   const railGaps: Topic[] = asking ? gaps.map((g) => ({ ...g, status: g.id === asking.id ? "active" : g.status === "active" ? "open" : g.status })) : gaps;
 
   const card: DraftCard | null = stage === "chat" && draft ? {
-    title: draft.title || idea.title, published, canPublish: canFinalize,
-    pubHint: published ? t("ideas.pagePubHintPublished", { lead }) : t("ideas.pagePubHint", { lead }),
-    onPublish: openLook, working: pubStep && !("desks" in pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
+    title: draft.title || idea.title, published,
+    working: pubStep && !("desks" in pubStep) ? pubStep : null, onRename: (title) => void studio.save({ title }),
     hasIdea: firstIdx >= 0, ideaOn: shownView === "idea", ideaEdited: !!edit, onIdea: () => { setMenu(null); go(shownView === "idea" ? "chat" : "idea"); },
     aiOn: shownView === "analysis", analysed: turns.length > 0, onAI: () => go(shownView === "analysis" ? "chat" : "analysis"),
     acts: chips, files: fileChips,
@@ -861,7 +860,7 @@ function RaisePage({ script = false }: { script?: boolean }) {
       </div>
       <button type="button" className={s.scrim} onClick={() => setSb("hidden")} aria-label={t("ideas.pageCloseSidebar")} />
       {pubStep && "desks" in pubStep && (
-        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale).map(withAnswer)} work={pubWork} sent={sent} casesHref={href("/team")}
+        <DeskDialog desks={pubStep.desks} aiOff={pubStep.aiOff} search={(q) => otherDesks(seed.routes, seed.seats, q, locale).map(withAnswer)} work={pubWork} sent={sent} mineHref={href("/ideas")}
           onCancel={() => { setPubStep(null); setSent(null); }} onConfirm={(to) => void publish(to)} />
       )}
       {prepping && <PreviewLoading />}
@@ -869,7 +868,6 @@ function RaisePage({ script = false }: { script?: boolean }) {
         <PublishPreview look={shownLook} onLook={setLook} stillOpen={stillOpen}
           affected={affected} depts={seed.depts.map((d) => d.name)} onAffected={setAffected}
           files={myFiles} onAddFiles={addFiles} onRemoveFile={removeFile}
-          aiLine={t("ideas.pageAiLine", { n: sources.length })}
           onClose={() => go("chat")} onConfirm={confirmLook}
           onExport={() => { if (!mine && shownLook) setLook(shownLook); go("export"); }}
           posting={choosesPosting({ role, name: who.name, handle: who.handle ?? null }) && who.handle ? { handle: who.handle, name: who.name, asName: postsByName, onChange: setAsName } : undefined} />

@@ -82,7 +82,7 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(aiMessages(page).first()).toContainText(/\S.{40,}/, { timeout: 30_000 });
     // Publishing waits until the rail is done; the coach keeps asking what is unclear.
     await showSidebar(page);
-    await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // drawn only once it can be pressed (DESIGN_RULES §9)
   });
 
   await test.step("employee: keeps writing, twice, and each time the coach answers", async () => {
