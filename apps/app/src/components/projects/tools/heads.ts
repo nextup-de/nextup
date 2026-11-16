@@ -50,6 +50,7 @@ export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProp
   // Paper "Jira pages · new header": Results carries the Jira pill and Open in Jira; it has no Add step.
   results: (c) => jiraHead({ ...c, editor: false }),
   requests: (c) => jiraHead({ ...c, editor: false }),
+  archive: (c) => jiraHead({ ...c, editor: false }),
   board: jiraHead,
   list: jiraHead,
   calendar: jiraHead,

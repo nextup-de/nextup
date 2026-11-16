@@ -1,0 +1,29 @@
+/* The Archive tool (Paper "Jira pages · new header", Archive): one card, a search row, a table of dropped steps, a count. */
+.card { display: flex; flex-direction: column; min-width: 0; overflow: clip; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px 14px 20px; }
+.search { display: flex; align-items: center; gap: 8px; flex: 0 1 280px; height: 32px; padding: 0 10px; border-radius: var(--radius-sm); background: var(--nh-fill); color: var(--nh-mute-2); }
+.search:focus-within { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.search input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); outline: none; }
+.search input::placeholder { color: var(--nh-mute-2); }
+.note { margin-left: auto; color: var(--nh-mute); font-size: var(--nh-fs-sm); line-height: 16px; }
+.table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.table th { height: 40px; padding: 0 10px; background: var(--nh-surface); color: var(--nh-mute); font-size: var(--nh-fs-xs); font-weight: 600; text-align: left; }
+.table th:first-child, .table td:first-child { width: 80px; padding-left: 20px; }
+.table th:nth-child(3) { width: 136px; }
+.table th:nth-child(4) { width: 240px; }
+.table td { height: 56px; padding: 0 10px; border-top: 1px solid var(--nh-line-soft); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 16px; overflow-wrap: anywhere; }
+.key { color: var(--nh-mute); font-family: var(--nh-mono); font-size: var(--nh-fs-xs); }
+.step { padding: 0; border: 0; background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-md); font-weight: 500; line-height: 18px; text-align: left; cursor: pointer; }
+.step:hover { color: var(--nh-brand-ink); }
+.muted { color: var(--nh-mute); }
+.who { display: flex; align-items: center; gap: 8px; }
+.footer { padding: 14px 20px; border-top: 1px solid var(--nh-line-soft); color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+.empty { margin: 0; padding: 20px; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+.card :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .note { margin-left: 0; }
+  .search { flex-basis: 100%; }
+  .search input { font-size: var(--nh-fs-input); }
+  .table th:nth-child(3), .table td:nth-child(3) { display: none; }
+  .table th:nth-child(4) { width: 140px; }
+}
