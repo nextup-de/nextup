@@ -30,7 +30,7 @@ jobs:
     # A fork's token cannot write labels or comments; everyone with a branch here pushes to this repo.
     if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
