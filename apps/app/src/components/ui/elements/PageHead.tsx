@@ -46,7 +46,7 @@ export function PageHead({ title, source, open, primary, extra, children }: Page
       </div>
       <div className={s.actions}>
         {open && <a className={s.open} href={open.href} target="_blank" rel="noreferrer noopener">{open.label} <span aria-hidden="true">↗</span></a>}
-        {primary && <button type="button" className={s.primary} onClick={primary.onClick} disabled={primary.disabled} title={primary.hint}>{primary.icon && <span aria-hidden="true">{primary.icon}</span>}{primary.label}</button>}
+        {primary && <button type="button" className={s.primary} onClick={primary.onClick} disabled={primary.disabled} title={primary.hint}>{primary.icon && <span>{primary.icon}</span>}{primary.label}</button>}
         {extra}
       </div>
     </div>
