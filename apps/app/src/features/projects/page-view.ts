@@ -86,7 +86,7 @@ export function stepBefore(page: ProjectPage, toolId: string, direction: "up" | 
  * The tools that fill their page when they come first (Paper "Jira pages · new header"): no section frame, no name row,
  * the page header is theirs. More Jira pages join as they are matched to Paper; the Files page has its own rule (FIL settings).
  */
-export const FILLS_PAGE: ReadonlySet<ToolKind> = new Set<ToolKind>(["board", "list", "overview", "calendar", "timeline"]);
+export const FILLS_PAGE: ReadonlySet<ToolKind> = new Set<ToolKind>(["board", "list", "overview", "calendar", "timeline", "milestones"]);
 
 /** Whether this tool fills its page: it is the page's first tool and its kind draws the whole page. */
 export const fillsPage = (page: Pick<ProjectPage, "tools">, tool: Pick<ToolInstance, "id" | "kind">): boolean =>
