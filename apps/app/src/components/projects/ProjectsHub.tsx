@@ -58,9 +58,6 @@ export function ProjectsHub({ tab, linkCases = false, raiserInactive = false }: 
     <div className={styles.hub} data-wide="true">
       <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
       <section className={styles.hubProjects} aria-label={t("projects.pageTitle")}>
-        <div className={styles.hubHead}>
-          <h2 className={styles.hubTitle}>{t("projects.pageTitle")}{projects.length > 0 && <span className={styles.count}>{projects.length}</span>}</h2>
-        </div>
         {projects.length > 0 ? (
           <ProjectsList list={projects} userId={ctx.actorUserId} />
         ) : (
