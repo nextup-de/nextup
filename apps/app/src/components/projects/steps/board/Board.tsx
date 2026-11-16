@@ -100,7 +100,6 @@ export function Board({ p, hints, jira, page, tool }: ToolProps) {
       <strong>{t("projects.suggestedSteps")}</strong>
       {hints.map((hint) => <div className={styles.hint} key={hint.text}><span>{hint.label} · {hint.text}</span><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" aria-label={t("projects.addStepNamed", { text: hint.text })} onClick={() => send("project.step.added", { stepId: "probe", text: hint.text }, () => act.project.addStep(p.id, hint.text))}>{t("projectSteps.add")}</button></div>)}
     </div>}
-    {!rights.addStep && !p.steps.some((s) => rights.moveStep(s)) && <p>{t("projects.readOnly")}</p>}
     {shown.length === 0 && <p>{t(p.steps.length ? "projectSteps.emptyFilter" : "projectSteps.emptyBoard")}</p>}
     {groupBy === "person" && <div className={styles.columnNames}>{STEP_COLUMNS.map((col) => <strong key={col}>{columnLabel(col, locale)}{totals.columns[col].filter((s) => !s.dropped).length > 0 && <span className={styles.count}>{totals.columns[col].filter((s) => !s.dropped).length}</span>}</strong>)}</div>}
     {lanes.map((lane) => <div key={lane.id} className={groupBy === "person" ? styles.lane : undefined} data-unowned={groupBy === "person" && !lane.ownerUserId || undefined}>

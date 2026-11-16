@@ -29,7 +29,7 @@ export function navbarIndex(ctx: DemoContext): NavHit[] {
   // A manager's decisions owed (the Inbox's ideas): open there, at the Decision step.
   for (const i of inboxIdeas(ctx)) {
     index.push({ kind: "Idea", group: 1, title: i.title, sub: [i.proposedBy, "Waiting for your decision"].filter(Boolean).join(" · "),
-      hay: ideaHay(i, ctx.S.problems, seed.depts), right: me, go: { view: "leader", id: i.id }, href: ctx.href("/leader?id=" + encodeURIComponent(i.id)),
+      hay: ideaHay(i, ctx.S.problems, seed.depts), right: me, go: { view: "leader", id: i.id }, href: ctx.href("/inbox?id=" + encodeURIComponent(i.id)),
       case: { status: "move", step: 3, open: true, late: false, yourMove: true, desk: me, days: i.wait } });
   }
   // People come from personLinks (user id -> display label): the id is the key, the name only a label.

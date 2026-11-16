@@ -68,7 +68,7 @@ describe("inbox kind labels", () => {
       expect(en.inbox[k], k).toBeTruthy();
       expect(de.inbox[k], k).toBeTruthy();
     }
-    const enWords = [...KINDS, "kindCase", "kindIdea", "kindView", "kindQuestion", "kindConfirm", "kindReward", "kindMove", "kindComment"].map((k) => en.inbox[k as keyof typeof en.inbox]);
+    const enWords = [...KINDS, "kindIdea", "kindView", "kindQuestion", "kindConfirm", "kindReward", "kindMove", "kindComment"].map((k) => en.inbox[k as keyof typeof en.inbox]);
     expect(new Set(enWords).size).toBe(enWords.length);
   });
 });

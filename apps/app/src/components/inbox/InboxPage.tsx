@@ -1,19 +1,20 @@
 "use client";
 // The one inbox (plan INB): what is asked of this person in three asks - Decide, Approve or confirm, Do my part - from
-// `inboxItems`, with the Today line above and the notices below. A decide item opens in place with the same detail
-// the leader inbox uses, in the old leader inbox's layout (InboxOpen: the avatar rail beside the item); every other item
-// goes to its own page. Same for every role, in the demo and on a company.
+// `inboxItems`, each group headed by its count, and the notices below when there are any. A decide item opens in place
+// with the same detail the leader inbox uses, in the old leader inbox's layout (InboxOpen: the avatar rail beside the
+// item); every other item goes to its own page. Same for every role, in the demo and on a company. Quiet (DESIGN_RULES
+// §9): the bar names the page, so its heading is for screen readers only; a row is its title and one fact.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxIdeas } from "@/components/dashboard/derive";
-import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
+import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
-import { PageHeader, SectionCard } from "@/components/ui/elements";
-import { inboxCounts, inboxItems, type CommentsInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
+import { SectionCard } from "@/components/ui/elements";
+import { inboxItems, type CommentsInboxInput, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { noticesBesideItems, type NoticeView } from "@/features/inbox/notices";
 import { agentForInbox } from "@/features/inbox/sources/agent";
 import { deskLoads } from "@/features/overload/load";
@@ -33,8 +34,8 @@ import styles from "./InboxPage.module.css";
 const ASKS: readonly InboxAsk[] = ["decide", "confirm", "part"];
 const ASK_TITLE: Record<InboxAsk, MessageKey> = { decide: "inbox.askDecide", confirm: "inbox.sectionConfirm", part: "inbox.askPart" };
 /** Every kind says what it asks for; a project move is named by its move on the row itself (kindText). */
-const KIND: Record<InboxKind, MessageKey> = {
-  case: "inbox.kindCase", idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
+const KIND: Record<Exclude<InboxKind, "case">, MessageKey> = {
+  idea: "inbox.kindIdea", view: "inbox.kindView", question: "inbox.kindQuestion", confirm: "inbox.kindConfirm",
   reward: "inbox.kindReward", move: "inbox.kindMove", lead: "inbox.kindLead", invitation: "inbox.kindInvitation", approval: "inbox.kindApproval",
   stalled: "inbox.kindStalled", vacant: "inbox.kindVacant", update: "inbox.kindUpdate", appeal: "inbox.kindAppeal",
   help: "inbox.kindHelp", baseline: "inbox.kindBaseline", suggestion: "inbox.kindSuggestion", comment: "inbox.kindComment",
@@ -57,7 +58,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
-  const { S, me, seed, role, demo, flag, ready, href, f, serverMode, tenant } = ctx;
+  const { S, me, seed, role, demo, flag, ready, href, serverMode, tenant } = ctx;
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const [readIds, setReadIds] = useState<ReadonlySet<string>>(new Set());
@@ -82,29 +83,21 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     events: ctx.log.events, // the unread comments are read from the log (plan REM, I1)
   };
   const items = inboxItems(input);
-  // A result to confirm says what is asked and why it is on this desk (decision Q6.15), as the project desk words it.
   const desk = projectDesk(input);
-  const confirmNote = (i: InboxItem): string | null => {
-    const d = i.kind === "confirm" ? desk.find((x) => x.move === "confirm" && x.project.id === i.projectId) : undefined;
-    return d ? `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}` : null;
-  };
-  // Why a case is back on the list: a pass says who passed it and why (plan REM, I1), the others their plain cause.
-  const causeText = (i: InboxItem): string | null => {
-    if (!i.cause) return null;
-    if (i.cause !== "passed") return t(CAUSE[i.cause]);
-    if (i.fromRole) return i.why ? t("inbox.passedBy", { role: i.fromRole, why: i.why }) : t("inbox.passedByNoWhy", { role: i.fromRole });
-    return i.why ? t("inbox.passedWhy", { why: i.why }) : t(CAUSE.passed);
-  };
-  // A comment row says how many are new, a project move which move it is ("Take the baseline"), every other row its kind.
-  const moveOf = (i: InboxItem) => (i.kind === "move" ? desk.find((x) => x.project.id === i.projectId && (x.why === "lead" || x.why === "escalated")) : undefined);
-  const kindText = (i: InboxItem): string => {
+  // Why a case is back on the list: its plain cause, a pass who passed it (plan REM, I1). The pass's reason is in the open item.
+  const causeText = (cause: NonNullable<InboxItem["cause"]>, i: InboxItem): string =>
+    cause === "passed" && i.fromRole ? t("inbox.passedByNoWhy", { role: i.fromRole }) : t(CAUSE[cause]);
+  // What is asked, for a row that is not decided here: a comment row how many are new, a project move which move it is ("Take
+  // the baseline"), a result to confirm what is asked and why it is on this desk, as the project desk words it (decision Q6.15),
+  // every other row its kind.
+  const moveOf = (i: InboxItem) => desk.find((x) => x.project.id === i.projectId && (i.kind === "confirm" ? x.move === "confirm" : i.kind === "move" && (x.why === "lead" || x.why === "escalated")));
+  const askedText = (i: InboxItem): string => {
     if (i.kind === "comment") return t(i.count === 1 ? "inbox.commentOne" : "inbox.commentMany", { n: i.count ?? 0 });
     const d = moveOf(i);
-    return d ? moveLabel(d.move, locale) : t(KIND[i.kind]);
+    if (d && i.kind === "confirm") return `${moveLabel(d.move, locale)} · ${t(d.why === "confirmUp" ? "projects.deskConfirmLate" : "projects.deskSecondPerson")}`;
+    return d ? moveLabel(d.move, locale) : i.kind === "case" ? "" : t(KIND[i.kind]);
   };
-  const counts = inboxCounts(items);
   const decide = items.filter((i) => i.ask === "decide" && opensInPlace(i));
-  const navIds = decide.map(openId);
   // A case to decide on a desk may be selected; one desk at a time, the first selection fixes it.
   const selectable = (i: InboxItem) => i.ask === "decide" && i.kind === "case" && i.caseId !== undefined && i.projectId === undefined;
   const deskOf = (i: InboxItem) => i.deskRoleId ?? "-";
@@ -114,7 +107,6 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const triage = triageFor(deskLoads(S, S.day), me);
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const leaveSelecting = () => { setSelecting(false); setSelected(new Set()); };
-  const at = cid ? navIds.indexOf(cid) : -1;
   const pick = (id: string) => setCid(id);
   // A notice about a row of the list above is that row's echo: the row is where to act, so the notice waits until it is gone.
   const shown = noticesBesideItems(notices, items);
@@ -136,33 +128,38 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const whoOf = (i: InboxItem) => { const id = openId(i); return ideaBy.get(id) ?? S.cases.find((c) => c.id === id)?.from ?? ""; };
   const rail: RailItem[] = decide.map((i) => ({ id: openId(i), title: i.title, who: whoOf(i), late: i.late, dueSoon: i.dueSoon }));
 
-  // The notices: below the lists, and below the open item too, so they stay one scroll away.
-  const noticesCard = (
+  // One fact per row (DESIGN_RULES §9): why it is back on the list, else who raised what is to decide here, else what is asked.
+  const factOf = (i: InboxItem): string => {
+    if (i.cause) return causeText(i.cause, i);
+    const who = i.ask === "decide" && opensInPlace(i) ? whoOf(i) : "";
+    return who || askedText(i);
+  };
+
+  // The notices: below the lists, only when there are any. Not under an open item: the item is what is in front of you.
+  const noticesCard = shown.length === 0 ? null : (
     <SectionCard
       title={t("inbox.notices")}
       name="inbox-notices"
       action={serverMode && unread.length > 0 ? <button type="button" className={styles.markAll} onClick={markAll} disabled={pending}>{t("inbox.markAllRead")}</button> : undefined}
     >
-      {shown.length === 0 ? <p className={styles.empty}>{t("inbox.noticesEmpty")}</p> : (
-        <ul className={styles.notices}>
-          {shown.map((n) => {
-            const isRead = n.read || readIds.has(n.id);
-            return (
-              <li key={n.id} className={styles.notice} data-testid="inbox-notice" data-read={isRead ? "true" : "false"}>
-                <span className={styles.unreadDot} data-on={isRead ? undefined : "true"} aria-hidden="true" />
-                <span className={styles.noticeMain}>
-                  <span className={styles.noticeSubject}>{n.subject}{!isRead && <span className={styles.srOnly}> ({t("inbox.unread")})</span>}</span>
-                  <span className={styles.noticeText}>{n.text.split("\n")[0]}</span>
-                </span>
-                <span className={styles.noticeActions}>
-                  {n.link && /^https?:\/\//.test(n.link) ? <a href={n.link} className={styles.link}>{t("inbox.openLink")}</a> : n.link && n.link.startsWith("/") ? <Link href={href(n.link)} className={styles.link}>{t("inbox.openLink")}</Link> : null}
-                  {!isRead && serverMode && <button type="button" className={styles.link} onClick={() => markOne(n.id)} disabled={pending}>{t("inbox.markRead")}</button>}
-                </span>
-              </li>
-            );
-          })}
+      <ul className={styles.notices}>
+        {shown.map((n) => {
+          const isRead = n.read || readIds.has(n.id);
+          return (
+            <li key={n.id} className={styles.notice} data-testid="inbox-notice" data-read={isRead ? "true" : "false"}>
+              <span className={styles.unreadDot} data-on={isRead ? undefined : "true"} aria-hidden="true" />
+              <span className={styles.noticeMain}>
+                <span className={styles.noticeSubject}>{n.subject}{!isRead && <span className={styles.srOnly}> ({t("inbox.unread")})</span>}</span>
+                <span className={styles.noticeText}>{n.text.split("\n")[0]}</span>
+              </span>
+              <span className={styles.noticeActions}>
+                {n.link && /^https?:\/\//.test(n.link) ? <a href={n.link} className={styles.link}>{t("inbox.openLink")}</a> : n.link && n.link.startsWith("/") ? <Link href={href(n.link)} className={styles.link}>{t("inbox.openLink")}</Link> : null}
+                {!isRead && serverMode && <button type="button" className={styles.link} onClick={() => markOne(n.id)} disabled={pending}>{t("inbox.markRead")}</button>}
+              </span>
+            </li>
+          );
+        })}
         </ul>
-      )}
       {failed && <p className={styles.error} role="alert">{t("inbox.markFailed")}</p>}
     </SectionCard>
   );
@@ -171,30 +168,22 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     return (
       <div className={styles.page}>
         <InboxOpen items={rail} openId={cid} detail={detail} onPick={pick} onClose={() => setCid(null)} sheetOpen={!!ctx.sheet} />
-        {noticesCard}
       </div>
     );
   }
 
+  // On a phone the item is the page: the same detail in one column, "Your move" on top; its close goes back to the list.
   if (isOpen && phone) {
     return (
       <div className={styles.page}>
-        <IdeaDetailPhone key={detail.idea.id} {...detail} nav={{ index: at, count: navIds.length, onPrev: () => at > 0 && pick(navIds[at - 1]), onNext: () => at >= 0 && at < navIds.length - 1 && pick(navIds[at + 1]) }} />
+        <IdeaDetail key={detail.idea.id} {...detail} />
       </div>
     );
   }
 
   return (
     <div className={styles.page} ref={topRef}>
-      <PageHeader title={t("inbox.title")} />
-      <p className={styles.today} data-testid="inbox-today" aria-label={t("inbox.today")}>
-        <span className={styles.todayLabel}>{t("inbox.today")}</span>
-        <span data-testid="inbox-today-decide">{t("inbox.todayDecide", { n: counts.decide })}</span>
-        <span className={styles.dot} aria-hidden="true">·</span>
-        <span data-testid="inbox-today-late" data-hot={counts.late > 0 ? "true" : undefined}>{t("inbox.todayLate", { n: counts.late })}</span>
-        <span className={styles.dot} aria-hidden="true">·</span>
-        <span data-testid="inbox-today-part">{t("inbox.todayPart", { n: counts.waiting })}</span>
-      </p>
+      <h1 className={styles.srOnly}>{t("inbox.title")}</h1>
 
       {/* The seat above a loaded desk cannot open the Dashboard (OVL D36): the same card, for the desks it may share the load of, sits here. */}
       <DeskLoadCard shareOnly />
@@ -219,7 +208,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
             const list = items.filter((i) => i.ask === ask);
             if (list.length === 0) return null;
             return (
-              <SectionCard key={ask} title={t(ASK_TITLE[ask])} name={`inbox-${ask}`}>
+              <SectionCard key={ask} title={t(ASK_TITLE[ask])} name={`inbox-${ask}`} action={<span className={styles.count} data-testid="inbox-count">{list.length}</span>}>
                 <ul className={styles.list}>
                   {list.map((i) => {
                     const open = ask === "decide" && opensInPlace(i) && cid === openId(i);
@@ -227,7 +216,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                       <>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{i.title}</span>
-                          <span className={styles.rowKind}>{i.cause ? <span className={styles.cause} data-testid="inbox-cause" data-cause={i.cause}>{causeText(i)} · </span> : null}{confirmNote(i) ?? kindText(i)}{i.dueDay !== null ? " · " + t("inbox.dueOn", { day: f(i.dueDay) }) : ""}</span>
+                          {i.cause ? <span className={styles.rowKind} data-testid="inbox-cause" data-cause={i.cause}>{factOf(i)}</span> : factOf(i) ? <span className={styles.rowKind}>{factOf(i)}</span> : null}
                         </span>
                         {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
                       </>

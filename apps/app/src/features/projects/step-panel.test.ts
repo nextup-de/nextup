@@ -123,7 +123,7 @@ it("STP panel: renders the project, safe Jira link, checklist, threaded comments
   expect(out).toContain('role="dialog"');
   expect(out).toContain("KAN-17");
   expect(out).toContain("Open in Jira");
-  expect(out).toContain("Waiting on");
+  expect(out).not.toContain("Waiting on"); // nobody is set: the line is not drawn (DESIGN_RULES §9, was "Waiting on: Nobody yet")
   expect(out).toContain("Test both suppliers");
   expect(out.indexOf("Original question")).toBeLessThan(out.indexOf("Supplier replied"));
   expect(out).toContain("History");
