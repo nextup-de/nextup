@@ -34,7 +34,7 @@ function world(patch: Partial<ReducedProject> = {}, day = 7, from: "started" | "
   const state = reduce(SEED, { events: from === "started" ? [raised, yes, baseline, started] : [raised, yes], day });
   const p = state.projects.find((x) => x.id === "p_m");
   if (!p) throw new Error("no project");
-  Object.assign(p, { sponsorUserId: "u_sp", deciderUserId: "u_dec", memberUserIds: ["u_mem"] }, patch);
+  Object.assign(p, { sponsorUserId: "u_sp", deciderUserId: "u_dec", memberUserIds: ["u_mem"], invites: [{ id: "i_mgr", userId: "u_mgr", role: "member" as const, state: "accepted" as const, day: 0, reason: "" }] }, patch); // the manager is asked onto it: in charge (Kevin, 16 Nov 2026)
   return state;
 }
 

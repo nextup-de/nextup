@@ -37,6 +37,7 @@ function running(day: number, setup: (p: ReducedProject) => void = () => {}): { 
   p.doneBy = 31;
   p.leadUserId = "u_lead";
   p.memberUserIds = ["u_m1"];
+  p.invites = [{ id: "i_mgr", userId: "u_boss", role: "member" as const, state: "accepted" as const, day: 0, reason: "" }]; // B. Boss is asked onto it: a manager in charge
   p.steps = [step("a", "Order the cart"), step("b", "Mark the floor")];
   setup(p);
   return { p, state };

@@ -44,7 +44,7 @@ function world(patch: Partial<ReducedProject> = {}, stage: "planning" | "running
   state.seats = seats;
   // The lead typed the baseline (revision b1), nobody confirmed it; a patch may replace all of it.
   if (p.baseline && !p.baseline.none) Object.assign(p.baseline, { byUserId: "u_lead", eventId: "b1", confirmed: null });
-  Object.assign(p, { sponsorUserId: "u_sp", deciderUserId: "u_dec", memberUserIds: ["u_mem"], followerUserIds: ["u_fol"] }, patch);
+  Object.assign(p, { sponsorUserId: "u_sp", deciderUserId: "u_dec", memberUserIds: ["u_mem"], followerUserIds: ["u_fol"], invites: [{ id: "i_mgr", userId: "u_mgr", role: "member" as const, state: "accepted" as const, day: 0, reason: "" }] }, patch); // the manager is asked onto it: in charge
   return state;
 }
 

@@ -5,7 +5,7 @@ import { defineMessages } from "../define";
 export const projects = defineMessages({
   en: {
     // ── why an action is not allowed (features/projects/permissions.ts)
-    permLeadOnly: "Only the project's lead (or a manager) can do that.",
+    permLeadOnly: "Only the project's lead (or a manager in charge of it) can do that.",
     permNoProject: "No such project.",
     permCommentText: "A comment needs some text.",
     permMemberWhom: "Whom to add or remove?",
@@ -644,7 +644,7 @@ export const projects = defineMessages({
   },
   de: {
     // ── why an action is not allowed (features/projects/permissions.ts)
-    permLeadOnly: "Das kann nur die Projektleitung (oder eine Führungskraft).",
+    permLeadOnly: "Das kann nur die Projektleitung (oder eine zuständige Führungskraft).",
     permNoProject: "Dieses Projekt gibt es nicht.",
     permCommentText: "Ein Kommentar braucht einen Text.",
     permMemberWhom: "Wen möchten Sie hinzufügen oder entfernen?",

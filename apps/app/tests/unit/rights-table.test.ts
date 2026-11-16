@@ -23,7 +23,8 @@ const PEOPLE: Who[] = [
   { key: "sponsor", label: "Sponsor", userId: "u_sp", role: "leader" },
   { key: "raiser", label: "Raiser (employee, not on the team)", userId: "u_js", role: "member" },
   { key: "leader", label: "Team leader, not on the team", userId: "u_hs", role: "leader" },
-  { key: "manager", label: "Manager, not on the team", userId: "u_mg", role: "manager" },
+  { key: "incharge", label: "Manager in charge (decided it)", userId: "u_tv", role: "manager" },
+  { key: "manager", label: "Manager, not involved", userId: "u_mg", role: "manager" },
   { key: "employee", label: "Employee, not involved", userId: "u_xx", role: "member" },
 ];
 
@@ -98,7 +99,7 @@ function render(table: ReturnType<typeof verdicts>): string {
     "Rights changes follow the rules in `CONTRIBUTING.md` (\"Rights\"): their own PR, the `rights` label, Kevin told.",
     "",
     "✓ may, — may not. Everyone in a column is the same one person in the fixture: J. Schmidt raised the idea and the",
-    "project grew from it, L. Brandt leads it, C. Ilg is on the team and owns one step, a sponsor was accepted. Who may",
+    "project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, a sponsor was accepted. Who may",
     "*see* what is in `docs/VISIBILITY.md`.",
     "",
     ...groups.flatMap((g) => [g, ""]),

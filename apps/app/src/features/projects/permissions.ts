@@ -86,7 +86,15 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   // Who someone is: the user id, never the label (IDN/D2).
   const uid = actor.userId ?? null;
   const isMe = (who: string | null) => uid !== null && who === uid;
-  const isLead = isMe(p.leadUserId) || isManager;
+  // A manager acts as the lead only on a project that is theirs (Kevin, 16 Nov 2026): they decided it, sponsor it, hold the desk
+  // (owner or deputy role) of the route that said yes, are on its team, or accepted an invitation to work on it. Being a manager
+  // lets them see every project (views.ts), not change it. The company-wide safety nets below stay with every manager: moving an
+  // overdue draft's start, confirming a baseline nobody else can, confirming results (Q6.15), rewards and naming a missing lead.
+  const route = (state.routes ?? []).find((r) => r.id === p.routeId);
+  const holdsDesk = actor.me !== undefined && route !== undefined && (holdsRole(actor.me, route.ownerRoleId ?? null) || holdsRole(actor.me, route.deputyRoleId ?? null));
+  const invited = (p.invites ?? []).some((i) => isMe(i.userId) && i.state === "accepted" && i.role !== "follower");
+  const managerInCharge = isManager && (isMe(p.deciderUserId) || isMe(p.sponsorUserId) || holdsDesk || p.memberUserIds.some(isMe) || invited);
+  const isLead = isMe(p.leadUserId) || managerInCharge;
   const live = p.status !== "stopped" && p.status !== "recognised";
   // The project draft (plan SET): a project a yes with draft: true opened. A legacy project keeps today's rules below.
   const draft = p.draft;
@@ -612,9 +620,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       return text(pl.why) ? OK : no("projects.permStopWhy");
 
     case "project.doneby.moved": {
-      // The lead once; the sponsor, a stalled seat's holder and a manager whenever (D19).
+      // The lead once; the sponsor, a stalled seat's holder and a manager in charge of it whenever (D19).
       const lead = isMe(p.leadUserId);
-      const mayAnytime = sponsor || upSeat || isManager;
+      const mayAnytime = sponsor || upSeat || managerInCharge;
       if (!(mayAnytime || lead)) return no("projectMove.permSponsorOrLead");
       if (p.status !== "running") return no("projectMove.permRunningOnly");
       if (!whole(pl.doneBy) || pl.doneBy <= state.day) return no("projectMove.permDoneByDay");

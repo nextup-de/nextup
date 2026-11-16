@@ -21,6 +21,7 @@ function world(more: ReturnType<typeof ev>[] = [], today = 40) {
   const p = project(s);
   p.sponsorUserId = "u_ci";
   p.memberUserIds = [];
+  p.invites = [{ id: "i_mgr", userId: "u_boss", role: "member" as const, state: "accepted" as const, day: 0, reason: "" }]; // the manager is asked onto it: in charge
   return { s, p };
 }
 const flagsOf = (w: ReturnType<typeof world>, who: IdViewer) => measureView(w.p, w.s, who, 40).measures[0];
