@@ -1,0 +1,93 @@
+# Rights notice: a PR that changes who may do what never goes by unnoticed.
+#
+# When a PR touches the rights code, the rights table or their tests, this job labels it `rights` and keeps one
+# comment on it with the docs/RIGHTS.md diff (the changed rows) and the rights files touched. For a PR not opened
+# by Kevin the comment mentions him, so it lands in his notifications. It never blocks a merge: approvals stay
+# optional (decided 16 Nov 2026); the notice is the guard. The rules are in CONTRIBUTING.md › Rights.
+#
+# Kevin owns this file.
+
+name: Rights
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: rights-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  notice:
+    name: rights · notice
+    runs-on: ubuntu-latest
+    # A fork's token cannot write labels or comments; everyone with a branch here pushes to this repo.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find rights changes
+        id: find
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          base=$(git merge-base "$BASE" "$HEAD")
+          # The places that decide who may do what. Keep in step with CONTRIBUTING.md › Rights.
+          git diff --name-only "$base" "$HEAD" | grep -E \
+            -e '^apps/app/src/features/[^/]+/permissions\.ts$' \
+            -e '^apps/app/src/features/[^/]+/rights\.ts$' \
+            -e '^apps/app/src/features/cases/(reducer|visibility)\.ts$' \
+            -e '^apps/app/src/features/projects/(views|confirm)\.ts$' \
+            -e '^apps/app/src/features/auth/' \
+            -e '^apps/app/src/config/roles\.ts$' \
+            -e '^apps/app/tests/unit/rights-table\.test\.ts$' \
+            -e '^docs/(RIGHTS|VISIBILITY)\.md$' > files.txt || true
+          if [ -s files.txt ]; then echo "hit=true" >> "$GITHUB_OUTPUT"; else echo "hit=false" >> "$GITHUB_OUTPUT"; fi
+          git diff -U0 "$base" "$HEAD" -- docs/RIGHTS.md | grep -E '^[-+]\|' > table.txt || true
+
+      - name: Label and comment
+        if: steps.find.outputs.hit == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh label create rights --repo "$REPO" --color B60205 --description "Changes who may do what (docs/RIGHTS.md)" 2>/dev/null || true
+          gh pr edit "$PR" --repo "$REPO" --add-label rights
+          {
+            echo "<!-- rights-notice -->"
+            echo "### Rights change"
+            echo
+            if [ "$AUTHOR" != "selluxhenner" ]; then echo "@selluxhenner: this PR by @$AUTHOR changes who may do what. Please look before or right after it merges."; echo; fi
+            if [ -s table.txt ]; then
+              echo "**Changed rows in \`docs/RIGHTS.md\`** (\`-\` before, \`+\` after; ✓ may, — may not):"
+              echo
+              echo '```diff'
+              cat table.txt
+              echo '```'
+            else
+              echo "**\`docs/RIGHTS.md\` did not change.** Either no rule changed (a refactor), or the change is not in the table yet: then add its row in \`apps/app/tests/unit/rights-table.test.ts\` (CONTRIBUTING.md › Rights)."
+            fi
+            echo
+            echo "<details><summary>Rights files touched</summary>"
+            echo
+            sed 's/^/- `/; s/$/`/' files.txt
+            echo
+            echo "</details>"
+          } > body.md
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- rights-notice -->"))) | .id' | head -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@body.md > /dev/null
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file body.md
+          fi

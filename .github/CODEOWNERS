@@ -1,23 +1,33 @@
-# Every file needs Kevin's approval before merging.
-# GitHub reads the LAST matching line, so keep the catch-all first and put
-# any more specific rules below it.
-*                       @selluxhenner
+# Kevin is asked for review on every PR. Approval is optional on purpose (two developers, decided 16 Nov 2026):
+# the ruleset does not require it. CODEOWNERS makes GitHub request Kevin's review; the Rights workflow
+# (.github/workflows/rights.yml) labels and comments on rights changes.
+# GitHub reads the LAST matching line, so keep the catch-all first and put more specific rules below it.
+# The app lives in apps/app (npm workspaces): paths are from the repo root.
+*                                         @selluxhenner
 
-# Places where a change has a large blast radius — listed separately so it's
-# visible in the diff of this file when ownership ever gets split up.
-/legacy/demo/support.js @selluxhenner
-/legacy/demo/js/store.js @selluxhenner
-/package.json           @selluxhenner
-/package-lock.json      @selluxhenner
-/next.config.ts         @selluxhenner
-/tsconfig.json          @selluxhenner
-/eslint.config.mjs      @selluxhenner
-/src/proxy.ts           @selluxhenner
-/src/config/roles.ts    @selluxhenner
-/src/features/auth/     @selluxhenner
-/src/features/cases/reducer.ts @selluxhenner
-/prisma/schema.prisma   @selluxhenner
-/.github/               @selluxhenner
-/.gitignore             @selluxhenner
-/CLAUDE.md              @selluxhenner
-/CONTRIBUTING.md        @selluxhenner
+# Large blast radius: listed separately so a change of ownership shows in this file's diff.
+/package.json                             @selluxhenner
+/package-lock.json                        @selluxhenner
+/apps/app/package.json                    @selluxhenner
+/apps/app/next.config.ts                  @selluxhenner
+/apps/app/tsconfig.json                   @selluxhenner
+/apps/app/eslint.config.mjs               @selluxhenner
+/apps/app/src/proxy.ts                    @selluxhenner
+/apps/app/src/config/roles.ts             @selluxhenner
+/apps/app/src/features/auth/              @selluxhenner
+/apps/app/src/features/cases/reducer.ts   @selluxhenner
+/apps/app/prisma/schema/                 @selluxhenner
+/.github/                                 @selluxhenner
+/.gitignore                               @selluxhenner
+/CLAUDE.md                                @selluxhenner
+/CONTRIBUTING.md                          @selluxhenner
+
+# Rights: who may do what (CONTRIBUTING.md › Rights). docs/RIGHTS.md is generated from these.
+/apps/app/src/features/*/permissions.ts   @selluxhenner
+/apps/app/src/features/*/rights.ts        @selluxhenner
+/apps/app/src/features/cases/visibility.ts @selluxhenner
+/apps/app/src/features/projects/views.ts  @selluxhenner
+/apps/app/src/features/projects/confirm.ts @selluxhenner
+/apps/app/tests/unit/rights-table.test.ts @selluxhenner
+/docs/RIGHTS.md                           @selluxhenner
+/docs/VISIBILITY.md                       @selluxhenner
