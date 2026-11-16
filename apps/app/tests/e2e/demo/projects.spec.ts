@@ -132,6 +132,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await expect(head(page)).toContainText("25 minutes");
     await expect(head(page)).toContainText("Deburring queue · lower is better");
     await page.getByRole("button", { name: "Start the project" }).click();
+    // A running project's head sits on its Idea page; its Overview is a page like the Jira ones (Paper "Jira pages · new header").
+    await page.goto(new URL(page.url()).pathname + "?page=overview");
     await expect(head(page)).toContainText("P-4 · Running");
   });
 
@@ -217,6 +219,8 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
     await page.getByRole("button", { name: "Save the baseline" }).click();
     await deputyConfirmsBaseline(page);
     await page.getByRole("button", { name: "Start the project" }).click();
+    // A running project's head sits on its Idea page; its Overview is a page like the Jira ones (Paper "Jira pages · new header").
+    await page.goto(new URL(page.url()).pathname + "?page=overview");
     await expect(head(page)).toContainText("P-4 · Running");
   });
 
@@ -402,7 +406,8 @@ test("a step goes straight into Doing, gets an owner and details in its sheet, a
   await expect(doing.getByRole("article").first()).toContainText(TYPED);
   await projectPage(page, "overview");
   // The Overview tool (HUB-A1) shows the new owner in its activity and in what happens next.
-  await expect(page.getByRole("region", { name: "Latest activity" })).toContainText("changed “" + TYPED + "”: gave it to L. Brandt");
+  // "Latest from Jira" while the project syncs with Jira, "Latest activity" otherwise.
+  await expect(page.getByRole("region", { name: /^Latest (activity|from Jira)$/ })).toContainText("changed “" + TYPED + "”: gave it to L. Brandt");
   await expect(page.getByRole("region", { name: "What happens next" }).getByRole("listitem").filter({ hasText: TYPED })).toContainText("L. Brandt");
 });
 

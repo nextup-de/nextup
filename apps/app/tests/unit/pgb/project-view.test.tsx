@@ -57,7 +57,11 @@ it("PGB page shell: flag on removes tabs, resolves the page and never reads brow
   expect(mocks.browserReads).not.toHaveBeenCalled();
   mocks.query = "page=agent";
   expect(render()).toContain('data-page="overview"');
-  expect(render()).toContain(p.title); // the project head sits on the Overview (and on the Idea)
+  // The project head sits on the Idea page, and on the Overview until the project runs (its baseline and Start live there).
+  expect(render()).toContain(p.title);
+  mocks.ctx.S = { ...state, projects: [{ ...p, status: "running" }] };
+  expect(render()).not.toContain(p.title); // a running project's Overview is a page like the Jira ones (Paper "Jira pages · new header")
+  mocks.ctx.S = state;
   mocks.ctx.S = { ...state, projects: [{ ...p, pages: [
     { id: "plan", title: "Plan first", icon: "calendar", tools: READY_PAGES[2].tools },
     { id: "overview", title: "Overview second", icon: "home", tools: READY_PAGES[0].tools },

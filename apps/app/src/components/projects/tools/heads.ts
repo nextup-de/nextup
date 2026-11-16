@@ -8,6 +8,8 @@ import { filesHead } from "../files/head";
 
 /** The node in the page header where the first tool puts its filter row. */
 export const headRowId = (pageId: string): string => "head-row-" + pageId;
+/** The node right of the page header's buttons where the first tool puts its own controls (the Overview's range and Share). */
+export const headActionsId = (pageId: string): string => "head-actions-" + pageId;
 
 type T = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -43,7 +45,8 @@ function jiraHead({ jira, t, title, editor, onAddStep }: HeadProps): PageHeadPro
 
 export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProps>> = {
   idea: ({ title }) => ({ title }),
-  overview: ({ title }) => ({ title }),
+  // Paper "Jira pages · new header": the Overview carries the Jira pill too, but no Add step.
+  overview: (c) => { const { open: _open, ...head } = jiraHead({ ...c, editor: false }); void _open; return head; },
   board: jiraHead,
   list: jiraHead,
   calendar: jiraHead,

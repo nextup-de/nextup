@@ -8,7 +8,7 @@ import { createT } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(), useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/acme/projects/pj1" }));
-vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ S: { day: 10, seats: [] }, f: (d: number) => "day" + d, actorUserId: "u1" }) }));
+vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ S: { day: 10, seats: [] }, f: (d: number) => "day" + d, actorUserId: "u1", href: (path: string) => "/acme" + path }) }));
 vi.mock("@/components/projects/ProjectMeasure", () => ({ BaselinePanel: () => null }));
 vi.mock("@/components/projects/draft/useProjectHints", () => ({ useProjectHints: () => ({ baseHint: null }) }));
 
@@ -23,12 +23,11 @@ it("FIL tool rows: without the page header's slot (the server render) the contro
   expect(html).toContain('data-testid="controls"');
 });
 
-it("FIL tool rows: the Overview keeps its title as a hidden heading and puts the range menu and Copy link in one controls row", () => {
+it("FIL tool rows: the Overview keeps its title as a hidden heading and puts the range menu and Share next to the head's buttons", () => {
   const html = render(h(Overview, { p, page, tool: tool("a") }));
   expect(html).toContain(`<h2 class="nh-sr">${t("projectHub.overviewTitle")}</h2>`);
-  expect(html).toContain(t("projectHub.overviewCopyLink"));
+  expect(html).toContain(t("projectHub.overviewShare"));
   expect(html).toContain(t("projectHub.overviewRange7Days"));
-  expect(html).toContain("_controls_");
   expect(html).not.toContain("_head_");
-  expect(render(h(Overview, { p, page, tool: tool("b") }), "de")).toContain("Link kopieren");
+  expect(render(h(Overview, { p, page, tool: tool("b") }), "de")).toContain("Teilen");
 });
