@@ -67,10 +67,10 @@ it("the old address of the ideas table still draws the table", () => {
   expect(render(h(ProjectsHub, { tab: "ideas" }))).toContain("IDEAS-TABLE");
 });
 
-it("with overviewList on, the Overview lists the open ideas next to the projects", () => {
+it("with overviewList on, the Overview list shows the projects and no idea (Kevin, 16 Nov 2026)", () => {
   mocks.ctx = ctxFor("manager", true);
   const html = render(h(ProjectsHub, { tab: "projects" }));
   expect(html).not.toContain("IDEAS-TABLE");
   for (const p of S.projects.filter((x) => x.status !== "stopped")) expect(html).toContain(p.title);
-  expect(html).toContain("/idea?id=");
+  expect(html).not.toContain("/idea?id=");
 });

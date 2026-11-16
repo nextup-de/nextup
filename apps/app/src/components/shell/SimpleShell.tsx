@@ -30,9 +30,12 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const area = sectionTabAt(pathname.slice(tenant.prefix.length), { role, serverMode: ctx.serverMode, flag: ctx.flag });
   // The Projects area (its tabs and every project's page) sits next to the projects sidebar, which then carries the tabs.
   const projectId = ctx.flag("projects") ? projectIdAt(pathname.slice(tenant.prefix.length)) : null;
-  const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null; // an idea opens next to the sidebar too
+  // An idea's page (/cases/<id>, or /idea?id=) keeps the sidebar for its own pages, but it is no part of Projects (Kevin and
+  // Sam, 16 Nov 2026): it belongs to the Inbox, where ideas are decided, and its sidebar shows that idea alone.
+  const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null;
+  const onIdea = ctx.flag("projects") && (caseId !== null || pathname === tenant.prefix + "/idea");
   const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
-  const inProjects = projectsArea !== null || projectId !== null || caseId !== null;
+  const inProjects = projectsArea !== null || projectId !== null || onIdea;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -81,9 +84,10 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
           {visibleSimpleNav(role, ctx.flag, counts).map((n) => {
             const href = tenant.prefix + n.href;
-            // A case opens from the Overview, so its page counts as the Overview - a tab of Projects while that is on.
-            const inOverview = pathname === tenant.prefix + "/overview" || pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/");
-            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area?.section === "projects") || (n.href === "/raise" && area?.section === "ideas");
+            // Without projects a case opens from the Overview, so its page counts as the Overview. With projects it counts as the Inbox.
+            const inOverview = pathname === tenant.prefix + "/overview" || (!onIdea && (pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/")));
+            const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area?.section === "projects")
+              || (n.href === "/inbox" && (area?.section === "inbox" || onIdea)) || (n.href === "/raise" && area?.section === "ideas");
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>
@@ -139,7 +143,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
       {area && !inProjects && <SectionTabs section={area.section} active={area.tab} />}
 
       <main className={styles.content}>
-        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId}>{children}</ProjectsFrame> : children}</div>
+        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId} idea={onIdea}>{children}</ProjectsFrame> : children}</div>
       </main>
 
       {pop && <div className={styles.backdrop} onClick={() => setPop(null)} />}

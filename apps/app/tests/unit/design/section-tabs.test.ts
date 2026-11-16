@@ -39,7 +39,7 @@ describe("section tabs", () => {
 
   it("Projects keeps its tabs while the flag is on, and other pages have no strip", () => {
     expect(sectionTabAt("/projects", manager)).toEqual({ section: "projects", tab: "overview" });
-    expect(sectionTabAt("/idea", manager)).toEqual({ section: "projects", tab: "overview" });
+    expect(sectionTabAt("/idea", manager)).toBeNull(); // an idea's page is no part of Projects (16 Nov 2026)
     expect(sectionTabAt("/projects", { ...manager, flag: off })).toBeNull();
     expect(sectionTabAt("/feed", manager)).toBeNull();
     expect(sectionTabAt("/projects/P-4", manager)).toBeNull();
