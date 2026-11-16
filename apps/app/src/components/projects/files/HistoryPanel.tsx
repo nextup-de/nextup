@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import type { FileVersion, VersionsAnswer } from "@/features/files/items";
 import { useLocale, useT } from "@/i18n/client";
-import { fileVersionsAction } from "@/server/actions/project-files";
 import { sizeText, whoWhen } from "./FolderPanel";
+import { useFilesSource } from "./source";
 import type { FilesPartProps } from "./types";
 import styles from "./Panel.module.css";
 
@@ -14,6 +14,7 @@ export function HistoryPanel({ state, actions }: FilesPartProps) {
   const t = useT();
   const locale = useLocale();
   const { p, dialog } = state;
+  const { versions: read } = useFilesSource(p.id);
   const row = dialog?.kind === "history" ? dialog.row : null;
   const id = row?.id ?? null;
   // The answer and the "show all" choice belong to the file they were made for: another file starts over without an effect resetting them.
@@ -25,9 +26,9 @@ export function HistoryPanel({ state, actions }: FilesPartProps) {
   useEffect(() => {
     if (!id) return;
     let stale = false;
-    void fileVersionsAction(p.id, id).then((a) => { if (!stale) setGot({ id, answer: a }); }).catch(() => { if (!stale) setGot({ id, answer: { state: "offline" } }); });
+    void read(id).then((a) => { if (!stale) setGot({ id, answer: a }); }).catch(() => { if (!stale) setGot({ id, answer: { state: "offline" } }); });
     return () => { stale = true; };
-  }, [p.id, id]);
+  }, [read, id]);
 
   if (!row) return null;
   const versions: FileVersion[] = answer !== "loading" && answer.state === "ok" ? answer.versions : [];

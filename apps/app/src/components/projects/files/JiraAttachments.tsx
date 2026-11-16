@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useDemo } from "@/components/dashboard/DemoProvider";
 import { demoAttachments } from "@/features/demo/jira-attachments-demo";
 import { kindOf } from "@/features/files/items";
 import { linkedIssues } from "@/features/integrations/jira/attachments";
@@ -12,6 +11,7 @@ import { useLocale, useT } from "@/i18n/client";
 import { projectAttachmentsAction } from "@/server/actions/project-attachments";
 import { FileIcon } from "./FileIcon";
 import { formatSize } from "./FileList";
+import { useFilesSource } from "./source";
 import styles from "./Jira.module.css";
 
 /** Does this project have Jira to read: a linked issue, and its sync not stopped. Without it nothing is asked and nothing shows (D5). */
@@ -23,10 +23,10 @@ export const syncsWithJira = (p: ReducedProject): boolean => (p.sync ? p.sync.on
  * offers Try again; not-connected and no-access show nothing and clear what was shown.
  */
 export function JiraAttachments({ p }: { p: ReducedProject }) {
-  const { serverMode } = useDemo();
+  const { demo } = useFilesSource(p.id);
   const [round, setRound] = useState(0);
   const key = `${p.id}:${round}`;
-  const asks = serverMode && syncsWithJira(p);
+  const asks = !demo && syncsWithJira(p);
   const [got, setGot] = useState<{ key: string; answer: AttachmentsAnswer } | null>(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function JiraAttachments({ p }: { p: ReducedProject }) {
   }, [asks, p.id, key]);
 
   // The answer belongs to the project and the round it was asked for: another project starts over, and nothing stale shows.
-  const answer: AttachmentsAnswer | "loading" | null = !serverMode
+  const answer: AttachmentsAnswer | "loading" | null = demo
     ? (() => { const rows = demoAttachments(p); return rows.length ? { state: "ok", rows, more: 0, partial: false } : null; })()
     : !asks ? null : got && got.key === key ? got.answer : "loading";
   if (answer === null || (answer !== "loading" && (answer.state === "not-connected" || answer.state === "no-access"))) return null;
