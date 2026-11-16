@@ -7,9 +7,9 @@ import { useT } from "@/i18n/client";
 import type { ToolProps } from "./types";
 import s from "./ToolRows.module.css";
 
-export function IdeaTool({ p }: ToolProps) {
+export function IdeaTool({ p, headAction }: ToolProps & { headAction?: React.ReactNode }) {
   const t = useT();
   const source = p.sources[0] ?? null;
   if (!source) return <p className={s.ideaNone}>{t("projectPages.ideaNone")}</p>;
-  return <DashboardView key={source} caseId={source} linkCases inPage />;
+  return <DashboardView key={source} caseId={source} linkCases inPage headAction={headAction} />;
 }

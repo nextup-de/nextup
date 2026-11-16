@@ -131,7 +131,7 @@ function IdeaKind({ c }: { c: ReducedCase }) {
   );
 }
 
-export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean } = {}) {
+export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false, headAction }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean; headAction?: React.ReactNode } = {}) {
   const t = useT();
   const ctx = useDemo();
   const { seed, D, log, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
@@ -282,7 +282,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || t("team.dashFile") })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: t("team.dashScreenshot") }))],
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
-      mode, onMode: setMode, onClose: inPage ? undefined : closeCase, inProject: inPage,
+      mode, onMode: setMode, onClose: inPage ? undefined : closeCase, headAction,
       // The raiser edits it while open, the project lead after its yes (features/cases/permissions.ts, case.revised): the
       // title and text go out as the next version; Affects and Context stay in this browser for now.
       edit: mayReviseIdea(c, me.userId, ctx.S.projects) ? {
@@ -343,7 +343,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             {view !== "chats" && (
               <div className={s.div21} ref={paneRef}>
                 {/* An idea never looks like a project (Kevin, 16 Nov 2026): it says what it is and that it is not a project yet. */}
-                {view === "idea" && (inPage ? <p className={s.kindOrigin}>{t("team.ideaKindOrigin")}</p> : <IdeaKind c={c} />)}
+                {view === "idea" && !inPage && <IdeaKind c={c} />}
                 {view === "idea" && deskItem && <DeskDecision brief={deskItem.brief} status={deskItem.status} onDecide={deskItem.onDecide} />}
                 {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
                 {view === "files" && <IdeaFilesView items={ideaProps.files} folder={c.folder} />}

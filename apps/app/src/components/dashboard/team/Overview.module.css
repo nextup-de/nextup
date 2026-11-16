@@ -622,4 +622,3 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 .kind[data-kind="problem"] .kindChip { background: var(--nh-problem); }
 .kindText { flex: 1 1 200px; min-width: 0; font-size: var(--nh-fs-sm); }
 .kindLink { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); text-decoration: none; }
-.kindOrigin { margin: 0 0 10px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
