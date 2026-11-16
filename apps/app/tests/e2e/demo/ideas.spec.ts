@@ -66,6 +66,9 @@ test("develop it, keep it as a draft, publish it", async ({ page }) => {
   await answerRail(page);
   await publishTo(page, "T. Vogel");
   await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Published", exact: true })).toBeDisabled(); // a status now, not a button
-  await expect(page.getByRole("textbox", { name: "Add a follow-up — it goes to Overview" })).toBeVisible();
+  // The sidebar says it went out (a status, not a button); the page's one Publish is gone with it.
+  await showSidebar(page);
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Add a follow-up" })).toBeVisible();
 });
