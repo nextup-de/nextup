@@ -454,7 +454,6 @@ export const projects = defineMessages({
     filesAttached_one: "{count} file attached",
     filesAttached_other: "{count} files attached",
     filesNone: "no files",
-    allIdeas: "All ideas and problems →",
 
     // ── the board (ProjectBoard)
     empty_todo: "Nothing waiting.",
@@ -688,7 +687,7 @@ export const projects = defineMessages({
     sbStageLead: "With the team lead",
     sbStageDecision: "Waiting for a decision",
     sbYourMove: "Your move",
-    sbBack: "Ideas and projects",
+    sbBack: "Projects",
     sbIdeaKind: "Idea · not a project yet",
     sbProblemKind: "Problem · not a project yet",
     idea_overview: "Idea",
@@ -1184,7 +1183,6 @@ export const projects = defineMessages({
     filesAttached_one: "{count} Datei angehängt",
     filesAttached_other: "{count} Dateien angehängt",
     filesNone: "keine Dateien",
-    allIdeas: "Alle Ideen und Probleme →",
 
     // ── the board (ProjectBoard)
     empty_todo: "Nichts wartet.",
@@ -1417,7 +1415,7 @@ export const projects = defineMessages({
     sbStageLead: "Bei der Teamleitung",
     sbStageDecision: "Vor der Entscheidung",
     sbYourMove: "Sie sind dran",
-    sbBack: "Ideen und Projekte",
+    sbBack: "Projekte",
     sbIdeaKind: "Idee · noch kein Projekt",
     sbProblemKind: "Problem · noch kein Projekt",
     idea_overview: "Idee",

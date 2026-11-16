@@ -83,7 +83,6 @@ export function FilesPanel({ p }: { p: ReducedProject }) {
           </li>
         ))}
       </ul>
-      <Link href={href("/overview")} className={styles.link}>{t("projects.allIdeas")}</Link>
     </section>
   );
 }

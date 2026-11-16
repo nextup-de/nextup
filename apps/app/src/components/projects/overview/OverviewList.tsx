@@ -114,7 +114,7 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
 
       <div className={s.filters}>
         <div className={s.pills} role="tablist" aria-label={t("projects.ovTitle")}>
-          {SHOWS.map((k) => (
+          {SHOWS.filter((k) => k !== "ideas" && k !== "projects").map((k) => ( // projects only: All and Your move
             <button key={k} type="button" role="tab" aria-selected={show === k} className={s.pill} onClick={() => setShow(k)}>
               {t(("projects.ovShow_" + k) as "projects.ovShow_all")} <span className={s.pillCount} data-move={k === "move" && counts.move > 0 ? "true" : undefined}>{counts[k]}</span>
             </button>

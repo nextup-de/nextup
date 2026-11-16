@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV_SIMPLE, navFor, projectsTabAt, projectsTabsFor, simpleNavFor } from "@/config/nav";
+import { NAV_SIMPLE, navFor, projectsTabAt, projectsTabsFor, sectionTabAt, simpleNavFor } from "@/config/nav";
 import { ROLES } from "@/config/roles";
 import { de } from "@/i18n/de";
 import { en } from "@/i18n/en";
@@ -27,20 +27,28 @@ describe("LOOP decisions in the nav", () => {
 describe("the Projects area", () => {
   const on = () => true;
   const off = () => false;
-  it("with projects on, Decisions is a tab and leaves the bar; with projects off it stays in the bar", () => {
+  it("with projects on, Decisions is a tab of the Inbox and leaves the bar; with projects off it stays in the bar", () => {
     for (const role of ["leader", "manager"] as const) {
       expect(simpleNavFor(role, on).map((n) => n.href)).not.toContain("/decisions");
       expect(simpleNavFor(role, off).map((n) => n.href)).toContain("/decisions");
-      expect(projectsTabsFor(role).map((tab) => tab.key)).toEqual(["overview", "decisions", "collaboration", "progress"]);
+      expect(sectionTabAt("/decisions", { role, serverMode: true, flag: on })).toEqual({ section: "inbox", tab: "decisions" });
+      expect(sectionTabAt("/inbox", { role, serverMode: true, flag: on })).toEqual({ section: "inbox", tab: "inbox" });
+      expect(sectionTabAt("/inbox", { role, serverMode: true, flag: off })).toBeNull();
     }
   });
-  it("a member has no Decisions tab, as they had no Decisions place", () => {
-    expect(projectsTabsFor("member").map((tab) => tab.key)).toEqual(["overview", "collaboration", "progress"]);
+  it("Projects shows projects only: no Decisions tab and no idea page among its tabs (Kevin and Sam, 16 Nov 2026)", () => {
+    for (const role of ["member", "leader", "manager"] as const) {
+      expect(projectsTabsFor(role).map((tab) => tab.key)).toEqual(["overview", "collaboration", "progress"]);
+    }
+    expect(projectsTabAt("/decisions")).toBeNull();
+    expect(projectsTabAt("/idea")).toBeNull();
+  });
+  it("a member has no Decisions tab and no Inbox strip, as they had no Decisions place", () => {
+    expect(sectionTabAt("/inbox", { role: "member", serverMode: true, flag: on })).toBeNull();
   });
   it("names the tab of each address, and none on a project's own page", () => {
     expect(projectsTabAt("/projects")).toBe("overview");
     expect(projectsTabAt("/overview")).toBe("overview");
-    expect(projectsTabAt("/decisions")).toBe("decisions");
     expect(projectsTabAt("/projects/collaboration")).toBe("collaboration");
     expect(projectsTabAt("/projects/progress")).toBe("progress");
     expect(projectsTabAt("/projects/P-4")).toBeNull();
