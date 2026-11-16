@@ -78,8 +78,8 @@ function Svg({ children }: { children: React.ReactNode }) {
 
 const PanelIcon = () => <Svg><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M6 3V13" /></Svg>;
 
-/** One mark per page, so every label starts in the same lane as in the Projects side view. */
-function PageIcon({ k }: { k: string }) {
+/** One mark per page, so every label starts in the same lane as in the Projects side view. The raise page's own side view uses it too. */
+export function PageIcon({ k }: { k: string }) {
   switch (k) {
     case "inbox": return <Svg><path d="M2.5 9.5L4.3 3.5H11.7L13.5 9.5V12.5H2.5V9.5Z" /><path d="M2.5 9.5H5.8C5.8 10.6 6.8 11.3 8 11.3C9.2 11.3 10.2 10.6 10.2 9.5H13.5" /></Svg>;
     case "decisions": return <Svg><circle cx="8" cy="8" r="5.5" /><path d="M5.6 8.2L7.3 9.9L10.5 6.4" /></Svg>;
