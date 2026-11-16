@@ -1,12 +1,12 @@
 "use client";
-// "By unit and role" (MET D11, D19): the units as a tree that opens level by level, or the roles, 20 a page.
-// A row under 5 people is left out and only counted in one quiet line (shownRows); a unit with nothing in the
-// period is left out too. No row names a person and none links anywhere.
+// "By unit and role" (MET D11, D19): one line that opens (DESIGN_RULES §9); inside, the units as a tree that opens
+// level by level, or the roles, 20 a page. A row under 5 people is left out and only counted on the line itself,
+// "+2 too few" (shownRows); a unit with nothing in the period is left out too. No row names a person and none links anywhere.
 import { useState } from "react";
-import { formatNumber } from "@/features/metrics/dashboard";
+import { formatNumber, formatTileValue } from "@/features/metrics/dashboard";
 import { shownRows, type ShownRow } from "@/features/metrics/breakdown-view";
 import type { BreakdownRow } from "@/features/metrics/types";
-import { DeptChip } from "@/components/ui/elements";
+import { DeptChip, Fold } from "@/components/ui/elements";
 import { useT } from "@/i18n/client";
 import s from "./DashboardBoard.module.css";
 
@@ -37,6 +37,7 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
   if (current.rows.length === 0) return null;
 
   const num = (v: number | null) => (v === null ? "" : formatNumber(v, t));
+  const days = (v: number | null) => (v === null ? "" : formatTileValue("firstReasonedAnswer", v, demoClock, t));
   const pick = (v: "unit" | "role") => () => { setPage(0); onView(v); };
   const toggle = (id: string) => setOpen((o) => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -49,21 +50,19 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
   const shown = mode === "role" ? listed.slice(at * BREAKDOWN_PAGE, (at + 1) * BREAKDOWN_PAGE) : listed;
 
   return (
-    <section className={s.card2} data-testid="dashboard-breakdown">
-      <div className={s.cardHead}>
-        <h3 className={s.cardTitle}>{t(both ? "metrics.bdTitle" : mode === "unit" ? "metrics.bdUnits" : "metrics.bdRoles")}</h3>
-        {both && (
-          <div className={s.seg} role="group" aria-label={t("metrics.bdTitle")}>
-            <button type="button" className={s.segBtn} aria-pressed={mode === "unit"} onClick={pick("unit")} data-testid="dashboard-view-units">{t("metrics.bdUnits")}</button>
-            <button type="button" className={s.segBtn} aria-pressed={mode === "role"} onClick={pick("role")} data-testid="dashboard-view-roles">{t("metrics.bdRoles")}</button>
-          </div>
-        )}
-      </div>
-      <div className={s.table} role="table" aria-label={t("metrics.bdTitle")}>
+    <Fold name="breakdown" summary={t(both ? "metrics.bdTitle" : mode === "unit" ? "metrics.bdUnits" : "metrics.bdRoles")}
+      meta={current.hidden > 0 ? <span data-testid="dashboard-hidden-count">{t("metrics.bdHidden", { count: current.hidden })}</span> : undefined}>
+      {both && (
+        <div className={s.seg} role="group" aria-label={t("metrics.bdTitle")}>
+          <button type="button" className={s.segBtn} aria-pressed={mode === "unit"} onClick={pick("unit")} data-testid="dashboard-view-units">{t("metrics.bdUnits")}</button>
+          <button type="button" className={s.segBtn} aria-pressed={mode === "role"} onClick={pick("role")} data-testid="dashboard-view-roles">{t("metrics.bdRoles")}</button>
+        </div>
+      )}
+      <div className={s.table} role="table" aria-label={t("metrics.bdTitle")} data-testid="dashboard-breakdown">
         <div className={s.tr} role="row" data-head="true" data-stalled={mode === "unit" ? "true" : undefined}>
           <span role="columnheader">{t(mode === "unit" ? "metrics.bdUnitCol" : "metrics.bdRoleCol")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdCases")}</span>
-          <span className={s.num} role="columnheader">{t("metrics.bdFirst")} ({demoClock ? t("metrics.dashLeadSimulated") : t("metrics.bdFirstUnit")})</span>
+          <span className={s.num} role="columnheader">{t("metrics.bdFirst")}</span>
           <span role="columnheader">{t("metrics.bdOnTime")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdPast")}</span>
           <span className={s.num} role="columnheader">{t("metrics.bdEsc")}</span>
@@ -86,7 +85,7 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
               {figures ? (
                 <>
                   <span className={`${s.num} ${s.strong}`} role="cell">{num(r.cases)}</span>
-                  <span className={s.num} role="cell">{num(r.firstReasonedAnswer)}</span>
+                  <span className={s.num} role="cell">{days(r.firstReasonedAnswer)}</span>
                   <span className={s.onTime} role="cell">
                     {r.onTimePct !== null && (
                       <>
@@ -111,7 +110,6 @@ export function BreakdownCard({ units, roles, view, onView, demoClock }: {
           <button type="button" className={s.pageBtn} disabled={at >= pages - 1} onClick={() => setPage(at + 1)} aria-label={t("metrics.bdNext")}>›</button>
         </div>
       )}
-      {current.hidden > 0 && <span className={s.foot} data-testid="dashboard-hidden-count">{t("metrics.bdHidden", { count: current.hidden })}</span>}
-    </section>
+    </Fold>
   );
 }

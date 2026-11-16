@@ -93,7 +93,7 @@ it("OVL scaffold has every overload key in English and German", () => {
     "title",
     ...["title", "lede", "from", "to", "save", "end", "now", "setFor", "noReason", "errRange", "errRights", "errTarget", "othersTitle", "othersNone", "othersFilter", "takeBackTitle", "takeBackLede", "takeBack", "takeBackNone"].map((k) => `away.${k}`),
     ...["triage", "triageLate", "select", "pass", "ask", "why", "question", "done", "refused", "pinned"].map((k) => `inbox.${k}`),
-    ...["title", "lede", "desk", "open", "perHolder", "late", "pinned", "state", "normal", "triage", "up", "overflow", "addHolder", "appointCover", "coverSeat", "coverSaved", "passBulk", "none"].map((k) => `load.${k}`),
+    ...["title", "desk", "open", "perHolder", "late", "pinned", "state", "triage", "up", "overflow", "addHolder", "appointCover", "coverSeat", "coverSaved", "passBulk", "none", "menu", "loaded_one", "loaded_other"].map((k) => `load.${k}`),
     ...["awaySetSubject", "awaySetBody", "coverSubject", "coverBody", "upSubject", "upBody", "overflowSubject", "overflowBody", "coveredSubject", "coveredBody", "clearedSubject", "clearedBody", "seatVacantSubject", "seatVacantBody"].map((k) => `mail.${k}`),
     ...["wrongPath", "notAway", "nothing", "notAbove", "notOverloaded", "notOnDesk", "badDay"].map((k) => `err.${k}`),
   ];
