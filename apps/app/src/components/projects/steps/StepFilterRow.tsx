@@ -21,13 +21,15 @@ export type StepFilterRowProps = {
   /** Where the row goes: into the page header when this tool is the page's first, else here, above the tool. */
   page: ProjectPage;
   tool: ToolInstance;
+  /** Stay where the tool draws it, never in the page header: the List keeps its row inside its table card (Paper). */
+  inline?: boolean;
 };
 
 const TOGGLES = [
   ["mine", "projectSteps.onlyMine"], ["waiting", "projectSteps.waiting"], ["dueWeek", "projectSteps.dueWeek"], ["notStarted", "projectSteps.notStarted"], ["dropped", "projectSteps.dropped"],
 ] as const satisfies readonly (readonly [keyof StepFilter, MessageKey])[];
 
-export function StepFilterRow({ search, filter, onFilter, owners, waitingCount, group, page, tool }: StepFilterRowProps): ReactNode {
+export function StepFilterRow({ search, filter, onFilter, owners, waitingCount, group, page, tool, inline }: StepFilterRowProps): ReactNode {
   const t = useT();
   const toggleOwner = (id: string) => onFilter({ ...filter, owners: filter.owners.includes(id) ? filter.owners.filter((x) => x !== id) : [...filter.owners, id] });
   const row = <div className={styles.row} data-testid="step-filter-row">
@@ -46,5 +48,5 @@ export function StepFilterRow({ search, filter, onFilter, owners, waitingCount, 
       {(["status", "person"] as const).map((by) => <button type="button" key={by} className={styles.segment} aria-pressed={group.value === by} onClick={() => group.onChange(by)}>{t(by === "status" ? "projectSteps.byStatus" : "projectSteps.byPerson")}</button>)}
     </div>}
   </div>;
-  return <HeadSlot page={page} tool={tool}>{row}</HeadSlot>;
+  return inline ? row : <HeadSlot page={page} tool={tool}>{row}</HeadSlot>;
 }

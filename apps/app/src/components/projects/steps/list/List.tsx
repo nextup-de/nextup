@@ -17,7 +17,7 @@ const columns: ListColumn[] = ["key", "step", "owner", "status", "due", "waiting
 const labels = { key: "projectSteps.key", step: "projectSteps.listStep", owner: "projectSteps.owner", status: "projectSteps.status", due: "projectSteps.due", waitingOn: "projectSteps.waitingOn" } as const;
 
 export function List({ p, jira, page, tool }: ToolProps) {
-  const { S, seed, actorUserId, act, f } = useDemo();
+  const { S, seed, actorUserId, act, f, persona } = useDemo();
   const t = useT();
   const locale = useLocale();
   const rights = useRights(p);
@@ -44,24 +44,31 @@ export function List({ p, jira, page, tool }: ToolProps) {
     if (!text.trim() || !rights.addStep) return;
     if (send("project.step.added", { stepId: "probe", text: text.trim() }, () => act.project.addStep(p.id, text.trim()))) setText("");
   };
+  const takeIt = (stepId: string) => {
+    if (!actorUserId) return;
+    const change = { ownerUserId: actorUserId, owner: team.find((m) => m.userId === actorUserId)?.name ?? persona.who.name };
+    send("project.step.edited", { stepId, ...change }, () => act.project.editStep(p.id, stepId, change));
+  };
   return <div className={styles.list}>
-    <StepFilterRow search="projectSteps.searchList" filter={filter} onFilter={(next) => { setFilter(next); setAll(false); }} owners={owners} waitingCount={waitingCount} page={page} tool={tool} />
     {active ? <button type="button" className={styles.filterChip} onClick={() => { setFilter({ ...NO_FILTER }); setAll(false); }}>{t("projectSteps.showing", { shown: rows.length, total: p.steps.length })}</button> : null}
     <div className={styles.tableWrap}>
+      {/* Paper "Jira pages · new header": the List keeps its filter row inside its card, also when it is the page's first tool. */}
+      <div className={styles.toolbar}><StepFilterRow search="projectSteps.searchList" filter={filter} onFilter={(next) => { setFilter(next); setAll(false); }} owners={owners} waitingCount={waitingCount} page={page} tool={tool} inline /></div>
       <table className={styles.table}>
         <thead><tr>{columns.map((column) => <th key={column} scope="col" aria-sort={sort.column === column ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" aria-label={t("projectSteps.sortBy", { field: t(labels[column]) })} onClick={() => { setSort({ column, direction: sort.column === column && sort.direction === "asc" ? "desc" : "asc" }); setCell(null); }}>{t(labels[column])}{sort.column === column ? sort.direction === "asc" ? " ↑" : " ↓" : ""}</button></th>)}</tr></thead>
         <tbody>{visible.map((step) => {
           const late = !step.dropped && step.column !== "done" && step.dueDay !== null && step.dueDay < S.day;
+          const soon = !late && step.column === "doing" && step.dueDay !== null;
           const waiting = step.waitingOn;
           const waitingName = waiting?.kind === "person" ? seed.seats.find((s) => s.userId === waiting.userId)?.label ?? waiting.name : waiting?.name;
           return <tr key={step.id} data-done={step.column === "done" || undefined} data-dropped={!!step.dropped || undefined} onClick={() => setOpen(step.id)}>
             <td data-label={t(labels.key)} className={styles.key}>{stepKey(step)}</td>
             <td data-label={t(labels.step)}><button type="button" className={styles.step} aria-label={t("projectSteps.openStep", { text: step.text })} onClick={() => setOpen(step.id)}>{step.text}</button></td>
             {(["owner", "status", "due"] as const).map((column) => <td key={column} data-label={t(labels[column])} className={styles.anchor}>
-              <button type="button" className={column === "status" ? styles.status : styles.cell} data-status={column === "status" ? step.column : undefined} data-late={column === "due" && late || undefined} disabled={!!step.dropped || !(column === "status" ? rights.moveStep(step) : rights.editStep(step))} aria-haspopup="dialog" aria-expanded={cell?.stepId === step.id && cell.column === column} aria-label={t(column === "owner" ? "projectSteps.changeOwner" : column === "status" ? "projectSteps.changeStatus" : "projectSteps.changeDue")} onClick={(e) => { e.stopPropagation(); trigger.current = e.currentTarget; setCell(cell?.stepId === step.id && cell.column === column ? null : { stepId: step.id, column }); }}>{column === "owner" ? step.ownerUserId === actorUserId && actorUserId ? t("projectSteps.you") : step.owner || t("projectSteps.noOwner") : column === "status" ? columnLabel(step.column, locale) : step.dueDay === null ? t("projectSteps.noDueDate") : `${late ? t("projects.lateShort") + " · " : ""}${f(step.dueDay)}`}</button>
+              {column === "owner" && !step.owner && !step.dropped && step.column !== "done" && actorUserId && rights.editStep(step) ? <button type="button" className={styles.take} onClick={(e) => { e.stopPropagation(); takeIt(step.id); }}>{t("projectSteps.takeItArrow")}</button> : <button type="button" className={column === "status" ? styles.status : styles.cell} data-status={column === "status" ? step.column : undefined} data-due={column === "due" ? step.dueDay === null ? "none" : late ? "late" : soon ? "soon" : "date" : undefined} disabled={!!step.dropped || !(column === "status" ? rights.moveStep(step) : rights.editStep(step))} aria-haspopup="dialog" aria-expanded={cell?.stepId === step.id && cell.column === column} aria-label={t(column === "owner" ? "projectSteps.changeOwner" : column === "status" ? "projectSteps.changeStatus" : "projectSteps.changeDue")} onClick={(e) => { e.stopPropagation(); trigger.current = e.currentTarget; setCell(cell?.stepId === step.id && cell.column === column ? null : { stepId: step.id, column }); }}>{column === "owner" ? step.ownerUserId === actorUserId && actorUserId ? t("projectSteps.you") : step.owner || t("projectSteps.noOwner") : column === "status" ? columnLabel(step.column, locale) : step.dueDay === null ? t("projectSteps.noDate") : late ? `${t("projects.lateShort")} · ${f(step.dueDay)}` : soon ? t("projectSteps.dueIn", { date: f(step.dueDay), count: step.dueDay - S.day }) : f(step.dueDay)}</button>}
               {cell?.stepId === step.id && cell.column === column && <CellMenu key={`${step.id}-${column}`} {...{ p, step, column, jira, team }} onClose={closeCell} />}
             </td>)}
-            <td data-label={t(labels.waitingOn)}>{waitingName ? t("projectSteps.waitingDays", { name: waitingName, days: S.day - step.movedDay }) : p.helpAsks.filter((a) => a.stepId === step.id && a.answeredDay === null).map((a) => a.text).join(" · ")}</td>
+            <td data-label={t(labels.waitingOn)} className={styles.waiting}>{waitingName ? t("projectSteps.listWaiting", { name: waitingName, days: S.day - step.movedDay }) : p.helpAsks.filter((a) => a.stepId === step.id && a.answeredDay === null).map((a) => a.text).join(" · ") || <span className={styles.none}>—</span>}</td>
           </tr>;
         })}</tbody>
       </table>
@@ -71,7 +78,8 @@ export function List({ p, jira, page, tool }: ToolProps) {
           <input className="nh-input" autoFocus maxLength={500} aria-label={t("projectSteps.stepTitle")} placeholder={t("projectSteps.stepTitle")} value={text} onChange={(e) => setText(e.target.value)} />
           <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!text.trim()}>{t("projectSteps.add")}</button><button type="button" className={styles.cell} onClick={() => { setAdding(false); setText(""); }}>{t("projectSteps.cancel")}</button>
           <small>{t("projectSteps.enterAdd")}</small>
-        </form> : <button type="button" className={styles.cell} onClick={() => setAdding(true)}>+ {t("projectSteps.addStep")}</button>)}
+        </form> : <button type="button" className={styles.addStep} onClick={() => setAdding(true)}>+ {t("projectSteps.addStep")}</button>)}
+        <span className={styles.grow} />
         <span>{t("projectSteps.listFooter", { shown: visible.length, total: p.steps.length, sort: sortLabel })}</span>
         {!all && rows.length > 7 && <button type="button" className={styles.cell} onClick={() => setAll(true)}>{t("projectSteps.showAll")} {rows.length}</button>}
         {sort.column !== "attention" && <button type="button" className={styles.cell} onClick={() => setSort(DEFAULT_SORT)}>{t("projectSteps.listAttention")}</button>}
