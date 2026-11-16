@@ -20,7 +20,6 @@ export function PreviewLoading() {
       <div className={s.panel} role="dialog" aria-modal="true" aria-label={t("ideas.pubPreparing")} aria-busy="true">
         <div className={s.head}>
           <div className={s.headText}>
-            <span className={s.kicker}>{t("ideas.pubKickerPreparing")}</span>
             <h2 className={s.heading}>{t("ideas.pubLayingOut")}</h2>
           </div>
         </div>
@@ -43,7 +42,6 @@ export function PublishPreview(p: {
   look: Look; onLook: (l: Look) => void;
   affected: string[]; depts: readonly string[]; onAffected: (names: string[]) => void;
   files: readonly { id: string; name: string }[]; onAddFiles: (list: FileList | null) => void; onRemoveFile: (id: string) => void;
-  aiLine: string;
   /** What the rail still had open when the draft reached its turn limit (plan REM, R1); empty otherwise. */
   stillOpen?: readonly string[];
   onClose: () => void; onConfirm: () => void;
@@ -73,7 +71,6 @@ export function PublishPreview(p: {
       <div ref={panel} className={s.panel} role="dialog" aria-modal="true" aria-labelledby="pv-heading" tabIndex={-1}>
         <div className={s.head}>
           <div className={s.headText}>
-            <span className={s.kicker}>{t("ideas.pubKicker")}</span>
             <h2 id="pv-heading" className={s.heading}>{t("ideas.pubHeading")}</h2>
           </div>
           <button type="button" className={s.close} onClick={onClose} title={t("common.close")} aria-label={t("common.close")}>
@@ -109,19 +106,10 @@ export function PublishPreview(p: {
             </div>
           )}
 
-          <div className={s.ai}>
-            <span className={s.aiIcon} aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nh-mute)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-            </span>
-            <span className={s.aiText}>
-              <span className={s.aiTitle}>{t("ideas.pubAiTitle")}</span>
-              <span className={s.aiSub}>{p.aiLine} {t("ideas.pubAiSub")}</span>
-            </span>
-          </div>
         </div>
 
         <div className={s.foot}>
-          <span className={s.hint}>{ok ? t("ideas.pubSaved") : t("ideas.pubNeeds")}</span>
+          {!ok && <span className={s.hint}>{t("ideas.pubNeeds")}</span>}
           <button type="button" className={s.export} disabled={!ok} onClick={p.onExport} title={t("ideas.pubExportTitle")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></svg>
             {t("ideas.pubExport")}

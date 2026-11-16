@@ -42,7 +42,7 @@ test("one line is evaluated, analysed, and the rail shows what a decision still 
   await expect.poll(() => segs.count()).toBeGreaterThanOrEqual(2);
   expect(await segs.count()).toBeLessThanOrEqual(20);
   await expect(page.locator('[data-rail-seg][aria-label$="asking now"]')).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Publish idea" })).toBeDisabled(); // points on the rail are still open
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0); // points on the rail are still open: not drawn yet (DESIGN_RULES §9)
 });
 
 test("develop it, keep it as a draft, publish it", async ({ page }) => {
@@ -66,6 +66,9 @@ test("develop it, keep it as a draft, publish it", async ({ page }) => {
   await answerRail(page);
   await publishTo(page, "T. Vogel");
   await expect(page.getByText(/on T\. Vogel’s desk/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Published", exact: true })).toBeDisabled(); // a status now, not a button
-  await expect(page.getByRole("textbox", { name: "Add a follow-up — it goes to Overview" })).toBeVisible();
+  // The sidebar says it went out (a status, not a button); the page's one Publish is gone with it.
+  await showSidebar(page);
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Add a follow-up" })).toBeVisible();
 });

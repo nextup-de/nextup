@@ -1,6 +1,6 @@
 // Decision Q1.7: on the last look a member chooses to post an idea by name instead of their handle. Everything they
 // do on that case afterwards carries the same name, so the case never links the two. In demo mode.
-import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, publishTo, raisedCaseId, raiseLine, showSidebar, test, yourMove } from "../helpers";
+import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, publishTo, raisedCaseId, raiseLine, test, yourMove } from "../helpers";
 
 test("a member posts one idea by name; the case and its later events carry the name, not the handle", async ({ page }) => {
   const title = "Forklift charging point blocks the fire exit";
@@ -10,8 +10,7 @@ test("a member posts one idea by name; the case and its later events carry the n
   await answerCoach(page, DEVELOP_MORE);
   await answerRail(page);
 
-  await showSidebar(page);
-  await page.getByRole("button", { name: "Publish idea" }).click();
+  await page.getByRole("button", { name: "Publish", exact: true }).click(); // the page's one Publish, under the latest reply
   const look = page.getByRole("dialog", { name: "Last look before it goes out" });
   const posting = look.getByTestId("raise-posting");
   await expect(posting).toBeVisible({ timeout: 30_000 });
