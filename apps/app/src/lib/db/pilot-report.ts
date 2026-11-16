@@ -1,9 +1,9 @@
 // The pilot report and the KPI report's inputs (MET D13, D14): the company's projects reduced from its log, the
 // people in scope, and `pilotReport` for PIL. Every query names the company. The result holds no user id, name,
 // handle or importer id (D2): people are only counted, and imported baselines keep their source label and times.
-import { reduce } from "@/features/cases/reducer";
 import { dateOfWorkday, workdayOf } from "@/features/clock/calendar";
 import { pilotMetrics } from "@/features/metrics/pilot";
+import { kpiProjectsOf } from "@/features/metrics/impact";
 import { ziKpis } from "@/features/metrics/zi";
 import { PILOT_METRIC_KEYS, type Baseline, type KpiProject, type PilotReport, type Period } from "@/features/metrics/types";
 import { loadBaseline } from "./baseline";
@@ -15,30 +15,9 @@ import { loadSeats } from "./holders";
 import { ledgerInputs } from "./metrics";
 import { loadCompanyRules } from "./rules";
 
-/** The company's projects from its log, as the pages reduce them (D7: only `Measure.confirmed` counts later). */
+/** The company's projects from its log, as the pages reduce them (D7: only `Measure.confirmed` counts later): read with the ledger, mapped by `kpiProjectsOf`. */
 export async function kpiProjects(companyId: string, period: Period): Promise<KpiProject[]> {
-  const company = await getDb().company.findUniqueOrThrow({ where: { id: companyId }, select: { slug: true } });
-  const [seed, seats, log, ledger] = await Promise.all([loadSeed(company.slug), loadSeats(companyId), loadLog(companyId), ledgerInputs(companyId, period)]);
-  if (!seed) return [];
-  const unitOfCase = new Map(ledger.cases.map((c) => [c.caseId, c.raiserUnitId]));
-  const state = reduce({ ...seed, seats }, log);
-  return state.projects.map((p) => {
-    const decidedDay = p.history.find((e) => e.type === "case.decided")?.day ?? p.openedDay;
-    return {
-      caseId: p.sources[0] ?? p.id,
-      raiserUnitId: p.sources.map((s) => unitOfCase.get(s) ?? null).find((u) => u !== null) ?? null,
-      decidedDay,
-      doneDay: p.doneDay,
-      measures: p.measures.map((m) => ({
-        verified: m.confirmed,
-        better: m.verdict === "better",
-        eur: m.impact?.savingEurPerYear ?? null,
-        kwh: m.impact?.energyKwhPerYear ?? null,
-        co2Kg: m.impact?.co2KgPerYear ?? null,
-      })),
-      premiumsEur: p.reward?.amount ?? 0,
-    };
-  });
+  return (await ledgerInputs(companyId, period)).projects ?? [];
 }
 
 /** Configured top-level headcount when above 0 (customer-supplied), else the active users. */
