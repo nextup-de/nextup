@@ -47,7 +47,8 @@ test("UIP acceptance", async ({ page }) => {
   const wide = async (selector: string) => (await page.locator(selector).first().boundingBox())?.width ?? 0;
   expect(await wide("main input[type=search], main input")).toBeGreaterThan(await wide("main select"));
 
-  for (const old of ["ideas", "problems"]) {
+  // /ideas is the Ideas tab's Mine list now; only an old link to one seed idea (?id=) still goes to the Feed.
+  for (const old of ["ideas?id=i1", "problems"]) {
     await page.goto(page_(old));
     await expect(page, `/${old} goes to the Feed`).toHaveURL(new RegExp(`/${SLUG}/feed`));
   }

@@ -1,0 +1,37 @@
+/* The Ideas tab's Mine list (MineView): one white card, a quiet header, one row per idea - what, open since, status.
+   Below 760px a row stacks: the title, then the date and the status on one line. */
+.page { width: 100%; max-width: 960px; margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+.empty { margin: 24px 0 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-mute); text-align: center; }
+.emptyLink { font-weight: 600; color: var(--nh-brand-ink); text-decoration: none; }
+.emptyLink:hover { text-decoration: underline; }
+
+.card { background: var(--nh-card); border-radius: 14px; box-shadow: var(--nh-card-shadow); padding: 4px 0 8px; min-width: 0; }
+
+.head, .row { display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 0.9fr); gap: 16px; align-items: baseline; padding: 0 20px; }
+.head { padding-top: 12px; padding-bottom: 8px; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
+
+.list { list-style: none; margin: 0; padding: 0; }
+.row { padding-top: 14px; padding-bottom: 14px; border-top: 1px solid var(--nh-line-soft); }
+
+.what { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.kind { flex: none; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
+.title { min-width: 0; font-size: var(--nh-fs-md); font-weight: 600; line-height: 22px; color: var(--nh-ink); text-decoration: none; overflow-wrap: anywhere; }
+.title:hover { color: var(--nh-brand-ink); }
+.title:focus-visible, .project:focus-visible, .emptyLink:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 2px; border-radius: 4px; }
+
+.since { font-size: var(--nh-fs-sm); color: var(--nh-mute); white-space: nowrap; }
+.status { font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink-2); overflow-wrap: anywhere; }
+.row[data-status="sentBack"] .status { color: var(--nh-ink); font-weight: 600; } /* the raiser's move */
+.row:not([data-running]) .status { color: var(--nh-mute); }
+.project { font-weight: 600; color: var(--nh-brand-ink); text-decoration: none; }
+.project:hover { text-decoration: underline; }
+
+.more { margin: 8px 20px 0; }
+
+@media (max-width: 760px) {
+  .head { display: none; }
+  .row { grid-template-columns: auto minmax(0, 1fr); row-gap: 4px; column-gap: 12px; padding: 12px 16px; }
+  .row:first-child { border-top: 0; } /* no header above it on a phone */
+  .what { grid-column: 1 / -1; }
+}
