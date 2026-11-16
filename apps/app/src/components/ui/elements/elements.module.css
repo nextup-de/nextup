@@ -52,6 +52,19 @@
 .pageButton:disabled { background: none; color: var(--nh-ghost); cursor: default; }
 .pageButton:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
+/* ---- Fold: one line that opens (DESIGN_RULES §9) ---- */
+.fold { min-width: 0; }
+.fold > summary { display: flex; align-items: center; gap: 10px; min-height: 36px; border-radius: 6px; list-style: none; cursor: pointer; font-size: var(--nh-fs-md); line-height: 22px; font-weight: 600; color: var(--nh-ink); }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after { content: ""; flex-shrink: 0; width: 7px; height: 7px; margin: 0 4px 2px 2px; border-right: 1.5px solid var(--nh-mute); border-bottom: 1.5px solid var(--nh-mute); transform: rotate(-45deg); transition: transform 0.15s ease; }
+.fold[open] > summary::after { transform: rotate(45deg); }
+.fold > summary:hover { color: var(--nh-brand-ink); }
+.fold > summary:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.foldLabel { flex: 1; min-width: 0; }
+.foldMeta { flex-shrink: 0; font-size: var(--nh-fs-sm); font-weight: 400; color: var(--nh-mute); }
+.foldBody { display: flex; flex-direction: column; gap: 12px; padding: 8px 0 4px; }
+@media (prefers-reduced-motion: reduce) { .fold > summary::after { transition: none; } }
+
 /* ---- Row menu ---- */
 .rowMenu { position: relative; justify-self: end; }
 .rowMenu > summary { display: flex; align-items: center; justify-content: center; width: 32px; height: 28px; border-radius: 6px; list-style: none; cursor: pointer; font-weight: 700; color: var(--nh-ink-2); }

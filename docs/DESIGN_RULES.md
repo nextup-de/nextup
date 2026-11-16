@@ -102,6 +102,21 @@ between them is the **last yes**: before it the thing is an idea, after it a pro
 | **A project's Idea page is its origin, read only:** who raised it, why, who said yes, what was discussed. It carries no project actions (Start, Manage, Mark done) and the project's own head (title, status, "Your move") stays above it. The project's moves live in its head and on its Overview. | not tested |
 | **Where a design wants ideas and projects on one screen** ("everything I have going on"), that screen is the Inbox (what needs me) or Ideas › Mine (what I raised), never Projects. | not tested |
 
+## 9. One fact once, folded by default
+
+Decided by Kevin on 16 Nov 2026, after a project's Measure section named one date three times and "not confirmed"
+twice. A screen answers two questions: what is the state, and what do I press. Everything else waits behind a fold.
+The screen-by-screen findings and the target per screen are in `docs/plans/2026-11-16_quiet-screens/`.
+
+| Rule | Enforced by |
+|---|---|
+| **One name per place.** A page is named once: by its pill in the bar, its entry in the side view or its heading, never by two of them on one screen. A project's or an idea's title is shown once. | not tested |
+| **One fact, once per screen.** A date, a person, a status or a count appears in one place. A status has one carrier: a chip, a colour or a sentence, never two of them. | not tested |
+| **No grey text that explains.** Muted text carries a fact the reader needs to act: who, when, how much. A line that says how NextUp works, or repeats the heading in other words, goes. | not tested |
+| **Folded by default.** A section shows one line with its answer; the rest opens on demand (`Fold` in `components/ui/elements`). A form appears after its button was pressed. Open without asking is only the one thing the viewer has to do now. | `tests/unit/design/fold.test.tsx` for the element; screens not tested |
+| **One filled button per screen.** The one filled blue button is the viewer's next move. Every other action is a quiet button, a link or sits in the "⋯" menu. Without a next move there is no filled button. A button that does nothing yet is not drawn. | not tested |
+| **Status colours are the status tokens.** Good is `--nh-ok`, needs you is `--nh-warn`, late or worse is `--nh-danger`. Blue is for actions and selection, never for a status. No screen keeps a palette of its own. | not tested |
+
 ## 7. Never
 
 - Tailwind, CSS frameworks, UI kits or styled-components; styles live in `tokens.css`, `globals.css` and `*.module.css`.
