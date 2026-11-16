@@ -1,6 +1,6 @@
 # Docs
 
-> **Updated 2026-11-09.** Every file starts with an `Updated` or `Plan` line that gives its date.
+> **Updated 2026-11-16.** Every file starts with an `Updated` or `Plan` line that gives its date.
 > What is built and live today, and what is not: the team report "Where we stand" v1.4 (nextup-context `reports/2026-11-08_where-we-stand/`, status board in section 1). Where a plan below disagrees with it, the report wins.
 
 Phase additions after REG: see [docs/process/](process/README.md).
@@ -22,7 +22,7 @@ Each one's status line says how much of it is done.
 | 2026-11-02 | [Analysis: fix the truth, then build the proof](plans/2026-11-02_defensible-offer.md) (tasks: [Codex plan](plans/2026-11-02_defensible-offer-codex.md)) | open; Kevin and the team decide which claims to withdraw |
 | 2026-11-01 | [Analysis: big corporate or mid-size company first?](plans/2026-11-01_segment-analysis.md) | open; Kevin and Marc decide |
 | 2026-10-15 | [From accepted idea to measured project](plans/2026-10-15_idea-to-project.md) | built 15 Oct and released; Jira now runs in the app, not through n8n |
-| 2026-10-29 | [Jira for every company, synced from inside the app](plans/2026-10-29_jira-in-app.md) | built; Jira Cloud live-checked 9 Nov, Data Center against the fake only |
+| 2026-10-29 | [Jira for every company, synced from inside the app](plans/2026-10-29_jira-in-app.md) | built; Jira Cloud live-checked 9 Nov, Data Center against the fake only; milestones as Jira versions and read-only attachments added 14–16 Nov (JSY) |
 | 2026-10-22 | [Single sign-on and direct access to company data](plans/2026-10-22_sso-and-data-access.md) | phases 1–2 built and live-tested 8–9 Nov; phases 3–4 not built |
 | 2026-10-21 | [One page that shows what NextUp knows about a company](plans/2026-10-21_company-data-page.md) | steps 1–2 built 21 Oct; steps 3–6 not re-checked on 9 Nov |
 | 2026-10-05 | [Admin tickets: what to take from Swiss Edu Solution](plans/2026-10-05_admin-vs-ses.md) | open |
@@ -43,10 +43,11 @@ is on their first line.
 | [INBOX.md](INBOX.md) | the one inbox for every role: what it holds, the order, the Today line, the notices (plan INB) |
 | [DATA_MODEL.md](DATA_MODEL.md) | tables and events |
 | [SECURITY.md](SECURITY.md) | stages, doors, the list before real customers |
-| [INTEGRATIONS.md](INTEGRATIONS.md) | events API, tokens, stages, n8n |
+| [INTEGRATIONS.md](INTEGRATIONS.md) | events API, tokens, stages, Jira in the app (issues, versions, attachments), n8n |
 | [ASSISTANT.md](ASSISTANT.md) | the raise-page assistant |
 | [COMPANY_KNOWLEDGE.md](COMPANY_KNOWLEDGE.md) | company knowledge tables |
 | [IDEAS.md](IDEAS.md) | the idea studio |
+| [PROJECTS.md](PROJECTS.md) | project pages: pages of tools, the sidebar, their events and rights, Files on SharePoint (flag `projectPages`) |
 | [DESIGN_RULES.md](DESIGN_RULES.md) | the fixed design rules every screen follows (calm, quiet, privacy, copy, colour) and where each is tested |
 | [RESPONSIVE.md](RESPONSIVE.md) | layout rules |
 | [DEPLOY.md](DEPLOY.md) | running it on a laptop |

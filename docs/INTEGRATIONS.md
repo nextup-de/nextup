@@ -1,6 +1,6 @@
 # NextHub - integrations, AI, tenants, phases
 
-> **Updated 2026-11-01, Jira status 2026-11-09** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract, the sync engine and the admin page are built; Jira Cloud passed its live check on 9 Nov, Jira Data Center is tested against the fake Jira only); deadline and digests are still a plan.
+> **Updated 2026-11-01, Jira status 2026-11-16** · reference + plan. Written as a proposal on 21 Sep 2026; since then the events API, tokens, stages and tenant guard are built and the code points here as the contract. Jira moved from n8n into the app on 29 Oct 2026 (*Jira in the app* below: the contract, the sync engine and the admin page are built; Jira Cloud passed its live check on 9 Nov, Jira Data Center is tested against the fake Jira only; since 14–16 Nov milestones sync as Jira versions and a project's Jira attachments show on its Files tool, *Versions and attachments* below); deadline and digests are still a plan.
 
 **Contracts.** Every external system sits behind one of eight connector interfaces exported from
 `@nextup/contracts/public` (`packages/contracts/src/public/connectors/`): see
@@ -150,10 +150,17 @@ in `features/connectors/vault.ts`): a value copied into another company's row, o
 - **Link an existing issue** is the human `project.linked {system:"jira", key, url, stepId}`; the url
   comes from `jiraIssueUrl(settings, key)`.
 - The allow-list gains **`project.step.edited {stepId, text}`**: the step's text, nothing else
-  (`projectPayloadProblem` refuses `owner`, `dueDay`, `note`, `removed`).
+  (`projectPayloadProblem` refuses `owner`, `dueDay`, `note`, `removed`). From the sync only, it may also
+  carry `milestoneId` (a fix version that set the step's milestone).
 - The sync's actor is **`JIRA_ACTOR = "system:jira"`** and its `CaseEvent.source` **`JIRA_SOURCE =
   "jira"`**. It appends in the app, not through the HTTP endpoint, but checks everything with
-  `parseInbound` and `maySystemAppend` first: the allow-list is the same.
+  `parseInbound(..., {via: "sync"})` and `maySyncAppend` first. The sync's allow-list is the public one
+  plus **`SYNC_ONLY_EVENT_TYPES`** (`project.milestone.added`, `project.milestone.edited`,
+  `features/integrations/index.ts`); the public events API still refuses those two.
+- **What wakes the sync early.** Besides the minute loop (`JIRA_SYNC_INTERVAL_MS`, default 60000), an
+  appended event that `kicksJira` (and every `case.decided`) calls `kickJira`
+  (`server/actions/events.ts`). Page, tool, form, checklist and step-comment events never do
+  (`NOT_SYNCED_PREFIXES`, `features/projects/pages.ts`); milestone events do again since #918.
 
 **What syncs.** A project is sent to Jira when its latest `project.sync` is `on`, or when `autoEpic`
 is on and its `case.decided` came after `enabledAt` (older projects are never swept in on their own).
@@ -167,9 +174,55 @@ change → `project.step.moved`, a summary change → `project.step.edited`, a n
 **Echo loops** are broken four ways: the push acts only on human actors (`isSystemActor`); the pull
 skips changes by the integration account; both directions compare states before acting; every
 write has an idempotency key (`jira:epic:<projectId>`, `jira:issue:<stepId>`,
-`jira:<KEY>:status:<historyId>`, `jira:comment:<id>`). Creating is safe to repeat: the issue carries
+`jira:<KEY>:status:<historyId>`, `jira:comment:<id>`, and for versions `jira:version:<projectId>:<versionId>…` and
+`jira:milestone.link:<projectId>:<milestoneId>`, built by `syncIdemKey`). Creating is safe to repeat: the issue carries
 the label `nextup-<projectId>` or `nextup-step-<stepId>`, and the sync searches for it before it
 creates.
+
+**Versions and attachments** (plan JSY, #913–#922, 14–16 Nov). The pure planner is
+`features/integrations/jira/versions.ts` (`planVersionPush`, `planVersionPull`); the round that runs it is
+`server/jira/round.ts`.
+
+- **One milestone is one Jira version.** Title → name, note → description plus a marker line
+  `[nextup:<projectId>:<milestoneId>]`, `startDay` → start date, `dueDay` → release date, shipped →
+  released. A step's milestone is its issue's fix version. Days convert in working-day space with the
+  company calendar (`loadCalendar`); a date on a non-working day falls back to the working day before it.
+  Titles (80) and notes (1000) are compared normalised and without the marker, so nothing echoes.
+- **The link** is `Milestone.external {system:"jira", key, url, mode}`. `owned`: the sync created the
+  version, or adopted one carrying this milestone's exact marker (so a lost create answer is adopted next
+  round). Only owned versions are ever written. `imported`: an unmarked version named as a fix version on
+  one of the project's synced issues; it becomes a read-only milestone, id `jv_<project>_<version>`
+  (`jiraMilestoneId`); a version without a release date is not imported. A version marked for another
+  project is never touched. A person may not set `external` or `sync`, nor edit an imported milestone.
+- **Push** (after the issue push, before the pull): reads the project's versions every round while it
+  syncs and has milestones. Creates and adoptions come from state, and only in sync mode `sync`
+  (`linked` updates existing links only); updates and archives come from people's milestone edits since
+  the cursor. A removed milestone archives its version, never deletes it, and a tombstone stops the
+  re-import. A fix-version write swaps only this project's mapped versions and keeps foreign ones. At most
+  `MAX_VERSION_WRITES = 20` version writes a round; a name clash gets a hash suffix.
+- **Pull**: a linked milestone takes the version's changes unless a person's edit is still waiting to go
+  out (the person wins); new versions are imported; a step takes its issue's first mapped fix version as
+  its milestone (the pull never clears one). If the versions cannot be read, the version pull skips that
+  round.
+- **Jira permission.** Writing versions needs *Administer Projects* on the Jira project. Without it the
+  round warns, people's edits stay pending and hold the cursor, and they go out once the permission is
+  granted. Test connection shows an advisory "Versions" check that never turns the result red
+  (`server/jira/test.ts`). Cloud lists versions paged (`/project/{key}/version`), Data Center in one array
+  (`/project/{key}/versions`); writes are the same on both.
+- **On screen**: the Milestones tool (now a Jira tool, `isJiraTool`) shows each milestone's version chip
+  (link, or "waiting"). The `sync {state: pending|failed}` field and its chips exist, but no round writes
+  it yet, so they never show from real data.
+- **Attachments** (`server/jira/attachments.ts`): the Files tool lists a project's Jira attachments under
+  its SharePoint list, read-only (`components/projects/files/JiraAttachments.tsx`), when the
+  `projectPages` flag is on and the viewer may read the project (`server/actions/project-attachments.ts`).
+  They are read with the company's integration account (JQL `key in (…)` over the linked issues, batches
+  of 50), never as the viewer, and never downloaded: each row links to `/browse/<KEY>`. The answer is
+  cached in memory for 60 s (500 entries), keyed by company, project, site, the connection's revision and
+  the linked keys; connection, sync switch and links are checked before the cache, so stopping the sync or
+  removing a link revokes at once. States: ok (maybe partial), empty, not connected, no access, offline.
+- **Proof**: `tests/unit/jsy/*`, and the database acceptance `tests/db/jsy-sync.test.ts` (Cloud and Data
+  Center) and `tests/db/jsy-access.test.ts` against the fake Jira, which now has versions, fix versions,
+  attachment records, `--no-administer` and failure helpers. No migration: milestones are events.
 
 **An expired or revoked token** (PILOT_CHECK G8): Jira answers 401, the round ends at once and moves no cursor, and
 `lastError` starts with the status. /admin → Connectors → Jira then says the token was refused and to enter a new
@@ -179,7 +232,8 @@ the last good round (moves, renames, comments, new children). Proof: `tests/unit
 `tests/db/tst-integrations.test.ts` ("G8"); live checklist: `docs/test-phase/JIRA_G8_CHECKLIST.md`.
 
 **The seam in code.** `JiraApi` (`features/integrations/jira/types.ts`) is the only way anything talks
-to Jira; `Job` is what the push plans; `JiraStatusView` is what the screens read; `TestJira` is the
+to Jira (since JSY it also lists, creates and updates versions, sets fix versions and reads attachments);
+`Job` is what the push plans; `JiraStatusView` is what the screens read; `TestJira` is the
 admin's connection test. The implementations (`server/jira/cloud.ts`, the planner, the loop) are the
 engine's.
 

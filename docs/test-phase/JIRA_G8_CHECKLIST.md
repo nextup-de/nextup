@@ -39,7 +39,7 @@ red line does not appear: note the exact text, that is a finding.
 ## 3. Set a new token
 
 - [ ] Create a new API token for the same integration account. Time: ______
-- [ ] /admin → Connectors → Jira: paste it into "API token", press **Test connection** (all checks green), then **Save**.
+- [ ] /admin → Connectors → Jira: paste it into "API token", press **Test connection** (all checks green; the advisory "Versions" check may say the account lacks *Administer Projects*, which leaves the result green but keeps milestone edits from reaching Jira), then **Save**.
   The red line goes away on save.
 - [ ] Press **Sync now** (or wait a minute).
 
