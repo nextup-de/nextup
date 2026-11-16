@@ -10,6 +10,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { BaselineDialog } from "@/components/dashboard/shared/BaselineDialog";
 import { BreakdownCard } from "@/components/dashboard/shared/BreakdownCard";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { SavedOverlay, SavedTile } from "@/components/dashboard/shared/SavedPerYear";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
 import { DeptChip, Fold } from "@/components/ui/elements";
 import { barHeights, dashboardFromInput, shares, tileViews, trendLabels, type TileView } from "@/features/metrics/dashboard";
@@ -64,7 +65,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const [open, setOpen] = useState<TileId | null>(null);
+  const [open, setOpen] = useState<TileId | "saved" | null>(null);
   const [menu, setMenu] = useState<Menu>(null);
   const [view, setView] = useState<"unit" | "role">("unit");
   const [dialog, setDialog] = useState(false);
@@ -145,6 +146,10 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
   const projects = flag("projects") ? S.projects.filter((p) => p.verdict !== null).slice(0, 8) : [];
   const sel: TileView | undefined = open ? shownTiles.find((x) => x.id === open) : undefined;
   const nothing = data.scopeHidden || data.caseCount === 0;
+  // "Saved per year" leads the tiles whenever a confirmed result saved a euro, also in a period without new cases.
+  const savedOpen = open === "saved" && data.saved !== null;
+  const lead = data.saved ? 1 : 0;
+  const tileCount = (nothing ? 0 : shownTiles.length) + lead;
 
   // A tile is its value and its change; what it is measured against opens with it.
   const tileCard = (v: TileView, i: number) => (
@@ -159,7 +164,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
 
   return (
     <div className={s.root} data-testid="dashboard-board">
-      {(sel || menu) && <div className={s.scrim} onClick={() => { setOpen(null); setMenu(null); }} aria-hidden="true" />}
+      {(sel || savedOpen || menu) && <div className={s.scrim} onClick={() => { setOpen(null); setMenu(null); }} aria-hidden="true" />}
       <div className={s.page}>
         <h1 className="nh-sr">{t("metrics.dashTitle")}</h1>
         <div className={s.controls}>
@@ -191,7 +196,14 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
         {data.scopeHidden && <p className={s.empty} data-testid="dashboard-scope-hidden">{t("metrics.dashScopeHidden")}</p>}
         {!data.scopeHidden && data.caseCount === 0 && <p className={s.empty}>{t("metrics.dashEmpty")}</p>}
 
-        {!nothing && shownTiles.length > 0 && <div className={s.tiles} data-count={shownTiles.length}>{shownTiles.map(tileCard)}</div>}
+        {tileCount > 0 && (
+          <div className={s.tiles} data-count={tileCount}>
+            {data.saved && <SavedTile saved={data.saved} onOpen={() => setOpen("saved")} delay={40} />}
+            {!nothing && shownTiles.map((v, i) => tileCard(v, i + lead))}
+          </div>
+        )}
+
+        {savedOpen && data.saved && <SavedOverlay saved={data.saved} onClose={() => setOpen(null)} close={<Close onClose={() => setOpen(null)} />} />}
 
         {sel && (
           <div className={s.overlay} role="dialog" aria-label={sel.label} data-testid="dashboard-detail" data-accent={sel.id}>
