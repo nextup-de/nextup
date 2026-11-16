@@ -263,26 +263,28 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 });
 
-test("projects and ideas sit side by side on one page", async ({ page }) => {
+// Projects shows projects only (Kevin and Sam, 16 Nov 2026); the ideas table keeps its old address, /overview.
+test("the Projects page shows projects only; the ideas table stays at /overview", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toHaveCount(0);
+  await expect(page.getByRole("table", { name: "Problems and ideas" })).toHaveCount(0);
   await page.goto("/acme/overview");
   await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toHaveCount(0);
 });
 
-test("an idea opened on the Projects page has its own address, /idea?id=", async ({ page }) => {
+test("an idea opened from the ideas table has its own address, /idea?id=", async ({ page }) => {
   const idea = /\/acme\/idea\?id=[^&]+$/;
-  const projects = /\/acme\/projects$/;
+  const projects = /\/acme\/overview$/;
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/projects");
+  await page.goto("/acme/overview");
   const table = page.getByRole("table", { name: "Problems and ideas" });
   const row = table.getByRole("row").nth(1);
   const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
@@ -309,12 +311,12 @@ test("an idea opened on the Projects page has its own address, /idea?id=", async
   await expect(page).toHaveURL(projects);
   await expect(table).toBeVisible();
 
-  // The nav link leaves an idea opened in place, and the old addresses still land on the idea.
+  // The nav link leaves an idea opened in place for the projects, and the old addresses still land on the idea.
   await table.getByRole("row").nth(1).click();
   await expect(page).toHaveURL(idea);
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
-  await expect(page).toHaveURL(projects);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(/\/acme\/projects$/);
+  await expect(page.getByRole("heading", { name: /^Projects\s*\d+$/, level: 2 })).toBeVisible();
   const id = new URL(at).searchParams.get("id") ?? "";
   for (const old of ["/acme/projects", "/acme/overview"]) {
     await page.goto(old + "?id=" + encodeURIComponent(id));
@@ -326,7 +328,7 @@ test("an idea opened on the Projects page has its own address, /idea?id=", async
 test("Back right after closing an idea reopens it, on a slow machine too", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/projects");
+  await page.goto("/acme/overview");
   const table = page.getByRole("table", { name: "Problems and ideas" });
   const row = table.getByRole("row").nth(1);
   const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
@@ -339,7 +341,7 @@ test("Back right after closing an idea reopens it, on a slow machine too", async
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/acme\/projects$/);
+  await expect(page).toHaveURL(/\/acme\/overview$/);
   await expect(table).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\/acme\/idea\?id=/);
@@ -353,9 +355,8 @@ test("Back out of the Projects page goes to the page before it", async ({ page }
   await page.goto("/acme/feed");
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page).toHaveURL(/\/acme\/projects$/);
-  const row = page.getByRole("table", { name: "Problems and ideas" }).getByRole("row").nth(1);
-  await row.click();
-  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await page.getByRole("link", { name: /^P-\d+ / }).first().click();
+  await expect(page).toHaveURL(/\/acme\/projects\/[^/?]+/);
   await page.goBack();
   await expect(page).toHaveURL(/\/acme\/projects$/);
   await page.goBack();
