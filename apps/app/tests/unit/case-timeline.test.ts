@@ -75,4 +75,15 @@ describe("case timeline sentences", () => {
     expect(say("case.decided", { answer: "no", reason: "A gate finds it later." })).toBe("K. Yilmaz answered “no” — A gate finds it later.");
     expect(say("case.decided", { answer: "no", reason: "Später." }, "de")).toBe("K. Yilmaz hat mit „nein“ geantwortet — Grund: Später.");
   });
+
+  it("the clock's hand-over says why in plain words: no \"system:clock\", no reason code; a person's reads as before", () => {
+    const clock = (payload: EventPayload, locale: "en" | "de" = "en") =>
+      timelineSentence({ ...ev("case.handed", payload), actor: "system:clock", actorUserId: null }, createT(locale), facts(locale));
+    expect(clock({ to: "Kim Coverfield", why: "away" })).toBe("Handed to Kim Coverfield while the person holding it is away");
+    expect(clock({ to: "Kim Coverfield", why: "escalation" })).toBe("Handed to Kim Coverfield after the promise ran out");
+    expect(clock({ to: "Kim Coverfield", why: "overflow" })).toBe("Handed to Kim Coverfield: the desk was full");
+    expect(clock({ to: "Kim Coverfield", why: "escalation" }, "de")).toBe("An Kim Coverfield übergeben, weil das Versprechen abgelaufen war");
+    expect(clock({ to: "Kim Coverfield", why: "away" }, "de")).not.toMatch(/system|away/);
+    expect(say("case.handed", { to: "L. Becker", why: "Not my line" })).toBe("K. Yilmaz handed it to L. Becker — “Not my line”");
+  });
 });
