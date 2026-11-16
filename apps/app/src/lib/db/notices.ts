@@ -2,7 +2,7 @@
 // the planner and never delivered; readAt says the person read one. Scoped by company and by the viewer.
 import { getDb } from "@/lib/db/client";
 
-export type NoticeRow = { id: string; template: string; subject: string; text: string; link: string | null; createdAt: Date; readAt: Date | null };
+export type NoticeRow = { id: string; template: string; subject: string; text: string; link: string | null; data: unknown; createdAt: Date; readAt: Date | null };
 
 /** The viewer's own notices in this company, newest first. */
 export async function listNotices(companyId: string, userId: string, { limit = 50 }: { limit?: number } = {}): Promise<NoticeRow[]> {
@@ -10,7 +10,7 @@ export async function listNotices(companyId: string, userId: string, { limit = 5
     where: { companyId, recipientUserId: userId, channel: "inapp" },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit,
-    select: { id: true, template: true, subject: true, text: true, link: true, createdAt: true, readAt: true },
+    select: { id: true, template: true, subject: true, text: true, link: true, data: true, createdAt: true, readAt: true },
   });
 }
 
