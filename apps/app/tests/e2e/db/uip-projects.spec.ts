@@ -15,8 +15,8 @@ const PROJECT = "pj-uip";
 const CASE = "c-uip";
 const TABS = ["overview", "board", "team", "results", "activity", "files", "agent"] as const; // agent: the manager sees the Agent tab (plan AGT, D15)
 // The sidebar's pages: Idea and Files, then the ready-made pages the lead added, Agent included for a manager.
-const READY = ["project-overview", "steps", "plan", "results", "requests", "team", "activity", "agent"] as const;
-const PAGES = ["overview", "files", ...READY] as const;
+const READY = ["steps", "plan", "results", "requests", "team", "activity", "agent"] as const;
+const PAGES = ["project-overview", "overview", "files", ...READY] as const; // Overview, Idea and Files are there from the start
 test.skip(!process.env.DATABASE_URL, "needs DATABASE_URL");
 
 const MANAGER = { name: "Mara Sweep", email: `mara@${SLUG}.test`, role: "manager" as const };

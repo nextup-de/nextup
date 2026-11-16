@@ -8,7 +8,9 @@ import { createT } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(), useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/acme/projects/pj1" }));
-vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ S: { day: 10, seats: [] }, f: (d: number) => "day" + d, actorUserId: "u1", href: (path: string) => "/acme" + path }) }));
+vi.mock("@/components/dashboard/DemoProvider", () => ({ useDemo: () => ({ S: { day: 10, seats: [] }, f: (d: number) => "day" + d, actorUserId: "u1", href: (path: string) => "/acme" + path, flag: () => false }) }));
+vi.mock("@/components/projects/parts", async (original) => ({ ...(await original<typeof import("@/components/projects/parts")>()), useRights: () => ({ addStep: true }) }));
+vi.mock("@/components/projects/page/usePageActs", () => ({ usePageActs: () => ({ create: vi.fn() }) }));
 vi.mock("@/components/projects/ProjectMeasure", () => ({ BaselinePanel: () => null }));
 vi.mock("@/components/projects/draft/useProjectHints", () => ({ useProjectHints: () => ({ baseHint: null }) }));
 

@@ -34,11 +34,12 @@ it("PGB page route: an Agent page is reachable only in the viewer's filtered pag
   expect(pagesOf({ pages: moved }, { agent: false }).flatMap((page) => page.tools).some((tool) => tool.kind === "agent")).toBe(false);
 });
 
-it("PGB page route: a new project opens on its Idea, Files second", () => {
+it("PGB page route: a new project opens on its Overview, then Idea and Files (Kevin, 16 Nov 2026)", () => {
   const start = pagesOf({ pages: null }, { agent: true });
-  expect(pageIdFor(start, {})).toBe("overview");
+  expect(pageIdFor(start, {})).toBe("project-overview");
+  expect(pageIdFor(start, { tab: "overview" })).toBe("overview"); // old links to the first tab land on the Idea
   expect(pageIdFor(start, { tab: "files" })).toBe("files");
-  expect(pageIdFor(start, { tab: "board" })).toBe("overview"); // the old Steps tab, until the team adds a Steps page
+  expect(pageIdFor(start, { tab: "board" })).toBe("project-overview"); // the old Steps tab, until the team adds a Steps page
 });
 
 it("PGB page route: an open draft opens on its setup until another page is asked for", () => {

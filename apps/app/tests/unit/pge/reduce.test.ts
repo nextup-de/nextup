@@ -37,28 +37,28 @@ it("PGE pages reduce: initializes the Idea and Files only on a page or tool even
   expect(p.pages).toBeNull();
   send("project.tool.edited", { toolId: "files.links", collapsed: true });
   expect(p.pages!.map((x) => x.id)).toEqual(DEFAULT_PAGES.map((x) => x.id));
-  expect(p.pages!.map((x) => x.id)).toEqual(["overview", "files"]);
+  expect(p.pages!.map((x) => x.id)).toEqual(["project-overview", "overview", "files"]);
   expect(tool("overview.idea").kind).toBe("idea");
   expect(tool("files.links").collapsed).toBe(true);
-  expect(DEFAULT_PAGES[1].tools[1].collapsed).toBe(false);
+  expect(DEFAULT_PAGES[2].tools[1].collapsed).toBe(false);
   const other = setup({ steps: false });
   other.send("project.page.edited", { pageId: "files", title: "Documents" });
   expect(other.tool("files.links").collapsed).toBe(false);
   // An old page event for a page that is no longer a default changes nothing.
   other.send("project.page.edited", { pageId: "plan", title: "Dates" });
-  expect(other.p.pages!.map((x) => x.id)).toEqual(["overview", "files"]);
+  expect(other.p.pages!.map((x) => x.id)).toEqual(["project-overview", "overview", "files"]);
 });
 
 it("PGE pages reduce: adds, edits and moves pages and tools before siblings or to the end", () => {
   const { p, send, page, tool } = setup();
   send("project.page.added", notes);
-  expect(p.pages!.map((x) => x.id)).toEqual(["overview", "files", "notes", "steps"]);
+  expect(p.pages!.map((x) => x.id)).toEqual(["project-overview", "overview", "files", "notes", "steps"]);
   expect(tool("doc")).toEqual({ id: "doc", kind: "doc", title: "Decisions", content: "Original text", collapsed: false, rev: 0 });
   send("project.page.edited", { pageId: "notes", title: "Decisions", icon: "star" });
   expect(page("notes")).toMatchObject({ title: "Decisions", icon: "star" });
   send("project.page.moved", { pageId: "notes", before: null });
   expect(p.pages!.at(-1)?.id).toBe("notes");
-  send("project.page.moved", { pageId: "notes", before: "overview" });
+  send("project.page.moved", { pageId: "notes", before: "project-overview" });
   expect(p.pages![0].id).toBe("notes");
   send("project.tool.added", { pageId: "notes", toolId: "table", kind: "table", before: "doc" });
   expect(page("notes").tools.map((x) => x.id)).toEqual(["table", "doc", "list"]);
@@ -87,7 +87,7 @@ it("PGE pages reduce: restores removed pages with their tools and tools at their
   expect(p.removed).toEqual([{ page: original, tool: null, pageId: "notes", before: "steps", day: 2 }]);
   expect(p.pages!.some((x) => x.id === "notes")).toBe(false);
   send("project.page.restored", { pageId: "notes" }, 3);
-  expect(p.pages![2]).toEqual(original);
+  expect(p.pages![3]).toEqual(original);
   expect(p.removed).toEqual([]);
   const doc = structuredClone(tool("doc"));
   send("project.tool.removed", { toolId: "doc" }, 4);
@@ -117,7 +117,7 @@ it("PGE pages reduce: merges every tool with its content and rev and unmerges su
   expect(p.merges.m).toEqual({ from: { id: "notes", title: "Notes", icon: "doc", before: "steps" }, toolIds: ["doc", "list"] });
   send("project.tool.moved", { toolId: "doc", toPageId: "files" });
   send("project.page.unmerged", { mergeId: "m" });
-  expect(p.pages![2]).toEqual(original);
+  expect(p.pages![3]).toEqual(original);
   expect(page("steps").tools.map((x) => x.id)).toEqual(["steps.board", "steps.list"]);
   expect(page("files").tools.some((x) => x.id === "doc")).toBe(false);
   expect(p.merges).toEqual({});
