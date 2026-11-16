@@ -49,7 +49,7 @@ describe("MOV inbox items", () => {
       const [item, ...rest] = projectMoveItems(input(state, "u_mr", 15));
       expect(rest).toEqual([]);
       expect(item).toEqual({
-        id: "move:stalled:p_one", ask: "decide", kind: "stalled", projectId: "p_one", title: "Changeover", href: "/projects/p_one", dueDay: 14, late: true, dueSoon: false, pinned: false, deskRoleId: null,
+        id: "move:stalled:p_one", ask: "decide", kind: "stalled", projectId: "p_one", title: "Changeover", href: "/projects/p_one?page=overview", dueDay: 14, late: true, dueSoon: false, pinned: false, deskRoleId: null,
       });
       expect(projectMoveItems(input(state, "u_mr", 14))[0].late).toBe(false);
     });

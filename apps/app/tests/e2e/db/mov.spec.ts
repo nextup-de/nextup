@@ -276,14 +276,14 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
         expect(vacated[0]).toMatchObject({ actor: "system:directory", source: "directory" });
       }
       const sponsor = await signIn(browser, SPONSOR);
-      await sponsor.goto(`/${SLUG}/projects/${left.projectId}`);
+      await sponsor.goto(`/${SLUG}/projects/${left.projectId}?page=overview`);
       await expect(sponsor.getByTestId("no-lead")).toContainText("No lead");
       await sponsor.context().close();
     });
 
     await test.step("the sponsor names a new lead in the UI; the page shows them", async () => {
       const page = await signIn(browser, SPONSOR);
-      await page.goto(`/${SLUG}/projects/${left.projectId}`);
+      await page.goto(`/${SLUG}/projects/${left.projectId}?page=overview`);
       const form = page.getByTestId("no-lead").getByRole("form", { name: "Name as lead" });
       await form.getByLabel("New lead").selectOption(id.lead);
       await form.getByRole("textbox", { name: "Why (optional)" }).fill(NEW_LEAD_WHY);
@@ -298,7 +298,7 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
     // ── a project the lead pauses ───────────────────────────────────────────────────────────────────────────────────
     await test.step("the lead pauses a project in the UI, for ten working days", async () => {
       const page = await signIn(browser, LEAD);
-      await page.goto(`/${SLUG}/projects/${paused.projectId}`);
+      await page.goto(`/${SLUG}/projects/${paused.projectId}?page=overview`);
       await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
       await page.getByRole("button", { name: "Pause…" }).click();
       const form = page.getByRole("form", { name: "Pause the project" });
@@ -368,7 +368,7 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
       await expect(row).toHaveCount(1);
       await expect(page.locator('[data-testid="inbox-row"][data-kind="stalled"]').filter({ hasText: paused.title }), "a paused project is not stalled").toHaveCount(0);
       await row.click();
-      await expect(page).toHaveURL(new RegExp(`/projects/${quiet.projectId}$`));
+      await expect(page).toHaveURL(new RegExp(`/projects/${quiet.projectId}\\?page=overview$`));
 
       await test.step("the sponsor sets a new done-by date in the UI; the escalation ends", async () => {
         await expect(page.getByTestId("done-by-line")).toContainText("Done by");
@@ -395,7 +395,7 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
 
     await test.step("the lead resumes the paused project early; its quiet count starts again from that day", async () => {
       const page = await signIn(browser, LEAD);
-      await page.goto(`/${SLUG}/projects/${paused.projectId}`);
+      await page.goto(`/${SLUG}/projects/${paused.projectId}?page=overview`);
       await expect(page.getByTestId("paused-banner")).toBeVisible();
       await page.getByRole("button", { name: "Resume now" }).click();
       await expect.poll(async () => (await eventsOf("project.resumed", paused.projectId)).length).toBe(1);
@@ -430,7 +430,7 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
       const row = page.locator('[data-testid="inbox-row"][data-kind="vacant"]').filter({ hasText: vacant.title });
       await expect(row).toHaveCount(1);
       await row.click();
-      await expect(page).toHaveURL(new RegExp(`/projects/${vacant.projectId}$`));
+      await expect(page).toHaveURL(new RegExp(`/projects/${vacant.projectId}\\?page=overview$`));
       await expect(page.getByTestId("no-lead")).toContainText("No lead");
       const form = page.getByTestId("no-lead").getByRole("form", { name: "Name as lead" });
       await form.getByLabel("New lead").selectOption(id.member);

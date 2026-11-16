@@ -312,7 +312,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect(await eventsOf("project.done", projectId)).toHaveLength(0);
 
       page = await signIn(browser, LEAD);
-      await page.goto(`/${SLUG}/projects/${projectId}`);
+      await page.goto(`/${SLUG}/projects/${projectId}?page=overview`);
       await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
       await page.getByRole("button", { name: "Mark it done…" }).click();
       const sheet = page.getByRole("form", { name: "Mark the project done" });
@@ -451,7 +451,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await page.getByRole("form", { name: "Record the reward" }).getByRole("button", { name: "Record the reward" }).click();
       await expect.poll(async () => (await eventsOf("project.rewarded", projectId)).length).toBe(1);
       expect((await eventsOf("project.rewarded", projectId))[0]).toMatchObject({ actorUserId: id.manager });
-      await page.goto(`/${SLUG}/projects/${projectId}`); // the project's head, with its state, is on its Idea page
+      await page.goto(`/${SLUG}/projects/${projectId}?page=overview`); // the project's head, with its state, is on its Idea page
       await expect(page.getByRole("main")).toContainText("Recognised");
       await page.context().close();
       // Recorded: the reminder is over, however many days pass.
@@ -466,7 +466,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       page = await signIn(browser, RAISER);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
       await expect(page.getByRole("region", { name: "Board", exact: true })).toContainText(STEP_DONE);
-      await page.goto(`/${SLUG}/projects/${projectId}`);
+      await page.goto(`/${SLUG}/projects/${projectId}?page=overview`);
       await expect(page.getByRole("main")).toContainText("Recognised");
       await page.context().close();
 
