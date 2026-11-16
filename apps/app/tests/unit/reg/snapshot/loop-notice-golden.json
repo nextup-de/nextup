@@ -120,14 +120,14 @@
       {
         "to": "tv@acme.test",
         "subject": "Ihre Frage wurde beantwortet: Shorter changeover",
-        "text": "T. Vogel,\n\nAnonymous #4471 hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_answered"
+        "text": "T. Vogel,\n\nAnonymous #4471 hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/idea?id=c_answered"
       }
     ],
     "en": [
       {
         "to": "tv@acme.test",
         "subject": "Your question was answered: Shorter changeover",
-        "text": "T. Vogel,\n\nAnonymous #4471 answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due in 3 days: https://acme.sellux.ch/cases/c_answered"
+        "text": "T. Vogel,\n\nAnonymous #4471 answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due in 3 days: https://acme.sellux.ch/idea?id=c_answered"
       }
     ]
   },
@@ -137,7 +137,7 @@
       {
         "to": "tv@acme.test",
         "subject": "Keine Antwort auf Ihre Frage: Shorter changeover",
-        "text": "T. Vogel,\n\nJ. Schmidt hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_unanswered"
+        "text": "T. Vogel,\n\nJ. Schmidt hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist in 3 Tagen fällig: https://acme.sellux.ch/idea?id=c_unanswered"
       },
       {
         "to": "js@acme.test",
@@ -149,7 +149,7 @@
       {
         "to": "tv@acme.test",
         "subject": "No answer from the raiser: Shorter changeover",
-        "text": "T. Vogel,\n\nJ. Schmidt did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due in 3 days: https://acme.sellux.ch/cases/c_unanswered"
+        "text": "T. Vogel,\n\nJ. Schmidt did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due in 3 days: https://acme.sellux.ch/idea?id=c_unanswered"
       },
       {
         "to": "js@acme.test",
@@ -208,7 +208,7 @@
       {
         "to": "hs@acme.test",
         "subject": "An Ihren Tisch weitergegeben: Shorter changeover",
-        "text": "H. Sander,\n\nT. Vogel hat diese Idee an Ihren Tisch weitergegeben:\n\n  Shorter changeover\n\nGrund: Out of office\n\nDie Antwortfrist bleibt; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_handed"
+        "text": "H. Sander,\n\nT. Vogel hat diese Idee an Ihren Tisch weitergegeben:\n\n  Shorter changeover\n\nGrund: Out of office\n\nDie Antwortfrist bleibt; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/idea?id=c_handed"
       },
       {
         "to": "js@acme.test",
@@ -220,7 +220,7 @@
       {
         "to": "hs@acme.test",
         "subject": "Passed to your desk: Shorter changeover",
-        "text": "H. Sander,\n\nT. Vogel passed this idea to your desk:\n\n  Shorter changeover\n\nWhy: Out of office\n\nThe answer date stays; it is due in 3 days: https://acme.sellux.ch/cases/c_handed"
+        "text": "H. Sander,\n\nT. Vogel passed this idea to your desk:\n\n  Shorter changeover\n\nWhy: Out of office\n\nThe answer date stays; it is due in 3 days: https://acme.sellux.ch/idea?id=c_handed"
       },
       {
         "to": "js@acme.test",
@@ -235,7 +235,7 @@
       {
         "to": "hs@acme.test",
         "subject": "An Ihren Tisch weitergegeben: Shorter changeover",
-        "text": "H. Sander,\n\nDer Tisch, an den das eingereicht wurde, ist gerade nicht besetzt. Deshalb liegt es bei Ihnen:\n\n  Shorter changeover\n\nDie Antwortfrist bleibt; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/cases/c_handed"
+        "text": "H. Sander,\n\nDer Tisch, an den das eingereicht wurde, ist gerade nicht besetzt. Deshalb liegt es bei Ihnen:\n\n  Shorter changeover\n\nDie Antwortfrist bleibt; die Antwort ist in 3 Tagen fällig: https://acme.sellux.ch/idea?id=c_handed"
       },
       {
         "to": "js@acme.test",
@@ -247,7 +247,7 @@
       {
         "to": "hs@acme.test",
         "subject": "Passed to your desk: Shorter changeover",
-        "text": "H. Sander,\n\nNobody holds the desk this was raised to right now, so it is on yours:\n\n  Shorter changeover\n\nThe answer date stays; it is due in 3 days: https://acme.sellux.ch/cases/c_handed"
+        "text": "H. Sander,\n\nNobody holds the desk this was raised to right now, so it is on yours:\n\n  Shorter changeover\n\nThe answer date stays; it is due in 3 days: https://acme.sellux.ch/idea?id=c_handed"
       },
       {
         "to": "js@acme.test",

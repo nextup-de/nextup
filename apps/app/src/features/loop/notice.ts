@@ -18,7 +18,7 @@ import type { EventArg, NoticeCtx } from "./notice/shared";
 
 /** An idea a desk can still say yes or no to: open, in discussion or waiting on a question; not decided, withdrawn or merged. */
 const undecided = (c: ReducedCase) =>
-  c.decided === null && c.withdrawn === null && c.merged === null && (c.status === "open" || c.status === "discussion" || c.status === "asked");
+  !c.decided && !c.withdrawn && !c.merged && (c.status === "open" || c.status === "discussion" || c.status === "asked");
 
 /** A person who can get mail: their user id, their name (shown in the greeting) and the handle they post under. */
 export type Person = { id: string; name: string; email: string; handle?: string | null; manager?: boolean };
