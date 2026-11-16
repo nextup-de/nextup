@@ -8,9 +8,7 @@ import { DEFAULT_OVERVIEW_RANGE, overviewFacts, parseOverviewRange, type Overvie
 import type { ProjectPage, ReducedProject, StepColumn, ToolInstance } from "@/features/projects/types";
 import { fmtNumber, timelineOf } from "@/features/projects/views";
 import { ADDABLE_PAGES, pagesOf } from "@/features/projects/pages";
-import { idViewerOf, nextLine, useRights } from "../../parts";
-import { DoneSheet } from "../../result/DoneSheet";
-import { resultView } from "@/features/projects/result-view";
+import { nextLine, useRights } from "../../parts";
 import { usePageActs } from "../../page/usePageActs";
 import { useFormat, useLocale, useT } from "@/i18n/client";
 import { shows } from "@/lib/utils/quiet";
@@ -18,6 +16,7 @@ import { BaselinePanel, MeasurePanel } from "../../ProjectMeasure";
 import { unconfirmedOf } from "@/features/projects/confirm";
 import { useProjectHints } from "../../draft/useProjectHints";
 import { HeadSlot } from "../../tools/HeadSlot";
+import { NextMove, useNextMove } from "./NextMove";
 import { RangeMenu } from "./RangeMenu";
 import styles from "./Overview.module.css";
 
@@ -67,12 +66,8 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
   // instead of zero tiles, an empty chart and empty lists. Each part shows once it has something to say.
   const noSteps = p.steps.length === 0;
   const allDone = !noSteps && facts.columns.done > 0 && facts.columns.todo + facts.columns.doing + facts.columns.blocked === 0;
-  const doneDays = p.steps.flatMap((s) => !s.dropped && s.column === "done" && s.doneDay !== null ? [s.doneDay] : []);
-  const lastDoneDay = doneDays.length ? Math.max(...doneDays) : null;
-  // With every step done the card carries what comes next (Kevin, 16 Nov 2026): while the project runs, who may mark it done gets the
-  // same sheet as Manage › Mark it done; after that, the line says where the project stands. No new right: resultView decides.
-  const markDone = allDone ? resultView(p, S, idViewerOf(ctx), S.day, locale).done : null;
-  const [marking, setMarking] = useState(false);
+  // The viewer's one move sits in one card at the top (DESIGN_RULES §9); the panel it shows is not drawn again below.
+  const moveKind = useNextMove(p);
   const tilesShown = shows(facts.tiles.doneInRange) || shows(facts.tiles.waiting) || shows(facts.tiles.late) || shows(facts.tiles.stuck) || facts.tiles.nextDue !== null;
   const stepsPage = pagesOf(p, { agent: flag("agent") }).find((x) => x.tools.some((tool) => tool.kind === "board" || tool.kind === "list")) ?? null;
   const readySteps = ADDABLE_PAGES.find((x) => x.id === "steps") ?? null;
@@ -89,10 +84,13 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
       <h2 className="nh-sr">{t("projectHub.overviewTitle")}</h2>
       {/* Paper "Jira pages · new header": the range and Share sit right of the title, in the page header. */}
       <HeadSlot page={page} tool={tool} place="actions">
-        <RangeMenu value={range} onChange={setRange} />
-        <button type="button" className={styles.share} onClick={copyLink}>{t("projectHub.overviewShare")}</button>
+        <span className={styles.controls}>
+          <RangeMenu value={range} onChange={setRange} />
+          <button type="button" className={styles.share} onClick={copyLink}>{t("projectHub.overviewShare")}</button>
+        </span>
       </HeadSlot>
       <p className={styles.status} role="status">{copied === "ok" ? t("projectHub.overviewLinkCopied") : copied === "failed" ? t("projectHub.overviewCopyFailed") : ""}</p>
+      <NextMove p={p} kind={moveKind} />
 
       {/* A tile shows only when it has something to say: no "0", no dash (docs/DESIGN_RULES.md §2). No tile, no row. */}
       {!noSteps && tilesShown && <div className={styles.tiles}>
@@ -107,23 +105,20 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
 
       <div className={styles.grid}>
       <div className={styles.main}>
-      {facts.showBaseline && <BaselinePanel p={p} hint={baseHint} />}
-      {resultWaits && <MeasurePanel p={p} />}
+      {facts.showBaseline && moveKind !== "baseline" && <BaselinePanel p={p} hint={baseHint} />}
+      {resultWaits && moveKind !== "measure" && <MeasurePanel p={p} />}
 
-      {noSteps ? <section className={styles.card} data-empty="true" aria-label={t("projectHub.overviewStartTitle")}>
-        <h3 className={styles.cardTitle}>{t("projectHub.overviewStartTitle")}</h3>
-        <p className={styles.muted}>{t(rights.addStep ? "projectHub.overviewStartText" : "projectHub.overviewStartTextReader")}</p>
-        {rights.addStep && (stepsPage
-          ? <Link className="nh-btn nh-btn-primary nh-btn-sm" href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewAddFirstStep")}</Link>
-          : readySteps && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={adding} onClick={() => void addStepsPage()}>{t("projectHub.overviewAddStepsPage")}</button>)}
+      {noSteps ? moveKind !== "steps" && <section className={styles.card} data-empty="true" aria-label={t("projectHub.overviewStartTitle")}>
+        {/* The title and a quiet way in: the filled button is the move card's, when adding steps is the move. */}
+        <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewStartTitle")}</h3>
+          {rights.addStep && (stepsPage
+            ? <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewAddFirstStep")}</Link>
+            : readySteps && <button type="button" className={styles.share} disabled={adding} onClick={() => void addStepsPage()}>{t("projectHub.overviewAddStepsPage")}</button>)}</div>
       </section> : allDone ? <section className={styles.card} data-done="true" aria-label={t("projectHub.overviewAllDone", { count: facts.columns.done })}>
-        {/* Every step is done (Kevin, 16 Nov 2026): one calm card, no full bar and no legend of zeros. */}
+        {/* Every step is done (Kevin, 16 Nov 2026): one calm card, no full bar and no legend of zeros. Marking it done is the move card's. */}
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewAllDone", { count: facts.columns.done })}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
-        {lastDoneDay !== null && <p className={styles.muted}>{t("projectHub.overviewLastDone", { date: f(lastDoneDay) })}</p>}
-        {/* While the result above waits, its rows carry the checks' dates: the card does not say them again (DESIGN_RULES §9). */}
-        {markDone?.can ? (marking ? <DoneSheet p={p} done={markDone} onClose={() => setMarking(false)} />
-          : <p><button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setMarking(true)}>{t("projects.markDoneEllipsis")}</button></p>)
-          : p.status !== "running" && !(resultWaits && p.status === "measuring") && <p className={styles.muted} data-testid="overview-stands">{nextLine(p, S.day, f, false, t, locale)}</p>}
+        {/* While the checks' rows are on this page they carry their dates: the card does not say them again (DESIGN_RULES §9). */}
+        {p.status !== "running" && !((resultWaits || moveKind === "measure") && p.status === "measuring") && <p className={styles.muted} data-testid="overview-stands">{nextLine(p, S.day, f, false, t, locale)}</p>}
       </section> : <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>
