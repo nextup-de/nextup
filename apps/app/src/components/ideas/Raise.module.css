@@ -610,7 +610,6 @@ a.quickBtn { text-decoration: none; }
 .dlg { position: relative; width: min(440px, 100%); max-height: calc(var(--nh-screen-h) - 32px); overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 16px; background: var(--nh-card); border-radius: var(--radius-md, 20px); box-shadow: 0 16px 40px rgba(20,30,60,0.18), 0 0 0 1px rgba(0,0,0,0.04); outline: none; animation: affPop 240ms cubic-bezier(.2,.8,.2,1) both; }
 .dlgHead { display: flex; align-items: flex-start; gap: 10px; padding: 0 4px; }
 .dlgHeadText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.dlgKicker { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
 .dlgTitle { margin: 0; font-size: var(--nh-fs-xl); font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; color: var(--nh-ink); }
 .dlgClose { width: 30px; height: 30px; flex: none; padding: 0; border: none; border-radius: 50%; background: var(--nh-fill); color: var(--nh-ink); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 160ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
 .dlgClose:hover { background: var(--nh-line); }

@@ -165,7 +165,7 @@ export function DemoControls() {
   const raise = () => ctx.setRole("member"); // back on Jonas's raise page, the conversation as it was
   const history = () => router.back(); // the screen before, from the browser's history (the raise page's URL names its screens)
   const inbox = () => { if (published?.assigneeSeatId) ctx.setLeadAs(published.assigneeSeatId); };
-  const openCase = () => { if (published) router.push(href("/leader?id=" + encodeURIComponent(published.id))); };
+  const openCase = () => { if (published) router.push(href("/inbox?id=" + encodeURIComponent(published.id))); };
   // "Yes, do it": with projects on, the yes opens a draft the receiver sets up, as the yes sheet does.
   const accept = () => {
     if (!published) return;

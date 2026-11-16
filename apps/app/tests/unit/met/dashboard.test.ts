@@ -13,7 +13,7 @@ const baseline: Baseline = { fromDay: 1, toDay: 30, fromDate: null, toDate: null
 function data(over: Partial<DashboardData> = {}, tiles: Tile[] = IDS.map((id) => tile(id))): DashboardData {
   return {
     period: { from: 31, to: 60 }, fromDate: null, toDate: null, baseline, caseCount: 12, tiles, trend: [], stages: [],
-    answers: { yes: 0, yesProject: 0, question: 0, handed: 0, no: 0 }, units: [], roles: [], scopeHidden: false, aiOff: false, demoClock: false, ...over,
+    answers: { yes: 0, yesProject: 0, question: 0, handed: 0, no: 0 }, units: [], roles: [], scopeHidden: false, aiOff: false, demoClock: false, saved: null, ...over,
   };
 }
 const view = (d: DashboardData, id: TileId) => tileViews(d, t).find((v) => v.id === id)!;

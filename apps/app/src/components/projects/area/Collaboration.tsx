@@ -38,16 +38,15 @@ export function Collaboration() {
   if (!mine.length && !asks.length && !across.length) {
     return <SectionCard><div className={ui.emptyLine}>{t("progress.collabEmpty")}</div></SectionCard>;
   }
-  // The lists with something in them, in their order; then one quiet line for each empty one.
+  // The lists with something in them, in their order; an empty one is not drawn and no hint explains a card (DESIGN_RULES §1, §9).
   const sections = [
-    { name: "works-on", title: t("progress.collabWorksHead"), hint: t("progress.collabWorksSub"), empty: t("progress.collabWorksEmpty"), body: mine.length > 0 ? <WorksOn list={mine} /> : null },
-    { name: "requests", title: t("progress.collabRequestsHead"), hint: t("progress.collabRequestsSub"), empty: t("progress.collabRequestsEmpty"), body: asks.length > 0 ? <Requests rows={asks} /> : null },
-    { name: "across-units", title: t("progress.collabUnitsHead"), hint: t("progress.collabUnitsSub"), empty: t("progress.collabUnitsEmpty"), body: across.length > 0 ? <AcrossUnits rows={across} /> : null },
+    { name: "works-on", title: t("progress.collabWorksHead"), body: mine.length > 0 ? <WorksOn list={mine} /> : null },
+    { name: "requests", title: t("progress.collabRequestsHead"), body: asks.length > 0 ? <Requests rows={asks} /> : null },
+    { name: "across-units", title: t("progress.collabUnitsHead"), body: across.length > 0 ? <AcrossUnits rows={across} /> : null },
   ];
   return (
     <div className={styles.stack}>
-      {sections.filter((x) => x.body).map((x) => <SectionCard key={x.name} title={x.title} hint={x.hint} name={x.name}>{x.body}</SectionCard>)}
-      {sections.filter((x) => !x.body).map((x) => <p key={x.name} className={styles.quiet} data-name={x.name}>{x.empty}</p>)}
+      {sections.filter((x) => x.body).map((x) => <SectionCard key={x.name} title={x.title} name={x.name}>{x.body}</SectionCard>)}
     </div>
   );
 }

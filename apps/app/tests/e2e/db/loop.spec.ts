@@ -118,9 +118,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     });
 
     await test.step("'Where should it go?' proposes the desk by keywords, and the send names the role and a date", async () => {
-      const show = page.getByRole("button", { name: "Show sidebar" });
-      if (await show.isVisible()) await show.click();
-      await page.getByRole("button", { name: "Publish idea" }).click();
+      await page.getByRole("button", { name: "Publish", exact: true }).click(); // the page's one Publish, under the latest reply
       const look = page.getByRole("dialog", { name: "Last look before it goes out" });
       await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
       const who = page.getByRole("dialog", { name: "Where should it go?" });
@@ -168,7 +166,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     }, { message: "the yes carries the id of the project it opened" }).not.toBeNull();
     await page.goto(`/${SLUG}/projects/${projectId}`);
     await expect(page.getByRole("main")).toContainText(TITLE);
-    await expect(page.getByTestId("draft-top-line")).toContainText("Draft"); // the yes opens a draft, not a running project
+    await expect(page.getByTestId("project-draft")).toBeVisible(); // the yes opens a draft (its setup), not a running project
     await page.context().close();
   });
 
@@ -240,7 +238,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await page.goto(`/${SLUG}/leader`);
     const waiting = page.getByRole("link", { name: /Confirm the result/ }).filter({ visible: true });
     await expect(waiting).toContainText("a second person checks the number");
-    await expect(waiting).toContainText(/Due /);
+    // Its date is on the result (below); the row shows a chip only once it is due soon or late (quiet screens, DESIGN_RULES §9).
     await openResults(page);
     await openDetails(page);
     await expect(vis(page, "measure-deadline-30")).toContainText("Waiting for a second person until");

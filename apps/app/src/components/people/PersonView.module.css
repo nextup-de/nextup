@@ -1,8 +1,5 @@
-/* The person page in the house look: a back link and one section card with the person's face, name, role and unit. */
+/* The person page in the house look: one section card with the person's face, name, role and unit. */
 .page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 720px; margin: 0 auto; min-width: 0; }
-.back { align-self: flex-start; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); text-decoration: none; }
-.back:hover { color: var(--nh-brand-ink); }
-.back:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .hero { display: flex; align-items: center; gap: 18px; }
 .hero > :first-child { width: 64px; height: 64px; font-size: var(--nh-fs-xl); }
 .text { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }

@@ -52,13 +52,13 @@
 .row { position: relative; padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
 .row:last-child { border-bottom: 0; }
 .row:hover, .row[data-menu="true"] { margin: 0 -12px; padding-right: 12px; padding-left: 12px; background: #f7f7f9; border-radius: 8px; }
-.row:hover .rowTitle { color: var(--link); text-decoration: underline; }
+.row:hover .rowTitle { color: var(--link); }
 .cName { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
 .cStage { width: 130px; flex-shrink: 0; }
-.cUpdated, .cRaised { width: 110px; flex-shrink: 0; }
+.cUpdated { width: 110px; flex-shrink: 0; }
 .cDesk { width: 150px; flex-shrink: 0; }
 .cStatus { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: 132px; flex-shrink: 0; }
-.row .cStage, .row .cUpdated, .row .cRaised { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--ink-2); }
+.row .cStage, .row .cUpdated { font-size: var(--nh-fs-sm); line-height: 16px; color: var(--ink-2); }
 .headRow .cStatus { justify-content: flex-end; padding-right: 34px; }
 .sortBtn { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .sortBtn:hover, .sortBtn[data-active="true"] { color: var(--ink); font-weight: 600; }
@@ -141,7 +141,7 @@ button.chip { cursor: pointer; }
 .cover { position: relative; height: 156px; overflow: visible; border: 1px solid var(--fill-2); border-radius: 10px; background: #e9eff8; transition: box-shadow 120ms ease; }
 .coverImg { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 9px; object-fit: cover; object-position: right center; }
 .card:hover .cover, .card[data-menu="true"] .cover { border-color: #c7c7cc; box-shadow: #0000000f 0 2px 4px, #00000024 0 12px 28px -10px; }
-.card:hover .cardTitle { color: var(--link); text-decoration: underline; }
+.card:hover .cardTitle { color: var(--link); }
 .coverText { position: absolute; left: 14px; bottom: 12px; display: flex; flex-direction: column; gap: 1px; }
 .coverStat { color: #14213d; font-size: var(--nh-fs-xl); font-weight: 700; letter-spacing: -0.02em; line-height: 26px; }
 .coverHook { color: var(--ink-2); font-size: var(--nh-fs-xs); line-height: 15px; }
@@ -169,7 +169,7 @@ button.chip { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .cover { transition: none; } }
 
 /* A laptop: the grid in three, the list keeps every column. */
-@media (max-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .cRaised { display: none; } }
+@media (max-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1080px) { .cUpdated { display: none; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Below 760px (4.3): one meta line under the title, the chip on the right; pills scroll, search full width, + button. */
@@ -196,7 +196,7 @@ button.chip { cursor: pointer; }
   .rowTitle { white-space: normal; }
   .rowSub { display: none; }
   .phoneMeta { display: block; overflow: hidden; color: var(--mute); font-size: var(--nh-fs-xs); line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
-  .cStage, .cUpdated, .cRaised, .cDesk { display: none; }
+  .cStage, .cUpdated, .cDesk { display: none; }
   .cStatus { width: auto; align-self: flex-end; }
   .more { display: none; }
   .empty { flex-direction: column; align-items: stretch; gap: 24px; padding: 20px; }
@@ -204,3 +204,11 @@ button.chip { cursor: pointer; }
   .noMatch { padding: 64px 0; }
   .footer { margin-top: 0; flex-wrap: wrap; }
 }
+.emptyLine { margin: 0; padding: 24px; border-radius: 12px; background: var(--nh-card); box-shadow: var(--nh-card-shadow); color: var(--ink-2); font-size: var(--nh-fs-md); }
+
+/* A title too long for its row or card (GlideTitle in OverviewList.tsx): on hover it waits a moment, glides left at
+   an even reading pace and holds at its end; it slides back when the mouse leaves. Same as the sidebars. */
+.glideText { display: block; overflow: hidden; text-overflow: ellipsis; transition: transform 220ms ease; }
+[data-glide-host]:hover [data-glide], [data-glide]:focus-visible { text-overflow: clip; mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 6px), transparent); }
+[data-glide-host]:hover [data-glide] .glideText, [data-glide]:focus-visible .glideText { width: max-content; overflow: visible; text-overflow: clip; transform: translateX(var(--slide, 0)); transition: transform var(--glide, 1500ms) linear 400ms; }
+@media (prefers-reduced-motion: reduce) { [data-glide-host]:hover [data-glide] .glideText, [data-glide]:focus-visible .glideText { transform: none; } }

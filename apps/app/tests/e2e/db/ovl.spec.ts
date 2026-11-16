@@ -25,7 +25,7 @@
 // goes through the UI: the away spans, the take back, the raise to the overflowing desk, the bulk passes, the cover and the profile. Own company, made straight
 // in the database and deleted at the end, like see.spec.ts and res.spec.ts. Run on any weekday.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, raiseLine, answerCoach, answerRail, showSidebar, vis, DEVELOP, test } from "../helpers";
+import { expect, passSecondFactor, raiseLine, answerCoach, answerRail, vis, DEVELOP, test } from "../helpers";
 import { reduce } from "../../../src/features/cases/reducer";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
 import { dateOfWorkday, workdayOf } from "../../../src/features/clock/calendar";
@@ -157,10 +157,7 @@ const openCase = async (page: Page, caseId: string) => {
 /** The raise page's last steps like the helper's publishTo, but keeping the sent line before the window closes. */
 async function publishAndRead(page: Page, to: string): Promise<string> {
   const look = page.getByRole("dialog", { name: "Last look before it goes out" });
-  if (!(await look.isVisible())) {
-    await showSidebar(page);
-    await page.getByRole("button", { name: "Publish idea" }).click();
-  }
+  if (!(await look.isVisible())) await page.getByRole("button", { name: "Publish", exact: true }).click(); // the page's one Publish, under the latest reply
   await look.getByRole("button", { name: /Choose a desk/ }).click({ timeout: 30_000 });
   const who = page.getByRole("dialog", { name: "Where should it go?" });
   await expect(who).toBeVisible({ timeout: 30_000 });

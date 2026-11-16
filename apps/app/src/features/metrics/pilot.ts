@@ -1,5 +1,6 @@
 // The pilot's own metrics (MET D14), one entry per PILOT_METRIC_KEYS in order. Pure. People are only ever counted
 // (distinct raiser keys), never returned (D2); a number with fewer than MIN_GROUP people behind it is hidden (D6).
+import { countedIn, countsAsVerified, REPORT_RULE, verifiedSum } from "./impact";
 import { median } from "./index";
 import { MIN_GROUP, PILOT_METRIC_KEYS, type Baseline, type KpiProject, type LedgerInput, type PilotMetric, type PilotMetricKey, type Period } from "./types";
 
@@ -32,10 +33,10 @@ function count(ledger: LedgerInput, projects: KpiProject[], period: Period, peop
   const scoped = peopleInScope >= MIN_GROUP;
 
   const decided = projects.filter((p) => inPeriod(p.decidedDay, period));
-  const finished = projects.filter((p) => inPeriod(p.doneDay, period));
-  const good = finished.map((p) => p.measures.filter((m) => m.verified && m.better));
-  const sum = (pick: (m: KpiProject["measures"][number]) => number | null) =>
-    finished.length === 0 ? null : good.flat().reduce((t, m) => t + (pick(m) ?? 0), 0);
+  // Verified outcomes and impact figures (D7): counted in features/metrics/impact.ts, the same sum the Dashboard shows.
+  const finished = countedIn(projects, period, REPORT_RULE);
+  const good = finished.map((p) => p.measures.filter(countsAsVerified));
+  const sum = (pick: (m: KpiProject["measures"][number]) => number | null) => verifiedSum(finished, pick);
 
   // Resubmission: people with a reasoned No decided in the period who raised again after it, up to the period end.
   const firstNo = new Map<string, number>();
