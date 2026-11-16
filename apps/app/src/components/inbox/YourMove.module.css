@@ -1,8 +1,10 @@
 /* "Your move": one card, one status line, at most one filled button, quiet yes and no, More for the rest. */
 .card { display: flex; flex-direction: column; gap: 12px; padding: var(--nh-pad-card-sm); border-radius: var(--radius-md, 18px); background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / 0.06); }
+.card[data-quiet="true"] { padding-block: 8px; background: transparent; box-shadow: none; }
 .title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
 .status { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
 .line { margin: -6px 0 0; font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--nh-ink-2); overflow-wrap: anywhere; }
+.status a { color: var(--nh-brand-ink); }
 .quote { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--nh-surface); font-size: var(--nh-fs-md); line-height: 1.45; color: var(--nh-ink); overflow-wrap: anywhere; }
 
 .quietRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
@@ -18,3 +20,16 @@
 .item { min-height: 36px; padding: 6px 10px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: var(--nh-fs-sm); text-align: left; color: var(--nh-ink); cursor: pointer; }
 .item:hover { background: var(--nh-fill); }
 .item:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; }
+.item:disabled { color: var(--nh-ghost); cursor: default; }
+/* A move's form (a reason, a condition): fields stacked, its send button filled only while it is the move being made. */
+.form { display: flex; flex-direction: column; gap: 8px; }
+.formLabel { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
+.field { min-width: 0; padding: 8px 10px; border: 1px solid var(--nh-line); border-radius: 10px; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); background: #fff; resize: vertical; }
+.field:focus-visible { outline: 2px solid var(--nh-brand-focus); outline-offset: 1px; }
+.formRow { display: flex; flex-wrap: wrap; gap: 8px; }
+.options { display: flex; flex-wrap: wrap; gap: 6px; }
+.option { padding: 6px 10px; border: 1px solid var(--nh-line); border-radius: 999px; background: #fff; font: inherit; font-size: var(--nh-fs-sm); color: var(--nh-ink); cursor: pointer; }
+.option[aria-pressed="true"] { border-color: var(--nh-brand); background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
+.option:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.note { margin: 0; font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--nh-ink-2); }
+.error { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-danger); }

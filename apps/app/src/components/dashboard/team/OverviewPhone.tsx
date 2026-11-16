@@ -17,9 +17,10 @@ const Chev = ({ dir }: { dir: "back" | "up" | "down" }) => (
   <svg className={s.phoneChev} data-dir={dir} width="10" height="14" viewBox="0 0 8 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 1L1 6l5 5" /></svg>
 );
 
-/** `after`: what the idea's one page shows under the card (the approval line, the moves, the history), on the Idea page. */
-export function OverviewPhone({ idea, chats, yourMove, nav, after = null }: {
-  idea: OverviewIdeaProps; chats: React.ReactNode; yourMove: boolean; nav: Nav; after?: React.ReactNode;
+/** `move`: "Your move", on top of the Idea page (DESIGN_RULES §9); `after`: what the idea's one page shows under the card (the approval line, the
+ *  history), on the Idea page. */
+export function OverviewPhone({ idea, chats, yourMove, nav, move = null, after = null }: {
+  idea: OverviewIdeaProps; chats: React.ReactNode; yourMove: boolean; nav: Nav; move?: React.ReactNode; after?: React.ReactNode;
 }) {
   const t = useT();
   const [page, setPage] = useState(0);
@@ -65,7 +66,7 @@ export function OverviewPhone({ idea, chats, yourMove, nav, after = null }: {
       </header>
 
       <div className={s.phonePager} ref={pager} onScroll={onScroll}>
-        <section className={s.phonePage} role="tabpanel" aria-label={t("team.phoneIdea")}><OverviewIdea {...idea} variant="phone" onOpenScore={setScore} />{after}</section>
+        <section className={s.phonePage} role="tabpanel" aria-label={t("team.phoneIdea")}>{move}<OverviewIdea {...idea} variant="phone" onOpenScore={setScore} />{after}</section>
         <section className={`${s.phonePage} ${s.phoneChat}`} role="tabpanel" aria-label={t("team.phoneChat")}>{chats}</section>
       </div>
 

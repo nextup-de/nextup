@@ -50,10 +50,7 @@
 .scoreV[data-band="low"] { color: var(--nh-mute-2); }
 .scoreL { font-size: var(--nh-fs-sm); color: var(--nh-mute); line-height: 18px; }
 .corr { padding: 8px 12px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink-2); }
-.whyRow { display: flex; gap: 8px; }
 .rescoreTag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-xs); font-weight: 600; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.actions:empty { display: none; }
 .standing { display: flex; align-items: center; gap: 8px; }
 .avatars { display: inline-flex; }
 .avatars > * { margin-left: -6px; box-shadow: 0 0 0 2px #fff; }
@@ -99,7 +96,7 @@
   .tiles { grid-template-columns: minmax(0, 1fr); }
   .soft, .primary { height: 44px; }
   .note { height: 44px; font-size: var(--nh-fs-input); }
-  .whyRow, .noteRow { flex-wrap: wrap; }
+  .noteRow { flex-wrap: wrap; }
 }
 
 /* The cases around a case (plan SEE, D15 to D17): links, 'maybe the same as', and the picker. Nothing is wider than the card. */
