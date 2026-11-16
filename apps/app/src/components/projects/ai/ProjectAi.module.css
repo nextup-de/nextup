@@ -21,6 +21,8 @@
   flex: none; width: 396px; z-index: 6;
   position: sticky; top: var(--nh-bar-h); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
   animation: colIn 420ms cubic-bezier(.2,.8,.2,1) both;
+  /* Whatever slides past the screen edge is cut off there (no sideways scroll); the shadow on the left stays. */
+  clip-path: inset(-48px 0 -48px -480px);
 }
 /* Opening: the column grows from the edge (the page slides over to make room) while the panel slides in from the
    right; closing runs the same the other way before the tab comes back. */
@@ -28,8 +30,8 @@
 .col[data-closing="true"] .panel { animation: panelOut 340ms cubic-bezier(.4,0,.2,1) both; }
 @keyframes colIn { from { width: 0; } }
 @keyframes colOut { to { width: 0; } }
-@keyframes panelIn { from { transform: translateX(48px); opacity: 0; } }
-@keyframes panelOut { to { transform: translateX(48px); opacity: 0; } }
+@keyframes panelIn { from { transform: translateX(100%); } }
+@keyframes panelOut { to { transform: translateX(100%); } }
 .panel {
   position: absolute; top: 16px; bottom: 16px; right: 0; width: 396px;
   animation: panelIn 420ms cubic-bezier(.2,.8,.2,1) both;
@@ -98,6 +100,7 @@
 @media (max-width: 760px) {
   .col { position: fixed; inset: var(--nh-bar-h) 0 0 0; width: auto; height: auto; z-index: 40; animation: none; }
   .col[data-closing="true"] { animation: none; }
+  .col { clip-path: none; }
   .panel { inset: 0; width: auto; border-radius: 0; }
   .input { font-size: var(--nh-fs-input); }
 }
