@@ -1,7 +1,10 @@
 // The decision log (LOOP/D21): a read-only table of every yes and no the viewer may open. Plain props
-// in, JSX out; the page fetches and the filters are a GET form, so nothing here edits anything.
+// in, JSX out; the page fetches and the filters are a GET form, so nothing here edits anything. Quiet (DESIGN_RULES §9):
+// the tab names the page, so its heading is for screen readers; the search is in view, the other filters fold behind
+// "Filter"; with nothing to filter there is no filter row, only one sentence.
 import Link from "next/link";
-import { PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
+import { PersonFace, SectionCard } from "@/components/ui/elements";
+import { DecisionFilters as Filters } from "./DecisionFilters";
 import type { T } from "@/i18n";
 import styles from "./DecisionLog.module.css";
 import { ideaPath } from "@/features/ideas/page-path";
@@ -38,39 +41,23 @@ export function DecisionLog({ t, base, lines, total, page, pageSize, filters, pr
   const role = (l: DecisionLine) => (l.roleFormer ? t("decisions.formerRole") : l.roleTitle ?? t("decisions.roleManager"));
   const kind = (k: string) => (k === "idea" ? t("decisions.kindIdea") : t("decisions.kindProblem"));
   const quote = (l: DecisionLine) => l.reason || l.note;
+  // With nothing to filter there is no filter row: no decision at all is one sentence; none in the usual 90 days is one
+  // sentence and the way to everything. A list the viewer filtered down to nothing keeps its filters.
+  const plain = !filters.answer && !filters.project && !filters.q;
+  const none = lines.length === 0 && plain && filters.period === "all";
+  const noneRecent = lines.length === 0 && plain && filters.period === "90";
 
   return (
     <div className={styles.page}>
-      {/* With projects on this is a tab of Projects: the tab names the page. */}
-      {projectsOn
-        ? <h2 className={styles.sectionHead}>{t("decisions.sectionTitle")}{total > 0 && <span className={styles.sectionCount}>{total}</span>}</h2>
-        : <PageHeader title={t("decisions.title")} lede={t("decisions.lead")} />}
+      <h1 className="nh-sr">{t("decisions.title")}</h1>
       <SectionCard name="decisions">
+      {!none && !noneRecent && <Filters filters={filters} projectsOn={projectsOn} />}
 
-      <form method="get" className={styles.filters} role="search">
-        <input type="search" name="q" defaultValue={filters.q} placeholder={t("decisions.search")} aria-label={t("decisions.search")} className={styles.search} data-testid="decisions-filter-q" />
-        <select name="period" defaultValue={filters.period} aria-label={t("decisions.period")} data-testid="decisions-filter-period">
-          <option value="30">{t("decisions.period30")}</option>
-          <option value="90">{t("decisions.period90")}</option>
-          <option value="year">{t("decisions.periodYear")}</option>
-          <option value="all">{t("decisions.periodAll")}</option>
-        </select>
-        <select name="answer" defaultValue={filters.answer} aria-label={t("decisions.answer")} data-testid="decisions-filter-answer">
-          <option value="">{t("decisions.answerAll")}</option>
-          <option value="yes">{t("decisions.answerYes")}</option>
-          <option value="no">{t("decisions.answerNo")}</option>
-        </select>
-        {projectsOn && (
-          <select name="project" defaultValue={filters.project} aria-label={t("decisions.project")} data-testid="decisions-filter-project">
-            <option value="">{t("decisions.projectAll")}</option>
-            <option value="with">{t("decisions.projectWith")}</option>
-            <option value="without">{t("decisions.projectWithout")}</option>
-          </select>
-        )}
-        <button type="submit" className={styles.apply}>{t("decisions.apply")}</button>
-      </form>
-
-      {lines.length === 0 ? (
+      {none ? (
+        <p className={styles.empty} data-testid="decisions-empty">{t("decisions.empty")}</p>
+      ) : noneRecent ? (
+        <p className={styles.empty} data-testid="decisions-empty">{t("decisions.emptyRecent")} <Link href={href(base, { ...filters, period: "all" }, 1)} className={styles.allLink}>{t("decisions.showEverything")}</Link></p>
+      ) : lines.length === 0 ? (
         <p className={styles.empty} data-testid="decisions-empty">{filtered ? t("decisions.noMatch") : t("decisions.empty")}</p>
       ) : (
         <>
@@ -90,7 +77,8 @@ export function DecisionLog({ t, base, lines, total, page, pageSize, filters, pr
                   <td data-label={t("decisions.colDate")} className={styles.date}>{l.dateLabel}</td>
                   <td data-label={t("decisions.colCase")}>
                     <Link href={base + ideaPath(l.caseId)} className={styles.caseLink}>{l.title}</Link>
-                    <span className={styles.meta}>{l.caseId} · {kind(l.kind)}</span>
+                    {/* An idea and a problem are told apart by their label (DESIGN_RULES §2); an idea is the usual, so only a problem says so. */}
+                    {l.kind !== "idea" && <span className={styles.meta}>{kind(l.kind)}</span>}
                   </td>
                   <td data-label={t("decisions.colDecision")}>
                     <span className={l.answer === "yes" ? styles.pillYes : styles.pillNo}>{l.answer === "yes" ? t("decisions.answerYes") : t("decisions.answerNo")}</span>
