@@ -64,11 +64,35 @@
 .tileIcon { display: grid; place-items: center; padding: 20px 0; background: var(--nh-surface); }
 .tileName { padding: 10px 12px 2px; color: var(--nh-ink); font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
 .tileMeta { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 12px 10px; color: var(--nh-mute); font-size: var(--nh-fs-xs); }
+/* A narrow list (the NextUp AI chat open, Paper "Project · AI side chat" v2 · 4): the columns keep their width,
+   a name stays on one line and ends in "…", the search grows into the second toolbar line, and the least
+   needed columns give way: Linked to first (the side card shows it), then Size. A phone keeps its own layout below. */
+@container files-list (width < 720px) {
+  .table { table-layout: fixed; }
+  .nameCell, .changedCol { overflow: hidden; text-overflow: ellipsis; }
+  .nameInner { min-width: 0; }
+  .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  /* Fixed widths count the cell padding. */
+  .linkedCol { width: 96px; }
+  .changedCol { width: 136px; }
+  .sizeCol, .table th.sizeCol { width: 72px; }
+  .menuCol { width: 54px; }
+  .crumbs { flex-basis: 100%; }
+  .search { flex: 1 1 140px; width: auto; min-width: 0; }
+}
+@container files-list (width < 560px) { .table .linkedCol { display: none; } }
+@container files-list (width < 480px) { .table .sizeCol { display: none; } }
+@container files-list (width < 340px) { .table .changedCol { display: none; } }
 @media (width < 760px) {
   .linkedCol { display: none; }
   .search { flex: 1 1 100%; width: 100%; }
   .search input { font-size: var(--nh-fs-input); }
   .changedCol { width: auto; white-space: normal; }
+  .table { table-layout: auto; }
+  .name { white-space: normal; }
+  .table .sizeCol, .table .changedCol { display: table-cell; }
+  .sizeCol, .table th.sizeCol { width: 60px; }
+  .menuCol { width: 28px; }
   .table th:first-child { padding-left: 54px; }
   .table td:first-child { padding-left: 12px; }
   .table th:last-child, .table td:last-child { padding-right: 12px; }
