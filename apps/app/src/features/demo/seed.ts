@@ -394,7 +394,7 @@ export const PROJECTS: SeedProject[] = [
       { type: 'project.rewarded', day: -60, actor: 'B. Hartmann', payload: { rule: 'thanks', note: 'Thanked at the Ulm site meeting' } }
     ] },
   { id: 'pj2', title: 'Offline job sheets for field service', sources: ['c8'], authors: ['Anonymous #4471'], routeId: 'r8',
-    lead: 'D. Ferraro', members: ['L. Brandt'], openedDay: -102, openedBy: 'D. Ferraro',
+    lead: 'D. Ferraro', members: ['L. Brandt', 'B. Hartmann'], openedDay: -102, openedBy: 'D. Ferraro',
     seedEvents: [
       { type: 'project.baseline', day: -20, actor: 'D. Ferraro', payload: { metric: 'double entry per technician', unit: 'h / week', value: 3, better: 'down', source: 'technician time sheets, August' } },
       { type: 'project.step.added', day: -20, actor: 'D. Ferraro', payload: { stepId: 's1', text: 'List the 14 fields on the paper job sheet', owner: 'D. Ferraro' } },

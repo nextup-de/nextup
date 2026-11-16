@@ -312,7 +312,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect(await eventsOf("project.done", projectId)).toHaveLength(0);
 
       page = await signIn(browser, LEAD);
-      await page.goto(`/${SLUG}/projects/${projectId}`);
+      await page.goto(`/${SLUG}/projects/${projectId}?page=overview`);
       await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
       await page.getByRole("button", { name: "Mark it done…" }).click();
       const sheet = page.getByRole("form", { name: "Mark the project done" });
@@ -330,9 +330,14 @@ test.describe("RES acceptance: a result that closes properly", () => {
       expect((await eventsOf("project.done", projectId))[0]).toMatchObject({
         actorUserId: id.lead, payload: { openSteps: [{ stepId: "s_done", end: "done" }, { stepId: "s_drop", end: "dropped", why: DROP_WHY }] },
       });
-      // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else.
+      // D31: the dropped step counts in no total, so the Overview tool (HUB-A1) shows one done step and nothing else. Since #964
+      // every step done is one calm card ("The one step is done") instead of a legend of zeros; a counted drop would make it
+      // "All 2 steps done" or bring back "Where the steps are".
       await page.goto(`/${SLUG}/projects/${projectId}?page=project-overview`);
-      await expect(page.getByRole("region", { name: "Where the steps are" }).getByRole("listitem")).toHaveText([/To do\s*0/, /Doing\s*0/, /Blocked\s*0/, /Done\s*1/]);
+      const doneCard = page.getByRole("region", { name: "The one step is done" });
+      await expect(doneCard).toBeVisible();
+      await expect(page.getByRole("region", { name: "Where the steps are" })).toHaveCount(0);
+      await expect(doneCard.getByRole("button", { name: "Mark it done…" }), "the project is measuring now: nothing left to mark").toHaveCount(0);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
       const board = page.getByRole("region", { name: "Board", exact: true });
       await expect(board.getByRole("group", { name: "Done" }), "the board counts the done step").toHaveText(/^Done\s*1(?!\d)/);
@@ -451,7 +456,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await page.getByRole("form", { name: "Record the reward" }).getByRole("button", { name: "Record the reward" }).click();
       await expect.poll(async () => (await eventsOf("project.rewarded", projectId)).length).toBe(1);
       expect((await eventsOf("project.rewarded", projectId))[0]).toMatchObject({ actorUserId: id.manager });
-      await page.goto(`/${SLUG}/projects/${projectId}`); // the project's head, with its state, is on its Idea page
+      await page.goto(`/${SLUG}/projects/${projectId}?page=overview`); // the project's head, with its state, is on its Idea page
       await expect(page.getByRole("main")).toContainText("Recognised");
       await page.context().close();
       // Recorded: the reminder is over, however many days pass.
@@ -466,7 +471,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       page = await signIn(browser, RAISER);
       await page.goto(`/${SLUG}/projects/${projectId}?tab=board`);
       await expect(page.getByRole("region", { name: "Board", exact: true })).toContainText(STEP_DONE);
-      await page.goto(`/${SLUG}/projects/${projectId}`);
+      await page.goto(`/${SLUG}/projects/${projectId}?page=overview`);
       await expect(page.getByRole("main")).toContainText("Recognised");
       await page.context().close();
 

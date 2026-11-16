@@ -28,11 +28,16 @@ export type ApprovalConfig = {
   councils: Council[];
 };
 
-/** One step of an approval run as the server computes it (case.provisional's `approvals`). `coversUpToEur`: the limit a budget approver covers when the run starts, null = any cost (D33). */
+/**
+ * One step of an approval run as the server computes it (case.provisional's `approvals`). `coversUpToEur`: the limit a budget approver covers when the run
+ * starts, null = any cost (D33). `userId`: the named person who answers it (decision A, 16 Nov 2026): a role, budget or council step resolves to the head
+ * who holds that role (a council to its secretary), and `person` is someone the desk named by hand. Old runs carry no user id: their role answers.
+ */
 export type ApprovalStepInput = {
-  kind: "budget" | "council" | "role";
+  kind: "budget" | "council" | "role" | "person";
   roleId?: string;
   councilId?: string;
+  userId?: string;
   byHand?: boolean;
   coversUpToEur?: number | null;
 };
@@ -58,9 +63,16 @@ export type ApprovalStep = ApprovalStepInput & {
   answers: StepAnswer[];
 };
 
+/** The no that ended a parallel run (decision B): the idea is back with its raiser, with this reason, until they send it again. */
+export type ApprovalReturn = { reason: string; by: string; byUserId: string | null; day: number; stepId: string };
+
 /**
  * An approval run (D32), started by one case.provisional; its runId is that event's id. `opened`: the run opened a new draft (true) or joined a
  * project (false, D20); `supplement`: it asks only the approvals a decided case still lacks (D33); `decidingRoleId` and `costEur` are frozen for the run.
+ *
+ * `parallel` (decisions A to D, 16 Nov 2026): every step waits at once, each named approver answers their own, and the draft opens only with the
+ * last yes; one no returns the idea to its raiser (`returned`). `yesEventId`: the first decider's case.provisional, whose yes opens the draft then; a
+ * resend keeps it. Runs without `parallel` are the old sequential runs (D22) and reduce as before.
  */
 export type CaseApprovals = {
   runId: string;
@@ -74,6 +86,9 @@ export type CaseApprovals = {
   steps: ApprovalStep[];
   done: boolean;
   outcome: "yes" | "no" | null;
+  parallel?: boolean;
+  yesEventId?: string;
+  returned?: ApprovalReturn | null;
 };
 
 /** The review of a raise (D12, D14): `forwardFrom`: the first day the clock may forward it; `waitsOn`: 'raiser' while a question to them is open; `auto`: the clock forwarded it. */
@@ -105,6 +120,10 @@ export const EMPTY_APPROVAL_CONFIG: ApprovalConfig = {
 /** Working days a review may take, 1 to 4 (D14). */
 export const REVIEW_DAYS_DEFAULT = 2;
 export const REVIEW_DAYS_RANGE = [1, 4] as const;
+/** At most this many named approvers vote on an idea (decision A, 16 Nov 2026). */
+export const MAX_APPROVERS = 3;
+/** Working days after they were asked a pending approver gets their one reminder; nothing follows it (decision C, 16 Nov 2026). */
+export const APPROVER_REMIND_DAYS = 3;
 /** Working days an approval step waits for its answer, 1 to 30 (D23). */
 export const APPROVAL_DAYS_DEFAULT = 5;
 export const APPROVAL_DAYS_RANGE = [1, 30] as const;

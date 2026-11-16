@@ -70,6 +70,7 @@ export function timelineSentence(e: CaseEvent, t: T, facts: TimelineFacts): stri
       return p.to ? t("dashboard.evReviewedTo", { actor, to: p.to }) : t("dashboard.evReviewed", { actor });
     case "case.costed": return t("dashboard.evCosted", { actor, eur: facts.money(p.eur ?? 0) }) + (p.basis ? " " + t("dashboard.evParen", { note: p.basis }) : "");
     case "case.provisional": {
+      if (p.resend) return t("approvals.evResent", { actor }); // the raiser sent a returned idea again (decision B)
       const approvers = (p.approvals ?? []).map(facts.approver).filter((n) => n !== "").join(", ");
       const head = p.supplement
         ? (approvers ? t("dashboard.evSupplement", { actor, approvers }) : t("dashboard.evSupplementNoNames", { actor }))

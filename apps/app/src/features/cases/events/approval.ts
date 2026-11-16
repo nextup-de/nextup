@@ -10,7 +10,7 @@ export const APPROVAL_EVENT_TYPES = ["case.reviewed", "case.costed", "case.provi
 export type ApprovalAreaEventType =
   | "case.reviewed" // { outcome: 'forward', routeId?, auto? }  the review seat sends the raise on to its desk (D12, D13); auto: the clock did, system:clock (D14). Send-back is case.asked
   | "case.costed" // { eur, basis }  the cost estimate of the case, the latest one counts (D18)
-  | "case.provisional" // { approvals, supplement?, projectId?, lead?, leadUserId?, title?, draft?, raiserNote?, note? }  a yes that waits for approval: starts an approval run (D21, D32), runId = this event's id. supplement: the decision stands and only the missing approvals are asked (D33)
+  | "case.provisional" // { approvals, supplement?, parallel?, resend?, projectId?, lead?, leadUserId?, title?, draft?, raiserNote?, note? }  a yes that waits for approval: starts an approval run (D21, D32), runId = this event's id. supplement: the decision stands and only the missing approvals are asked (D33)
   | "case.approval"; // { runId, stepId, dueRev, step, approvalAnswer, reason?, conditions?, present?, plus NOR's no fields }  one answer of the current step; written only by the settle operation (D22, D32)
 
 // Compile-time: every app type is a member of the area's union.
@@ -29,6 +29,8 @@ export type ApprovalAreaPayload = {
   basis?: string; // case.costed: how it was estimated, up to 300 characters
   approvals?: ApprovalStepInput[]; // case.provisional: the steps the server computed, in order (D32)
   supplement?: boolean; // case.provisional: asks only the missing approvals of a decided case (D33)
+  parallel?: boolean; // case.provisional: the named approvers vote at once and the draft opens with the last yes (decisions A to D, 16 Nov 2026); stamped by the server
+  resend?: boolean; // case.provisional: the raiser sends a returned idea again, a fresh parallel run among the same approvers (decision B)
   runId?: string; // case.approval and its clock facts: the approval run (the case.provisional event's id)
   dueRev?: number; // case.approval and its clock facts: the step's revision, +1 on each send-back (D22, D32)
   decidingRoleId?: string | null; // case.provisional: the role whose desk said the yes, frozen for the run (D33)

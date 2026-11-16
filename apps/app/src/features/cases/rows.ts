@@ -1,5 +1,6 @@
 // "My cases" rows: facts in, sentences out. Port of mineRow / cosignRow in legacy/demo/js/dashboard.js.
 // Nothing here is stored - every string is rebuilt from the reduced case at render time.
+import { returnedRun } from "@/features/approvals/steps";
 import type { Me } from "@/features/auth/identity";
 import { scoreCase, type Score } from "@/features/scoring";
 import { LOOP_DEFAULTS, type LoopRules } from "@/features/loop/rules";
@@ -337,7 +338,7 @@ function lifeRow(c: ReducedCase, day: number, f: DayFmt, P: number, loop: MineLo
   const clock = p && dec ? (p.stopped ? t("cases.clockStopped", { named, date: f(p.stopped.day), why: p.stopped.why })
       : t("cases.clockProject", { date: f(dec.day), by: dec.by, named, status: translate(locale, PROJECT_STATUS_LOWER[p.status]), progress, lead: p.lead }))
     : dec ? answeredClock(t, c, dec)
-      : c.status === "approval" ? t("approvals.waitsForApproval")
+      : c.status === "approval" ? (returnedRun(c) !== null ? t("approvals.backWithYou") : t("approvals.waitsForApproval")) // one no returned it (decision B)
       : talk ? (talk.ready ? t("cases.clockTalkReady", { who: c.assignee })
         // The raiser reads the day the decision is expected, not the next check-in (SEE D13).
         : `${t("cases.statusInDiscussion")} · ${round} · ${expectedLine(t, c, day, f)}.`)

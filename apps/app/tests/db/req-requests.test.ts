@@ -51,6 +51,9 @@ beforeAll(async () => {
   for (const [key, role] of [["lead", "manager"], ["ann", "member"]] as const) {
     users[key] = (await db.user.create({ data: { companyId: co.id, name: key, email: `${key}@reqz.example`, role } })).id;
   }
+  // A manager acts as the lead only on a project that is theirs (#956): this one leads the project.
+  const seed = { ...SEED, projects: (SEED.projects ?? []).map((p) => (p.id === PROJECT ? { ...p, leadUserId: users.lead } : p)) };
+  await db.company.update({ where: { id: co.id }, data: { seedJson: toSeedJson(seed) as object } });
   expect(await saveForm("f-main", base)).toEqual(ok);
 });
 beforeEach(() => { viewer = null; });

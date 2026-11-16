@@ -1,8 +1,11 @@
 "use client";
-// Projects and the Overview on one page, side by side: "Projects" (what ideas became, grouped by where
-// they stand) on the left and "Ideas" (every problem and idea, the old Overview table) on the right.
-// /projects and /overview both stay valid addresses and show the same page; it is the Overview tab of the area (ProjectsTabs, in the shell). The page is a wide one
-// (about 80% of the screen) so both columns get room; below 1100px they stack, projects first.
+// The Overview tab of Projects (/projects): every project this person may see, grouped by where it stands. Projects only:
+// ideas are raised and followed in the Ideas tab and decided in the Inbox (Kevin and Sam, 16 Nov 2026). A project draft
+// that an approved idea became is a project and shows here.
+// The old addresses of the ideas table, /overview and /idea?id=, still open the table and the idea in it (notices and
+// search link there): tab "ideas" draws the table alone. An idea once opened on /projects?id= moves on to /idea?id=.
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { DashboardView } from "@/components/dashboard/team/DashboardView";
@@ -17,32 +20,42 @@ export type HubTab = "projects" | "ideas";
 export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases?: boolean }) {
   const ctx = useDemo();
   const t = useT();
-  const { S, ready, demo, flag } = ctx;
-  if (!ready) return <PageSkeleton kind={tab === "ideas" ? "dashboard" : "list"} />;
+  const { S, ready, demo, flag, href } = ctx;
+  const router = useRouter();
+  const oldIdea = useSearchParams().get("id");
+  const movesOn = tab === "projects" && oldIdea !== null && flag("projects");
+  useEffect(() => { if (movesOn && oldIdea) router.replace(href("/idea?id=" + encodeURIComponent(oldIdea))); }, [movesOn, oldIdea, router, href]);
+  if (!ready || movesOn) return <PageSkeleton kind={tab === "ideas" || movesOn ? "dashboard" : "list"} />;
   if (!flag("projects")) return <DashboardView linkCases={linkCases} />;
-  const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
 
-  return (
-    <div className={styles.hub} data-wide="true">
-      <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
-      <div className={styles.hubCols}>
-        <section className={styles.hubProjects} aria-label={t("projects.pageTitle")}>
-          <div className={styles.hubHead}>
-            <h2 className={styles.hubTitle}>{t("projects.pageTitle")}{projects.length > 0 && <span className={styles.count}>{projects.length}</span>}</h2>
-          </div>
-          {projects.length > 0 ? (
-            <ProjectsList list={projects} userId={ctx.actorUserId} />
-          ) : (
-            <div className={styles.empty}>
-              <div className={styles.emptyTitle}>{t("projects.hubEmptyTitle")}</div>
-              <div className={styles.emptySub}>{t("projects.hubEmptySub")}</div>
-            </div>
-          )}
-        </section>
-        <section className={styles.hubIdeas} aria-label={t("projects.hubIdeas")}>
+  if (tab === "ideas") {
+    return (
+      <div className={styles.hub} data-wide="true">
+        <h1 className="nh-sr">{t("projects.hubIdeas")}</h1>
+        <section aria-label={t("projects.hubIdeas")}>
           <DashboardView linkCases={linkCases} embedded title={<h2 className={styles.hubTitle}>{t("projects.hubIdeas")}</h2>} />
         </section>
       </div>
+    );
+  }
+
+  const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
+  return (
+    <div className={styles.hub} data-wide="true">
+      <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
+      <section className={styles.hubProjects} aria-label={t("projects.pageTitle")}>
+        <div className={styles.hubHead}>
+          <h2 className={styles.hubTitle}>{t("projects.pageTitle")}{projects.length > 0 && <span className={styles.count}>{projects.length}</span>}</h2>
+        </div>
+        {projects.length > 0 ? (
+          <ProjectsList list={projects} userId={ctx.actorUserId} />
+        ) : (
+          <div className={styles.empty}>
+            <div className={styles.emptyTitle}>{t("projects.hubEmptyTitle")}</div>
+            <div className={styles.emptySub}>{t("projects.hubEmptySub")}</div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -11,7 +11,7 @@
 // That is written as keys: accessKeys(case) holds every key that opens it, viewerKeys(me) every key a
 // viewer carries, and canOpen is "they share one".
 import type { Role } from "@/config/roles";
-import { approverRoleIds } from "@/features/approvals/rights";
+import { approverRoleIds, approverUserIds } from "@/features/approvals/rights";
 import { EMPTY_APPROVAL_CONFIG, type ApprovalConfig } from "@/features/approvals/types";
 import type { Me, SeatRow } from "@/features/auth/identity";
 import type { ReducedProject } from "@/features/projects/types";
@@ -96,6 +96,7 @@ export function accessKeys(c: ReducedCase, ctx: VisCtx): string[] {
     const closed = project !== undefined && (project.startedDay !== null || project.status === "stopped" || project.status === "recognised");
     if (run !== null && !closed) {
       for (const id of approverRoleIds(c, { seats: ctx.seats, approvals: { ...EMPTY_APPROVAL_CONFIG, councils: ctx.approvals?.councils ?? [], roles: [] } })) role(id);
+      for (const id of approverUserIds(c)) user(id); // the named approvers of a parallel run (decision A)
     }
   }
   if (visibility === "everyone") keys.add("all");

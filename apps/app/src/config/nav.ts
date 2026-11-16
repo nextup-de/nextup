@@ -79,10 +79,10 @@ export function projectsTabAt(path: string): ProjectsTabKey | null {
  * tabs, and more than about six pages keep a side menu (Settings, the IT console). `needsServer`: the page needs the
  * database, so the offline demo has no such page.
  */
-export type SectionKey = "projects" | "dashboard" | "profile";
+export type SectionKey = "projects" | "dashboard" | "profile" | "ideas";
 export type SectionTabItem = {
   key: string; href: string; roles?: readonly Role[]; needsServer?: boolean;
-  labelKey: ProjectsTabItem["labelKey"] | "metrics.dashTitle" | "kpis.tab" | "shell.myProfile" | "shell.myReports";
+  labelKey: ProjectsTabItem["labelKey"] | "metrics.dashTitle" | "kpis.tab" | "shell.myProfile" | "shell.myReports" | "ideas.tabRaise" | "ideas.tabMine";
 };
 export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
   projects: PROJECTS_TABS,
@@ -94,6 +94,11 @@ export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
     { key: "profile", labelKey: "shell.myProfile", href: "/profile" },
     { key: "reports", labelKey: "shell.myReports", href: "/reports", needsServer: true },
   ],
+  // The Ideas tab: raise one, and follow the ones I raised. Managers raise nothing, so they get neither.
+  ideas: [
+    { key: "raise", labelKey: "ideas.tabRaise", href: "/raise", roles: ["member", "leader"] },
+    { key: "mine", labelKey: "ideas.tabMine", href: "/ideas", roles: ["member", "leader"] },
+  ],
 };
 
 export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMode: boolean }): SectionTabItem[] {
@@ -104,7 +109,7 @@ export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMod
 export function sectionTabAt(path: string, who: { role: Role; serverMode: boolean; flag: (key: FlagKey) => boolean }): { section: SectionKey; tab: string } | null {
   const projects = who.flag("projects") ? projectsTabAt(path) : null;
   if (projects) return { section: "projects", tab: projects };
-  for (const section of ["dashboard", "profile"] as const) {
+  for (const section of ["dashboard", "profile", "ideas"] as const) {
     const tab = SECTION_TABS[section].find((item) => item.href === path);
     if (tab) return sectionTabsFor(section, who).length > 1 ? { section, tab: tab.key } : null;
   }

@@ -223,7 +223,7 @@
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
         "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_discussion",
           "subjectId": "c_disc"
@@ -240,7 +240,7 @@
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
         "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_discussion",
           "subjectId": "c_disc"
@@ -259,7 +259,7 @@
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
         "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_discussion",
           "subjectId": "c_disc"
@@ -276,7 +276,7 @@
         "locale": "en",
         "subject": "Your idea goes into a discussion: Case c_disc",
         "text": "Raiser,\n\nOwner One wants a few more views before deciding, with a check-in every 3 days.\n\nDecision expected by day 6\n\nStill missing: The saving\n\nYou can add a new version on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_discussion",
           "subjectId": "c_disc"
@@ -299,7 +299,7 @@
         "locale": "en",
         "subject": "Your view is asked: Case c_disc",
         "text": "H. Sander,\n\nOwner One asks for your view on this idea before it is decided:\n\n  Case c_disc\n\nStill missing: The saving\n\nThe next check-in is today. Say what you know on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_invited",
           "subjectId": "c_disc"
@@ -316,7 +316,7 @@
         "locale": "en",
         "subject": "Your view is asked: Case c_disc",
         "text": "H. Sander,\n\nOwner One asks for your view on this idea before it is decided:\n\n  Case c_disc\n\nStill missing: The saving\n\nThe next check-in is today. Say what you know on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_invited",
           "subjectId": "c_disc"
@@ -335,7 +335,7 @@
         "locale": "en",
         "subject": "Your view is asked: Case c_disc",
         "text": "H. Sander,\n\nOwner One asks for your view on this idea before it is decided:\n\n  Case c_disc\n\nStill missing: The saving\n\nThe next check-in is today. Say what you know on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_invited",
           "subjectId": "c_disc"
@@ -352,7 +352,7 @@
         "locale": "en",
         "subject": "Your view is asked: Case c_disc",
         "text": "H. Sander,\n\nOwner One asks for your view on this idea before it is decided:\n\n  Case c_disc\n\nStill missing: The saving\n\nThe next check-in is today. Say what you know on the case: https://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_invited",
           "subjectId": "c_disc"
@@ -375,7 +375,7 @@
         "locale": "en",
         "subject": "Check-in: Case c_disc",
         "text": "Raiser,\n\nRound 1 is done and the idea is ready to decide.\n\nStill open: Cost\n\nQuote is in\n\nhttps://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_checkin",
           "subjectId": "c_disc"
@@ -392,7 +392,7 @@
         "locale": "en",
         "subject": "Check-in: Case c_disc",
         "text": "Raiser,\n\nRound 1 is done and the idea is ready to decide.\n\nStill open: Cost\n\nQuote is in\n\nhttps://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_checkin",
           "subjectId": "c_disc"
@@ -411,7 +411,7 @@
         "locale": "en",
         "subject": "Check-in: Case c_disc",
         "text": "Raiser,\n\nRound 1 is done and the idea is ready to decide.\n\nStill open: Cost\n\nQuote is in\n\nhttps://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_checkin",
           "subjectId": "c_disc"
@@ -428,7 +428,7 @@
         "locale": "en",
         "subject": "Check-in: Case c_disc",
         "text": "Raiser,\n\nRound 1 is done and the idea is ready to decide.\n\nStill open: Cost\n\nQuote is in\n\nhttps://fx.test/acme/cases/c_disc",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_disc",
         "data": {
           "eventId": "fx_checkin",
           "subjectId": "c_disc"
@@ -451,7 +451,7 @@
         "locale": "en",
         "subject": "A question about your idea: Case c_ask",
         "text": "Raiser,\n\nOwner One asks before deciding:\n\n  Which line?\n\nThe answer date waits for your reply: https://fx.test/acme/cases/c_ask",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_ask",
         "data": {
           "eventId": "fx_asked",
           "subjectId": "c_ask"
@@ -468,7 +468,7 @@
         "locale": "en",
         "subject": "A question about your idea: Case c_ask",
         "text": "Raiser,\n\nOwner One asks before deciding:\n\n  Which line?\n\nThe answer date waits for your reply: https://fx.test/acme/cases/c_ask",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_ask",
         "data": {
           "eventId": "fx_asked",
           "subjectId": "c_ask"
@@ -487,7 +487,7 @@
         "locale": "en",
         "subject": "A question about your idea: Case c_ask",
         "text": "Raiser,\n\nOwner One asks before deciding:\n\n  Which line?\n\nThe answer date waits for your reply: https://fx.test/acme/cases/c_ask",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_ask",
         "data": {
           "eventId": "fx_asked",
           "subjectId": "c_ask"
@@ -504,7 +504,7 @@
         "locale": "en",
         "subject": "A question about your idea: Case c_ask",
         "text": "Raiser,\n\nOwner One asks before deciding:\n\n  Which line?\n\nThe answer date waits for your reply: https://fx.test/acme/cases/c_ask",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_ask",
         "data": {
           "eventId": "fx_asked",
           "subjectId": "c_ask"
@@ -526,8 +526,8 @@
         "template": "loop.case.answered",
         "locale": "en",
         "subject": "Your question was answered: Case c_ans",
-        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -543,8 +543,8 @@
         "template": "loop.case.answered",
         "locale": "en",
         "subject": "Your question was answered: Case c_ans",
-        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -560,8 +560,8 @@
         "template": "loop.case.answered",
         "locale": "de",
         "subject": "Ihre Frage wurde beantwortet: Case c_ans",
-        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -577,8 +577,8 @@
         "template": "loop.case.answered",
         "locale": "de",
         "subject": "Ihre Frage wurde beantwortet: Case c_ans",
-        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -596,8 +596,8 @@
         "template": "loop.case.answered",
         "locale": "en",
         "subject": "Your question was answered: Case c_ans",
-        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -613,8 +613,8 @@
         "template": "loop.case.answered",
         "locale": "en",
         "subject": "Your question was answered: Case c_ans",
-        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser answered:\n\n  Line 3\n\nThe idea is open on the desk again; the answer is due today: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -630,8 +630,8 @@
         "template": "loop.case.answered",
         "locale": "de",
         "subject": "Ihre Frage wurde beantwortet: Case c_ans",
-        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -647,8 +647,8 @@
         "template": "loop.case.answered",
         "locale": "de",
         "subject": "Ihre Frage wurde beantwortet: Case c_ans",
-        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/cases/c_ans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat geantwortet:\n\n  Line 3\n\nDie Idee liegt wieder offen auf dem Tisch; die Antwort ist heute fällig: https://fx.test/acme/idea?id=c_ans",
+        "link": "https://fx.test/acme/idea?id=c_ans",
         "data": {
           "eventId": "fx_answered",
           "subjectId": "c_ans"
@@ -670,8 +670,8 @@
         "template": "loop.case.unanswered",
         "locale": "en",
         "subject": "No answer from the raiser: Case c_unans",
-        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -687,8 +687,8 @@
         "template": "loop.case.unanswered",
         "locale": "en",
         "subject": "No answer from the raiser: Case c_unans",
-        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -704,8 +704,8 @@
         "template": "loop.case.unanswered",
         "locale": "de",
         "subject": "Keine Antwort auf Ihre Frage: Case c_unans",
-        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -721,8 +721,8 @@
         "template": "loop.case.unanswered",
         "locale": "de",
         "subject": "Keine Antwort auf Ihre Frage: Case c_unans",
-        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -739,7 +739,7 @@
         "locale": "en",
         "subject": "Your idea goes on without your answer: Case c_unans",
         "text": "Raiser,\n\nYou did not answer this question in time, so your idea is back on the desk and will be decided without it:\n\n  Which line?\n\nYou can still write what you know on the idea: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -756,7 +756,7 @@
         "locale": "en",
         "subject": "Your idea goes on without your answer: Case c_unans",
         "text": "Raiser,\n\nYou did not answer this question in time, so your idea is back on the desk and will be decided without it:\n\n  Which line?\n\nYou can still write what you know on the idea: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -774,8 +774,8 @@
         "template": "loop.case.unanswered",
         "locale": "en",
         "subject": "No answer from the raiser: Case c_unans",
-        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -791,8 +791,8 @@
         "template": "loop.case.unanswered",
         "locale": "en",
         "subject": "No answer from the raiser: Case c_unans",
-        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner One,\n\nRaiser did not answer this question in time:\n\n  Which line?\n\nThe idea is open on your desk again and can be decided without the answer. It is due today: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -808,8 +808,8 @@
         "template": "loop.case.unanswered",
         "locale": "de",
         "subject": "Keine Antwort auf Ihre Frage: Case c_unans",
-        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -825,8 +825,8 @@
         "template": "loop.case.unanswered",
         "locale": "de",
         "subject": "Keine Antwort auf Ihre Frage: Case c_unans",
-        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "text": "Owner Two,\n\nRaiser hat diese Frage nicht rechtzeitig beantwortet:\n\n  Which line?\n\nDie Idee liegt wieder offen auf Ihrem Tisch und kann ohne die Antwort entschieden werden. Sie ist heute fällig: https://fx.test/acme/idea?id=c_unans",
+        "link": "https://fx.test/acme/idea?id=c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -843,7 +843,7 @@
         "locale": "en",
         "subject": "Your idea goes on without your answer: Case c_unans",
         "text": "Raiser,\n\nYou did not answer this question in time, so your idea is back on the desk and will be decided without it:\n\n  Which line?\n\nYou can still write what you know on the idea: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -860,7 +860,7 @@
         "locale": "en",
         "subject": "Your idea goes on without your answer: Case c_unans",
         "text": "Raiser,\n\nYou did not answer this question in time, so your idea is back on the desk and will be decided without it:\n\n  Which line?\n\nYou can still write what you know on the idea: https://fx.test/acme/cases/c_unans",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_unans",
         "data": {
           "eventId": "fx_unanswered",
           "subjectId": "c_unans"
@@ -883,7 +883,7 @@
         "locale": "en",
         "subject": "Idea withdrawn: Case c_wd",
         "text": "Owner One,\n\nRaiser withdrew this idea before it was decided:\n\n  Case c_wd\n\nWhy: Changed my mind\n\nNothing is due from you any more. The case stays readable: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -900,7 +900,7 @@
         "locale": "en",
         "subject": "Idea withdrawn: Case c_wd",
         "text": "Owner One,\n\nRaiser withdrew this idea before it was decided:\n\n  Case c_wd\n\nWhy: Changed my mind\n\nNothing is due from you any more. The case stays readable: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -917,7 +917,7 @@
         "locale": "de",
         "subject": "Idee zurückgezogen: Case c_wd",
         "text": "Owner Two,\n\nRaiser hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Case c_wd\n\nWarum: Changed my mind\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -934,7 +934,7 @@
         "locale": "de",
         "subject": "Idee zurückgezogen: Case c_wd",
         "text": "Owner Two,\n\nRaiser hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Case c_wd\n\nWarum: Changed my mind\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -953,7 +953,7 @@
         "locale": "en",
         "subject": "Idea withdrawn: Case c_wd",
         "text": "Owner One,\n\nRaiser withdrew this idea before it was decided:\n\n  Case c_wd\n\nWhy: Changed my mind\n\nNothing is due from you any more. The case stays readable: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -970,7 +970,7 @@
         "locale": "en",
         "subject": "Idea withdrawn: Case c_wd",
         "text": "Owner One,\n\nRaiser withdrew this idea before it was decided:\n\n  Case c_wd\n\nWhy: Changed my mind\n\nNothing is due from you any more. The case stays readable: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -987,7 +987,7 @@
         "locale": "de",
         "subject": "Idee zurückgezogen: Case c_wd",
         "text": "Owner Two,\n\nRaiser hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Case c_wd\n\nWarum: Changed my mind\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -1004,7 +1004,7 @@
         "locale": "de",
         "subject": "Idee zurückgezogen: Case c_wd",
         "text": "Owner Two,\n\nRaiser hat diese Idee zurückgezogen, bevor sie entschieden war:\n\n  Case c_wd\n\nWarum: Changed my mind\n\nVon Ihnen ist nichts mehr fällig. Der Fall bleibt lesbar: https://fx.test/acme/cases/c_wd",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_wd",
         "data": {
           "eventId": "fx_withdrawn",
           "subjectId": "c_wd"
@@ -1026,8 +1026,8 @@
         "template": "loop.case.handed",
         "locale": "en",
         "subject": "Passed to your desk: Case c_hand",
-        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/cases/c_hand",
-        "link": null,
+        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/idea?id=c_hand",
+        "link": "https://fx.test/acme/idea?id=c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1043,8 +1043,8 @@
         "template": "loop.case.handed",
         "locale": "en",
         "subject": "Passed to your desk: Case c_hand",
-        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/cases/c_hand",
-        "link": null,
+        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/idea?id=c_hand",
+        "link": "https://fx.test/acme/idea?id=c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1060,8 +1060,8 @@
         "template": "loop.case.handed",
         "locale": "en",
         "subject": "Passed to your desk: Case c_hand",
-        "text": "Deputy Two,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/cases/c_hand",
-        "link": null,
+        "text": "Deputy Two,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/idea?id=c_hand",
+        "link": "https://fx.test/acme/idea?id=c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1078,7 +1078,7 @@
         "locale": "en",
         "subject": "Your idea was passed on: Case c_hand",
         "text": "Raiser,\n\nOwner One passed your idea to Deputy. The answer date stays.\n\nWhy: Holiday\n\nhttps://fx.test/acme/cases/c_hand",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1095,7 +1095,7 @@
         "locale": "en",
         "subject": "Your idea was passed on: Case c_hand",
         "text": "Raiser,\n\nOwner One passed your idea to Deputy. The answer date stays.\n\nWhy: Holiday\n\nhttps://fx.test/acme/cases/c_hand",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1113,8 +1113,8 @@
         "template": "loop.case.handed",
         "locale": "en",
         "subject": "Passed to your desk: Case c_hand",
-        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/cases/c_hand",
-        "link": null,
+        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/idea?id=c_hand",
+        "link": "https://fx.test/acme/idea?id=c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1130,8 +1130,8 @@
         "template": "loop.case.handed",
         "locale": "en",
         "subject": "Passed to your desk: Case c_hand",
-        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/cases/c_hand",
-        "link": null,
+        "text": "Deputy,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/idea?id=c_hand",
+        "link": "https://fx.test/acme/idea?id=c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1147,8 +1147,8 @@
         "template": "loop.case.handed",
         "locale": "en",
         "subject": "Passed to your desk: Case c_hand",
-        "text": "Deputy Two,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/cases/c_hand",
-        "link": null,
+        "text": "Deputy Two,\n\nOwner One passed this idea to your desk:\n\n  Case c_hand\n\nWhy: Holiday\n\nThe answer date stays; it is due today: https://fx.test/acme/idea?id=c_hand",
+        "link": "https://fx.test/acme/idea?id=c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1165,7 +1165,7 @@
         "locale": "en",
         "subject": "Your idea was passed on: Case c_hand",
         "text": "Raiser,\n\nOwner One passed your idea to Deputy. The answer date stays.\n\nWhy: Holiday\n\nhttps://fx.test/acme/cases/c_hand",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1182,7 +1182,7 @@
         "locale": "en",
         "subject": "Your idea was passed on: Case c_hand",
         "text": "Raiser,\n\nOwner One passed your idea to Deputy. The answer date stays.\n\nWhy: Holiday\n\nhttps://fx.test/acme/cases/c_hand",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_hand",
         "data": {
           "eventId": "fx_handed",
           "subjectId": "c_hand"
@@ -1205,7 +1205,7 @@
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
         "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_no",
         "data": {
           "eventId": "fx_no",
           "subjectId": "c_no"
@@ -1222,7 +1222,7 @@
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
         "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_no",
         "data": {
           "eventId": "fx_no",
           "subjectId": "c_no"
@@ -1275,7 +1275,7 @@
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
         "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_no",
         "data": {
           "eventId": "fx_no",
           "subjectId": "c_no"
@@ -1292,7 +1292,7 @@
         "locale": "en",
         "subject": "Your idea was declined: Case c_no",
         "text": "Raiser,\n\nOwner One said no. Reason: Not now\n\nYou may ask for a second look until day 11.\n\nhttps://fx.test/acme/cases/c_no",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_no",
         "data": {
           "eventId": "fx_no",
           "subjectId": "c_no"
@@ -1349,7 +1349,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yes",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_one\", led by Lead One.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1366,7 +1366,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yes",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_one\", led by Lead One.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1383,7 +1383,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One accepted this idea and named you as its lead.\n\nTake the number to measure it against, then start it - due today.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1400,7 +1400,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One accepted this idea and named you as its lead.\n\nTake the number to measure it against, then start it - due today.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1453,7 +1453,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yes",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_one\", led by Lead One.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1470,7 +1470,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yes",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_one\", led by Lead One.\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1487,7 +1487,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One accepted this idea and named you as its lead.\n\nTake the number to measure it against, then start it - due today.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1504,7 +1504,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One accepted this idea and named you as its lead.\n\nTake the number to measure it against, then start it - due today.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yes",
         "data": {
           "eventId": "fx_yes",
           "subjectId": "c_yes"
@@ -1561,7 +1561,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesd",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_draft\" and is being set up by Lead One.\n\nOwner One adds: Please lead it\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1578,7 +1578,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesd",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_draft\" and is being set up by Lead One.\n\nOwner One adds: Please lead it\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1595,7 +1595,7 @@
         "locale": "en",
         "subject": "Lead a project: Project p_draft",
         "text": "Lead One,\n\nOwner One accepted this idea and asks you to lead it as P-1.\n\n  Project p_draft\n\nTake it or decline it. The project waits for your answer:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1612,7 +1612,7 @@
         "locale": "en",
         "subject": "Lead a project: Project p_draft",
         "text": "Lead One,\n\nOwner One accepted this idea and asks you to lead it as P-1.\n\n  Project p_draft\n\nTake it or decline it. The project waits for your answer:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1665,7 +1665,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesd",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_draft\" and is being set up by Lead One.\n\nOwner One adds: Please lead it\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1682,7 +1682,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesd",
         "text": "Raiser,\n\nOwner One said yes. It is now P-1 \"Project p_draft\" and is being set up by Lead One.\n\nOwner One adds: Please lead it\n\nYou will hear when it starts, when it is done, and what it changed.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1699,7 +1699,7 @@
         "locale": "en",
         "subject": "Lead a project: Project p_draft",
         "text": "Lead One,\n\nOwner One accepted this idea and asks you to lead it as P-1.\n\n  Project p_draft\n\nTake it or decline it. The project waits for your answer:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1716,7 +1716,7 @@
         "locale": "en",
         "subject": "Lead a project: Project p_draft",
         "text": "Lead One,\n\nOwner One accepted this idea and asks you to lead it as P-1.\n\n  Project p_draft\n\nTake it or decline it. The project waits for your answer:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesd",
         "data": {
           "eventId": "fx_yes_draft",
           "subjectId": "c_yesd"
@@ -1773,7 +1773,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesn",
         "text": "Raiser,\n\nOwner One said yes.\n\nhttps://fx.test/acme/cases/c_yesn",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesn",
         "data": {
           "eventId": "fx_yes_plain",
           "subjectId": "c_yesn"
@@ -1790,7 +1790,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesn",
         "text": "Raiser,\n\nOwner One said yes.\n\nhttps://fx.test/acme/cases/c_yesn",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesn",
         "data": {
           "eventId": "fx_yes_plain",
           "subjectId": "c_yesn"
@@ -1843,7 +1843,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesn",
         "text": "Raiser,\n\nOwner One said yes.\n\nhttps://fx.test/acme/cases/c_yesn",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesn",
         "data": {
           "eventId": "fx_yes_plain",
           "subjectId": "c_yesn"
@@ -1860,7 +1860,7 @@
         "locale": "en",
         "subject": "Your idea was accepted: Case c_yesn",
         "text": "Raiser,\n\nOwner One said yes.\n\nhttps://fx.test/acme/cases/c_yesn",
-        "link": null,
+        "link": "https://fx.test/acme/cases/c_yesn",
         "data": {
           "eventId": "fx_yes_plain",
           "subjectId": "c_yesn"
@@ -1917,7 +1917,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One handed this project to you.\n\nYou know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -1934,7 +1934,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One handed this project to you.\n\nYou know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -1951,7 +1951,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -1968,7 +1968,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -1985,7 +1985,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2002,7 +2002,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2021,7 +2021,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One handed this project to you.\n\nYou know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2038,7 +2038,7 @@
         "locale": "en",
         "subject": "You lead P-1: Project p_one",
         "text": "Lead One,\n\nOwner One handed this project to you.\n\nYou know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2055,7 +2055,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2072,7 +2072,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "H. Sander,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2089,7 +2089,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2106,7 +2106,7 @@
         "locale": "en",
         "subject": "Lead One now leads P-1: Project p_one",
         "text": "Raiser,\n\nLead One now leads P-1.\n\nWhy: You know the line\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_handed",
           "subjectId": "p_one"
@@ -2129,7 +2129,7 @@
         "locale": "de",
         "subject": "Sie sind dabei bei P-1: Project p_one",
         "text": "C. Ilg,\n\nLead One hat Sie zum Team hinzugefügt.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_member",
           "subjectId": "p_one"
@@ -2146,7 +2146,7 @@
         "locale": "de",
         "subject": "Sie sind dabei bei P-1: Project p_one",
         "text": "C. Ilg,\n\nLead One hat Sie zum Team hinzugefügt.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_member",
           "subjectId": "p_one"
@@ -2165,7 +2165,7 @@
         "locale": "de",
         "subject": "Sie sind dabei bei P-1: Project p_one",
         "text": "C. Ilg,\n\nLead One hat Sie zum Team hinzugefügt.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_member",
           "subjectId": "p_one"
@@ -2182,7 +2182,7 @@
         "locale": "de",
         "subject": "Sie sind dabei bei P-1: Project p_one",
         "text": "C. Ilg,\n\nLead One hat Sie zum Team hinzugefügt.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_member",
           "subjectId": "p_one"
@@ -2205,7 +2205,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_one",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_started",
           "subjectId": "p_one"
@@ -2222,7 +2222,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_one",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_started",
           "subjectId": "p_one"
@@ -2274,7 +2274,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_one",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_started",
           "subjectId": "p_one"
@@ -2291,7 +2291,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_one",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_started",
           "subjectId": "p_one"
@@ -2347,7 +2347,7 @@
         "locale": "en",
         "subject": "P-1 done: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is done. It will be measured against the number taken before it started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2364,7 +2364,7 @@
         "locale": "en",
         "subject": "P-1 done: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is done. It will be measured against the number taken before it started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2381,7 +2381,7 @@
         "locale": "en",
         "subject": "P-1 is done: Project p_one",
         "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2398,7 +2398,7 @@
         "locale": "en",
         "subject": "P-1 is done: Project p_one",
         "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2417,7 +2417,7 @@
         "locale": "en",
         "subject": "P-1 done: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is done. It will be measured against the number taken before it started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2434,7 +2434,7 @@
         "locale": "en",
         "subject": "P-1 done: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is done. It will be measured against the number taken before it started.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2451,7 +2451,7 @@
         "locale": "en",
         "subject": "P-1 is done: Project p_one",
         "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2468,7 +2468,7 @@
         "locale": "en",
         "subject": "P-1 is done: Project p_one",
         "text": "H. Sander,\n\nLead One marked P-1 as done.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_done",
           "subjectId": "p_one"
@@ -2491,7 +2491,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "Deputy,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2508,7 +2508,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "Deputy,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2525,7 +2525,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "Deputy Two,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2542,7 +2542,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "M. Chef,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2559,7 +2559,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "M. Chef,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2576,7 +2576,7 @@
         "locale": "en",
         "subject": "P-1 measured: Project p_one",
         "text": "Raiser,\n\nWhat your idea became was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2593,7 +2593,7 @@
         "locale": "en",
         "subject": "P-1 measured: Project p_one",
         "text": "Raiser,\n\nWhat your idea became was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2612,7 +2612,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "Deputy,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2629,7 +2629,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "Deputy,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2646,7 +2646,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "Deputy Two,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2663,7 +2663,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "M. Chef,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2680,7 +2680,7 @@
         "locale": "en",
         "subject": "P-1 result to confirm: Project p_one",
         "text": "M. Chef,\n\nLead One typed in the result of the 30-day check. It counts only once a second person has confirmed the number. Please check it within 5 working days.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2697,7 +2697,7 @@
         "locale": "en",
         "subject": "P-1 measured: Project p_one",
         "text": "Raiser,\n\nWhat your idea became was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2714,7 +2714,7 @@
         "locale": "en",
         "subject": "P-1 measured: Project p_one",
         "text": "Raiser,\n\nWhat your idea became was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_measured",
           "subjectId": "p_one"
@@ -2737,7 +2737,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2754,7 +2754,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2771,7 +2771,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2788,7 +2788,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2807,7 +2807,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2824,7 +2824,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Lead One,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2841,7 +2841,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2858,7 +2858,7 @@
         "locale": "en",
         "subject": "P-1: result confirmed - Project p_one",
         "text": "Raiser,\n\nA second person confirmed the result of P-1, which was measured after 30 days: better. Changeover: 42 → 30 min\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_confirmed",
           "subjectId": "p_one"
@@ -2881,7 +2881,7 @@
         "locale": "en",
         "subject": "P-1 rewarded: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is recognised: thank you.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_rewarded",
           "subjectId": "p_one"
@@ -2898,7 +2898,7 @@
         "locale": "en",
         "subject": "P-1 rewarded: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is recognised: thank you.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_rewarded",
           "subjectId": "p_one"
@@ -2917,7 +2917,7 @@
         "locale": "en",
         "subject": "P-1 rewarded: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is recognised: thank you.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_rewarded",
           "subjectId": "p_one"
@@ -2934,7 +2934,7 @@
         "locale": "en",
         "subject": "P-1 rewarded: Project p_one",
         "text": "Raiser,\n\nWhat your idea became is recognised: thank you.\n\nhttps://fx.test/acme/projects/p_one",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_one",
         "data": {
           "eventId": "fx_p_rewarded",
           "subjectId": "p_one"
@@ -2957,7 +2957,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Lead One,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -2974,7 +2974,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Lead One,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -2991,7 +2991,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "H. Sander,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3008,7 +3008,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "H. Sander,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3025,7 +3025,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Raiser,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3042,7 +3042,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Raiser,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3092,7 +3092,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Lead One,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3109,7 +3109,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Lead One,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3126,7 +3126,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "H. Sander,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3143,7 +3143,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "H. Sander,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3160,7 +3160,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Raiser,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3177,7 +3177,7 @@
         "locale": "en",
         "subject": "P-1 stopped: Project p_stop",
         "text": "Raiser,\n\nK. Head stopped this project. The reason given:\n\n  Not this quarter\n\nThe idea it came from stays in the archive.\n\nhttps://fx.test/acme/projects/p_stop",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_stop",
         "data": {
           "eventId": "fx_stop",
           "subjectId": "p_stop"
@@ -3231,7 +3231,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nLead One declined to lead it. You lead it now.\n\nThe reason given: No capacity before March\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_back",
           "subjectId": "p_back"
@@ -3248,7 +3248,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nLead One declined to lead it. You lead it now.\n\nThe reason given: No capacity before March\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_back",
           "subjectId": "p_back"
@@ -3267,7 +3267,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nLead One declined to lead it. You lead it now.\n\nThe reason given: No capacity before March\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_back",
           "subjectId": "p_back"
@@ -3284,7 +3284,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nLead One declined to lead it. You lead it now.\n\nThe reason given: No capacity before March\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_back",
           "subjectId": "p_back"
@@ -3307,7 +3307,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nNobody answered in time. You lead it now.\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_lapsed",
           "subjectId": "p_back"
@@ -3324,7 +3324,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nNobody answered in time. You lead it now.\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_lapsed",
           "subjectId": "p_back"
@@ -3343,7 +3343,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nNobody answered in time. You lead it now.\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_lapsed",
           "subjectId": "p_back"
@@ -3360,7 +3360,7 @@
         "locale": "en",
         "subject": "Back with you: P-1 Project p_back",
         "text": "Owner One,\n\nNobody answered in time. You lead it now.\n\nhttps://fx.test/acme/projects/p_back",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_back",
         "data": {
           "eventId": "fx_p_lead_lapsed",
           "subjectId": "p_back"
@@ -3383,7 +3383,7 @@
         "locale": "en",
         "subject": "You are invited to P-1: Project p_draft",
         "text": "H. Sander,\n\nLead One invites you to P-1 \"Project p_draft\" as member.\n\nAccept or decline in your inbox:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv1",
           "subjectId": "p_draft"
@@ -3400,7 +3400,7 @@
         "locale": "en",
         "subject": "You are invited to P-1: Project p_draft",
         "text": "H. Sander,\n\nLead One invites you to P-1 \"Project p_draft\" as member.\n\nAccept or decline in your inbox:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv1",
           "subjectId": "p_draft"
@@ -3419,7 +3419,7 @@
         "locale": "en",
         "subject": "You are invited to P-1: Project p_draft",
         "text": "H. Sander,\n\nLead One invites you to P-1 \"Project p_draft\" as member.\n\nAccept or decline in your inbox:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv1",
           "subjectId": "p_draft"
@@ -3436,7 +3436,7 @@
         "locale": "en",
         "subject": "You are invited to P-1: Project p_draft",
         "text": "H. Sander,\n\nLead One invites you to P-1 \"Project p_draft\" as member.\n\nAccept or decline in your inbox:\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv1",
           "subjectId": "p_draft"
@@ -3459,7 +3459,7 @@
         "locale": "de",
         "subject": "Sie verfolgen P-1: Project p_draft",
         "text": "C. Ilg,\n\nLead One hat Sie als Beobachter hinzugefügt. Sie erfahren von jedem Schritt.\n\n  Project p_draft\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_follow",
           "subjectId": "p_draft"
@@ -3476,7 +3476,7 @@
         "locale": "de",
         "subject": "Sie verfolgen P-1: Project p_draft",
         "text": "C. Ilg,\n\nLead One hat Sie als Beobachter hinzugefügt. Sie erfahren von jedem Schritt.\n\n  Project p_draft\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_follow",
           "subjectId": "p_draft"
@@ -3495,7 +3495,7 @@
         "locale": "de",
         "subject": "Sie verfolgen P-1: Project p_draft",
         "text": "C. Ilg,\n\nLead One hat Sie als Beobachter hinzugefügt. Sie erfahren von jedem Schritt.\n\n  Project p_draft\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_follow",
           "subjectId": "p_draft"
@@ -3512,7 +3512,7 @@
         "locale": "de",
         "subject": "Sie verfolgen P-1: Project p_draft",
         "text": "C. Ilg,\n\nLead One hat Sie als Beobachter hinzugefügt. Sie erfahren von jedem Schritt.\n\n  Project p_draft\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_follow",
           "subjectId": "p_draft"
@@ -3535,7 +3535,7 @@
         "locale": "en",
         "subject": "Invitation declined: P-1 Project p_draft",
         "text": "Lead One,\n\nC. Ilg declined to be sponsor.\n\nThe reason given: Too busy\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_declined",
           "subjectId": "p_draft"
@@ -3552,7 +3552,7 @@
         "locale": "en",
         "subject": "Invitation declined: P-1 Project p_draft",
         "text": "Lead One,\n\nC. Ilg declined to be sponsor.\n\nThe reason given: Too busy\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_declined",
           "subjectId": "p_draft"
@@ -3571,7 +3571,7 @@
         "locale": "en",
         "subject": "Invitation declined: P-1 Project p_draft",
         "text": "Lead One,\n\nC. Ilg declined to be sponsor.\n\nThe reason given: Too busy\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_declined",
           "subjectId": "p_draft"
@@ -3588,7 +3588,7 @@
         "locale": "en",
         "subject": "Invitation declined: P-1 Project p_draft",
         "text": "Lead One,\n\nC. Ilg declined to be sponsor.\n\nThe reason given: Too busy\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_declined",
           "subjectId": "p_draft"
@@ -3611,7 +3611,7 @@
         "locale": "en",
         "subject": "Invitation lapsed: P-1 Project p_draft",
         "text": "Lead One,\n\nM. Chef did not answer the invitation as contributor in time. It lapsed; you can invite someone else.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_lapsed",
           "subjectId": "p_draft"
@@ -3628,7 +3628,7 @@
         "locale": "en",
         "subject": "Invitation lapsed: P-1 Project p_draft",
         "text": "Lead One,\n\nM. Chef did not answer the invitation as contributor in time. It lapsed; you can invite someone else.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_lapsed",
           "subjectId": "p_draft"
@@ -3647,7 +3647,7 @@
         "locale": "en",
         "subject": "Invitation lapsed: P-1 Project p_draft",
         "text": "Lead One,\n\nM. Chef did not answer the invitation as contributor in time. It lapsed; you can invite someone else.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_lapsed",
           "subjectId": "p_draft"
@@ -3664,7 +3664,7 @@
         "locale": "en",
         "subject": "Invitation lapsed: P-1 Project p_draft",
         "text": "Lead One,\n\nM. Chef did not answer the invitation as contributor in time. It lapsed; you can invite someone else.\n\nhttps://fx.test/acme/projects/p_draft",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_draft",
         "data": {
           "eventId": "fx_inv_lapsed",
           "subjectId": "p_draft"
@@ -3687,7 +3687,7 @@
         "locale": "en",
         "subject": "New start day: P-1 Project p_move",
         "text": "Lead One,\n\nK. Head moved the start day of this project: today.\n\nThe reason given: Supplier is late\n\nhttps://fx.test/acme/projects/p_move",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_move",
         "data": {
           "eventId": "fx_p_moved",
           "subjectId": "p_move"
@@ -3704,7 +3704,7 @@
         "locale": "en",
         "subject": "New start day: P-1 Project p_move",
         "text": "Lead One,\n\nK. Head moved the start day of this project: today.\n\nThe reason given: Supplier is late\n\nhttps://fx.test/acme/projects/p_move",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_move",
         "data": {
           "eventId": "fx_p_moved",
           "subjectId": "p_move"
@@ -3723,7 +3723,7 @@
         "locale": "en",
         "subject": "New start day: P-1 Project p_move",
         "text": "Lead One,\n\nK. Head moved the start day of this project: today.\n\nThe reason given: Supplier is late\n\nhttps://fx.test/acme/projects/p_move",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_move",
         "data": {
           "eventId": "fx_p_moved",
           "subjectId": "p_move"
@@ -3740,7 +3740,7 @@
         "locale": "en",
         "subject": "New start day: P-1 Project p_move",
         "text": "Lead One,\n\nK. Head moved the start day of this project: today.\n\nThe reason given: Supplier is late\n\nhttps://fx.test/acme/projects/p_move",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_move",
         "data": {
           "eventId": "fx_p_moved",
           "subjectId": "p_move"
@@ -3763,7 +3763,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_kick",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3780,7 +3780,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_kick",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3797,7 +3797,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "H. Sander,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3814,7 +3814,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "H. Sander,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3831,7 +3831,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "M. Chef,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3848,7 +3848,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "M. Chef,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3865,7 +3865,7 @@
         "locale": "de",
         "subject": "P-1 ist gestartet: Project p_kick",
         "text": "C. Ilg,\n\nLead One hat das Projekt gestartet.\n\n  Project p_kick\n\nZiel: Changeover under 30 minutes\nFertig, wenn: Three shifts in a row\n\nErste Schritte:\n  Try it at one station - Zuständig: H. Sander\n  Make it the standard - Zuständig: noch niemand\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3882,7 +3882,7 @@
         "locale": "de",
         "subject": "P-1 ist gestartet: Project p_kick",
         "text": "C. Ilg,\n\nLead One hat das Projekt gestartet.\n\n  Project p_kick\n\nZiel: Changeover under 30 minutes\nFertig, wenn: Three shifts in a row\n\nErste Schritte:\n  Try it at one station - Zuständig: H. Sander\n  Make it the standard - Zuständig: noch niemand\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3934,7 +3934,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_kick",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3951,7 +3951,7 @@
         "locale": "en",
         "subject": "P-1 started: Project p_kick",
         "text": "Raiser,\n\nWhat your idea became has started.\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3968,7 +3968,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "H. Sander,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -3985,7 +3985,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "H. Sander,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -4002,7 +4002,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "M. Chef,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -4019,7 +4019,7 @@
         "locale": "en",
         "subject": "P-1 has started: Project p_kick",
         "text": "M. Chef,\n\nLead One started the project.\n\n  Project p_kick\n\nGoal: Changeover under 30 minutes\nDone when: Three shifts in a row\n\nFirst steps:\n  Try it at one station - H. Sander\n  Make it the standard - nobody yet\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -4036,7 +4036,7 @@
         "locale": "de",
         "subject": "P-1 ist gestartet: Project p_kick",
         "text": "C. Ilg,\n\nLead One hat das Projekt gestartet.\n\n  Project p_kick\n\nZiel: Changeover under 30 minutes\nFertig, wenn: Three shifts in a row\n\nErste Schritte:\n  Try it at one station - Zuständig: H. Sander\n  Make it the standard - Zuständig: noch niemand\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"
@@ -4053,7 +4053,7 @@
         "locale": "de",
         "subject": "P-1 ist gestartet: Project p_kick",
         "text": "C. Ilg,\n\nLead One hat das Projekt gestartet.\n\n  Project p_kick\n\nZiel: Changeover under 30 minutes\nFertig, wenn: Three shifts in a row\n\nErste Schritte:\n  Try it at one station - Zuständig: H. Sander\n  Make it the standard - Zuständig: noch niemand\n\nhttps://fx.test/acme/projects/p_kick",
-        "link": null,
+        "link": "https://fx.test/acme/projects/p_kick",
         "data": {
           "eventId": "fx_p_kickoff",
           "subjectId": "p_kick"

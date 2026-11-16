@@ -54,6 +54,12 @@ describe("loopNotices", () => {
     expect(loopMails({ ev: last, state, people: shared, baseUrl: "x" }).map((m) => m.to)).toEqual(["hs@acme.test", "js@acme.test"]);
   });
 
+  it("every notice opens something: the case for an invitee and the raiser (Kevin, 16 Nov 2026)", () => {
+    const last = ev("case.discussion", "T. Vogel", "c_m", { invited: ["H. Sander"], invitedUserIds: ["u_hs"] });
+    const out = noticesFor(people, last);
+    expect(out.map((x) => [x.userId, x.link])).toEqual([["u_hs", "https://acme.sellux.ch/cases/c_m"], ["u_js", "https://acme.sellux.ch/cases/c_m"]]);
+  });
+
   it("never tells whoever did it, by id", () => {
     const last = ev("case.asked", AUTHOR, "c_m", { text: "x" });
     expect(noticesFor(people, last)).toEqual([]);

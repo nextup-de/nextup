@@ -49,6 +49,7 @@
 
 /* The strip of a section's tabs (SectionTabs) hangs under the bar and stays with it. Smaller than the bar's places
    and the page's section heads; its tabs line up with the page. */
+.root:has(> .sectionTabs) { --nh-tabs-h: 41px; } /* the strip below: 40px of tabs and its 1px line; a page that fills the screen subtracts it too */
 .sectionTabs { position: sticky; top: var(--nh-bar-h); z-index: 49; padding: 0 var(--nh-page-x); background: rgb(255 255 255 / 0.5); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid rgb(0 0 0 / 0.06); }
 .sectionTabs nav { width: 100%; max-width: var(--nh-max); margin: 0 auto; border-bottom: 0; }
 .sectionTabs a { font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; }

@@ -148,7 +148,8 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const pathname = usePathname();
   const ideaPath = href("/idea");
   // Where the table is: the address this view opened on, or the table's home when it opened on an idea.
-  const [tablePath] = useState(() => (pathname === ideaPath ? href(flag("projects") ? "/projects" : "/overview") : pathname));
+  // The Projects page shows projects only, so with projects on as well the table's home is /overview.
+  const [tablePath] = useState(() => (pathname === ideaPath ? href("/overview") : pathname));
   useIdInUrl(linkCases ? null : sel, setSel, "id", linkCases ? undefined : { open: ideaPath, closed: tablePath });
   const [mode, setMode] = useState<IdeaMode>("idea");
   // The open idea's page the projects sidebar picked (&page=): its files, its chats, or one its people added; none is the overview.

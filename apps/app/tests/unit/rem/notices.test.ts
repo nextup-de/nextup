@@ -68,7 +68,8 @@ it("REM notices tells the desk of a revised case", () => {
   for (const m of out) {
     expect(m.subject).toBe("A new version of an idea: Shorter changeover v2");
     expect(m.text).toContain("J. Schmidt wrote version 2 of this idea:");
-    expect(m.text).toContain(`${BASE}/cases/c_m`);
+    // The desk opens the idea, where its decision bar is (16 Nov 2026); the invitee the case, where they comment.
+    expect(m.text).toContain(m.to === "tv@acme.test" ? `${BASE}/idea?id=c_m` : `${BASE}/cases/c_m`);
   }
   // A case without a discussion: the desk alone.
   expect(mails(revised("J. Schmidt"), []).map((m) => m.to)).toEqual(["tv@acme.test"]);

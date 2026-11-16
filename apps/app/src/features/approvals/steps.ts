@@ -12,6 +12,24 @@ export function currentStep(approvals: CaseApprovals | null): ApprovalStep | nul
   return approvals.steps.find((s) => s.state === "pending") ?? null;
 }
 
+/**
+ * The steps that wait for an answer now: every pending step of a parallel run (decision D: the approvers vote at once), the current step of an old
+ * sequential run. Empty when there is no active run or it is done.
+ */
+export function openSteps(approvals: CaseApprovals | null): ApprovalStep[] {
+  if (approvals === null || approvals.done) return [];
+  if (approvals.parallel === true) return approvals.steps.filter((s) => s.state === "pending");
+  const step = currentStep(approvals);
+  return step === null ? [] : [step];
+}
+
+/** The last finished run, when its no returned the idea to the raiser and nothing started since (decision B): the case waits for the raiser to send it again. */
+export function returnedRun(kase: Pick<StepCase, "approvals" | "approvalRuns"> & { status: string }): CaseApprovals | null {
+  if (kase.status !== "approval" || kase.approvals !== null) return null;
+  const last = kase.approvalRuns[kase.approvalRuns.length - 1];
+  return last !== undefined && last.parallel === true && last.outcome === "no" && last.returned ? last : null;
+}
+
 /** The identity a due fact and an answer carry for a step: '<step id>@<dueRev>', so a send-back starts a new reminder and a new escalation (D23). */
 export const dueStepId = (step: Pick<ApprovalStep, "id" | "dueRev">): string => `${step.id}@${step.dueRev}`;
 
@@ -53,7 +71,7 @@ export function lateSeat(
 
 /** What to call a step on a page or in a notice: the role's title or the council's name; empty for a role or council that no longer exists. */
 export function stepLabel(step: Pick<ApprovalStep, "kind" | "roleId" | "councilId">, config: Pick<ApprovalConfig, "councils">, roles: readonly ApprovalRoleInfo[]): { kind: ApprovalStep["kind"]; name: string } {
-  const name = step.kind === "council" ? config.councils.find((c) => c.id === step.councilId)?.name : roles.find((r) => r.id === step.roleId)?.title;
+  const name = step.kind === "council" ? config.councils.find((c) => c.id === step.councilId)?.name : step.kind === "person" ? undefined : roles.find((r) => r.id === step.roleId)?.title;
   return { kind: step.kind, name: name ?? "" };
 }
 

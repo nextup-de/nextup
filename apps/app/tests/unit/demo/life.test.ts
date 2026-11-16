@@ -122,6 +122,30 @@ describe("Musterwerk's working day", () => {
     }
   });
 
+  it("gives every focus person who holds a desk an idea of their own every day, and none twice on a rerun", () => {
+    // Like Julia Rossi (Linie A desk) and Kevin Schmid (Werkleiter desk since 16 Nov 2026), both acting in the app.
+    const julia = owners[0].id, kevin = owners[2].id;
+    const focus = new Set([julia, kevin]);
+    // Each of them has an idea on their desk from the first day on and every day after: their own desks are never decided
+    // for them, so the ideas stay until they act (the catalogue of a desk runs out once all its ideas are waiting there).
+    for (let d = 1; d <= 20; d++) {
+      const { state } = play(d, focus, focus);
+      for (const seat of ["seat_0", "seat_2"]) expect(state.cases.some((c) => c.assigneeSeatId === seat && c.open && !c.decided), `${seat} on day ${d}`).toBe(true);
+    }
+    const { written } = play(20, focus, focus);
+    const raisedOn = (seat: string, d: number) => written.filter((e) => e.type === "case.raised" && e.payload.assigneeRoleHolderId === seat && e.idemKey.startsWith(`life:${isoOf(d)}:`));
+    for (const seat of ["seat_0", "seat_2"]) expect(raisedOn(seat, 1).length, seat).toBeGreaterThan(0);
+    // A second run the same day (the loop runs every 10 minutes), after today's ideas are in, raises no second one for them.
+    const day = 1;
+    const log: CaseEvent[] = [];
+    const first = lifeDay({ slug: "mw", iso: isoOf(day), today: day, state: reduce(SEED, { events: log, day } as EventLog), promiseDays: PROMISE, routes, people, humans: focus, focus });
+    const after = [...log, ...first.map((e) => ({ id: e.id, ts: 0, day, type: e.type, actor: e.actor, actorUserId: e.actorUserId, target: e.targetId, payload: e.payload }) as CaseEvent)];
+    const again = lifeDay({ slug: "mw", iso: isoOf(day), today: day, state: reduce(SEED, { events: after, day } as EventLog), promiseDays: PROMISE, routes, people, humans: focus, focus });
+    const newKeys = new Set(first.map((e) => e.idemKey));
+    expect(first.some((e) => e.idemKey.includes(":raise:focus:"))).toBe(true);
+    expect(again.filter((e) => e.idemKey.includes(":raise:focus:") && !newKeys.has(e.idemKey)).map((e) => e.idemKey)).toEqual([]);
+  });
+
   it("decides an old generated case the clock passed to a seat that owns no route, as that seat's holder", () => {
     const up = { id: "seat_up", roleId: "role_up", label: members[0].name, userId: members[0].id, sort: 9 };
     const seed: ReduceSeed = { ...SEED, seats: [...SEED.seats!, up] };

@@ -8,10 +8,12 @@ import type { ReducedProject } from "@/features/projects/types";
 import type { InboxItem } from "../types";
 import type { InboxSourceInput } from "./cases";
 
-const link = (p: ReducedProject) => `/projects/${encodeURIComponent(p.id)}`;
+// A stalled project and one with no lead are answered in the project's head, which sits on its Idea page (?page=overview); a
+// project opens on its Overview since #958, where the weekly update is written.
+const link = (p: ReducedProject, kind: "stalled" | "vacant" | "update") => `/projects/${encodeURIComponent(p.id)}${kind === "update" ? "" : "?page=overview"}`;
 
 const item = (kind: "stalled" | "vacant" | "update", ask: InboxItem["ask"], p: ReducedProject, dueDay: number, today: number, deskRoleId: string | null): InboxItem => ({
-  id: `move:${kind}:${p.id}`, ask, kind, projectId: p.id, title: p.title, href: link(p), dueDay, late: today > dueDay, dueSoon: false, pinned: false, deskRoleId,
+  id: `move:${kind}:${p.id}`, ask, kind, projectId: p.id, title: p.title, href: link(p, kind), dueDay, late: today > dueDay, dueSoon: false, pinned: false, deskRoleId,
 });
 
 export function projectMoveItems(input: InboxSourceInput): InboxItem[] {

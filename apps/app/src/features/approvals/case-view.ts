@@ -6,7 +6,7 @@ import type { Role } from "@/config/roles";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { mayAnswerStep } from "./rights";
 import { costFlag } from "./rules";
-import { runsOf, stepLabel } from "./steps";
+import { openSteps, runsOf, stepLabel } from "./steps";
 import type { ApprovalStep, CaseCost } from "./types";
 
 type ViewCase = Pick<ReducedCase, "review" | "cost" | "approvals" | "approvalRuns" | "openingRunId" | "assigneeRoleId">;
@@ -34,6 +34,8 @@ export type RunView = {
   /** The run whose final yes decided the case (D33). */
   opening: boolean;
   supplement: boolean;
+  /** The approvers vote at once (decisions A to D): the approver line (components/cases/ApproverLine) shows this run, not the step list. */
+  parallel: boolean;
   outcome: "yes" | "no" | null;
   steps: StepView[];
 };
@@ -46,7 +48,7 @@ export type CaseApprovalView = {
   flag: boolean;
   /** The active run first, then every finished run, newest first. */
   runs: RunView[];
-  /** The current step of the active run when the viewer may answer it, with the identity the answer must carry (D22); null otherwise. */
+  /** The current step of the active run when the viewer may answer it, with the identity the answer must carry (D22); null otherwise. In a parallel run, the viewer's own step. */
   myStep: { runId: string; stepId: string; dueRev: number } | null;
 };
 
@@ -66,15 +68,14 @@ export function caseApprovalView(kase: ViewCase, state: ViewState, me: Me): Case
     answers: step.answers.map((a) => ({ answer: a.answer, reason: a.reason, conditions: a.conditions, present: a.present, day: a.day })),
   });
   const runs = runsOf(kase).map(({ run, active, opening }): RunView => ({
-    runId: run.runId, active, opening, supplement: run.supplement, outcome: run.outcome, steps: run.steps.map(stepView),
+    runId: run.runId, active, opening, supplement: run.supplement, parallel: run.parallel === true, outcome: run.outcome, steps: run.steps.map(stepView),
   }));
 
   // Who may answer: the rule is mayAnswerStep's, asked with the run, step and revision as the page shows them.
   const active = kase.approvals;
-  const current = active === null || active.done ? undefined : active.steps.find((s) => s.state === "pending");
   const actor = { role: "member" as Role, name: "", handle: null, userId: me.userId, me };
-  const myStep = active !== null && current !== undefined && mayAnswerStep(actor, kase, state, { runId: active.runId, stepId: current.id, dueRev: current.dueRev })
-    ? { runId: active.runId, stepId: current.id, dueRev: current.dueRev } : null;
+  const mine = active === null ? undefined : openSteps(active).find((s) => mayAnswerStep(actor, kase, state, { runId: active.runId, stepId: s.id, dueRev: s.dueRev }));
+  const myStep = active !== null && mine !== undefined ? { runId: active.runId, stepId: mine.id, dueRev: mine.dueRev } : null;
 
   const reviewRole = kase.review === null ? null : seatOf(kase.review.seatId)?.roleId ?? null;
   const onDeskOrReview = holdsRole(me, kase.assigneeRoleId) || holdsRole(me, reviewRole);

@@ -8,9 +8,12 @@ import { DEFAULT_OVERVIEW_RANGE, overviewFacts, parseOverviewRange, type Overvie
 import type { ProjectPage, ReducedProject, StepColumn, ToolInstance } from "@/features/projects/types";
 import { fmtNumber, timelineOf } from "@/features/projects/views";
 import { ADDABLE_PAGES, pagesOf } from "@/features/projects/pages";
-import { useRights } from "../../parts";
+import { idViewerOf, nextLine, useRights } from "../../parts";
+import { DoneSheet } from "../../result/DoneSheet";
+import { resultView } from "@/features/projects/result-view";
 import { usePageActs } from "../../page/usePageActs";
-import { useLocale, useT } from "@/i18n/client";
+import { useFormat, useLocale, useT } from "@/i18n/client";
+import { shows } from "@/lib/utils/quiet";
 import { BaselinePanel } from "../../ProjectMeasure";
 import { useProjectHints } from "../../draft/useProjectHints";
 import { HeadSlot } from "../../tools/HeadSlot";
@@ -20,11 +23,13 @@ import styles from "./Overview.module.css";
 const COLUMNS: StepColumn[] = ["todo", "doing", "blocked", "done"];
 
 export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance; jiraSynced?: boolean; aside?: ReactNode }) {
-  const { S, f, actorUserId, href, flag } = useDemo();
+  const ctx = useDemo();
+  const { S, f, actorUserId, href, flag } = ctx;
   const rights = useRights(p);
   const pageActs = usePageActs(p);
   const t = useT();
   const locale = useLocale();
+  const fmt = useFormat();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -57,6 +62,14 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
   // Empty parts stay away (Kevin, 16 Nov 2026): a project with no steps yet shows one card that asks for the first step
   // instead of zero tiles, an empty chart and empty lists. Each part shows once it has something to say.
   const noSteps = p.steps.length === 0;
+  const allDone = !noSteps && facts.columns.done > 0 && facts.columns.todo + facts.columns.doing + facts.columns.blocked === 0;
+  const doneDays = p.steps.flatMap((s) => !s.dropped && s.column === "done" && s.doneDay !== null ? [s.doneDay] : []);
+  const lastDoneDay = doneDays.length ? Math.max(...doneDays) : null;
+  // With every step done the card carries what comes next (Kevin, 16 Nov 2026): while the project runs, who may mark it done gets the
+  // same sheet as Manage › Mark it done; after that, the line says where the project stands. No new right: resultView decides.
+  const markDone = allDone ? resultView(p, S, idViewerOf(ctx), S.day, locale).done : null;
+  const [marking, setMarking] = useState(false);
+  const tilesShown = shows(facts.tiles.doneInRange) || shows(facts.tiles.waiting) || shows(facts.tiles.late) || shows(facts.tiles.stuck) || facts.tiles.nextDue !== null;
   const stepsPage = pagesOf(p, { agent: flag("agent") }).find((x) => x.tools.some((tool) => tool.kind === "board" || tool.kind === "list")) ?? null;
   const readySteps = ADDABLE_PAGES.find((x) => x.id === "steps") ?? null;
   const [adding, setAdding] = useState(false);
@@ -77,12 +90,15 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
       </HeadSlot>
       <p className={styles.status} role="status">{copied === "ok" ? t("projectHub.overviewLinkCopied") : copied === "failed" ? t("projectHub.overviewCopyFailed") : ""}</p>
 
-      {!noSteps && <div className={styles.tiles}>
-        <div className={styles.tile}><strong className={styles.num}>{facts.tiles.doneInRange}</strong><span className={styles.muted}>{t("projectHub.overviewStepsDone")}</span></div>
-        <div className={styles.tile} data-tone="waiting"><strong className={styles.num}>{facts.tiles.waiting}</strong><span className={styles.muted}>{t("projectHub.overviewWaiting")}</span></div>
-        <div className={styles.tile} data-hot={facts.tiles.late > 0 ? "true" : undefined}><strong className={styles.num}>{facts.tiles.late}</strong>
-          <span className={styles.muted}>{t("projectHub.overviewLate")}{facts.tiles.oldestLateDays !== null && ` · ${t("projectHub.overviewOldestLate", { days: facts.tiles.oldestLateDays })}`}</span></div>
-        <div className={styles.tile}>{facts.tiles.nextDue ? <><strong className={styles.num}>{f(facts.tiles.nextDue.dueDay)}</strong><span className={styles.muted}>{t("projectHub.overviewNextDue")} · {facts.tiles.nextDue.text}</span></> : <><strong className={styles.num}>—</strong><span className={styles.muted}>{t("projectHub.overviewNoNextDue")}</span></>}</div>
+      {/* A tile shows only when it has something to say: no "0", no dash (docs/DESIGN_RULES.md §2). No tile, no row. */}
+      {!noSteps && tilesShown && <div className={styles.tiles}>
+        {shows(facts.tiles.doneInRange) && <div className={styles.tile}><strong className={styles.num}>{facts.tiles.doneInRange}</strong><span className={styles.muted}>{t("projectHub.overviewStepsDone")}</span></div>}
+        {shows(facts.tiles.waiting) && <div className={styles.tile} data-tone="waiting"><strong className={styles.num}>{facts.tiles.waiting}</strong><span className={styles.muted}>{t("projectHub.overviewWaiting")}</span></div>}
+        {shows(facts.tiles.late) && <div className={styles.tile} data-hot="true"><strong className={styles.num}>{facts.tiles.late}</strong>
+          <span className={styles.muted}>{t("projectHub.overviewLate")}{facts.tiles.oldestLateDays !== null && ` · ${t("projectHub.overviewOldestLate", { days: facts.tiles.oldestLateDays })}`}</span></div>}
+        {shows(facts.tiles.stuck) && facts.tiles.longestStuck && <div className={styles.tile} data-hot="true"><strong className={styles.num}>{facts.tiles.stuck}</strong>
+          <span className={styles.muted}>{t("projectHub.overviewStuck")} · {t("projectHub.overviewStuckLongest", { text: facts.tiles.longestStuck.text, days: fmt.days(facts.tiles.longestStuck.days), column: columnLabel[facts.tiles.longestStuck.column] })}</span></div>}
+        {facts.tiles.nextDue && <div className={styles.tile}><strong className={styles.num}>{f(facts.tiles.nextDue.dueDay)}</strong><span className={styles.muted}>{t("projectHub.overviewNextDue")} · {facts.tiles.nextDue.text}</span></div>}
       </div>}
 
       <div className={styles.grid}>
@@ -95,11 +111,18 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
         {rights.addStep && (stepsPage
           ? <Link className="nh-btn nh-btn-primary nh-btn-sm" href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewAddFirstStep")}</Link>
           : readySteps && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={adding} onClick={() => void addStepsPage()}>{t("projectHub.overviewAddStepsPage")}</button>)}
+      </section> : allDone ? <section className={styles.card} data-done="true" aria-label={t("projectHub.overviewAllDone", { count: facts.columns.done })}>
+        {/* Every step is done (Kevin, 16 Nov 2026): one calm card, no full bar and no legend of zeros. */}
+        <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewAllDone", { count: facts.columns.done })}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
+        {lastDoneDay !== null && <p className={styles.muted}>{t("projectHub.overviewLastDone", { date: f(lastDoneDay) })}</p>}
+        {markDone?.can ? (marking ? <DoneSheet p={p} done={markDone} onClose={() => setMarking(false)} />
+          : <p><button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setMarking(true)}>{t("projects.markDoneEllipsis")}</button></p>)
+          : p.status !== "running" && <p className={styles.muted} data-testid="overview-stands">{nextLine(p, S.day, f, false, t, locale)}</p>}
       </section> : <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
         <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>
           <div className={styles.stack} aria-hidden="true">{COLUMNS.filter((c) => facts.columns[c] > 0).map((c) => <span key={c} className={styles.seg} data-column={c} style={{ flexGrow: facts.columns[c] }} />)}</div>
-          <ul className={styles.legend}>{COLUMNS.map((c) => <li key={c} data-column={c}>{columnLabel[c]} <strong>{facts.columns[c]}</strong></li>)}</ul>
+          <ul className={styles.legend}>{COLUMNS.filter((c) => shows(facts.columns[c])).map((c) => <li key={c} data-column={c}>{columnLabel[c]} <strong>{facts.columns[c]}</strong></li>)}</ul>
         </>}
       </section>}
 

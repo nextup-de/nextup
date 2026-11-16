@@ -5,7 +5,7 @@
 import type { Role } from "@/config/roles";
 import { holdsRole, type Me, type SeatRow } from "@/features/auth/identity";
 import type { CaseEvent } from "@/features/cases/events";
-import { approverRoleIds } from "@/features/approvals/rights";
+import { approverRoleIds, approverUserIds } from "@/features/approvals/rights";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Initiative, InitiativeStatus } from "@/features/demo/types";
@@ -49,7 +49,7 @@ export function escalatedToViewer(p: ReducedProject, v: IdViewer): boolean {
 export function approverOfDraft(cases: readonly ReducedCase[], v: IdViewer, state: Pick<State, "seats" | "approvals">): boolean {
   const me = v.me;
   if (me === undefined) return false;
-  return cases.some((c) => approverRoleIds(c, state).some((r) => me.roleIds.includes(r)));
+  return cases.some((c) => approverRoleIds(c, state).some((r) => me.roleIds.includes(r)) || (me.userId !== null && approverUserIds(c).includes(me.userId)));
 }
 
 /**
