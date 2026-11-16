@@ -16,7 +16,6 @@ import { AnswerPromise } from "@/components/cases/AnswerPromise";
 import { CaseRelations } from "@/components/cases/CaseRelations";
 import { CaseRouting } from "@/components/cases/CaseRouting";
 import { useRelatedCase } from "@/components/cases/useRelatedCase";
-import { MoveToDesk } from "@/components/cases/MoveToDesk";
 import { seesRouting } from "@/features/cases/routing-trail";
 import { ArchiveBanner, DiscussionPanel, VersionsPanel } from "@/components/dashboard/shared/CaseLoop";
 import { ApprovalsBlock } from "@/components/cases/ApprovalsBlock";
@@ -28,8 +27,6 @@ import { timelineSentence, type TimelineFacts } from "@/features/cases/timeline"
 import { stepLabel } from "@/features/approvals/steps";
 import { approverName } from "@/features/approvals/approvers";
 import { formatEuro } from "@/i18n/format";
-import { caseActions } from "@/features/cases/case-actions";
-import { followHref } from "@/features/cases/links";
 import { isHandle } from "@/features/projects/views";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
@@ -56,14 +53,10 @@ const CHIP_TONE: Record<Tone, "amber" | "green" | "grey"> = { accent: "amber", i
 export function CaseDetailView({ caseId, raiserInactive = false, embedded = false }: { caseId: string; raiserInactive?: boolean; embedded?: boolean }) {
   const ctx = useDemo();
   const related = useRelatedCase();
-  const { S, log, href, ready, f, me, role, act, openSheet, showToast, tenant, flag } = ctx;
+  const { S, log, href, ready, f, me, role, act, showToast, tenant, flag } = ctx;
   const router = useRouter();
   const t = useT();
   const [note, setNote] = useState("");
-  const [why, setWhy] = useState(""); // the reason behind "affects my team too" / the new information behind a re-evaluation
-  const [asking, setAsking] = useState(false); // the why field is open
-  const [withdrawing, setWithdrawing] = useState(false); // the raiser's "Withdraw" line is open (decision Q1.14)
-  const [withdrawWhy, setWithdrawWhy] = useState("");
   const [big, setBig] = useState<number | null>(null); // index of the screenshot shown full size
   if (!ready) return embedded ? null : <PageSkeleton kind="detail" />;
   const c = S.cases.find((x) => x.id === caseId);
@@ -84,15 +77,12 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
   const shots = loadShots(tenant.slug, c.id); // whatever this browser kept when the case was raised
   const mine = me.userId !== null && c.fromUserId === me.userId;
   const affected = affectedOn(log, c.id), comments = commentsOn(log, c.id).map((m) => readableComment(m, t));
-  const meToo = me.userId !== null && affected.some((a) => a.userId === me.userId);
   const isMe = (userId: string | null | undefined) => me.userId !== null && userId === me.userId;
   const standing = [...extra.affected, ...affected.map((a) => a.name).filter((n) => !extra.affected.includes(n))];
   const reasons = affected.filter((a) => a.why); // leads say why it hits their team
   // The score as the dashboard scores it, re-evaluated with every piece of new information posted since.
   const updates = rescoresOn(log, c.id);
   const score = scoreCase({ ...c, affected: standing.length, evidence: extra.attachments, updates: updates.length }, ctx.seed.promiseDays, t);
-  // An employee re-evaluates the score with new information; a lead (or manager) stands behind it for their team, and says why.
-  const lead = role !== "member";
   // Every desk it has been on, in order; the last one is where it is now.
   const chain = [c.handed.length ? c.handed[0].from : c.assignee, ...c.handed.map((h) => h.to)];
   if (c.escalated) chain.push(c.escalated.to);
@@ -103,12 +93,6 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
     catch { showToast(window.location.href); }
   };
   const sendNote = () => { const text = note.trim(); if (!text) return; act.comment(c.id, text); setNote(""); };
-  const sendWhy = () => {
-    const text = why.trim(); if (!text) return;
-    if (lead) { act.affect(c.id, text); showToast(t("dashboard.detailNoted", { kind: t(c.kind === "idea" ? "dashboard.detailKindIdea" : "dashboard.detailKindProblem") })); }
-    else { act.rescore(c.id, text); showToast(t("dashboard.detailRescored")); }
-    setWhy(""); setAsking(false);
-  };
   const rs = roundState(c, S.rules, S.day);
   const clock = c.status === "asked" ? t("dashboard.detailClockPaused", { n: c.clock })
     : c.status === "discussion" && rs ? (rs.ready ? t("dashboard.evReadyToDecide") : t("dashboard.detailRound", { round: rs.round, of: rs.of, tail: rs.late ? t("dashboard.detailCheckinLate", { n: -rs.left }) : t("dashboard.detailCheckinOn", { date: f(rs.dueDay) }) }))
@@ -202,7 +186,8 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
       </div>
 
       <div className={styles.stack}>
-      <SectionCard title={t("dashboard.detailYourMove")} name="your-move">
+      {/* The moves are "Your move" beside the idea (components/cases/IdeaMove); this card keeps the score and who stands behind it. */}
+      <SectionCard title={embedded ? undefined : t("dashboard.detailYourMove")} name="your-move">
         <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || t("dashboard.detailBaseOnly")}>
           <span className={styles.scoreV} data-band={scoreBand(score.value)}>{score.value}</span>
           <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
@@ -210,46 +195,6 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
         {updates.map((u) => (
           <div key={u.id} className={styles.corr}>{t("dashboard.detailCorrected", { text: u.text, by: isMe(u.byUserId) ? t("dashboard.detailYou") : u.by, date: f(u.day) })}</div>
         ))}
-        <div className={styles.actions}>
-          {c.open && lead && (
-            <button type="button" className={meToo ? styles.soft : styles.primary} aria-pressed={meToo} aria-expanded={asking}
-              onClick={() => { if (meToo) { act.affect(c.id); showToast(t("dashboard.detailWithdrawn")); } else setAsking((v) => !v); }}>
-              {meToo ? "✓ " : ""}{t("dashboard.detailAffects")}
-            </button>
-          )}
-          {c.open && !lead && (
-            <button type="button" className={styles.primary} aria-expanded={asking} onClick={() => setAsking((v) => !v)}>{t("dashboard.detailReevaluate")}</button>
-          )}
-          {mine && c.status === "asked" && <button type="button" className={styles.primary} onClick={() => openSheet("reply", c.id)}>{t("dashboard.detailAnswerQuestion")}</button>}
-          {/* Decision Q1.14: the raiser takes the idea back while nobody has decided it. */}
-          {mine && !c.decided && (c.open || c.status === "asked") && !withdrawing && (
-            <button type="button" className={styles.soft} data-testid="case-withdraw" onClick={() => setWithdrawing(true)}>{t("dashboard.detailWithdraw")}</button>
-          )}
-          {!c.open && (caseActions(c, me, role, S).betterIdea
-            ? <Link href={href(followHref(c.id))} className={styles.soft} data-testid="start-better-top">{t("caseSee.startBetter")}</Link>
-            : <Link href={href("/raise")} className={styles.soft}>{t("dashboard.detailFollowUp")}</Link>)}
-          <MoveToDesk c={c} />
-        </div>
-        {withdrawing && mine && !c.decided && (
-          <div className={styles.whyRow} role="group" aria-label={t("dashboard.detailWithdraw")}>
-            <input className={styles.note} value={withdrawWhy} onChange={(e) => setWithdrawWhy(e.target.value)} maxLength={500} autoFocus
-              aria-label={t("dashboard.detailWithdrawWhy")} placeholder={t("dashboard.detailWithdrawWhy")}
-              onKeyDown={(e) => { if (e.key === "Escape") setWithdrawing(false); }} />
-            <button type="button" className={styles.primary} data-testid="case-withdraw-confirm"
-              onClick={() => { act.withdraw(c.id, withdrawWhy.trim()); setWithdrawing(false); setWithdrawWhy(""); showToast(t("dashboard.detailWithdrawDone")); }}>
-              {t("dashboard.detailWithdrawConfirm")}
-            </button>
-            <button type="button" className={styles.soft} onClick={() => setWithdrawing(false)}>{t("common.cancel")}</button>
-          </div>
-        )}
-        {asking && c.open && (
-          <div className={styles.whyRow}>
-            <input className={styles.note} value={why} onChange={(e) => setWhy(e.target.value)} autoFocus aria-label={lead ? t("dashboard.detailWhyAffects") : t("dashboard.detailWhatIsNew")}
-              placeholder={lead ? t("dashboard.detailWhyPlaceholder") : t("dashboard.detailNewPlaceholder")}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendWhy(); } if (e.key === "Escape") setAsking(false); }} />
-            <button type="button" className={styles.primary} onClick={sendWhy} disabled={!why.trim()}>{lead ? t("dashboard.detailConfirm") : t("dashboard.detailReevaluateShort")}</button>
-          </div>
-        )}
         {standing.length > 0 && (
           <div className={styles.standing}>
             <span className={styles.avatars}>{standing.slice(0, 6).map((n) => <PersonFace key={n} name={n} size="sm" />)}</span>

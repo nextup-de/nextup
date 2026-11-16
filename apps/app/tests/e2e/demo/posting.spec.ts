@@ -1,6 +1,6 @@
 // Decision Q1.7: on the last look a member chooses to post an idea by name instead of their handle. Everything they
 // do on that case afterwards carries the same name, so the case never links the two. In demo mode.
-import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, publishTo, raisedCaseId, raiseLine, showSidebar, test } from "../helpers";
+import { answerCoach, answerRail, DEVELOP, DEVELOP_MORE, expect, publishTo, raisedCaseId, raiseLine, showSidebar, test, yourMove } from "../helpers";
 
 test("a member posts one idea by name; the case and its later events carry the name, not the handle", async ({ page }) => {
   const title = "Forklift charging point blocks the fire exit";
@@ -33,7 +33,7 @@ test("a member posts one idea by name; the case and its later events carry the n
   await page.goto(`/acme/cases/${await raisedCaseId(page, "Forklift charging point")}`);
   const main = page.getByRole("main");
   await expect(main).toContainText(/J(onas)?\.? Schmidt raised this/);
-  await page.getByTestId("case-withdraw").click();
+  await (await yourMove(page, "Withdraw")).click();
   await page.getByTestId("case-withdraw-confirm").click();
   await expect(main).toContainText(/J(onas)?\.? Schmidt withdrew the idea/);
   await expect(main).not.toContainText("Anonymous #");

@@ -43,7 +43,6 @@ import { CustomPageView } from "@/components/projects/CustomPageView";
 import { IdeaFilesView } from "@/components/projects/files/IdeaFilesView";
 import { CaseDetailView } from "@/components/dashboard/shared/CaseDetailView";
 import { CasePlanPanel } from "@/components/agent/CasePlanPanel";
-import { caseApprovalView } from "@/features/approvals/case-view";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { mayEditIdeaPages, mayReviseIdea } from "@/features/projects/sidebar";
@@ -52,7 +51,7 @@ import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
 import { useOpenItem } from "@/components/inbox/useOpenItem";
-import { DeskDecision } from "./DeskDecision";
+import { IdeaMove } from "@/components/cases/IdeaMove";
 
 // A count beside a menu label: nothing at 0 (lib/utils/quiet.ts).
 const quietCount = (n: number) => (n > 0 ? <span className={s.count}>{n}</span> : null);
@@ -174,7 +173,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const openCase = useCallback((id: string) => (linkCases ? router.push(href("/cases/" + id)) : setSel(id)), [linkCases, router, href]);
   const closeCase = useCallback(() => (linkCases ? router.push(home) : setSel(null)), [linkCases, router, home]);
   // An idea waiting on this person's desk (or asked of them) carries the same decision the inbox shows: yes, no, hand on,
-  // ask (Kevin, 16 Nov 2026). Null for everyone else and for an idea drawn as a page of its project.
+  // ask (Kevin, 16 Nov 2026), in "Your move" (IdeaMove). Null for everyone else and for an idea drawn as a page of its project.
   const deskItem = useOpenItem(inPage ? null : sel, closeCase);
 
   // Escape closes the open menu, else the open case (popovers and inputs handle their own first).
@@ -341,7 +340,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     if (phone && !inPage) {
       const ids = shown.map((r) => r.id), at = ids.indexOf(c.id);
       phoneCase = (
-        <OverviewPhone key={c.id} idea={ideaProps} chats={chats} yourMove={yourMove(row)}
+        <OverviewPhone key={c.id} idea={ideaProps} chats={chats} yourMove={yourMove(row)} move={<IdeaMove c={c} desk={deskItem} />}
           after={<CaseDetailView key={"case-" + c.id} caseId={c.id} raiserInactive={raiserInactive} embedded />}
           nav={{ index: at, count: ids.length, onPrev: () => at > 0 && openCase(ids[at - 1]), onNext: () => at < ids.length - 1 && openCase(ids[at + 1]) }} />
       );
@@ -356,13 +355,20 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
               <div className={s.div21} ref={paneRef}>
                 {/* An idea never looks like a project (Kevin, 16 Nov 2026): it says what it is and that it is not a project yet. */}
                 {view === "idea" && (inPage ? <p className={s.kindOrigin}>{t("team.ideaKindOrigin")}</p> : <IdeaKind c={c} />)}
-                {/* A pending review forwards; it never says yes (plan GAT): the review block under the card is the move then. */}
-                {view === "idea" && deskItem && !caseApprovalView(c, ctx.S, me).review?.pending && <DeskDecision brief={deskItem.brief} status={deskItem.status} onDecide={deskItem.onDecide} />}
-                {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
-                {/* The idea's one page (Kevin, 16 Nov 2026): under the card, what only the case view had - the approval line,
-                    the moves, routing, cost and the history. A project's own Idea page (inPage) is its origin and stays read only. */}
-                {view === "idea" && !inPage && <CaseDetailView key={"case-" + c.id} caseId={c.id} raiserInactive={raiserInactive} embedded />}
-                {view === "idea" && !inPage && <CasePlanPanel caseId={c.id} />}
+                {/* "Your move" beside the idea (DESIGN_RULES §9): the one place for every move on it, the desk's decision as the inbox has it,
+                    an approver's vote, the raiser's answer or resend. A project's own Idea page (inPage) is its origin and stays read only. */}
+                {view === "idea" && (inPage ? <OverviewIdea key={c.id} {...ideaProps} /> : (
+                  <div className={s.ideaGrid}>
+                    <div className={s.ideaMain}>
+                      <OverviewIdea key={c.id} {...ideaProps} />
+                      {/* The idea's one page (Kevin, 16 Nov 2026): under the card, what only the case view had - the approval line,
+                          routing, cost and the history. */}
+                      <CaseDetailView key={"case-" + c.id} caseId={c.id} raiserInactive={raiserInactive} embedded />
+                      <CasePlanPanel caseId={c.id} />
+                    </div>
+                    <aside className={s.ideaSide}><IdeaMove key={"move-" + c.id} c={c} desk={deskItem} /></aside>
+                  </div>
+                ))}
                 {view === "files" && <IdeaFilesView items={ideaProps.files} folder={c.folder} />}
                 {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}
               </div>

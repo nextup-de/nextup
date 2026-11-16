@@ -623,3 +623,13 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 .kindText { flex: 1 1 200px; min-width: 0; font-size: var(--nh-fs-sm); }
 .kindLink { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); text-decoration: none; }
 .kindOrigin { margin: 0 0 10px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+
+/* The idea's one page with "Your move" beside it (DESIGN_RULES §9): the idea and what only the case view had on the left, the move on the right,
+   staying in view while the left scrolls. A phone gets OverviewPhone, which puts the move on top. */
+.ideaGrid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.ideaMain { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ideaSide { position: sticky; top: 0; min-width: 0; }
+@media (max-width: 1020px) {
+  .ideaGrid { grid-template-columns: minmax(0, 1fr); }
+  .ideaSide { position: static; order: -1; }
+}

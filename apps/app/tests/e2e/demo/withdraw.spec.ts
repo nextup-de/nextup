@@ -1,5 +1,5 @@
 // Decision Q1.14: the raiser withdraws an idea nobody has decided yet, from the case page. In demo mode.
-import { expect, publishIdea, raisedCaseId, test } from "../helpers";
+import { expect, publishIdea, raisedCaseId, test, yourMove } from "../helpers";
 
 test("the raiser withdraws an undecided idea with a reason, and it reads as withdrawn", async ({ page }) => {
   const title = "Small tools have no tray on the changeover cart";
@@ -13,7 +13,7 @@ test("the raiser withdraws an undecided idea with a reason, and it reads as with
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/acme/cases/${id}`);
   await expect(page.getByTestId("case-answer-by").filter({ visible: true })).toBeVisible();
-  await page.getByTestId("case-withdraw").filter({ visible: true }).click();
+  await (await yourMove(page, "Withdraw")).click(); // under More: taking it back is never the filled move (DESIGN_RULES §9)
   await page.getByRole("textbox", { name: "Why, in one line (optional)" }).filter({ visible: true }).fill("We fixed it on the line ourselves.");
   await page.getByTestId("case-withdraw-confirm").filter({ visible: true }).scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
