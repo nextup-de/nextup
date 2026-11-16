@@ -3,7 +3,8 @@
 //
 // Pure: state in, verdict out. The caller reduces the company's log first, so "is this your case"
 // is answered against the same state everybody sees.
-import { isOwnIdea, mayCost, mayMoveToDesk, mayReview, unmetApprovals, validCost, yesNeedsApproval } from "@/features/approvals/rights";
+import { isOwnIdea, mayCost, mayMoveToDesk, mayResendApproval, mayReview, unmetApprovals, validCost, yesNeedsApproval } from "@/features/approvals/rights";
+import { returnedRun } from "@/features/approvals/steps";
 import { NOBODY, type Actor as IdentityActor } from "@/features/auth/identity";
 import { isProjectId, mayAppendProject } from "@/features/projects/permissions";
 import { isClockReason } from "@/features/clock/actor";
@@ -114,7 +115,8 @@ export function mayAppend(
       // Decision Q1.14: the raiser, while nobody has decided; one optional line why. After a yes only the project stops.
       if (!kase) return no(t, "cases.permNoCase");
       if (!isRaiser(kase)) return no(t, "cases.permWithdrawOwner");
-      if (kase.decided || kase.withdrawn || (kase.status !== "open" && kase.status !== "discussion" && kase.status !== "asked")) return no(t, "cases.permIdeaDecided");
+      // An idea an approver's no returned to its raiser (decision B, 16 Nov 2026) is theirs again: they may take it back too.
+      if (kase.decided || kase.withdrawn || (kase.status !== "open" && kase.status !== "discussion" && kase.status !== "asked" && returnedRun(kase) === null)) return no(t, "cases.permIdeaDecided");
       const note = ev.payload.note;
       return note === undefined || (typeof note === "string" && note.length <= 500) ? OK : no(t, "cases.permWithdrawNote");
     }
@@ -170,6 +172,8 @@ export function mayAppend(
     case ev.type === "case.provisional": {
       // 'Yes, if approved' (GAT D20, D21, D33): the rights of a yes, not while the raise is in review; a supplement asks for the approvals a decided case still lacks.
       if (!kase) return no(t, "cases.permNoCase");
+      // Send again (decision B, 16 Nov 2026): only the raiser, only an idea an approver's no returned to them.
+      if (ev.payload.resend === true) return mayResendApproval(who, kase) ? OK : no(t, returnedRun(kase) === null ? "approvals.permNotReturned" : "approvals.permResendRaiser");
       if (ev.payload.supplement === true) {
         const project = state.projects.find((p) => p.id === kase.decided?.projectId);
         if (kase.decided?.answer !== "yes" || !project || project.startedDay !== null || project.status === "stopped" || project.status === "recognised") return no(t, "approvals.permNotProvisional");

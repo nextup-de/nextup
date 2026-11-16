@@ -16,7 +16,7 @@ import { useT } from "@/i18n/client";
 import dash from "@/components/dashboard/shared/CaseDetailView.module.css";
 import styles from "./Panel.module.css";
 
-const STEP_KEY = { budget: "approvals.stepBudget", council: "approvals.stepCouncil", role: "approvals.stepRole" } as const;
+const STEP_KEY = { budget: "approvals.stepBudget", council: "approvals.stepCouncil", role: "approvals.stepRole", person: "approvals.stepRole" } as const;
 const STATE_KEY: Record<StepView["state"], MessageKey> = { pending: "approvals.stepPending", yes: "approvals.stepYes", conditions: "approvals.stepConditions", no: "approvals.stepNo" };
 
 export function ApprovalsBlock({ c }: { c: ReducedCase }) {

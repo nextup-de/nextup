@@ -11,7 +11,8 @@ import { byClock } from "@/features/clock/actor";
 import type { SeatRow } from "@/features/auth/identity";
 import { applyOverload, emptyOverload } from "@/features/overload/reduce";
 import type { OverloadState } from "@/features/overload/types";
-import { COST_BASIS_MAX, COST_EUR_MAX, EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type ApprovalStep, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
+import { COST_BASIS_MAX, COST_EUR_MAX, EMPTY_APPROVAL_CONFIG, type ApprovalConfig, type ApprovalRoleInfo, type ApprovalStep, type ApprovalStepInput, type CaseApprovals, type CaseCost, type CaseReview } from "@/features/approvals/types";
+import { returnedRun } from "@/features/approvals/steps";
 import type { CaseEvent, CaseKind, EventLog } from "./events";
 import { cycleEvents, noCategoryOf, type AnyNoCategory } from "./no";
 import { fallbackSeat } from "./stamp";
@@ -229,6 +230,19 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     c.approvalRuns.push(run);
     c.approvals = null;
   };
+  /** The steps of a new run: each pending, at revision 0; the server's due day on the first step, on every step of a parallel run (decision D). */
+  const runSteps = (runId: string, steps: ApprovalStepInput[], dueDay: unknown, parallel: boolean): ApprovalStep[] =>
+    steps.map((a, i): ApprovalStep => ({ ...a, id: `${runId}:${i}`, state: "pending", dueDay: (parallel || i === 0) && typeof dueDay === "number" ? dueDay : null, dueRev: 0, seatId: null, answers: [] }));
+  /**
+   * The draft a parallel run opens with its last yes (decision P5 as changed on 16 Nov 2026: the draft exists only once every approver said yes): the first
+   * decider's yes (their case.provisional) opens it or joins the project it named, as that yes would have, on the day of the final yes.
+   */
+  const openFromYes = (c: ReducedCase, run: CaseApprovals, ev: CaseEvent, source: Parameters<typeof openOrJoin>[2]): ReducedProject | null => {
+    const yes = c.history.find((e) => e.id === (run.yesEventId ?? run.runId));
+    if (!yes || run.projectId === null) return null;
+    const joins = book.byId[run.projectId] !== undefined;
+    return openOrJoin(book, { ...yes, day: ev.day, payload: { ...yes.payload, projectId: run.projectId, ...(joins ? {} : { draft: true }) } }, source);
+  };
 
   const apply = (ev: CaseEvent) => {
     if (applyProjectEvent(book, ev, rules)) return;
@@ -284,7 +298,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const source = { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title };
         // The run's draft is already open: the yes decides onto it, no second project. A join links the case to the project now (D21).
         const project = !first || answer !== "yes" ? null
-          : settling && run !== null ? (run.opened ? book.byId[run.projectId ?? ""] ?? null : openOrJoin(book, { ...ev, payload: { ...pl, projectId: run.projectId ?? undefined } }, source))
+          : settling && run !== null ? (run.parallel === true ? openFromYes(c, run, ev, source) : run.opened ? book.byId[run.projectId ?? ""] ?? null : openOrJoin(book, { ...ev, payload: { ...pl, projectId: run.projectId ?? undefined } }, source))
           : openOrJoin(book, ev, source);
         const category = noCategoryOf({ answer, reason: pl.reason ?? "", category: pl.category });
         const decision: Decision = {
@@ -471,7 +485,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         // Only the raiser, only before a decision (features/cases/permissions.ts); the clock stops with it.
         const c = cases[target];
         if (!c || c.fromUserId === null || uid !== c.fromUserId || c.decided || c.withdrawn) break;
-        if (c.status !== "open" && c.status !== "discussion" && c.status !== "asked") break;
+        // A returned idea (decision B) is the raiser's again: they may send it again or take it back.
+        if (c.status !== "open" && c.status !== "discussion" && c.status !== "asked" && returnedRun(c) === null) break;
         if (c.pausedSince !== null) { c.pausedDays += d - c.pausedSince; c.pausedSince = null; }
         c.withdrawn = { day: d, by: ev.actor, byUserId: uid, note: (pl.note ?? "").trim().slice(0, 500) };
         endReview(c);
@@ -526,6 +541,18 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         const steps = Array.isArray(pl.approvals) ? pl.approvals : [];
         const supplement = pl.supplement === true;
+        if (pl.resend === true) {
+          // The raiser sends a returned idea again (decision B): a fresh parallel run among the approvers the server stamped, on the first decider's yes,
+          // which still opens the draft once all of them say yes. The case stays off the desk; its clock stays stopped.
+          const last = c ? returnedRun(c) : null;
+          if (!c || last === null || steps.length === 0 || c.withdrawn !== null) break;
+          c.approvals = {
+            runId: ev.id, deciderUserId: last.deciderUserId, decidingRoleId: last.decidingRoleId, since: d, projectId: last.projectId, opened: false, supplement: false,
+            costEur: last.costEur, steps: runSteps(ev.id, steps, pl.stepDueDay, true), done: false, outcome: null, parallel: true, yesEventId: last.yesEventId ?? last.runId, returned: null,
+          };
+          c.history.push(ev);
+          break;
+        }
         if (!c || c.approvals !== null || c.withdrawn !== null || c.status === "merged" || steps.length === 0) break;
         if (supplement ? c.decided?.answer !== "yes" : c.decided !== null) break;
         // A supplement asks what the decided case still lacks, for the draft it opened (D33). It needs that draft, not started and not stopped.
@@ -534,17 +561,19 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const named = typeof pl.projectId === "string" && pl.projectId !== "" ? pl.projectId : null;
         const joins = !supplement && named !== null && book.byId[named] !== undefined;
         const projectId = supplement ? decidedProject?.id ?? null : joins ? named : named ?? `p_${ev.id}`;
-        if (!supplement && !joins) {
+        // A parallel run (decisions A to D) opens nothing now: the draft comes with the last yes (openFromYes).
+        const parallel = pl.parallel === true && !supplement;
+        if (!supplement && !joins && !parallel) {
           // A new draft opens exactly as SET's yes with a draft does; the decider is the actor.
           openOrJoin(book, { ...ev, payload: { ...pl, projectId: projectId ?? undefined, draft: true } }, { id: c.id, from: c.from, fromUserId: c.fromUserId, routeId: c.routeId, title: c.title });
         }
-        const opened = !joins;
+        const opened = !joins && !parallel;
         const project = projectId === null ? undefined : book.byId[projectId];
         if (opened && project) setWaitingForApproval(project, true);
         c.approvals = {
           runId: ev.id, deciderUserId: uid, decidingRoleId: pl.decidingRoleId ?? null, since: d, projectId, opened, supplement, costEur: typeof pl.costEur === "number" ? pl.costEur : null,
-          steps: steps.map((a, i): ApprovalStep => ({ ...a, id: `${ev.id}:${i}`, state: "pending", dueDay: i === 0 && typeof pl.stepDueDay === "number" ? pl.stepDueDay : null, dueRev: 0, seatId: null, answers: [] })),
-          done: false, outcome: null,
+          steps: runSteps(ev.id, steps, pl.stepDueDay, parallel),
+          done: false, outcome: null, ...(parallel ? { parallel: true, yesEventId: ev.id, returned: null } : {}),
         };
         if (!supplement) {
           // The case leaves the desk and its promise clock stops until the run decides it (D21).
@@ -562,10 +591,12 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         const c = cases[target];
         const run = c?.approvals ?? null;
         if (!c || run === null || run.done || pl.runId !== run.runId) break;
-        const step = currentOf(run);
+        // A parallel run takes the answer of any step still waiting (decision D); an old run only its current step's. A parallel run has no send-back.
+        const step = run.parallel === true ? run.steps.find((st) => st.id === pl.stepId && st.state === "pending") ?? null : currentOf(run);
         const answer = pl.approvalAnswer;
         if (step === null || step.id !== pl.stepId || step.dueRev !== (pl.dueRev ?? 0)) break;
         if (answer !== "yes" && answer !== "conditions" && answer !== "back" && answer !== "no") break;
+        if (run.parallel === true && answer === "back") break;
         const conditions = (pl.conditions ?? "").trim();
         step.answers.push({
           answer, reason: pl.reason ?? "", conditions: conditions === "" ? null : conditions, present: Number.isInteger(pl.present) ? (pl.present as number) : null,
@@ -578,7 +609,12 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
           if (typeof pl.nextStepDueDay === "number") step.dueDay = pl.nextStepDueDay;
         } else if (answer === "no") {
           step.state = "no";
-          if (run.supplement) {
+          if (run.parallel === true) {
+            // One no returns the idea to its raiser with the reason (decision B): the run ends, nothing was opened, nobody overrules it. The case stays off
+            // the desk until the raiser sends it again (case.provisional resend) or withdraws it.
+            run.returned = { reason: (pl.reason ?? "").trim(), by: ev.actor, byUserId: uid, day: d, stepId: step.id };
+            finishRun(c, run, "no");
+          } else if (run.supplement) {
             // A refused supplement ends its run; the decision and the draft stay, and Start stays held by what is still missing (D33).
             finishRun(c, run, "no");
             if (project) setWaitingForApproval(project, false);
@@ -586,7 +622,8 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
         } else {
           step.state = answer;
           if (answer === "conditions" && conditions !== "" && run.opened && project) addCondition(project, `Conditions (${approverOf(step, ev.actor)}): ${conditions}`);
-          const next = run.steps[index + 1];
+          // A parallel run waits for the last yes; the settle operation's case.decided then opens the draft (openFromYes).
+          const next = run.parallel === true ? undefined : run.steps[index + 1];
           if (next) next.dueDay = typeof pl.nextStepDueDay === "number" ? pl.nextStepDueDay : null;
           else if (run.supplement) {
             // The last yes of a supplement adds coverage and ends the run; no case.decided follows (D33).
