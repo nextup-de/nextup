@@ -94,7 +94,9 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   const ideaOnly = page?.tools.length === 1 && page.tools[0].kind === "idea";
   // An open draft starts and stops from its setup (Getting ready), so its other pages carry the title alone.
   const draft = isOpenDraft(p);
-  const home = !draft && (page?.tools.some((tool) => tool.kind === "overview" || tool.kind === "idea") ?? false);
+  // The project's own head (title, Manage, ⓘ, Start) sits on the Idea page. The Overview carries it until the project runs (the
+  // baseline and Start live there); a running project's Overview is a page like the Jira ones (Paper "Jira pages · new header").
+  const home = !draft && (page?.tools.some((tool) => tool.kind === "idea" || (tool.kind === "overview" && p.status !== "running")) ?? false);
   // An invitation is answered in the Team tool; a project without one answers it on its home page (the inbox link lands there).
   const answerHere = home && pendingInviteOf(p, actorUserId) !== null && !pages.some((x) => x.tools.some((tool) => tool.kind === "team"));
   return <>

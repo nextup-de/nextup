@@ -38,7 +38,7 @@ export function RangeMenu({ value, onChange }: { value: OverviewRange; onChange:
 
   return (
     <div className={styles.rangeWrap} onBlur={(e) => { if (open && !e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
-      <button ref={button} type="button" className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.rangeButton}`} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} aria-label={`${t("projectHub.overviewRangeLabel")}: ${t(LABEL[value])}`}
+      <button ref={button} type="button" className={styles.rangeButton} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} aria-label={`${t("projectHub.overviewRangeLabel")}: ${t(LABEL[value])}`}
         onClick={() => (open ? close(false) : openAt(OVERVIEW_RANGES.indexOf(value)))} onKeyDown={onButtonKey}>
         {t(LABEL[value])}<span aria-hidden="true"> ▾</span>
       </button>

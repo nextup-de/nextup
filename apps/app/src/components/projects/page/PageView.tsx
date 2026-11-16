@@ -10,7 +10,7 @@ import { isFilesPage } from "@/features/files/settings";
 import { FilesSettings, useFilesSyncedAgo } from "../files/FilesSettings";
 import { TOOL_REGISTRY } from "../tools/registry";
 import { useRights } from "../parts";
-import { headOf, headRowId } from "../tools/heads";
+import { headActionsId, headOf, headRowId } from "../tools/heads";
 import { useProjectHints } from "../draft/useProjectHints";
 import { CreateStepDialog } from "../steps/CreateStepDialog";
 import { BrowserPagesImport } from "./BrowserPagesImport";
@@ -39,7 +39,7 @@ export function PageView({ p, page, jira, agent }: PageViewProps) {
   const Browser = files ? TOOL_REGISTRY.files : null;
   return <div className={styles.page}>
     <PageHead {...headOf(page.tools[0]?.kind, { p, jira, t, editor, title, onAddStep: () => setStepOpen(true), onFilesUpload: () => window.dispatchEvent(new CustomEvent(FILES_UPLOAD)), onFilesSource: () => window.dispatchEvent(new CustomEvent(FILES_SOURCE)), ...(files && syncedAgo ? { filesSyncedAgo: syncedAgo } : {}) })}
-      {...(files ? { extra: <FilesSettings p={p} page={page} jira={jira} editor={editor} hints={stepHints} onAddTool={() => onAddAt(page.tools.length)} /> } : {})}>
+      extra={files ? <FilesSettings p={p} page={page} jira={jira} editor={editor} hints={stepHints} onAddTool={() => onAddAt(page.tools.length)} /> : <div id={headActionsId(page.id)} className={styles.actionsSlot} />}>
       {/* The slot a tool fills with its own controls (HeadSlot); empty, the head shows no row. Tools are added below; a Files page has none. */}
       {!files && <div id={headRowId(page.id)} className={styles.slot} />}
     </PageHead>
