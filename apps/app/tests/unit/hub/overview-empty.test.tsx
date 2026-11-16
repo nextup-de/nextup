@@ -35,3 +35,16 @@ it("OVERVIEW with steps: where the steps are shows; the weekly chart stays away 
   expect(markup).not.toContain("Plan the first steps");
   expect(markup).not.toContain("Steps done per week");
 });
+
+it("OVERVIEW tiles are quiet: one step in Doing for 42 days shows Stuck and no zero or dash tile", () => {
+  const markup = render(project({ steps: [step("Ursache eingrenzen", { column: "doing", movedDay: -42 })] }));
+  expect(markup).toContain("Stuck");
+  expect(markup).toContain("Ursache eingrenzen, 42 days in Doing");
+  for (const quiet of ["Steps done this week", "Waiting on someone", "No upcoming due date", ">0<", "—"]) expect(markup).not.toContain(quiet);
+});
+
+it("OVERVIEW with only a fresh step: no tile row at all", () => {
+  const markup = render(project({ steps: [step("s1", { column: "doing", movedDay: -1 })] }));
+  expect(markup).not.toContain("Stuck");
+  expect(markup).not.toContain("Steps done this week");
+});

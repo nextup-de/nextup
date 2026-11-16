@@ -171,6 +171,7 @@ a.toolChip:hover { background: var(--nh-surface); }
 .nextText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .nextTitle { font-size: var(--nh-fs-md); font-weight: 500; color: var(--nh-ink); }
 .nextMeta { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.nextMeta[data-stuck="true"] { color: var(--nh-danger); font-weight: 600; }
 .nextOwner { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
 .nextDue { justify-self: end; font-size: var(--nh-fs-sm); color: var(--nh-mute); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nextDue[data-late="true"] { color: var(--nh-danger); font-weight: 600; }

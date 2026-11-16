@@ -1,10 +1,11 @@
 "use client";
 // The Overview's "What happens next": the few open steps that matter now (nextSteps: blocked first),
 // each with its column, what holds it or how long it has waited, its owner and its due day. The board
-// itself is one tab away.
+// itself is one tab away. A step unmoved for two weeks or more (isStuck) shows its wait in the late colour.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PersonFace } from "@/components/ui/elements";
+import { isStuck } from "@/features/projects/overview-view";
 import { nextSteps, tabQuery } from "@/features/projects/tabs";
 import type { ReducedProject } from "@/features/projects/types";
 import { columnLabel } from "@/features/projects/views";
@@ -36,7 +37,7 @@ export function NextPanel({ p }: { p: ReducedProject }) {
                     {s.external && <span className={styles.code}>{s.external.key}</span>}
                     {s.text}
                   </span>
-                  <span className={styles.nextMeta}>
+                  <span className={styles.nextMeta} data-stuck={isStuck(s, S.day) ? "true" : undefined}>
                     {s.column === "blocked" && s.why ? s.why : t("projects.nextWaiting", { days: fmt.days(S.day - s.movedDay), column: columnLabel(s.column, locale) })}
                   </span>
                 </span>

@@ -1,5 +1,5 @@
 // What the Overview tool shows for a chosen range (plan HUB, D3, D6). Pure: the project, the range, today and whether the viewer is on the team in,
-// plain facts out. The numbers that are a state of the board (columns, who has what, late, next due) do not move with the range; the ones that are
+// plain facts out. The numbers that are a state of the board (columns, who has what, late, stuck, next due) do not move with the range; the ones that are
 // something that happened (done, the per-week chart, where the waiting goes, the latest list) do.
 import type { CaseEvent } from "@/features/cases/events";
 import type { ReducedProject, Step, StepColumn, StepWaitingOn } from "./types";
@@ -10,6 +10,12 @@ export const DEFAULT_OVERVIEW_RANGE: OverviewRange = "7d";
 const RANGE_DAYS: Record<Exclude<OverviewRange, "start">, number> = { "7d": 7, "14d": 14, "30d": 30 };
 const MAX_WEEKS = 26;
 const LATEST_LIMIT = 6;
+/** A started step that has not moved for this many days is stuck: two missed weekly check-ins (Kevin, 16 Nov 2026). */
+export const STUCK_DAYS = 14;
+
+/** Is this step stuck on `day`: open, in Doing or Blocked, and unmoved for STUCK_DAYS or more? */
+export const isStuck = (s: Step, day: number): boolean =>
+  !s.dropped && (s.column === "doing" || s.column === "blocked") && day - s.movedDay >= STUCK_DAYS;
 
 /** The range a `?range=` value names; anything else is the default. */
 export function parseOverviewRange(value: string | null | undefined): OverviewRange {
@@ -29,6 +35,10 @@ export type OverviewFacts = {
     /** Days the longest-late step is past its due day; null when nothing is late. */
     oldestLateDays: number | null;
     nextDue: { stepId: string; text: string; dueDay: number } | null;
+    /** Steps in Doing or Blocked that have not moved for STUCK_DAYS or more; a state of the board, so not tied to the range. */
+    stuck: number;
+    /** The step that has sat longest of the stuck ones; null when nothing is stuck. */
+    longestStuck: { stepId: string; text: string; column: StepColumn; days: number } | null;
   };
   columns: Record<StepColumn, number>;
   /** Team only: open steps per owner, most first; an unowned step is one row with a null owner. */
@@ -88,6 +98,7 @@ export function overviewFacts(p: ReducedProject, input: { range: OverviewRange; 
 
   const doneDays = steps.filter((s) => s.column === "done" && s.doneDay !== null).map((s) => s.doneDay as number);
   const lateSteps = open.filter((s) => s.dueDay !== null && day > s.dueDay);
+  const stuck = open.filter((s) => isStuck(s, day)).sort((a, b) => a.movedDay - b.movedDay);
   const nextDue = open.filter((s) => s.dueDay !== null && s.dueDay >= day).sort((a, b) => (a.dueDay as number) - (b.dueDay as number))[0];
 
   const weeks = Math.max(1, Math.min(MAX_WEEKS, Math.ceil((day - from + 1) / 7)));
@@ -128,6 +139,8 @@ export function overviewFacts(p: ReducedProject, input: { range: OverviewRange; 
       late: lateSteps.length,
       oldestLateDays: lateSteps.length ? Math.max(...lateSteps.map((s) => day - (s.dueDay as number))) : null,
       nextDue: nextDue ? { stepId: nextDue.id, text: nextDue.text, dueDay: nextDue.dueDay as number } : null,
+      stuck: stuck.length,
+      longestStuck: stuck[0] ? { stepId: stuck[0].id, text: stuck[0].text, column: stuck[0].column, days: day - stuck[0].movedDay } : null,
     },
     columns,
     whoHasWhat: [...owners.values()].sort((a, b) => b.total - a.total),
