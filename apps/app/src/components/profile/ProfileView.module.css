@@ -1,59 +1,32 @@
 /* The profile in the house look: a header, then white section cards with the iOS greys of the settings pages. */
 .page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: var(--nh-max); margin: 0 auto; padding-bottom: 32px; min-width: 0; }
-.back { align-self: flex-start; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); text-decoration: none; }
-.back:hover { color: var(--nh-brand-ink); }
-.back:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.company { font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 
 .identity { display: flex; align-items: center; gap: 18px; }
 .heroFace > span { width: 64px; height: 64px; font-size: var(--nh-fs-xl); }
 .identityText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.nameLine { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .identity h2 { margin: 0; font-size: var(--nh-fs-xl); line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); overflow-wrap: anywhere; }
-.you { padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-mute); font-size: var(--nh-fs-sm); font-weight: 600; }
 .identity p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--nh-ink); font-size: var(--nh-fs-md); }
-.affiliation { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
+.affiliation { color: var(--nh-mute); font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
+a.affiliation { text-decoration: none; }
+a.affiliation:hover { color: var(--nh-brand-ink); }
 .affiliation:empty { display: none; }
-.contact { display: inline-flex; align-items: center; gap: 12px; flex: none; height: 36px; padding-inline: 14px; border-radius: 8px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; }
-.contact:hover { background: var(--nh-brand-line); color: var(--nh-brand-ink); }
-.contact:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.stats div { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 12px; background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / 6%); }
-.stats strong { font-size: var(--nh-fs-xl); line-height: 26px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--nh-ink); }
-.stats span { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
 
 .columns { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 16px; }
 .mainColumn, .sideColumn { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.privacy { display: block; }
-.count { display: grid; place-items: center; min-width: 26px; height: 26px; padding-inline: 7px; border-radius: 13px; background: var(--nh-fill); color: var(--nh-mute); font-size: var(--nh-fs-sm); font-weight: 600; }
 
 .workList { display: flex; flex-direction: column; }
 .workItem { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 12px; margin-inline: -12px; border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }
 .workItem:first-child { border-top: 0; }
 .workItem:hover, .person:hover { background: var(--nh-surface); }
-.workItem:focus-visible, .person:focus-visible, .myCases:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.workIcon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--nh-fill); color: var(--nh-mute); font-size: var(--nh-fs-md); }
+.workItem:focus-visible, .person:focus-visible, .workIcon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--nh-fill); color: var(--nh-mute); font-size: var(--nh-fs-md); }
 .workText { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .workText strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
 .workText small, .person small { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
 .status { padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); font-weight: 500; white-space: nowrap; }
 .arrow { color: var(--nh-ghost); }
 .empty { color: var(--nh-mute); font-size: var(--nh-fs-md); }
-.myCases { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / 6%); color: inherit; text-decoration: none; }
-.myCases:hover { background: var(--nh-surface); }
-.myCases span:first-child { display: flex; flex-direction: column; }
-.myCases strong { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
-.myCases small { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.myCases > span:last-child { color: var(--nh-brand-ink); }
 
-.details { margin: 0; display: flex; flex-direction: column; }
-.details div { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--nh-line-soft); }
-.details div:first-child { border-top: 0; padding-top: 0; }
-.details dt { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.details dd { margin: 0; overflow-wrap: anywhere; font-size: var(--nh-fs-md); font-weight: 500; color: var(--nh-ink); }
-.details dd > span { font-weight: 400; }
-.details a { color: var(--nh-brand-ink); }
 .people { display: flex; flex-direction: column; }
 .person { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; margin-inline: -12px; border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }
 .person:first-child { border-top: 0; }
@@ -73,9 +46,6 @@
 @media (max-width: 600px) {
   .identity { flex-wrap: wrap; }
   .identityText { flex-basis: calc(100% - 84px); }
-  .contact { width: 100%; justify-content: space-between; height: 44px; }
-  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .stats div { padding: 12px; }
   .status { display: none; }
   .segment { height: 40px; }
 }

@@ -32,6 +32,7 @@ test("UIP kpis and profile", async ({ page }) => {
   await test.step("the profile shows the person and a mail switch saves and goes back", async () => {
     await page.goto(`/${SLUG}/profile`);
     await expect(page.getByRole("heading", { name: MANAGER.name })).toBeVisible();
+    await page.locator('[data-name="mails"] > summary').click(); // Mails is one line that opens (DESIGN_RULES §9)
     const mails = page.getByRole("switch", { name: /Discussions and projects/ });
     const before = await mails.isChecked();
     await mails.click();

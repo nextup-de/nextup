@@ -5,7 +5,7 @@
 import { useT } from "@/i18n/client";
 import type { M365Card as Card } from "@/server/m365-profile";
 import { disconnectM365Action } from "@/server/actions/m365";
-import { SectionCard } from "@/components/ui/elements";
+import { Fold } from "@/components/ui/elements";
 import styles from "./M365Card.module.css";
 
 // A product name, not a sentence: it is spelled the same in every language.
@@ -15,26 +15,24 @@ export function M365Card({ card }: { card: Card }) {
   const t = useT();
   const connected = card.connectedAt !== null;
   return (
-    <section aria-label={PRODUCT}>
-      <SectionCard title={PRODUCT} name="m365" action={connected ? <span className={styles.state}>{card.renew ? t("profile.m365Renew") : t("profile.m365Connected")}</span> : undefined}>
-        {card.notice ? <p className={card.notice.tone === "error" ? styles.error : styles.ok} role={card.notice.tone === "error" ? "alert" : "status"}>{card.notice.text}</p> : null}
-        <p className={styles.text}>
-          {connected
-            ? t("profile.m365ConnectedText", { since: card.connectedAt ?? "" })
-            : t("profile.m365Offer")}
-        </p>
-        {card.renew ? <p className={styles.error}>{t("profile.m365Refused")}</p> : null}
-        <div className={styles.actions}>
-          {card.available && (!connected || card.renew) ? <a className={styles.primary} href={card.connectHref}>{connected ? t("profile.m365ConnectAgain") : t("profile.m365Connect")}</a> : null}
-          {connected ? (
-            <form action={disconnectM365Action}>
-              <input type="hidden" name="slug" value={card.slug} />
-              <button type="submit" className={styles.soft}>{t("profile.m365Disconnect")}</button>
-            </form>
-          ) : null}
-        </div>
-        {!card.available && !card.notice ? <p className={styles.note}>{t("profile.m365Off")}</p> : null}
-      </SectionCard>
-    </section>
+    <Fold name="m365" summary={PRODUCT} meta={connected ? (card.renew ? t("profile.m365Renew") : t("profile.m365Connected")) : undefined} open={card.notice !== null || card.renew}>
+      {card.notice ? <p className={card.notice.tone === "error" ? styles.error : styles.ok} role={card.notice.tone === "error" ? "alert" : "status"}>{card.notice.text}</p> : null}
+      <p className={styles.text}>
+        {connected
+          ? t("profile.m365ConnectedText", { since: card.connectedAt ?? "" })
+          : t("profile.m365Offer")}
+      </p>
+      {card.renew ? <p className={styles.error}>{t("profile.m365Refused")}</p> : null}
+      <div className={styles.actions}>
+        {card.available && (!connected || card.renew) ? <a className={styles.primary} href={card.connectHref}>{connected ? t("profile.m365ConnectAgain") : t("profile.m365Connect")}</a> : null}
+        {connected ? (
+          <form action={disconnectM365Action}>
+            <input type="hidden" name="slug" value={card.slug} />
+            <button type="submit" className={styles.soft}>{t("profile.m365Disconnect")}</button>
+          </form>
+        ) : null}
+      </div>
+      {!card.available && !card.notice ? <p className={styles.note}>{t("profile.m365Off")}</p> : null}
+    </Fold>
   );
 }

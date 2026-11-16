@@ -207,6 +207,7 @@ test.describe("LNG acceptance: every route renders in German without an English 
   test("the language switch on the profile page turns a page without a cookie to German", async ({ page }) => {
     await page.goto("/acme/profile");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.locator('[data-name="language"] > summary').click(); // Language is one line that opens (DESIGN_RULES §9)
     await page.getByRole("radio", { name: "Deutsch" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
   });
