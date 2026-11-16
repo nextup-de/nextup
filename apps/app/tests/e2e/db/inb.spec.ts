@@ -212,6 +212,12 @@ test.describe.serial("INB acceptance", () => {
         if (c.title === PROJECT.title) await expect(listed).toHaveAttribute("data-read", "false");
         else await expect(listed, `${c.title} is a row, its notice is not repeated`).toHaveCount(0);
       }
+      // Mark as read marks the listed one, on the page and in the outbox (as in nextup#973).
+      const projectRaised = raisedNotices.find((x) => x.subject.includes(PROJECT.title))!;
+      const notice = page.getByTestId("inbox-notice").filter({ hasText: projectRaised.subject });
+      await notice.getByRole("button", { name: "Mark as read" }).click();
+      await expect(notice).toHaveAttribute("data-read", "true");
+      await expect.poll(async () => (await getDb().outboxMessage.findUniqueOrThrow({ where: { id: projectRaised.id } })).readAt !== null).toBe(true);
       await page.context().close();
     });
 
