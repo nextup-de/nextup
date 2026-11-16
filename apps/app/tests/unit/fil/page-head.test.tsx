@@ -73,7 +73,9 @@ it("FIL page head: a page with an unknown first tool shows its title only", () =
   expect(html).not.toContain("browse/KAN");
   expect(html).not.toContain(t("projectPages.addStep"));
   const c = { p, jira: synced, t, editor: true, title: "X", onAddStep: vi.fn(), onFilesUpload: vi.fn(), onFilesSource: vi.fn() } as HeadProps;
-  expect(headOf("requests", c)).toEqual({ title: "X" });
+  // Requests carry the Jira pill and Open in Jira while the project syncs, but no Add step (Paper "Jira pages · new header").
+  expect(headOf("requests", c)).toMatchObject({ title: "X", source: { system: "jira" } });
+  expect(headOf("requests", c).primary).toBeUndefined();
   expect(headOf(undefined, c)).toEqual({ title: "X" });
   // The Overview carries the Jira pill while the project syncs, but no Open in Jira and no Add step (Paper "Jira pages · new header").
   const overview = headOf("overview", c);
