@@ -148,8 +148,10 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const pathname = usePathname();
   const ideaPath = href("/idea");
   // Where the table is: the address this view opened on, or the table's home when it opened on an idea.
-  // The Projects page shows projects only, so with projects on as well the table's home is /overview.
-  const [tablePath] = useState(() => (pathname === ideaPath ? href("/overview") : pathname));
+  // With projects on, ideas are no part of Projects (Kevin and Sam, 16 Nov 2026): an idea opened at its own address closes to
+  // the Inbox, where ideas are decided. Without projects the table's home is /overview.
+  const home = href(flag("projects") ? "/inbox" : "/overview");
+  const [tablePath] = useState(() => (pathname === ideaPath ? home : pathname));
   useIdInUrl(linkCases ? null : sel, setSel, "id", linkCases ? undefined : { open: ideaPath, closed: tablePath });
   const [mode, setMode] = useState<IdeaMode>("idea");
   // The open idea's page the projects sidebar picked (&page=): its files, its chats, or one its people added; none is the overview.
@@ -161,7 +163,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const prevSel = useRef<string | null>(null);
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const openCase = useCallback((id: string) => (linkCases ? router.push(href("/cases/" + id)) : setSel(id)), [linkCases, router, href]);
-  const closeCase = useCallback(() => (linkCases ? router.push(href("/overview")) : setSel(null)), [linkCases, router, href]);
+  const closeCase = useCallback(() => (linkCases ? router.push(home) : setSel(null)), [linkCases, router, home]);
   // An idea waiting on this person's desk (or asked of them) carries the same decision the inbox shows: yes, no, hand on,
   // ask (Kevin, 16 Nov 2026). Null for everyone else and for an idea drawn as a page of its project.
   const deskItem = useOpenItem(inPage ? null : sel, closeCase);

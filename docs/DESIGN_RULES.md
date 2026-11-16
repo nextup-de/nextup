@@ -1,6 +1,6 @@
 # Design rules
 
-> **Updated 2026-11-12.** The fixed rules every screen follows. Kevin decides them; a PR that breaks one changes, not
+> **Updated 2026-11-16.** The fixed rules every screen follows. Kevin decides them; a PR that breaks one changes, not
 > the rule. Each rule names where it is enforced. "Not tested" means no check guards it yet, so reviewers must.
 
 NextUp is a quiet product: one question per screen, nothing drawn that has nothing to say. When a design choice is
@@ -75,6 +75,31 @@ still calls black the action colour (Visual Foundations), this file and its own 
 | No blue outside `tokens.css`: changing `--nh-brand` changes it everywhere. The colour allowlist can only shrink. | `design-guard.spec.ts`; `colors.test.ts` |
 | Font sizes only from the scale 12/13/15/17/20/24/28/34 (16 for inputs); nothing under 12px; no raw px, rem or calc font sizes. | `fluid.test.ts`; Stylelint |
 | Motion respects reduced motion. Focused fields get the blue focus ring (`--nh-brand-focus`). | `tests/unit/design/motion-focus.test.ts` (eleven style files still animate without a reduced-motion rule: listed there) |
+
+## 8. Ideas and projects are separate
+
+Decided by Kevin and Sam on 16 Nov 2026 (`nextup-context/decisions/2026-11-16_ideen-projekte-getrennt.md`). The line
+between them is the **last yes**: before it the thing is an idea, after it a project. Nothing on screen blurs that line.
+
+**The way from idea to project**
+
+1. **Idea.** Raised on the Ideas tab. It has exactly one page, where its approval and its discussion happen. The raiser
+   follows it under Ideas › Mine; whoever must decide finds it in the Inbox; the Feed shows it to everyone.
+2. **Approval.** The desk says yes first, then up to 3 named approvers vote at once. One no goes back to the raiser with
+   its reason; the raiser may change the idea and send it again.
+3. **Setup (project draft).** Only after the last yes. The lead takes it, invites people and takes the baseline. From
+   here on it lives under Projects.
+4. **Project.** The team works on it: steps, plan, results, files.
+
+| Rule | Enforced by |
+|---|---|
+| **Four places, one job each:** Ideas = raise and follow, Inbox = decide, Feed = social, Projects = do. | this file; not tested as a whole |
+| **No idea under Projects.** Projects lists projects only, in every list, tab, filter, pill and sidebar, for every role and behind every flag. A waiting idea never sits next to a project. | `tests/unit/projects-area/no-ideas.test.tsx`; e2e `the Projects page lists projects only…` (`tests/e2e/demo/projects.spec.ts`) |
+| **An idea's page belongs to the Inbox.** On `/cases/<id>` and `/idea?id=` the bar marks the Inbox; the sidebar shows that idea's own pages and the way back to the Inbox, never the projects list or the Projects tabs. Closing an idea goes to the Inbox. | `tests/unit/design/section-tabs.test.ts`; e2e `an idea opened from the ideas table…` (`tests/e2e/demo/projects.spec.ts`) |
+| **Decisions (every yes and no) is a tab of the Inbox,** not of Projects. | `tests/unit/loop/decisions-nav.test.ts` |
+| **A project draft appears under Projects only after the last yes,** never at the first. | GAT tests (`tests/unit/gat/parallel.test.ts`) |
+| **A project's Idea page is its origin, read only:** who raised it, why, who said yes, what was discussed. It carries no project actions (Start, Manage, Mark done) and the project's own head (title, status, "Your move") stays above it. The project's moves live in its head and on its Overview. | not tested |
+| **Where a design wants ideas and projects on one screen** ("everything I have going on"), that screen is the Inbox (what needs me) or Ideas › Mine (what I raised), never Projects. | not tested |
 
 ## 7. Never
 

@@ -265,19 +265,18 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 });
 
-// With the flag overviewList (on for demo companies) the Projects page is one Overview list of the open ideas and the
-// projects; with it off it shows projects only (Kevin and Sam, 16 Nov 2026, tests/unit/projects-area/no-ideas). The ideas
-// table keeps its old address, /overview, either way.
-test("the Projects page is the Overview list of ideas and projects; the ideas table stays at /overview", async ({ page }) => {
+// Projects shows projects only (Kevin and Sam, 16 Nov 2026): the Overview list (flag overviewList, on for demo companies) lists
+// projects and no idea. The ideas table keeps its old address, /overview.
+test("the Projects page lists projects only; the ideas table stays at /overview", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Overview", level: 2 })).toBeVisible();
   const list = page.getByRole("table", { name: "Overview" });
   await expect(list.getByRole("link", { name: /^P-\d+ / }).first()).toBeVisible();
-  await expect(list.locator('a[href*="/idea?id="]').first()).toBeVisible();
+  await expect(page.locator('main a[href*="/idea?id="]')).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /^Ideas/ })).toHaveCount(0);
   await expect(page.getByRole("table", { name: "Problems and ideas" })).toHaveCount(0);
   await page.goto("/acme/overview");
   await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
@@ -287,7 +286,7 @@ test("the Projects page is the Overview list of ideas and projects; the ideas ta
 
 test("an idea opened from the ideas table has its own address, /idea?id=", async ({ page }) => {
   const idea = /\/acme\/idea\?id=[^&]+$/;
-  const projects = /\/acme\/overview$/;
+  const inbox = /\/acme\/inbox$/;
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await page.goto("/acme/overview");
@@ -300,24 +299,23 @@ test("an idea opened from the ideas table has its own address, /idea?id=", async
   await expect(heading).toBeVisible();
   const at = page.url();
 
-  // A reload and a link land on the same idea; the nav still shows where it opened from.
+  // A reload and a link land on the same idea. An idea is no part of Projects (Kevin and Sam, 16 Nov 2026): the nav shows the Inbox.
   await page.reload();
   await expect(heading).toBeVisible();
   await expect(page).toHaveURL(at);
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /^Inbox/ })).toHaveAttribute("aria-current", "page");
 
-  // Closing goes to the table; Back reopens the idea and Forward closes it again.
+  // Opened at its own address, closing goes to the Inbox; Back reopens the idea and Forward closes it again.
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(projects);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(inbox);
   await page.goBack();
   await expect(page).toHaveURL(at);
   await expect(heading).toBeVisible();
   await page.goForward();
-  await expect(page).toHaveURL(projects);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(inbox);
 
   // The nav link leaves an idea opened in place for the projects, and the old addresses still land on the idea.
+  await page.goto("/acme/overview");
   await table.getByRole("row").nth(1).click();
   await expect(page).toHaveURL(idea);
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
@@ -347,8 +345,7 @@ test("Back right after closing an idea reopens it, on a slow machine too", async
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/acme\/overview$/);
-  await expect(table).toBeVisible();
+  await expect(page).toHaveURL(/\/acme\/inbox$/); // opened at its own address (the reload), it closes to the Inbox
   await page.goBack();
   await expect(page).toHaveURL(/\/acme\/idea\?id=/);
   await expect(heading).toBeVisible({ timeout: 15_000 });
