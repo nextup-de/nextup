@@ -47,6 +47,8 @@ import { isOpenDraft, onDraft, visibleProjectsFor } from "@/features/projects/vi
 import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
+import { useOpenItem } from "@/components/inbox/useOpenItem";
+import { DeskDecision } from "./DeskDecision";
 
 // A count beside a menu label: nothing at 0 (lib/utils/quiet.ts).
 const quietCount = (n: number) => (n > 0 ? <span className={s.count}>{n}</span> : null);
@@ -144,6 +146,9 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const openCase = useCallback((id: string) => (linkCases ? router.push(href("/cases/" + id)) : setSel(id)), [linkCases, router, href]);
   const closeCase = useCallback(() => (linkCases ? router.push(href("/overview")) : setSel(null)), [linkCases, router, href]);
+  // An idea waiting on this person's desk (or asked of them) carries the same decision the inbox shows: yes, no, hand on,
+  // ask (Kevin, 16 Nov 2026). Null for everyone else and for an idea drawn as a page of its project.
+  const deskItem = useOpenItem(inPage ? null : sel, closeCase);
 
   // Escape closes the open menu, else the open case (popovers and inputs handle their own first).
   useEffect(() => {
@@ -321,6 +326,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
           <div className={s.div20}>
             {view !== "chats" && (
               <div className={s.div21} ref={paneRef}>
+                {view === "idea" && deskItem && <DeskDecision brief={deskItem.brief} status={deskItem.status} onDecide={deskItem.onDecide} />}
                 {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
                 {view === "files" && <IdeaFilesView items={ideaProps.files} />}
                 {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}

@@ -7,6 +7,9 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { DEFAULT_OVERVIEW_RANGE, overviewFacts, parseOverviewRange, type OverviewRange, type WaitingKey } from "@/features/projects/overview-view";
 import type { ProjectPage, ReducedProject, StepColumn, ToolInstance } from "@/features/projects/types";
 import { fmtNumber, timelineOf } from "@/features/projects/views";
+import { ADDABLE_PAGES, pagesOf } from "@/features/projects/pages";
+import { useRights } from "../../parts";
+import { usePageActs } from "../../page/usePageActs";
 import { useLocale, useT } from "@/i18n/client";
 import { BaselinePanel } from "../../ProjectMeasure";
 import { useProjectHints } from "../../draft/useProjectHints";
@@ -17,7 +20,9 @@ import styles from "./Overview.module.css";
 const COLUMNS: StepColumn[] = ["todo", "doing", "blocked", "done"];
 
 export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance; jiraSynced?: boolean; aside?: ReactNode }) {
-  const { S, f, actorUserId, href } = useDemo();
+  const { S, f, actorUserId, href, flag } = useDemo();
+  const rights = useRights(p);
+  const pageActs = usePageActs(p);
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -49,6 +54,19 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
   };
 
   const maxWho = Math.max(1, ...facts.whoHasWhat.map((r) => r.total));
+  // Empty parts stay away (Kevin, 16 Nov 2026): a project with no steps yet shows one card that asks for the first step
+  // instead of zero tiles, an empty chart and empty lists. Each part shows once it has something to say.
+  const noSteps = p.steps.length === 0;
+  const stepsPage = pagesOf(p, { agent: flag("agent") }).find((x) => x.tools.some((tool) => tool.kind === "board" || tool.kind === "list")) ?? null;
+  const readySteps = ADDABLE_PAGES.find((x) => x.id === "steps") ?? null;
+  const [adding, setAdding] = useState(false);
+  const addStepsPage = async () => {
+    if (!readySteps) return;
+    setAdding(true);
+    const result = await pageActs.create({ pageId: readySteps.id, title: readySteps.title, icon: readySteps.icon, tools: readySteps.tools.map(({ kind }) => ({ kind })) });
+    setAdding(false);
+    if (result.ok) router.push(href(`/projects/${p.id}?page=${readySteps.id}`));
+  };
   return (
     <div className={styles.overview} aria-label={t("projectHub.overviewAriaLabel")}>
       <h2 className="nh-sr">{t("projectHub.overviewTitle")}</h2>
@@ -59,27 +77,33 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
       </HeadSlot>
       <p className={styles.status} role="status">{copied === "ok" ? t("projectHub.overviewLinkCopied") : copied === "failed" ? t("projectHub.overviewCopyFailed") : ""}</p>
 
-      <div className={styles.tiles}>
+      {!noSteps && <div className={styles.tiles}>
         <div className={styles.tile}><strong className={styles.num}>{facts.tiles.doneInRange}</strong><span className={styles.muted}>{t("projectHub.overviewStepsDone")}</span></div>
         <div className={styles.tile} data-tone="waiting"><strong className={styles.num}>{facts.tiles.waiting}</strong><span className={styles.muted}>{t("projectHub.overviewWaiting")}</span></div>
         <div className={styles.tile} data-hot={facts.tiles.late > 0 ? "true" : undefined}><strong className={styles.num}>{facts.tiles.late}</strong>
           <span className={styles.muted}>{t("projectHub.overviewLate")}{facts.tiles.oldestLateDays !== null && ` · ${t("projectHub.overviewOldestLate", { days: facts.tiles.oldestLateDays })}`}</span></div>
         <div className={styles.tile}>{facts.tiles.nextDue ? <><strong className={styles.num}>{f(facts.tiles.nextDue.dueDay)}</strong><span className={styles.muted}>{t("projectHub.overviewNextDue")} · {facts.tiles.nextDue.text}</span></> : <><strong className={styles.num}>—</strong><span className={styles.muted}>{t("projectHub.overviewNoNextDue")}</span></>}</div>
-      </div>
+      </div>}
 
       <div className={styles.grid}>
       <div className={styles.main}>
       {facts.showBaseline && <BaselinePanel p={p} hint={baseHint} />}
 
-      <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
-        <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3><Link className={styles.link} href={href(`/projects/${p.id}?page=steps`)}>{t("projectHub.overviewOpenBoard")} →</Link></div>
+      {noSteps ? <section className={styles.card} data-empty="true" aria-label={t("projectHub.overviewStartTitle")}>
+        <h3 className={styles.cardTitle}>{t("projectHub.overviewStartTitle")}</h3>
+        <p className={styles.muted}>{t(rights.addStep ? "projectHub.overviewStartText" : "projectHub.overviewStartTextReader")}</p>
+        {rights.addStep && (stepsPage
+          ? <Link className="nh-btn nh-btn-primary nh-btn-sm" href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewAddFirstStep")}</Link>
+          : readySteps && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={adding} onClick={() => void addStepsPage()}>{t("projectHub.overviewAddStepsPage")}</button>)}
+      </section> : <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
+        <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>{stepsPage && <Link className={styles.link} href={href(`/projects/${p.id}?page=${stepsPage.id}`)}>{t("projectHub.overviewOpenBoard")} →</Link>}</div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>
           <div className={styles.stack} aria-hidden="true">{COLUMNS.filter((c) => facts.columns[c] > 0).map((c) => <span key={c} className={styles.seg} data-column={c} style={{ flexGrow: facts.columns[c] }} />)}</div>
           <ul className={styles.legend}>{COLUMNS.map((c) => <li key={c} data-column={c}>{columnLabel[c]} <strong>{facts.columns[c]}</strong></li>)}</ul>
         </>}
-      </section>
+      </section>}
 
-      {viewerOnTeam && <section className={styles.card} aria-label={t("projectHub.overviewWhoHasWhat")}>
+      {viewerOnTeam && facts.whoHasWhat.length > 0 && <section className={styles.card} aria-label={t("projectHub.overviewWhoHasWhat")}>
         <h3 className={styles.cardTitle}>{t("projectHub.overviewWhoHasWhat")}</h3>
         {facts.whoHasWhat.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <ul className={styles.who}>
           {facts.whoHasWhat.map((r) => <li key={r.userId ?? r.owner ?? "none"} className={styles.whoRow} data-nobody={r.userId === null && r.owner === null || undefined}>
@@ -91,7 +115,7 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
       </section>}
 
 
-      <section className={styles.card} aria-label={t("projectHub.overviewWeeklyChartAriaLabel")}>
+      {weekTotal > 0 && <section className={styles.card} aria-label={t("projectHub.overviewWeeklyChartAriaLabel")}>
         <div className={styles.chartHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewStepsDonePerWeek")}</h3>
           <span className={styles.muted}>{weekTotal > 0 ? t("projectHub.overviewWeeklyTotal", { count: weekTotal, weeks: facts.perWeek.length }) : t("projectHub.overviewWeeklyEmpty")}</span></div>
         <ol className={styles.columns}>
@@ -100,9 +124,9 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
             <span className={styles.colTrack} aria-hidden="true"><span className={styles.colFill} style={{ height: `${(w.done / maxWeek) * 100}%` }} /></span>
             <span className={styles.muted}>{i === facts.perWeek.length - 1 ? t("projectHub.overviewThisWeek") : f(w.endDay)}</span></li>)}
         </ol>
-      </section>
+      </section>}
 
-      {viewerOnTeam && <section className={styles.card} aria-label={t("projectHub.overviewWaitingChartAriaLabel")}>
+      {viewerOnTeam && facts.waiting.length > 0 && <section className={styles.card} aria-label={t("projectHub.overviewWaitingChartAriaLabel")}>
         <h3 className={styles.cardTitle}>{t("projectHub.overviewWhereWaitingGoes")}</h3>
         <p className={styles.muted}>{t("projectHub.overviewWaitingHint")} {t("projectHub.overviewWaitingTeamOnly")}</p>
         {facts.waiting.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewWaitingEmpty")}</p> : <div className={styles.bars}>
@@ -113,13 +137,13 @@ export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: Redu
       </section>}
       </div>
       <div className={styles.side}>
-        <section className={styles.card} aria-label={t(jiraSynced ? "projectHub.overviewLatestFromJira" : "projectHub.overviewLatestActivity")}>
+        {latest.length > 0 && <section className={styles.card} aria-label={t(jiraSynced ? "projectHub.overviewLatestFromJira" : "projectHub.overviewLatestActivity")}>
           <h3 className={styles.cardTitle}>{t(jiraSynced ? "projectHub.overviewLatestFromJira" : "projectHub.overviewLatestActivity")}</h3>
           {latest.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <ul className={styles.latest}>
             {latest.map((l) => <li key={l.id} className={styles.latestRow}>{l.by ? <PersonFace name={l.by} size="sm" /> : <span className={styles.nobody} aria-hidden="true" />}
               <span className={styles.latestText}><span>{l.by && <b>{l.by} </b>}{l.text}</span><span className={styles.muted}>{f(l.day)}</span></span></li>)}
           </ul>}
-        </section>
+        </section>}
         {aside}
       </div>
       </div>

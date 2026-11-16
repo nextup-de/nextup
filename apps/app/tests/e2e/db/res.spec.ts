@@ -302,7 +302,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
     await append("project.step.added", LEAD, id.lead, projectId, { stepId: "s_done", text: STEP_DONE, owner: MEMBER, ownerUserId: id.member });
     await append("project.step.added", LEAD, id.lead, projectId, { stepId: "s_drop", text: STEP_DROP, owner: LEAD, ownerUserId: id.lead });
     // The project starts with its Idea and Files; the lead added the Overview, Steps and Results pages.
-    for (const pageId of ["project-overview", "steps", "results"]) await append("project.page.added", LEAD, id.lead, projectId, readyPage(projectId, pageId));
+    for (const pageId of ["steps", "results"]) await append("project.page.added", LEAD, id.lead, projectId, readyPage(projectId, pageId));
 
     await test.step("Done is refused until one step is finished and the other dropped with a reason: in the sheet and on the server", async () => {
       const lead = { name: LEAD, id: id.lead, role: "leader" as const };

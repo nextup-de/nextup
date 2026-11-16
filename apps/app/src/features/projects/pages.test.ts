@@ -7,12 +7,13 @@ import { en } from "@/i18n/en";
 const tool = (id: string, kind: ToolInstance["kind"]): ToolInstance => ({ id, kind, title: null, collapsed: false, content: null, rev: 0 });
 const page = (id: string, tools: ToolInstance[]): ProjectPage => ({ id, title: id, icon: "doc", tools });
 
-it("PGE pages model: a project starts with its Idea and Files", () => {
+it("PGE pages model: a project starts with its Overview, Idea and Files", () => {
   const defaults = pagesOf({ pages: null }, { agent: true });
-  expect(defaults.map((p) => p.id)).toEqual(["overview", "files"]);
-  expect(defaults.map((p) => p.title)).toEqual(["projectPages.pageIdea", "projectPages.pageFiles"]);
-  expect(defaults[0].tools.map((t) => t.kind)).toEqual(["idea"]);
-  expect(defaults[1].tools.map((t) => t.kind)).toEqual(["files", "links"]);
+  expect(defaults.map((p) => p.id)).toEqual(["project-overview", "overview", "files"]);
+  expect(defaults.map((p) => p.title)).toEqual(["projectPages.pageOverview", "projectPages.pageIdea", "projectPages.pageFiles"]);
+  expect(defaults[0].tools.map((t) => t.kind)).toEqual(["overview"]);
+  expect(defaults[1].tools.map((t) => t.kind)).toEqual(["idea"]);
+  expect(defaults[2].tools.map((t) => t.kind)).toEqual(["files", "links"]);
   defaults[0].tools[0].content = "local draft";
   expect(DEFAULT_PAGES[0].tools[0].content).toBeNull();
 });
@@ -51,7 +52,7 @@ it("PGE pages model: merges every instance in order with content and revision in
   const result = mergePlan(into, from);
   expect(result).toEqual({ moved: from.tools, refused: null });
   expect([...into.tools, ...result.moved].map((t) => t.kind)).toEqual(["board", "list", "list", "doc"]);
-  expect(mergePlan(into, DEFAULT_PAGES[0])).toEqual({ moved: [], refused: "overview" });
+  expect(mergePlan(into, DEFAULT_PAGES[1])).toEqual({ moved: [], refused: "overview" }); // the Idea page
   const full = page("full", Array.from({ length: 23 }, (_, i) => tool(String(i), "doc")));
   expect(mergePlan(full, from)).toEqual({ moved: [], refused: "tooMany" });
   const record: MergeRecord = { from: { ...from, before: "team" }, toolIds: result.moved.map((t) => t.id) };
@@ -81,7 +82,7 @@ it("PGE pages model: measures serialized event length and keeps page changes out
 
 it("Add page offers the old pages ready-made, under their old ids, until they are there", () => {
   const start = pagesOf({ pages: null }, { agent: true });
-  expect(addablePages(start, [], { agent: true }).map((p) => p.id)).toEqual(["project-overview", "steps", "plan", "results", "requests", "team", "activity", "agent"]);
+  expect(addablePages(start, [], { agent: true }).map((p) => p.id)).toEqual(["steps", "plan", "results", "requests", "team", "activity", "agent"]); // the Overview is there from the start
   expect(addablePages(start, [], { agent: false }).map((p) => p.id)).not.toContain("agent");
   // Added, recently removed, or a single tool already elsewhere: not offered again.
   const added = [...start, page("steps", [tool("t1", "board")]), page("mine", [tool("t2", "overview")])];

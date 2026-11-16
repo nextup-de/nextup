@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
 import { addPages, expect, test } from "../helpers";
 
 const LINE = "Freeze the dates after the depot visit";
-const DEFAULT_PAGES = ["Idea", "Files"];
+const DEFAULT_PAGES = ["Overview", "Idea", "Files"];
 
 async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager") {
   await page.getByRole("button", { name: "Dev" }).click();
@@ -34,7 +34,7 @@ test("PGB acceptance: build a page from tools, add a tool, merge it into Steps",
 
   await test.step("Add page offers the ready-made pages: Steps and Team are added with one click each", async () => {
     await addPages(page, "/acme/projects/pj2", ["Steps", "Team"]);
-    expect(await rowTitles()).toEqual(["Idea", "Files", "Steps", "Team"]);
+    expect(await rowTitles()).toEqual(["Overview", "Idea", "Files", "Steps", "Team"]);
     await pages.getByRole("button", { name: /Add page/ }).click();
     const ready = page.getByRole("dialog", { name: "New page" }).getByRole("region", { name: "Ready-made pages" });
     await expect(ready.getByRole("button", { name: /^Plan/ })).toBeVisible();

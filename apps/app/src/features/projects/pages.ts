@@ -41,19 +41,21 @@ export const READY_PAGES: ProjectPage[] = [
 ];
 
 /**
- * Default titles are message keys; a title written by a page event is the team's own text. An idea and a project
- * are one thing to the people working on it: every project starts with its Idea (the idea it grew from, as the
- * idea page shows it) and its Files. The first page keeps the id "overview" so old links (?tab=overview) and
- * page events still find it; it is the one page that cannot be removed. The rest the team adds itself (Add page).
+ * Default titles are message keys; a title written by a page event is the team's own text. Every project starts with
+ * its Overview (where it stands), its Idea (the idea it grew from, as the idea page shows it) and its Files (Kevin,
+ * 16 Nov 2026). The Overview opens first; it has the id "project-overview", the one Add page uses for it. The Idea keeps
+ * the id "overview" so old links (?tab=overview) and page events still find it; it is the one page that cannot be
+ * removed. The rest the team adds itself (Add page).
  */
 export const DEFAULT_PAGES: ProjectPage[] = [
+  defaultPage("project-overview", "projectPages.pageOverview", "home", ["overview"]),
   defaultPage("overview", "projectPages.pageIdea", "star", ["idea"]),
   defaultPage("files", "projectPages.pageFiles", "folder", ["files", "links"]),
 ];
 
 /**
  * The ready-made pages Add page offers with one click: the old pages, under their old ids so ?page=steps and the like
- * keep working. Files is already there from the start; the project Overview gets its own id, because "overview" is the
+ * keep working. Overview and Files are there from the start (a removed one can come back); the project Overview has its own id, because "overview" is the
  * Idea page now. Tool ids are minted when the page is added.
  */
 export const ADDABLE_PAGES: ProjectPage[] = READY_PAGES.filter((page) => page.id !== "files")

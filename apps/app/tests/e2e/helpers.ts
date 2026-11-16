@@ -109,7 +109,7 @@ export async function projectPages(page: Page): Promise<Locator> {
 }
 
 /**
- * A project starts with its Idea and Files; a test adds the ready-made pages it works on ("Steps", "Plan", "Results",
+ * A project starts with its Overview, Idea and Files; a test adds the ready-made pages it works on ("Steps", "Plan", "Results",
  * "Overview", "Requests", "Team", "Activity", "Agent") through Add page, as a person would. A page that is there is
  * left alone. The viewer must be one who may change the project's pages. Ends on the project's address.
  */
