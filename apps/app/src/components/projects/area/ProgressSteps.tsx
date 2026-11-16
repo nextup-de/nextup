@@ -17,7 +17,7 @@ export function ProgressSteps({ list }: { list: readonly ReducedProject[] }) {
   const rows = stepProgress(list, S.day);
   const capped = useCapped(rows);
   return (
-    <SectionCard title={t("progress.stepsHead")} hint={t("progress.stepsSub")} name="steps">
+    <SectionCard title={t("progress.stepsHead")} name="steps">
       {rows.every((r) => r.total === 0) ? (
         <div className={ui.emptyLine}>{t("progress.stepsEmpty")}</div>
       ) : (
@@ -48,7 +48,8 @@ function Row({ r }: { r: StepProgress }) {
         </div>
       )}
       <div className={styles.meta}>
-        <span data-done={r.allDone ? "true" : undefined}>{done}</span>
+        {/* The bar says how far it is (its label says it in words): no count beside it (DESIGN_RULES §9). */}
+        {r.total === 0 && <span>{done}</span>}
         {r.stuck > 0 && <span data-hot="true">{t("progress.stepsStuck", { count: r.stuck, days: r.longestStuckDays ?? 0 })}</span>}
         {r.late > 0 && <span data-hot="true">{t("projects.countLate", { count: r.late })}</span>}
       </div>
