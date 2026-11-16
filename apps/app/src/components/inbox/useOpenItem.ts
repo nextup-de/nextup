@@ -10,15 +10,13 @@ import type { IdeaProps } from "@/components/dashboard/leader/IdeaParts";
 import type { IdeaBrief } from "@/features/ideas/brief";
 import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
 import { readableComment } from "@/features/cases/notice";
-import { raisedWith, sentLabel } from "@/features/cases/rows";
+import { raisedWith } from "@/features/cases/rows";
+import { raisedPhrase } from "@/features/inbox/raised";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { badgeTone, briefFor, briefForCase, personFor } from "@/features/ideas/brief";
 import { useLocale, useT } from "@/i18n/client";
-import type { T } from "@/i18n";
 import { formatEuro } from "@/i18n/format";
 
-// "Yesterday" -> "yesterday", "Monday" -> "on Monday", "09:14" -> "today"
-const raisedPhrase = (t: T, label: string) => (/\d:\d/.test(label) || label === "Today" ? t("leader.raisedToday") : label === "Yesterday" ? t("leader.raisedYesterday") : t("leader.raisedOn", { day: label }));
 
 /** Null when nothing is open, or the id is neither an idea waiting on this person nor a case on their desk or asked of them. */
 export function useOpenItem(cid: string | null, close: () => void): IdeaProps | null {
@@ -38,7 +36,7 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
   const briefCtx = { people: seed.people, depts: seed.depts, ideas: seed.ideas, briefs: seed.briefs, t };
   const personOrNull = (name: string, userId: string | null | undefined) => (isMe(userId) ? null : personFor(name, briefCtx));
   const header = (id: string, kind: "idea" | "case", title: string, due: number, paused: boolean, sent: Date, exact: boolean, tag: string | null) => ({
-    id, kind, title, tone: badgeTone(due, paused), raised: raisedPhrase(t, sentLabel(sent, now, exact)),
+    id, kind, title, tone: badgeTone(due, paused), raised: raisedPhrase(t, sent, now, exact, locale),
     badge: tag ?? (paused ? t("leader.badgePaused") : due < 0 ? t("leader.badgeLate", { n: -due }) : t("leader.badgeLeft", { n: due })),
   });
   const dayDate = (offset: number) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d; };
