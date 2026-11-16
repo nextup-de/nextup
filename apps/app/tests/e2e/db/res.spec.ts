@@ -232,10 +232,10 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await page.goto(`/${SLUG}/projects/${projectId}`);
       await setupStep(page, "Start");
       await expect(page.getByTestId("draft-baseline-waits")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Start the project" }), "a button that does nothing yet is not drawn (DESIGN_RULES §9)").toHaveCount(0);
       await setupStep(page, "Baseline");
       await expect(page.getByTestId("baseline-confirm"), "the lead has no confirm button").toHaveCount(0);
-      await expect(page.getByTestId("baseline-waits")).toContainText("Not confirmed yet"); // one chip; no sentence about who confirms (DESIGN_RULES §9)
+      await expect(page.getByTestId("baseline-waits")).toContainText(/^Waits for .+ to confirm$/); // one line that names who, no rule (DESIGN_RULES §9)
       await page.context().close();
       // The server says the same: not the lead, and not the start.
       const lead = { name: LEAD, id: id.lead, role: "leader" as const };
@@ -257,7 +257,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       page = await signIn(browser, LEAD);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
       await setupStep(page, "Start");
-      await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Start the project" }), "a button that does nothing yet is not drawn (DESIGN_RULES §9)").toHaveCount(0);
       await page.context().close();
 
       page = await signIn(browser, MANAGER);

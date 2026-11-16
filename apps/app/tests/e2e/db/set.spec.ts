@@ -258,10 +258,11 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await expect(row).toHaveCount(1);
       await row.click();
       await expect(page).toHaveURL(new RegExp(`/projects/${projectA}$`));
-      await expect(page.getByTestId("draft-top-line")).toContainText("once"); // no start day before the lead takes it
+      // The start day is said once, by the stepper's Start line (DESIGN_RULES §9): none before the lead takes it.
+      const startLine = page.getByTestId("draft-progress").getByRole("button", { name: /^Start/ });
+      await expect(startLine).toHaveText(/^Start\s*$/);
       await page.getByRole("button", { name: "Take it" }).click();
-      await expect(page.getByTestId("draft-top-line")).toContainText(/Start expected \S/);
-      await expect(page.getByTestId("draft-top-line")).not.toContainText("once");
+      await expect(startLine).toHaveText(/^Start\s*\S/);
       await expect.poll(async () => (await eventsOf("project.lead.answered", projectA)).length).toBe(1);
       expect((await eventsOf("project.lead.answered", projectA))[0]).toMatchObject({ actorUserId: id.lead, payload: { take: true } });
 
