@@ -163,14 +163,30 @@ const rowClick = (i: OverviewItem, ctx: RowCtx) => (e: React.MouseEvent) => {
   ctx.open(i);
 };
 
+/** A title too long for its row or card glides left while the mouse is over it, so it can be read in full (as in
+ *  the Ideas and Projects sidebars). How far is measured when the mouse arrives: the text's width against the box. */
+function GlideTitle({ className, href, label, children }: { className: string; href: string; label: string; children: React.ReactNode }) {
+  const box = useRef<HTMLAnchorElement>(null);
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const el = box.current, host = el?.closest("[data-glide-host]");
+    if (!el || !host) return;
+    const measure = () => { const inner = el.firstElementChild as HTMLElement | null; setSlide(inner ? Math.max(0, Math.ceil(inner.scrollWidth - el.clientWidth)) : 0); };
+    host.addEventListener("mouseenter", measure); el.addEventListener("focus", measure);
+    return () => { host.removeEventListener("mouseenter", measure); el.removeEventListener("focus", measure); };
+  }, []);
+  const style = slide ? ({ "--slide": `-${slide + 6}px`, "--glide": `${Math.round(400 + slide * 22)}ms` } as React.CSSProperties) : undefined;
+  return <Link ref={box} className={className} href={href} aria-label={label} data-glide={slide > 0 || undefined} style={style}><span className={s.glideText}>{children}</span></Link>;
+}
+
 function Row({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
   const { t } = ctx;
   return (
-    <div className={s.row} role="row" onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
+    <div className={s.row} role="row" data-glide-host onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
       <span role="cell" className={s.cName}>
         <Thumb i={i} />
         <span className={s.nameText}>
-          <Link className={s.rowTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
+          <GlideTitle className={s.rowTitle} href={ctx.href(i.path)} label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></GlideTitle>
           <span className={s.phoneMeta}>{phoneMeta(i, t)}</span>
         </span>
       </span>
@@ -189,14 +205,14 @@ function Card({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
   const { t } = ctx;
   const pic = libraryCoverFor(i.id);
   return (
-    <div className={s.card} onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
+    <div className={s.card} data-glide-host onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
       <div className={s.cover}>
         {/* eslint-disable-next-line @next/next/no-img-element -- a local picture from public/feed/library */}
         {pic && <img src={pic.src} alt="" className={s.coverImg} loading="lazy" />}
         {pic && <span className={s.coverText}><span className={s.coverStat}>{pic.stat}</span><span className={s.coverHook}>{pic.hook}</span></span>}
         <span className={s.coverMore}><More i={i} ctx={ctx} /></span>
       </div>
-      <Link className={s.cardTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
+      <GlideTitle className={s.cardTitle} href={ctx.href(i.path)} label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></GlideTitle>
       <span className={s.cardMeta}>
         <span className={s.cardWho}>
           <Face name={i.desk.name} you={i.desk.you} small />
