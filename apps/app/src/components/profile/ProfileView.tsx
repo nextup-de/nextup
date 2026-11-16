@@ -1,5 +1,7 @@
 "use client";
-
+// The own profile, quiet (DESIGN_RULES §9): name, role and unit once, with the email and how others see you under them;
+// the work the person shares; and Language, Mails and Microsoft 365 as one line each that opens. Ideas › Mine is in the
+// nav, so nothing here links to what you sent; an empty block is not drawn.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -12,7 +14,7 @@ import { NotifySettings } from "./NotifySettings";
 import type { M365Card as M365CardData } from "@/server/m365-profile";
 import { AwayCard } from "@/components/overload/AwayCard";
 import { AwayForOthers } from "@/components/overload/AwayForOthers";
-import { Banner, DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
+import { Banner, DeptChip, Fold, PageHeader, PersonFace, SectionCard, ShowAll, useCapped } from "@/components/ui/elements";
 import { setLocale } from "@/i18n/actions";
 import { useLocale, useT } from "@/i18n/client";
 import { LOCALES, type Locale, type MessageKey } from "@/i18n";
@@ -53,57 +55,51 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
   const ideas = D.ideas.filter((i) => i.proposedBy.split(",")[0].trim() === name || i.team.includes(name));
   const initiatives = D.initiatives.filter((i) => i.members.some((m) => m.name === name));
   const cases = D.cases.filter((c) => ctx.actorUserId !== null && c.fromUserId === ctx.actorUserId);
-  const ideaCount = ideas.length + cases.filter((c) => c.kind === "idea" && !c.linkedIdea).length;
-  const profileStats = ([[cases.length, t("profile.casesYouRaised")], [ideaCount, t("profile.ideas")], [initiatives.length, t("profile.collaborations")]] as const).filter(([n]) => n > 0);
   const manager = org?.reportsTo && org.reportsTo !== name ? seed.people.find((p) => p.name === org.reportsTo) : null;
   // A colleague is listed only when their seat belongs to a user with a person page (personLinks).
   const linkOf = (personName: string) => { const userId = seed.seats.find((s) => s.label === personName)?.userId; return userId ? personHref(tenant, userId) : null; };
   const colleagues = seed.people.filter((p) => p.name !== name && p.name !== manager?.name && p.dept === deptId && linkOf(p.name)).slice(0, 4);
   const work = [
     ...(cases.map((c) => ({ id: c.id, title: c.title, type: (c.kind === "idea" ? "ideaRaised" : "problemRaised") as WorkKind, status: CASE_STATUS[c.status] ? t(CASE_STATUS[c.status]) : c.status[0].toUpperCase() + c.status.slice(1), href: href(ideaPath(c.id)) }))),
-    ...initiatives.map((i) => ({ id: i.id, title: i.name, type: "collaboration" as WorkKind, status: i.status, href: href("/collaboration?id=" + encodeURIComponent(i.id)) })),
+    ...initiatives.map((i) => ({ id: i.id, title: i.name, type: "collaboration" as WorkKind, status: i.status, href: href("/projects/collaboration?id=" + encodeURIComponent(i.id)) })),
     ...ideas.map((i) => ({ id: i.id, title: i.title, type: "idea" as WorkKind, status: i.status, href: href("/ideas?id=" + encodeURIComponent(i.id)) })),
-  ].slice(0, 6);
+  ];
+  const shown = useCapped(work);
 
   return <div className={styles.page}>
-    <Link href={href("/overview")} className={styles.back}>{t("profile.backOverview")}</Link>
-    {ctx.serverMode ? <><h1 className="nh-sr">{t("profile.myProfile")}</h1><span className={styles.company}>{tenant.name}</span></> : <PageHeader title={t("profile.myProfile")} action={<span className={styles.company}>{tenant.name}</span>} />}
+    {ctx.serverMode ? <h1 className="nh-sr">{t("profile.myProfile")}</h1> : <PageHeader title={t("profile.myProfile")} />}
 
     <SectionCard name="identity">
       <section className={styles.identity} aria-labelledby="profile-name">
         <span className={styles.heroFace}><PersonFace name={name} /></span>
         <div className={styles.identityText}>
-          <div className={styles.nameLine}><h2 id="profile-name">{name}</h2><span className={styles.you}>{t("profile.you")}</span></div>
+          <h2 id="profile-name">{name}</h2>
           <p>{role}{dept ? <> · <DeptChip name={dept} /></> : null}</p>
           <span className={styles.affiliation}>{[location, tenant.name].filter(Boolean).join(" · ")}</span>
+          {email && <a className={styles.affiliation} href={"mailto:" + email}>{email}</a>}
+          {anonymous && <span className={styles.affiliation} data-testid="profile-seen-as">{t("profile.seenAsLine", { handle: ctx.actor })}</span>}
         </div>
-        <Link className={styles.contact} href={href(ctx.role === "member" ? "/team" : "/leader")}>{ctx.role === "member" ? t("profile.myCases") : t("profile.openInbox")}<span aria-hidden="true">→</span></Link>
       </section>
     </SectionCard>
 
-    {/* Only the numbers above 0 (lib/utils/quiet.ts); none, no strip. */}
-    {profileStats.length > 0 && <section className={styles.stats} aria-label={t("profile.statsLabel")}>{profileStats.map(([n, label]) => <div key={label}><strong>{n}</strong><span>{label}</span></div>)}</section>}
-
     <div className={styles.columns}>
       <div className={styles.mainColumn}>
-        {anonymous && <section className={styles.privacy}><Banner tone="info"><span><strong>{t("profile.howSeen")}</strong> {t("profile.seenAs")} <strong>{ctx.actor}</strong>. {t("profile.seenHidden")}</span></Banner></section>}
-
-        <SectionCard title={t("profile.yourWork")} name="work" action={work.length ? <span className={styles.count}>{work.length}</span> : undefined}>
-          {work.length ? <div className={styles.workList}>{work.map((item) => <Link className={styles.workItem} href={item.href} key={item.type + item.id}><span className={styles.workIcon}>{item.type === "problemRaised" ? "P" : item.type === "collaboration" ? "↗" : "✳"}</span><span className={styles.workText}><strong>{item.title}</strong><small>{t(WORK_LABEL[item.type])}</small></span><span className={styles.status}>{item.status}</span><span className={styles.arrow} aria-hidden="true">→</span></Link>)}</div> : <div className={styles.empty}>{t("profile.noWork")}</div>}
-        </SectionCard>
-
-        <Link href={href("/team")} className={styles.myCases}><span><strong>{t("profile.followSent")}</strong><small>{t("profile.followSentSub")}</small></span><span aria-hidden="true">→</span></Link>
+        {work.length > 0 && <SectionCard title={t("profile.yourWork")} name="work">
+          <div className={styles.workList}>{shown.shown.map((item) => <Link className={styles.workItem} href={item.href} key={item.type + item.id}><span className={styles.workIcon}>{item.type === "problemRaised" ? "P" : item.type === "collaboration" ? "↗" : "✳"}</span><span className={styles.workText}><strong>{item.title}</strong><small>{t(WORK_LABEL[item.type])}</small></span><span className={styles.status}>{item.status}</span><span className={styles.arrow} aria-hidden="true">→</span></Link>)}</div>
+          <ShowAll list={shown} showAll={(count) => t("common.showAll", { count })} showLess={t("common.showLess")} />
+        </SectionCard>}
 
         {/* Absence (plan OVL, D19, D31): the own span and what to take back, then the people the viewer may set away; both are hidden in the demo. */}
         <AwayCard />
         <AwayForOthers />
       </div>
 
-      <aside className={styles.sideColumn} aria-label={t("profile.detailsLabel")}>
-        <SectionCard title={t("profile.details")} name="details"><dl className={styles.details}><div><dt>{t("profile.role")}</dt><dd>{role}</dd></div><div><dt>{t("profile.department")}</dt><dd>{dept ? <DeptChip name={dept} /> : t("profile.notSpecified")}</dd></div>{location && <div><dt>{t("profile.location")}</dt><dd>{location}</dd></div>}{email && <div><dt>{t("profile.email")}</dt><dd><a href={"mailto:" + email}>{email}</a></dd></div>}</dl></SectionCard>
-        <LanguageSwitch />
-        {m365 ? <M365Card card={m365} /> : null}
-        {mailPrefs ? <NotifySettings slug={tenant.slug} prefs={mailPrefs} /> : null}
+      <aside className={styles.sideColumn} aria-label={t("profile.settingsLabel")}>
+        <SectionCard name="settings">
+          <LanguageSwitch />
+          {m365 ? <M365Card card={m365} /> : null}
+          {mailPrefs ? <NotifySettings slug={tenant.slug} prefs={mailPrefs} /> : null}
+        </SectionCard>
         {(manager || colleagues.length > 0) && <SectionCard title={t("profile.peopleNearby")} name="nearby"><div className={styles.people}>{manager && <PersonLink name={manager.name} subtitle={t("profile.reportsTo")} href={linkOf(manager.name)} />}{colleagues.map((p) => <PersonLink key={p.name} name={p.name} subtitle={p.role} href={linkOf(p.name)} />)}</div></SectionCard>}
       </aside>
     </div>
@@ -132,12 +128,10 @@ function LanguageSwitch() {
       else setError(res.error);
     });
   };
-  return <section aria-label={t("profile.language")}>
-    <SectionCard title={t("profile.language")} name="language">
-      <div role="radiogroup" aria-label={t("profile.language")} className={styles.languages}>
-        {LOCALES.map((l) => <button key={l} type="button" role="radio" lang={l} aria-checked={l === locale} disabled={pending} className={styles.segment} onClick={() => choose(l)}>{t(LANGUAGE_KEY[l])}</button>)}
-      </div>
-      {error ? <Banner tone="error">{error}</Banner> : null}
-    </SectionCard>
-  </section>;
+  return <Fold name="language" summary={t("profile.language")} meta={t(LANGUAGE_KEY[locale])} open={error !== null}>
+    <div role="radiogroup" aria-label={t("profile.language")} className={styles.languages}>
+      {LOCALES.map((l) => <button key={l} type="button" role="radio" lang={l} aria-checked={l === locale} disabled={pending} className={styles.segment} onClick={() => choose(l)}>{t(LANGUAGE_KEY[l])}</button>)}
+    </div>
+    {error ? <Banner tone="error">{error}</Banner> : null}
+  </Fold>;
 }

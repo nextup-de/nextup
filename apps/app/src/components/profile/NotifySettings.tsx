@@ -10,7 +10,7 @@ import { useT } from "@/i18n/client";
 import type { MessageKey } from "@/i18n";
 import { setNotifyPrefAction } from "@/server/actions/notify";
 import { myTeamsReachableAction } from "@/server/actions/settings/notifications";
-import { Banner, SectionCard } from "@/components/ui/elements";
+import { Banner, Fold } from "@/components/ui/elements";
 import styles from "./NotifySettings.module.css";
 
 const LABEL: Record<NotifyGroup, MessageKey> = {
@@ -62,29 +62,26 @@ export function NotifySettings({ slug, prefs, teamsReachable }: { slug: string; 
     });
   };
 
-  return <section aria-label={t("profile.mailsTitle")}>
-    <SectionCard title={t("profile.mailsTitle")} name="mails">
-      <p className={styles.intro}>{t("profile.mailsIntro")}</p>
-      {profileNoticeRows(GROUPS, rows, teamsReachable ?? asked).map(({ group, on, duty, addMail: mailToo, canAddMail }) => (
-        <div key={group} data-testid={`profile-notice-${group}`}>
-          {duty
-            ? <div className={styles.row}>
-              <span>{t(LABEL[group])}</span>
-              <span className={styles.intro}>{t("profile.mailsAlways")}</span>
-            </div>
-            : <label className={styles.row}>
-              <span>{t(LABEL[group])}</span>
-              <input type="checkbox" role="switch" className={styles.switch} checked={on} disabled={pending} onChange={() => choose(group, !on)} />
-            </label>}
-          {canAddMail
-            ? <label className={styles.row}>
-              <span>{t("profile.mailsAlsoByMail")}</span>
-              <input type="checkbox" role="switch" className={styles.switch} checked={mailToo} disabled={pending} onChange={() => addMail(group, !mailToo)} />
-            </label>
-            : null}
-        </div>
-      ))}
-      {error ? <Banner tone="error">{error}</Banner> : null}
-    </SectionCard>
-  </section>;
+  return <Fold name="mails" summary={t("profile.mailsTitle")} open={error !== null}>
+    {profileNoticeRows(GROUPS, rows, teamsReachable ?? asked).map(({ group, on, duty, addMail: mailToo, canAddMail }) => (
+      <div key={group} data-testid={`profile-notice-${group}`}>
+        {duty
+          ? <div className={styles.row}>
+            <span>{t(LABEL[group])}</span>
+            <span className={styles.intro}>{t("profile.mailsAlways")}</span>
+          </div>
+          : <label className={styles.row}>
+            <span>{t(LABEL[group])}</span>
+            <input type="checkbox" role="switch" className={styles.switch} checked={on} disabled={pending} onChange={() => choose(group, !on)} />
+          </label>}
+        {canAddMail
+          ? <label className={styles.row}>
+            <span>{t("profile.mailsAlsoByMail")}</span>
+            <input type="checkbox" role="switch" className={styles.switch} checked={mailToo} disabled={pending} onChange={() => addMail(group, !mailToo)} />
+          </label>
+          : null}
+      </div>
+    ))}
+    {error ? <Banner tone="error">{error}</Banner> : null}
+  </Fold>;
 }

@@ -8,7 +8,6 @@ export const overload = defineMessages({
     title: "Overload and absence",
     // Away (D19): a person's absence, set for them by the seat above, and the cases to take back
     "away.title": "Away",
-    "away.lede": "While you are away, the cases on your seat go to a colleague who answers for it. Nothing else changes.",
     "away.from": "First day away",
     "away.to": "Last day away",
     "away.save": "Set away",
@@ -23,9 +22,7 @@ export const overload = defineMessages({
     "away.othersNone": "Nobody sits below you.",
     "away.othersFilter": "Find a person",
     "away.takeBackTitle": "Cases handed on while you were away",
-    "away.takeBackLede": "Nobody has touched these since. Take them back, or leave them where they are.",
     "away.takeBack": "Take back",
-    "away.takeBackNone": "Nothing to take back.",
     // The inbox (D20): what a loaded desk offers and the pinned case
     "inbox.triage": "Triage the desk's open items",
     "inbox.triageLate": "{count} late",
@@ -84,7 +81,6 @@ export const overload = defineMessages({
   de: {
     title: "Überlastung und Abwesenheit",
     "away.title": "Abwesend",
-    "away.lede": "Während Sie abwesend sind, gehen die Fälle Ihrer Stelle an eine Kollegin oder einen Kollegen, die oder der sie vertritt. Sonst ändert sich nichts.",
     "away.from": "Erster Tag der Abwesenheit",
     "away.to": "Letzter Tag der Abwesenheit",
     "away.save": "Abwesend setzen",
@@ -99,9 +95,7 @@ export const overload = defineMessages({
     "away.othersNone": "Niemand sitzt unter Ihnen.",
     "away.othersFilter": "Eine Person suchen",
     "away.takeBackTitle": "Fälle, die während Ihrer Abwesenheit weitergegeben wurden",
-    "away.takeBackLede": "Niemand hat sie seither angefasst. Nehmen Sie sie zurück oder lassen Sie sie, wo sie sind.",
     "away.takeBack": "Zurücknehmen",
-    "away.takeBackNone": "Nichts zurückzunehmen.",
     "inbox.triage": "Die offenen Punkte des Tisches sichten",
     "inbox.triageLate": "{count} überfällig",
     "inbox.select": "Auswählen",

@@ -31,7 +31,6 @@ export function AwayCard() {
   return (
     <SectionCard title={t("overload.away.title")} name="away">
       <div className={styles.stack} data-testid="away-card">
-        <p className={styles.lede}>{t("overload.away.lede")}</p>
         {span ? (
           <div className={styles.now}>
             <span data-testid="away-now">{t("overload.away.now", { date: f(span.to) })}</span>
@@ -42,10 +41,10 @@ export function AwayCard() {
           <div><button type="button" className={styles.button} onClick={() => setOpen(true)} data-testid="away-open">{t("overload.away.save")}</button></div>
         )}
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
-        <h3 className={styles.sub}>{t("overload.away.takeBackTitle")}</h3>
-        {back.length === 0 ? <p className={styles.none} data-testid="away-takeback-none">{t("overload.away.takeBackNone")}</p> : (
+        {/* What to take back, only when there is something (DESIGN_RULES §1: nothing empty is drawn). */}
+        {back.length > 0 && (
           <>
-            <p className={styles.lede}>{t("overload.away.takeBackLede")}</p>
+            <h3 className={styles.sub}>{t("overload.away.takeBackTitle")}</h3>
             <ul className={styles.list} data-testid="away-takeback">
               {back.map((c) => (
                 <li key={c.id} className={styles.item}>

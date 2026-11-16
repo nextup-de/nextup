@@ -268,7 +268,7 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       hugo = await signIn(browser, HOLDER_A);
       await hugo.goto(`/${SLUG}/profile`);
       await expect(vis(hugo, "away-card")).toBeVisible();
-      await expect(vis(hugo, "away-takeback-none")).toBeVisible();
+      await expect(hugo.getByTestId("away-takeback"), "nothing to take back draws no block").toHaveCount(0);
       await vis(hugo, "away-open").click();
       await hugo.getByTestId("away-from").fill(iso(D));
       await hugo.getByTestId("away-to").fill(iso(D + 1));

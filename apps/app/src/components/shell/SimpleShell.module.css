@@ -36,9 +36,6 @@
 .meLine { font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.4; }
 .meStats { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .meStats strong { color: var(--nh-ink); font-family: var(--nh-mono); font-size: var(--nh-fs-sm); }
-.mePreview { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-xs, 9px); background: var(--nh-surface); }
-.mePreviewLabel { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--nh-mute); margin-bottom: 3px; }
-.mePreviewName { font-size: var(--nh-fs-sm); font-weight: 700; color: var(--nh-ink); }
 .meFoot { display: flex; flex-direction: column; align-items: stretch; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--nh-line-soft); }
 .meLinks { display: flex; flex-direction: column; }
 .meLink { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 7px 9px; border-radius: var(--radius-xs, 9px); font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }

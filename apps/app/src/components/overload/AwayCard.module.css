@@ -16,4 +16,3 @@
 .list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); color: var(--nh-ink); overflow-wrap: anywhere; }
 .sub { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
-.none { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
