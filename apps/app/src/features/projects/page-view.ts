@@ -58,7 +58,7 @@ export function toolCount(p: Pick<ReducedProject, "steps" | "links">, kind: Tool
 /** The small glyph in front of a tool's name (Paper 03, 04). */
 export const TOOL_GLYPH: Record<ToolKind, string> = {
   idea: "★", overview: "⌂", board: "▥", list: "☰", calendar: "▦", timeline: "≡", milestones: "⚑", results: "◎", files: "▣",
-  doc: "▤", checklist: "☑", table: "▦", links: "↗", requests: "✉", team: "☺", activity: "∿", agent: "✦", archive: "▭",
+  doc: "▤", checklist: "☑", table: "▦", links: "↗", requests: "✉", team: "☺", activity: "∿", agent: "✦", archive: "▭", backlog: "☷",
 };
 
 /**
@@ -86,7 +86,7 @@ export function stepBefore(page: ProjectPage, toolId: string, direction: "up" | 
  * The tools that fill their page when they come first (Paper "Jira pages · new header"): no section frame, no name row,
  * the page header is theirs. More Jira pages join as they are matched to Paper; the Files page has its own rule (FIL settings).
  */
-export const FILLS_PAGE: ReadonlySet<ToolKind> = new Set<ToolKind>(["board", "list", "overview", "calendar", "timeline", "milestones", "results", "requests", "archive"]);
+export const FILLS_PAGE: ReadonlySet<ToolKind> = new Set<ToolKind>(["board", "list", "overview", "calendar", "timeline", "milestones", "results", "requests", "archive", "backlog"]);
 
 /** Whether this tool fills its page: it is the page's first tool and its kind draws the whole page. */
 export const fillsPage = (page: Pick<ProjectPage, "tools">, tool: Pick<ToolInstance, "id" | "kind">): boolean =>

@@ -20,6 +20,7 @@ import { RequestsTool } from "./RequestsTool";
 import { TeamTool } from "./TeamTool";
 import { ActivityTool } from "./ActivityTool";
 import { ArchiveTool } from "./ArchiveTool";
+import { BacklogTool } from "./BacklogTool";
 
 const AgentTool = dynamic(() => import("./AgentTool").then((m) => m.AgentTool));
 
@@ -40,6 +41,7 @@ export const TOOL_REGISTRY: Record<ToolKind, (p: ToolProps) => JSX.Element> = {
   requests: RequestsTool,
   team: TeamTool,
   archive: ArchiveTool,
+  backlog: BacklogTool,
   activity: ActivityTool,
   agent: (props) => <AgentTool {...props} />,
 };

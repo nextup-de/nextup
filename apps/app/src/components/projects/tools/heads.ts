@@ -51,6 +51,7 @@ export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProp
   results: (c) => jiraHead({ ...c, editor: false }),
   requests: (c) => jiraHead({ ...c, editor: false }),
   archive: (c) => jiraHead({ ...c, editor: false }),
+  backlog: jiraHead,
   board: jiraHead,
   list: jiraHead,
   calendar: jiraHead,

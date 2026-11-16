@@ -15,7 +15,7 @@ export type WizardAction =
 export const toolIcon: Record<ToolKind, PageIconKey> = {
   idea: "star", overview: "home", board: "board", list: "list", calendar: "calendar", timeline: "timeline", milestones: "flag",
   results: "target", files: "folder", doc: "doc", checklist: "checklist", table: "table", links: "link",
-  requests: "inbox", team: "people", activity: "pulse", agent: "chat", archive: "box",
+  requests: "inbox", team: "people", activity: "pulse", agent: "chat", archive: "box", backlog: "list",
 };
 export function preselect(pick?: Preselect): WizardState {
   return { step: 1, picks: pick ? [{ ...pick }] : [], ...(pick ? { preselected: { ...pick } } : {}), name: "", icon: pick ? toolIcon[pick.kind] : "doc", iconChosen: false };

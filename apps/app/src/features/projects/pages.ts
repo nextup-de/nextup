@@ -1,8 +1,8 @@
 // Pages are named stacks of tool instances. Pure facts and checks shared by the reducer, rights and UI.
 import type { PageIconKey, ProjectPage, ReducedProject, ToolInstance, ToolKind } from "./types";
 
-export const TOOL_KINDS = ["idea", "overview", "board", "list", "calendar", "timeline", "milestones", "results", "files", "doc", "checklist", "table", "links", "requests", "team", "activity", "agent", "archive"] as const satisfies readonly ToolKind[];
-export const SINGLE_KINDS: readonly ToolKind[] = ["idea", "overview", "agent", "archive"];
+export const TOOL_KINDS = ["idea", "overview", "board", "list", "calendar", "timeline", "milestones", "results", "files", "doc", "checklist", "table", "links", "requests", "team", "activity", "agent", "archive", "backlog"] as const satisfies readonly ToolKind[];
+export const SINGLE_KINDS: readonly ToolKind[] = ["idea", "overview", "agent", "archive", "backlog"];
 export const PAGE_ICON_KEYS = ["home", "board", "list", "calendar", "timeline", "flag", "target", "folder", "link", "inbox", "people", "pulse", "doc", "checklist", "table", "star", "chat", "box"] as const satisfies readonly PageIconKey[];
 export const EVENT_BUDGET = 12_000;
 export const fitsEvent = (payload: unknown): boolean => JSON.stringify(payload).length <= EVENT_BUDGET;
@@ -10,7 +10,7 @@ export const NOT_SYNCED_PREFIXES = ["project.page.", "project.tool.", "project.f
 export const kicksJira = (type: string): boolean => type.startsWith("project.") && !NOT_SYNCED_PREFIXES.some((prefix) => type.startsWith(prefix));
 
 export const TOOL_GROUPS = [
-  { title: "projectPages.groupSteps", kinds: ["board", "list", "calendar", "timeline", "milestones", "archive"] },
+  { title: "projectPages.groupSteps", kinds: ["board", "list", "calendar", "timeline", "milestones", "archive", "backlog"] },
   { title: "projectPages.groupWrite", kinds: ["doc", "files", "links", "checklist", "table"] },
   { title: "projectPages.groupCollect", kinds: ["requests", "results"] },
   { title: "projectPages.groupProject", kinds: ["idea", "overview", "team", "activity", "agent"] },
