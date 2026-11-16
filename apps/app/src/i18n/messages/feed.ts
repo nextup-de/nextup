@@ -1,4 +1,4 @@
-// Feed: the latest-event line on a card, the supporters line, the filters and the window footer.
+// Feed: the latest-event line on a card and the filters.
 import { defineMessages } from "../define";
 
 export const feed = defineMessages({
@@ -6,9 +6,12 @@ export const feed = defineMessages({
     sortLatest: "Latest activity",
     sortRelevant: "Most relevant",
     allUnits: "All units",
+    filter: "Filter",
+    filterSite: "Site",
+    filterUnit: "Unit",
+    filterSort: "Sort by",
     moreDepts: "More",
     backToOpen: "Back to open",
-    latestRaised: "Raised · {when}",
     latestRead: "Read by {who} · {when}",
     latestAsked: "Asked a question · {who} · {when}",
     latestYes: "Answered yes by {who} · {when}",
@@ -17,20 +20,18 @@ export const feed = defineMessages({
     latestDiscussion: "Discussion started by {who} · {when}",
     latestEscalated: "Escalated to {who} · {when}",
     theDesk: "the desk",
-    supportersNone: "Be the first to back it.",
-    supportersYou: "You support this",
-    supportersCount: "{count} people back this",
-    supportersUnit: "{count} from {unit} back this",
-    windowFooter: "Showing cases open now or moved in the last 90 working days.",
     emptyFeed: "Nothing in the feed yet. What people raise shows here.",
   },
   de: {
     sortLatest: "Letzte Aktivität",
     sortRelevant: "Am relevantesten",
     allUnits: "Alle Einheiten",
+    filter: "Filter",
+    filterSite: "Standort",
+    filterUnit: "Einheit",
+    filterSort: "Sortieren nach",
     moreDepts: "Mehr",
     backToOpen: "Zurück zu Offen",
-    latestRaised: "Eingebracht · {when}",
     latestRead: "Gelesen von {who} · {when}",
     latestAsked: "Rückfrage · {who} · {when}",
     latestYes: "Mit Ja beantwortet von {who} · {when}",
@@ -39,11 +40,6 @@ export const feed = defineMessages({
     latestDiscussion: "Diskussion gestartet von {who} · {when}",
     latestEscalated: "Eskaliert an {who} · {when}",
     theDesk: "die Stelle",
-    supportersNone: "Seien Sie die erste Person, die es unterstützt.",
-    supportersYou: "Sie unterstützen das",
-    supportersCount: "{count} Personen unterstützen das",
-    supportersUnit: "{count} aus {unit} unterstützen das",
-    windowFooter: "Zu sehen sind offene Fälle und alles, was sich in den letzten 90 Arbeitstagen bewegt hat.",
     emptyFeed: "Noch nichts im Feed. Was Leute einbringen, erscheint hier.",
   },
 });
