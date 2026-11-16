@@ -261,7 +261,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       files: [...brief.files.map((x) => ({ name: x.name, ext: x.ext || "FILE", meta: x.size || t("team.dashFile") })), ...loadShots(tenant.slug, c.id).map((x) => ({ name: x.name, ext: extOf(x.name) || "IMG", meta: t("team.dashScreenshot") }))],
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
-      mode, onMode: setMode, onClose: inPage ? undefined : closeCase,
+      mode, onMode: setMode, onClose: inPage ? undefined : closeCase, inProject: inPage,
       // The raiser edits it while open, the project lead after its yes (features/cases/permissions.ts, case.revised): the
       // title and text go out as the next version; Affects and Context stay in this browser for now.
       edit: mayReviseIdea(c, me.userId, ctx.S.projects) ? {
