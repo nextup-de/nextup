@@ -185,6 +185,7 @@ test.describe.serial("LOOP acceptance: raise to project on a real company with A
     await page.getByLabel("What is measured").filter({ visible: true }).fill(BASELINE.metric);
     await page.getByLabel(/Today.s number/).filter({ visible: true }).fill(BASELINE.value);
     await page.getByLabel("Unit").filter({ visible: true }).fill(BASELINE.unit);
+    await page.locator('[data-name="baseline-more"] > summary').filter({ visible: true }).click(); // direction and source are folded (DESIGN_RULES §9)
     await page.getByLabel("Lower is better").filter({ visible: true }).check();
     await page.getByLabel("Where the number comes from").filter({ visible: true }).fill("Weekly scrap report");
     await page.getByRole("button", { name: "Save the baseline" }).click();

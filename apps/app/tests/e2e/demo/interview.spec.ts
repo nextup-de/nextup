@@ -132,7 +132,8 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     await expect(detail.getByRole("heading", { name: SHOWN, level: 1 })).toBeVisible();
     await expect(detail).toContainText(MORE[0]);
     await expect(detail).toContainText("5 d left");
-    await expect(leader.getByRole("region", { name: "What the AI found" })).toBeVisible();
+    // What the AI found is one fold under the text (quiet screens, DESIGN_RULES §9).
+    await expect(leader.getByTestId("fold").filter({ hasText: "What the AI found" })).toBeVisible();
     const decision = leader.getByRole("region", { name: "Your move" });
     for (const name of [/^Yes, do it/, "No, and why"]) await expect(decision.getByRole("button", { name })).toBeVisible();
     await expect(await yourMove(leader, "Ask a question")).toBeVisible(); // in view or under More

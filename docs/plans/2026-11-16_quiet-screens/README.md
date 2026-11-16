@@ -33,8 +33,8 @@ What stays in view. Everything not named here folds away (`Fold` from `component
 
 **Bar and side view.** The bar's pill names the area. Each area lists its pages in one side view on the left,
 hidden at the start, as Projects already does; the strip of tabs under the bar goes on laptop and monitor (a phone
-keeps it). Inbox: Inbox, Decisions. Ideas: New idea, Mine. Dashboard: Dashboard, KPIs. This changes §4's tab rule
-and lands in its own PR (package C2) so Kevin can take or leave it alone.
+keeps it). Inbox: Inbox, Decisions. Ideas: New idea, Mine. Dashboard: Dashboard, KPIs. Profile: My profile, My
+reports. Kevin said yes to this for every area on 16 Nov; it changes §4's tab rule (package C2).
 
 **Inbox list.** No "Inbox" heading and no Today line: the group headings carry the counts ("Decide 6"). A row is
 the title and one fact: who raised it, or the cause ("Passed to you by …"). One chip when late or due soon; no
@@ -102,7 +102,7 @@ change there says so in its PR text.
 | **A · Inbox and ideas** | Inbox list, opened item, idea page, raise and publish, Mine, Decisions | `components/inbox`, `components/dashboard/leader`, `components/dashboard/shared/{CaseDetailView,CaseLoop}*`, `components/dashboard/team/{OverviewIdea,DeskDecision,SentView,DashboardView,OverviewChats,OverviewPhone}*`, `components/cases`, `components/ideas`, `components/decisions`, `components/projects/IdeaPage*`, `features/inbox`, `features/ideas`; catalogs `inbox`, `ideas`, `cases*`, `decisions`, `approvals`, `team`, `brief` |
 | **B · Projects** | Projects list, project page, Result, Baseline, Reward, draft and setup, board, Collaboration, Progress | `components/projects` (not `IdeaPage*`), `components/dashboard/shared/{CollaborationView,ProgressView}*`; catalogs `projects*` |
 | **C1 · Dashboard, Feed, Profile** | Dashboard, KPIs, Feed, Profile, Reports, account menu, old routes | `components/dashboard/shared/{DashboardBoard,BreakdownCard,DeskLoadCard}*`, `components/dashboard/team/FeedView*`, `components/metrics`, `components/profile`, `components/report`, `components/overload`, `components/shell/SimpleShell*`; catalogs `dashboard`, `feed`, `metrics`, `kpis`, `profile`, `shell` |
-| **C2 · Side view** (after A, B and C1 are merged) | One side view per area in place of the tab strip | `components/shell`, `config/nav.ts`, the area frames, `docs/DESIGN_RULES.md` §4, `tests/unit/design/section-tabs.test.ts` |
+| **C2 · Side view** (Kevin, 16 Nov: yes, every area) | One side view per area in place of the tab strip. `AreaFrame` and Dashboard and Profile first; Inbox and Ideas join when package A moves their lists into it with `AreaSideSlot` | `components/shell/AreaFrame*`, `SectionTabs.tsx`, `config/nav.ts`, `docs/DESIGN_RULES.md` §4, `tests/unit/design/side-view.test.tsx` |
 
 Not in any package: rights (`features/projects/views.ts`, `confirm.ts`, `features/*/permissions.ts`), the reducer
 and the events. A screen is built on today's rights and events.

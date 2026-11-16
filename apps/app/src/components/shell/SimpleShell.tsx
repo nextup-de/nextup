@@ -5,13 +5,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { adminMenuLinks, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
+import { adminMenuLinks, hasSideView, sectionTabAt, visibleSimpleNav, type ProjectsTabKey } from "@/config/nav";
 import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
 import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { inboxTotal, mineRows } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
+import { AreaFrame } from "./AreaFrame";
 import { NavSearch, navLabel } from "./NavSearch";
 import { decisionsWaiting } from "@/features/metrics";
 import { DevPanel } from "./DevPanel";
@@ -36,6 +37,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const onIdea = ctx.flag("projects") && (caseId !== null || pathname === tenant.prefix + "/idea");
   const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
   const inProjects = projectsArea !== null || projectId !== null || onIdea;
+  // Any other area with several pages lists them in its own side view (AreaFrame); the strip then shows on a phone only.
+  const sideArea = area && !inProjects && hasSideView(area.section) ? area : null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -134,10 +137,14 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </header>
-      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} />}
+      {area && !inProjects && <SectionTabs section={area.section} active={area.tab} side={sideArea !== null} />}
 
       <main className={styles.content}>
-        <div className={styles.contentInner}>{inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId} idea={onIdea}>{children}</ProjectsFrame> : children}</div>
+        <div className={styles.contentInner}>
+          {inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId} idea={onIdea}>{children}</ProjectsFrame>
+            : sideArea ? <AreaFrame section={sideArea.section} active={sideArea.tab}>{children}</AreaFrame>
+            : children}
+        </div>
       </main>
 
       {pop && <div className={styles.backdrop} onClick={() => setPop(null)} />}
