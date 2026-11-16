@@ -1,6 +1,7 @@
 .scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgb(0 0 0 / 18%); }
 .dialog { display: flex; flex-direction: column; width: min(1120px, 100%); max-height: 100%; overflow: hidden; border-radius: 12px; background: var(--nh-card); color: var(--nh-ink); box-shadow: 0 20px 50px rgb(0 0 0 / 20%); font-size: var(--nh-fs-sm); }
 .dialog[data-step="2"] { width: min(640px, 100%); }
+.dialog:focus { outline: none; } /* the box only holds focus for the keyboard; its controls show their own ring */
 .head, .foot { display: flex; align-items: center; gap: 16px; padding: 16px 24px; flex-shrink: 0; }
 .head { border-bottom: 1px solid var(--nh-line-soft); }
 .head h2 { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; }
@@ -21,6 +22,12 @@
 .dialog h3 { margin: 0 0 12px; color: var(--nh-ink-2); font-size: var(--nh-fs-sm); font-weight: 600; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .tile { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px; text-align: left; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 12px; color: var(--nh-ink); }
+.ready { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 12px; }
+.readyTile { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 56px; padding: 8px 12px; text-align: left; background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: 12px; color: var(--nh-ink); }
+.readyTile:hover:not(:disabled) { border-color: var(--nh-brand); background: var(--nh-brand-tint); }
+.readyTile .glyph { flex-shrink: 0; }
+.readyText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.readyText strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile[aria-pressed="true"] { border-color: var(--nh-brand); box-shadow: inset 0 0 0 1px var(--nh-brand); background: var(--nh-brand-tint); }
 .tileTop { display: flex; align-items: center; gap: 8px; padding-right: 16px; flex-wrap: wrap; }
 .glyph { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; background: var(--nh-fill); }
@@ -63,6 +70,10 @@
 .foot .primary:hover:not(:disabled) { background: var(--nh-brand-hover); }
 .spacer { flex: 1; }
 .error { padding: 12px 24px; color: var(--nh-danger); }
+@media (max-width: 1000px) {
+  .preview { width: 220px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 760px) {
   .scrim { padding: 12px; }
   .head { flex-wrap: wrap; gap: 8px; padding: 12px; }
@@ -73,6 +84,7 @@
   .body { flex-direction: column; }
   .picker, .naming { padding: 16px; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ready { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preview { box-sizing: border-box; width: 100%; border-left: 0; border-top: 1px solid var(--nh-line-soft); padding: 16px; }
   .foot { padding: 12px; gap: 8px; }
 }
