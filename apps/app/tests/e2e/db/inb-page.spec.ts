@@ -75,22 +75,20 @@ test.describe.serial("INB page", () => {
     await deleteTestCompany(SLUG);
   });
 
-  test("INB page: a leader sees the Today line, decides the desk case in place and marks the raise notice read", async ({ browser }) => {
+  test("INB page: a leader sees the count on Decide, decides the desk case in place and marks the raise notice read", async ({ browser }) => {
     const page = await signIn(browser, LEAD);
     const errors: string[] = [];
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     await page.goto(`/${SLUG}/inbox`);
 
-    await test.step("the Today line counts the case to decide", async () => {
-      const today = page.getByTestId("inbox-today");
-      await expect(today).toBeVisible();
-      await expect(page.getByTestId("inbox-today-decide")).toHaveText("1 to decide");
-      await expect(page.getByTestId("inbox-today-late")).toHaveText("0 late");
-      await expect(page.getByTestId("inbox-today-part")).toHaveText("0 to do my part");
+    // Since the quiet screens (DESIGN_RULES §9) there is no Today line: each group's heading carries its count.
+    const decide = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) });
+    await test.step("the Decide heading counts the case to decide", async () => {
+      await expect(decide.getByTestId("inbox-count")).toHaveText("1");
+      await expect(page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Do my part", exact: true }) })).toHaveCount(0);
     });
 
     await test.step("the case is under Decide and opens in place with the decide actions", async () => {
-      const decide = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) });
       const row = decide.getByTestId("inbox-row").filter({ hasText: TITLE });
       await expect(row).toHaveCount(1);
       await expect(row).toHaveAttribute("data-ask", "decide");
@@ -101,6 +99,8 @@ test.describe.serial("INB page", () => {
     });
 
     await test.step("the raise notice is unread in the notices list and Mark all as read marks it", async () => {
+      // The notices are below the list, not under an open item.
+      await page.goto(`/${SLUG}/inbox`);
       const notice = page.getByTestId("inbox-notice").filter({ hasText: NOTICE });
       await expect(notice).toHaveAttribute("data-read", "false");
       await page.getByRole("button", { name: "Mark all as read" }).click();
@@ -117,7 +117,7 @@ test.describe.serial("INB page", () => {
       await page.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
       await expect.poll(() => getDb().caseEvent.count({ where: { companyId, type: "case.decided", targetId: CASE_ID } })).toBe(1);
       await page.goto(`/${SLUG}/inbox`);
-      await expect(page.getByTestId("inbox-today-decide")).toHaveText("0 to decide");
+      await expect(decide).toHaveCount(0);
     });
 
     expect(errors, "console errors").toEqual([]);
