@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { timePerColumn } from "@/features/projects/flow-view";
 import type { ReducedProject } from "@/features/projects/types";
-import { baselineText, fmtNumber } from "@/features/projects/views";
+import { fmtNumber } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { Pill } from "@/components/dashboard/shared/primitives";
 import { VerdictChip } from "../../parts";
@@ -33,7 +33,7 @@ export function Results({ p }: { p: ReducedProject }) {
         <span className={styles.main}>
           <span className={styles.heading}><span className={styles.title}>{title}</span>{unconfirmed ? <Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill> : <VerdictChip verdict={latest?.verdict ?? "not measured"} />}</span>
           <span className={styles.progressLine}>
-            <span><span className={styles.muted}>{t("projectHub.resultsBaseline")}</span> {p.baseline ? baselineText(p.baseline, locale) : t("projectHub.resultsEmpty")}</span>
+            <span><span className={styles.muted}>{t("projectHub.resultsBaseline")}</span> {p.baseline ? (p.baseline.none ? t("projects.noNumberPossible") : fmtNumber(p.baseline.value, locale) + (p.baseline.unit ? " " + p.baseline.unit : "")) : t("projectHub.resultsEmpty")}</span>
             {baseline && latest && <><span aria-hidden="true">→</span><span><span className={styles.muted}>{t("projectHub.resultsActual")}</span> <strong>{fmtNumber(latest.value, locale)} {baseline.unit}</strong></span></>}
           </span>
         </span>

@@ -36,7 +36,8 @@ export function Activity({ p }: { p: ReducedProject }) {
   return (
     <section className={styles.card} aria-labelledby={"activity-" + p.id}>
       <div className={styles.head}>
-        <h2 id={"activity-" + p.id} className={styles.title}>{t("projects.activityTitle")}</h2>
+        {/* Its section (or the page) carries the name: kept for screen readers only (DESIGN_RULES §9). */}
+        <h2 id={"activity-" + p.id} className="nh-sr">{t("projects.activityTitle")}</h2>
         <span className={styles.muted}>{[comments ? t("projects.commentCount", { count: comments }) : "", events ? t("projects.eventCount", { count: events }) : ""].filter(Boolean).join(" · ")}</span>
       </div>
       <form className={styles.form} onSubmit={(e) => { e.preventDefault(); if (send("project.commented", { text }, () => act.project.comment(p.id, text.trim()))) setText(""); }}>

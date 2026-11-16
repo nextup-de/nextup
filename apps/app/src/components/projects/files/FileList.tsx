@@ -72,9 +72,9 @@ export function FileList({ state, actions }: FilesPartProps) {
               <span className={styles.kind}>{row.isFolder ? t("projectFiles.folderFiles", { count: row.childCount }) : t(KIND_KEY[row.kind])}</span>
             </span>
           </span></td>
-          <td className={styles.linkedCol}>{steps.length === 0 ? <span className={styles.empty}>—</span> : <><span className={styles.chip}>{steps[0].key}</span>{steps.length > 1 && <span className={styles.more}>+{steps.length - 1}</span>}</>}</td>
+          <td className={styles.linkedCol}>{steps.length === 0 ? null : <><span className={styles.chip}>{steps[0].key}</span>{steps.length > 1 && <span className={styles.more}>+{steps.length - 1}</span>}</>}</td>
           <td className={styles.changedCol}>{changedText(row, locale, now, t("common.today"))}</td>
-          <td className={styles.sizeCol}>{row.isFolder ? <span className={styles.empty}>—</span> : formatSize(row.size)}</td>
+          <td className={styles.sizeCol}>{row.isFolder ? null : formatSize(row.size)}</td>
           <td className={styles.menuCol}><button type="button" className={styles.dots} aria-label={t("projectFiles.rowMenu", { name: row.name })} aria-haspopup="menu" onClick={(e) => { e.stopPropagation(); actions.openDialog({ kind: "row-menu", row }); }}>
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="currentColor"><circle cx="8" cy="3.5" r="1.2" /><circle cx="8" cy="8" r="1.2" /><circle cx="8" cy="12.5" r="1.2" /></svg>
           </button></td>

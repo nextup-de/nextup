@@ -127,7 +127,7 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
       </ol><button type="button" className={s.close} disabled={busy} aria-label={t("projectPages.closeDialogLabel")} onClick={onClose}>×</button></header>
       {state.step === 1 ? <div className={s.body}>
         <div className={s.picker}>
-          {ready.length > 0 && <section aria-label={t("projectPages.readyPages")}><h3>{t("projectPages.readyPages")}</h3><p className={s.hint}>{t("projectPages.readyPagesHint")}</p><div className={s.ready}>
+          {ready.length > 0 && <section aria-label={t("projectPages.readyPages")}><h3>{t("projectPages.readyPages")}</h3><div className={s.ready}>
             {ready.map((page) => {
               const name = t(page.title as MessageKey);
               const tools = page.tools.map((tool) => nameOf(tool.kind)).join(" · ");
@@ -137,7 +137,7 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
               </button>;
             })}
           </div></section>}
-          <p>{t("projectPages.pickToolsHint")}{hasJira && <> {t("projectPages.jiraPickerHint", { project: jira.projectKey! })}</>}</p>
+          {hasJira && <p>{t("projectPages.jiraPickerHint", { project: jira.projectKey! })}</p>}
           {TOOL_GROUPS.map((group) => <section key={group.title}><h3>{t(group.title as MessageKey)}</h3><div className={s.tiles}>
             {group.kinds.filter((kind) => kind !== "agent" || flag("agent")).map((kind) => {
               const index = state.picks.findIndex((pick) => pick.kind === kind);
@@ -147,13 +147,13 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
               </button>;
             })}
           </div></section>)}
-        </div><aside className={s.preview} aria-label={t("projectPages.previewLabel")}><h3>{t("projectPages.yourPage")}</h3>{state.picks.length ? <div className={s.previewPage}>{order(true)}<p className={s.nextTool}>{t("projectPages.nextToolHere")}</p></div> : <p>{t("projectPages.pickToolsEmpty")}</p>}<p>{t("projectPages.previewHint")}</p></aside>
+        </div><aside className={s.preview} aria-label={t("projectPages.previewLabel")}><h3>{t("projectPages.yourPage")}</h3>{state.picks.length ? <div className={s.previewPage}>{order(true)}<p className={s.nextTool}>{t("projectPages.nextToolHere")}</p></div> : <p>{t("projectPages.pickToolsEmpty")}</p>}</aside>
       </div> : <div className={s.naming}>
         <label className={s.label}>{t("projectPages.pageName")}<input ref={name} value={state.name} maxLength={LIMITS.titleMax} placeholder={t(suggestions[0] as MessageKey)} onChange={(event) => dispatch({ type: "name", name: event.target.value })} disabled={busy || createdPage !== null} aria-describedby="page-name-hint" /></label>
         <p id="page-name-hint" className={s.hint}>{t("projectPages.pageNameHint")}</p>
         <div className={s.suggestions}><span>{t("projectPages.nameSuggestions")}</span>{suggestions.map((key) => <button key={key} type="button" disabled={busy || createdPage !== null} onClick={() => dispatch({ type: "name", name: t(key as MessageKey) })}>{t(key as MessageKey)}</button>)}</div>
         <fieldset className={s.icons} disabled={busy || createdPage !== null}><legend>{t("projectPages.sidebarIcon")}</legend>{PAGE_ICON_KEYS.map((icon) => <button key={icon} type="button" aria-label={t("projectPages.chooseIconLabel", { icon })} aria-pressed={state.icon === icon} onClick={() => dispatch({ type: "icon", icon })}><Glyph icon={icon} /></button>)}</fieldset>
-        <section><h3>{t("projectPages.toolsInOrder")}</h3>{order(false)}<p className={s.hint}>{hasJira && p.sync?.on && state.picks.some((pick) => isJiraTool(pick.kind)) ? <>{t("projectPages.jiraToolsHint", { project: jira.projectKey! })} </> : null}{t("projectPages.sameStepsHint")}</p></section>
+        <section><h3>{t("projectPages.toolsInOrder")}</h3>{order(false)}{hasJira && p.sync?.on && state.picks.some((pick) => isJiraTool(pick.kind)) && <p className={s.hint}>{t("projectPages.jiraToolsHint", { project: jira.projectKey! })}</p>}</section>
       </div>}
       {error && <p role="alert" className={s.error}>{error}</p>}
       <footer className={s.foot}>{state.step === 1 ? <>{state.picks.length > 0 && <><span>{t("projectPages.toolsPicked", { count: state.picks.length })}</span><button type="button" onClick={() => dispatch({ type: "clear" })}>{t("projectPages.clear")}</button></>}</> : <button type="button" disabled={busy || createdPage !== null} onClick={() => dispatch({ type: "back" })}>‹ {t("projectPages.back")}</button>}<span className={s.spacer} /><button type="button" disabled={busy} onClick={onClose}>{t("projectPages.cancel")}</button>{state.step === 1 ? <button type="button" className={s.primary} disabled={!canNext(state)} onClick={() => dispatch({ type: "next" })}>{t("projectPages.nextName")} →</button> : <button type="button" className={s.primary} disabled={busy || !canCreate(state)} onClick={() => void create()}>{t(busy ? "projectPages.creatingPage" : "projectPages.createPage")}</button>}</footer>
