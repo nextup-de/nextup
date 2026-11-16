@@ -369,3 +369,76 @@ describe("JSY kick", () => {
     expect(c.f.requests.filter((q) => /version|permissions/.test(q.path))).toEqual([]);
   });
 });
+
+describe("JSY push marks what did not reach Jira", () => {
+  const marks = (log: MemoryLog) => log.appended.filter((e) => e.type === "project.milestone.edited" && e.payload.sync !== undefined);
+  const mark = (log: MemoryLog, id: string) => log.project().milestones.find((m) => m.id === id)?.sync ?? null;
+
+  it("without Administer Projects a new milestone is marked failed once, not waiting, and the mark clears when the version is made", async () => {
+    const c = await setup("cloud", { ADMINISTER_PROJECTS: false });
+    c.ms("m1");
+    await c.round();
+    expect(mark(c.log, "m1")).toEqual({ state: "failed", op: "create", why: "permission" });
+    await c.round();
+    expect(marks(c.log)).toHaveLength(1);
+    c.f.setPermissions({ ADMINISTER_PROJECTS: true });
+    await c.round();
+    expect(c.ids("m1")).not.toBe("");
+    expect(mark(c.log, "m1")).toBeNull();
+    expect(marks(c.log)).toHaveLength(2);
+  });
+
+  it("a person's edit held for the permission is marked, and goes out and clears once the permission is granted", async () => {
+    const c = await setup("cloud", { ADMINISTER_PROJECTS: false });
+    const vid = c.f.human.createVersion("Pilot m1", { description: versionMarker("p_one", "m1"), releaseDate: d(99) });
+    c.ms("m1");
+    c.log.add("project.milestone.edited", JIRA_ACTOR, "p_one", { milestoneId: "m1", external: { system: "jira", key: vid, url: `${c.f.url}/projects/NUP/versions/${vid}`, mode: "owned" } });
+    await c.round();
+    expect(mark(c.log, "m1")).toBeNull();
+    c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Renamed" });
+    await c.round();
+    expect(mark(c.log, "m1")).toEqual({ state: "failed", op: "update", why: "permission" });
+    c.f.setPermissions({ ADMINISTER_PROJECTS: true });
+    await c.round();
+    expect(c.f.versions.get(vid)?.name).toBe("Renamed");
+    expect(mark(c.log, "m1")).toBeNull();
+  });
+
+  it("creates over the round's budget are marked pending and clear in the next round", async () => {
+    const c = await setup("cloud");
+    for (let i = 0; i < MAX_VERSION_WRITES + 2; i++) c.ms("m" + i, { title: "T" + i });
+    await c.round();
+    const waiting = c.log.project().milestones.filter((m) => m.sync);
+    expect(waiting).toHaveLength(2);
+    expect(waiting.every((m) => m.sync?.state === "pending" && m.sync.why === "cap" && !m.external)).toBe(true);
+    await c.round();
+    expect(c.log.project().milestones.filter((m) => m.sync)).toEqual([]);
+  });
+
+  it("an update Jira refuses for good stays marked failed until a later edit goes through", async () => {
+    const c = await setup("cloud");
+    c.ms("m1");
+    await c.round();
+    const update = c.api.updateVersion;
+    c.api.updateVersion = async () => { throw new JiraError("Jira 400: the field is not valid", 400); };
+    c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Renamed" });
+    await c.round();
+    expect(mark(c.log, "m1")).toEqual({ state: "failed", op: "update", why: "refused" });
+    c.api.updateVersion = update;
+    await c.round();
+    expect(mark(c.log, "m1")).toEqual({ state: "failed", op: "update", why: "refused" });
+    c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Renamed again" });
+    await c.round();
+    expect(c.version("m1").name).toBe("Renamed again");
+    expect(mark(c.log, "m1")).toBeNull();
+  });
+
+  it("a happy round appends no mark at all", async () => {
+    const c = await setup("dc");
+    c.ms("m1");
+    await c.round();
+    c.log.human("project.milestone.edited", { milestoneId: "m1", title: "Renamed" });
+    await c.round();
+    expect(marks(c.log)).toEqual([]);
+  });
+});
