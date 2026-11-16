@@ -262,7 +262,8 @@ test.describe("RES acceptance: a result that closes properly", () => {
 
       page = await signIn(browser, MANAGER);
       await page.goto(`/${SLUG}/projects/${soloProject}`);
-      await setupStep(page, "Baseline");
+      // Whoever may confirm lands on the baseline step, where the button is (their inbox row links to the project).
+      await expect(page.getByTestId("draft-step")).toHaveAttribute("data-step", "baseline");
       await page.getByTestId("baseline-confirm").click();
       await expect.poll(async () => (await eventsOf("project.baseline.confirmed", soloProject)).length).toBe(1);
       expect((await eventsOf("project.baseline.confirmed", soloProject))[0]).toMatchObject({ actorUserId: id.manager });

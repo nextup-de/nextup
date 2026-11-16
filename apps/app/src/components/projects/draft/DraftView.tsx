@@ -66,7 +66,8 @@ export function DraftView({ p }: { p: ReducedProject }) {
 
   // The step shown: it opens on the first one still open (the start once all are done), or on the team for a link to an
   // invitation (#invite-…). A save keeps the step on screen, so what was saved shows; Next (then the main button) moves on.
-  const firstOpen: SetupStep = STEPS.find((k) => k !== "start" && view.checklist[k] !== "done") ?? "start";
+  // Whoever is asked to confirm the baseline (their inbox row links here) lands on the baseline, where the button is.
+  const firstOpen: SetupStep = view.may.confirmBaseline ? "baseline" : STEPS.find((k) => k !== "start" && view.checklist[k] !== "done") ?? "start";
   const [opened] = useState<SetupStep>(firstOpen);
   const [picked, setPicked] = useState<SetupStep | null>(null);
   const invited = useSyncExternalStore(onHash, () => window.location.hash.startsWith("#invite-"), () => false);
@@ -150,6 +151,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
               )}
               {broken && <p className={approvalStyles.note} data-tone="hold" data-testid="draft-approver-missing">{t("approvals.approverMissing", { rule: unmet.broken.map(ruleText).join("; ") })}</p>}
               {view.baselineWaits && <p className={styles.hint} data-testid="draft-baseline-waits">{t("projectResult.baselineWaits")}</p>}
+              {view.may.confirmBaseline && <span className={styles.actionRow}><button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" data-testid="draft-go-confirm" onClick={() => pick("baseline")}>{t("projectResult.baselineConfirm")}</button></span>}
               {optionalOpen && missing.length > 0 && <p className={styles.hint}>{t("projectDraft.startOptional")}</p>}
             </section>
             {kase && (
