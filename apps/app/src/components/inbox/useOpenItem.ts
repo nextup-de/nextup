@@ -7,13 +7,15 @@ import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { askedForView, deskCases, inboxIdeas } from "@/components/dashboard/derive";
 import type { IdeaProps } from "@/components/dashboard/leader/IdeaParts";
+import type { IdeaBrief } from "@/features/ideas/brief";
 import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
 import { readableComment } from "@/features/cases/notice";
 import { raisedWith, sentLabel } from "@/features/cases/rows";
 import { affectedOn, commentsOn, rescoresOn } from "@/features/cases/selectors";
 import { badgeTone, briefFor, briefForCase, personFor } from "@/features/ideas/brief";
-import { useT } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import type { T } from "@/i18n";
+import { formatEuro } from "@/i18n/format";
 
 // "Yesterday" -> "yesterday", "Monday" -> "on Monday", "09:14" -> "today"
 const raisedPhrase = (t: T, label: string) => (/\d:\d/.test(label) || label === "Today" ? t("leader.raisedToday") : label === "Yesterday" ? t("leader.raisedYesterday") : t("leader.raisedOn", { day: label }));
@@ -22,6 +24,7 @@ const raisedPhrase = (t: T, label: string) => (/\d:\d/.test(label) || label === 
 export function useOpenItem(cid: string | null, close: () => void): IdeaProps | null {
   const ctx = useDemo();
   const t = useT();
+  const locale = useLocale();
   const [now] = useState(() => new Date()); // the page renders only once `ready`, so this never meets the server render
   if (cid === null || !ctx.ready) return null;
   const { seed, S, log, act, openSheet, showToast, f, me, flag } = ctx;
@@ -39,12 +42,18 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
     badge: tag ?? (paused ? t("leader.badgePaused") : due < 0 ? t("leader.badgeLate", { n: -due }) : t("leader.badgeLeft", { n: due })),
   });
   const dayDate = (offset: number) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d; };
+  // One line of advice (DESIGN_RULES §9): the recommended move, when it can be pressed, and why in a few words.
+  const adviceOf = (b: IdeaBrief, why: string | null) => {
+    const rec = b.actions.find((a) => a.key === b.rec && a.live);
+    return rec && why ? t("leader.advice", { move: rec.label, why }) : null;
+  };
 
   if (si) {
     const brief = briefFor(si, briefCtx);
     const asked = si.thread.filter((m) => isMe(m.byUserId));
     return {
       idea: header(si.id, "idea", si.title, P - si.wait, false, dayDate(-si.wait), false, null), brief, onClose: close,
+      advice: adviceOf(brief, brief.recText || null),
       feed: [
         ...brief.feed.comments.map((c) => ({ name: c.name, role: c.role, text: c.text, when: t("leader.daysShort", { n: c.daysAgo }), mine: false, person: personFor(c.name, briefCtx) })),
         ...si.thread.map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: t("leader.askedQuestion"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
@@ -90,8 +99,13 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
       ...(last ? [t(last.open.length ? "leader.checkinLineOpen" : "leader.checkinLine", { round: last.round, day: f(last.day), next: last.next === "decide" ? t("leader.checkinReady") : t("leader.checkinAnother"), open: last.open.join(", ") })] : []),
     ],
   } : null;
+  const cost = costEurOf(sc.body);
+  const why = brief.rec === "yes" ? t("leader.whyYes") : brief.rec === "ask" ? t("leader.whyAsk")
+    : brief.rec === "hand" && route ? t("leader.whyHand", { type: route.type })
+    : brief.rec === "discuss" ? (cost === null ? t("leader.whyCostUnknown") : t("leader.whyCostAbove", { cost: formatEuro(locale, cost), limit: formatEuro(locale, S.rules.fastLaneEur) }))
+    : brief.rec === "checkin" ? t("leader.whyCheckin") : null;
   return {
-    idea, onClose: close, brief,
+    idea, onClose: close, brief, advice: adviceOf(brief, why),
     feed: commentsOn(log, sc.id).map((m) => readableComment(m, t)).map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
     status: talkNote ?? (!q ? null : {
       label: q.answer ? t("leader.answeredBy", { name: sc.from }) : q.unanswered !== null ? t("leader.noAnswer", { name: sc.from }) : t("leader.questionOut"),

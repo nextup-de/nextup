@@ -1,13 +1,14 @@
 "use client";
-// One idea, opened from the inbox (Claude Design handoff "Inbox App", detail half): who raised it,
-// what it is, who it affects, five scores that each open their reasoning, what the AI found, "Your
-// move", and the feed. Props in, JSX out - the brief comes from features/ideas/brief.ts and
-// every decision goes back up through onDecide, which opens the existing input sheets.
-// Local state is view state only: which popover or score is open.
-import { useEffect, useId, useState } from "react";
-import type { AffectedDept, AffectedPerson, IdeaBrief } from "@/features/ideas/brief";
-import { AiBrief, Blocks, Chevron, deskMoves, FeedBody, FileRows, initialsOf, PanelRow, PersonCard, Sources, Sparkle, type FeedEntry, type IdeaProps } from "./IdeaParts";
+// One item opened from the inbox (DESIGN_RULES §9): who raised it with one due chip, the title, the text (three lines,
+// more on demand) and one line of advice. Everything else waits in a fold: Details (who it affects, the context, the
+// files), What the AI found (the five scores and their reasoning, reviewers, pattern, sources), Comments and What
+// happened. Beside it "Your move". Props in, JSX out - the brief comes from features/ideas/brief.ts and every move goes
+// back up through onDecide, which opens the existing input sheets. Local state is view state only: which popover is open.
+import { useEffect, useId, useRef, useState } from "react";
+import type { AffectedDept, AffectedPerson } from "@/features/ideas/brief";
+import { Fold } from "@/components/ui/elements";
 import { YourMove } from "@/components/inbox/YourMove";
+import { AiBrief, Chevron, deskMoves, FeedBody, FileRows, initialsOf, PanelRow, PersonCard, ScoreRows, Sparkle, type IdeaProps } from "./IdeaParts";
 import styles from "./IdeaDetail.module.css";
 import { avatarTone } from "@/lib/avatar";
 import { deptTone } from "@/lib/dept-tone";
@@ -15,13 +16,11 @@ import { useT } from "@/i18n/client";
 
 export type { FeedEntry, IdeaHeader } from "./IdeaParts";
 
-export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onClose }: IdeaProps) {
+export function IdeaDetail({ idea, brief, status, advice, feed, onDecide, onComment, onClose }: IdeaProps) {
   const t = useT();
   const uid = useId();
-  const aiSrc = uid + "-ai", scoreSrc = uid + "-score";
   const [aff, setAff] = useState<string | null>(null); // "author" | "d:<dept id>" | "p:<name>" | "f:<feed index>"
   const [member, setMember] = useState<string | null>(null);
-  const [openScore, setOpenScore] = useState<number | null>(null);
 
   // A click outside a chip or its popover closes it; Escape closes it before the inbox hears it.
   useEffect(() => {
@@ -34,102 +33,102 @@ export function IdeaDetail({ idea, brief, status, feed, onDecide, onComment, onC
   }, [aff]);
 
   const toggle = (key: string) => { setAff((a) => (a === key ? null : key)); setMember(null); };
-  const score = openScore == null ? null : brief.scores[openScore];
   const hasAffects = brief.depts.length > 0 || brief.people.length > 0;
+  const hasDetails = hasAffects || !!brief.context || brief.prompts.length > 0 || brief.files.length > 0;
+  const moves = deskMoves(brief, onDecide);
+  // With no move of their own (a view asked of them), commenting is what the viewer has to do now: that fold stands open.
+  const commentIsTheMove = !moves.primary && moves.quiet.length === 0 && moves.more.length === 0 && !!onComment;
+  const happened = status?.lines ?? [];
 
   return (
     <div className={styles.detail}>
-      <div className={styles.main}>
-        {/* ── the idea ── */}
-        <article className={styles.card}>
-          <div className={styles.head}>
-            <div className={styles.authorWrap} data-aff="1">
-              <button type="button" className={styles.author} data-on={aff === "author" ? "true" : undefined} onClick={() => toggle("author")} title={t("leader.viewPerson", { name: brief.author.name })} aria-expanded={aff === "author"}>
-                <span className={styles.authorAvatar} data-avatar={avatarTone(brief.author.name)}>{initialsOf(brief.author.name)}</span>
-                <span className={styles.authorText}>
-                  <span className={styles.authorName}>{brief.author.name}</span>
-                  <span className={styles.authorLine}>{t("leader.authorLine", { role: brief.author.role, raised: idea.raised })}</span>
-                </span>
-              </button>
-              {aff === "author" && <div className={styles.pop}><PersonCard p={brief.author} /></div>}
-            </div>
-            <span className={styles.badge} data-tone={idea.tone}>{idea.badge}</span>
-            <button type="button" className={styles.close} onClick={onClose} title={t("leader.backToInbox")} aria-label={t("leader.backToInbox")}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      <article className={`${styles.card} ${styles.main}`}>
+        <div className={styles.head}>
+          <div className={styles.authorWrap} data-aff="1">
+            <button type="button" className={styles.author} data-on={aff === "author" ? "true" : undefined} onClick={() => toggle("author")} title={t("leader.viewPerson", { name: brief.author.name })} aria-expanded={aff === "author"}>
+              <span className={styles.authorAvatar} data-avatar={avatarTone(brief.author.name)}>{initialsOf(brief.author.name)}</span>
+              <span className={styles.authorText}>
+                <span className={styles.authorName}>{brief.author.name}</span>
+                <span className={styles.authorLine}>{t("leader.authorLine", { role: brief.author.role, raised: idea.raised })}</span>
+              </span>
             </button>
+            {aff === "author" && <div className={styles.pop}><PersonCard p={brief.author} /></div>}
           </div>
-          <h1 className={styles.title}>{idea.title}</h1>
-          <p className={styles.lede}>{brief.description}</p>
-
-          {hasAffects && (
-            <div className={`${styles.section} ${styles.affects} ${styles.fade}`} data-delay="1">
-              <span className={styles.label}>{t("leader.affects")}</span>
-              <div className={styles.chips}>
-                {brief.depts.map((d) => <DeptChip key={d.id} d={d} on={aff === "d:" + d.id} member={aff === "d:" + d.id ? member : null} author={brief.author.name} onToggle={() => toggle("d:" + d.id)} onMember={setMember} />)}
-                {brief.people.map((p) => <PersonChip key={p.name} p={p} on={aff === "p:" + p.name} author={brief.author.name} onToggle={() => toggle("p:" + p.name)} />)}
-              </div>
-            </div>
-          )}
-          {/* The context and its facts are one section: the paragraph, then the grouped facts. */}
-          {(brief.context || brief.prompts.length > 0) && (
-            <div className={`${styles.section} ${styles.fade}`} data-delay="2">
-              <span className={styles.label}>{t("leader.context")}</span>
-              {brief.context && <p className={styles.para}>{brief.context}</p>}
-              {brief.prompts.length > 0 && <dl className={styles.panel}>{brief.prompts.map((p) => <PanelRow key={p.label} k={p.label}>{p.text}</PanelRow>)}</dl>}
-            </div>
-          )}
-          {brief.files.length > 0 && (
-            <div className={`${styles.section} ${styles.fade}`} data-delay="3">
-              <span className={styles.label}>{t("leader.attachments")}</span>
-              <FileRows files={brief.files} />
-            </div>
-          )}
-        </article>
-
-        {/* ── five scores; an open one becomes a tab joined to the reasoning below ── */}
-        <div className={styles.scoreWrap}>
-          <div className={styles.scores}>
-            {brief.scores.map((s, i) => {
-              const on = openScore === i;
-              return (
-                <div key={s.label} className={styles.score} data-open={on ? "true" : undefined} data-edge={on ? (i === 0 ? "left" : i === 4 ? "right" : "mid") : undefined}>
-                  <span className={styles.scoreLabel}>{s.label}</span>
-                  <div className={styles.gauge}>
-                    <svg viewBox="0 0 72 72" className={styles.arc} aria-hidden="true">
-                      <circle cx="36" cy="36" r="30" className={styles.arcTrack} strokeDasharray="141.4 188.5" />
-                      <circle cx="36" cy="36" r="30" className={styles.arcFill} strokeDasharray={((s.value / 100) * 141.4).toFixed(1) + " 188.5"} />
-                    </svg>
-                    <div className={styles.gaugeText}><span className={styles.gaugeNum} data-long={s.value >= 100}>{s.value}</span><span className={styles.gaugeSub}>/ 100</span></div>
-                    <button type="button" className={styles.scoreBtn} onClick={() => setOpenScore(on ? null : i)} title={on ? t("leader.hideReasoning") : t("leader.showReasoning")} aria-label={t(on ? "leader.hideReasoningFor" : "leader.showReasoningFor", { label: s.label })} aria-expanded={on}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    </button>
-                  </div>
-                  {on && <><span className={styles.tab} />{i > 0 && <span className={styles.filletL} />}{i < 4 && <span className={styles.filletR} />}</>}
-                </div>
-              );
-            })}
-          </div>
+          <span className={styles.badge} data-tone={idea.tone}>{idea.badge}</span>
+          <button type="button" className={styles.close} onClick={onClose} title={t("leader.backToInbox")} aria-label={t("leader.backToInbox")}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
         </div>
+        <h1 className={styles.title}>{idea.title}</h1>
+        <Clamped text={brief.description} />
+        {advice ? <p className={styles.advice} data-testid="idea-advice"><Sparkle size={12} /><span>{advice}</span></p> : null}
 
-        {/* ── the reasoning of the open score, or what the AI found ── */}
-        <section className={styles.card} data-joined={openScore === 0 ? "left" : openScore === 4 ? "right" : openScore != null ? "mid" : undefined} aria-label={score ? t("leader.reasoning", { label: score.label }) : t("leader.whatAiFound")}>
-          {score ? (
-            <div key={openScore} className={styles.reason}>
-              <div className={styles.sectionTop}><span className={styles.label}>{score.label}</span><p className={styles.leadPara}>{score.note}</p></div>
-              <Blocks blocks={score.blocks} srcId={scoreSrc} />
-              <Sources id={scoreSrc} list={score.sources} />
-            </div>
-          ) : (
-            <AiBrief brief={brief} srcId={aiSrc} />
+        <div className={styles.folds}>
+          {hasDetails && (
+            <Fold summary={t("leader.details")} name="details">
+              {hasAffects && (
+                <div className={`${styles.section} ${styles.affects}`}>
+                  <span className={styles.label}>{t("leader.affects")}</span>
+                  <div className={styles.chips}>
+                    {brief.depts.map((d) => <DeptChip key={d.id} d={d} on={aff === "d:" + d.id} member={aff === "d:" + d.id ? member : null} author={brief.author.name} onToggle={() => toggle("d:" + d.id)} onMember={setMember} />)}
+                    {brief.people.map((p) => <PersonChip key={p.name} p={p} on={aff === "p:" + p.name} author={brief.author.name} onToggle={() => toggle("p:" + p.name)} />)}
+                  </div>
+                </div>
+              )}
+              {(brief.context || brief.prompts.length > 0) && (
+                <div className={styles.section}>
+                  <span className={styles.label}>{t("leader.context")}</span>
+                  {brief.context && <p className={styles.para}>{brief.context}</p>}
+                  {brief.prompts.length > 0 && <dl className={styles.panel}>{brief.prompts.map((p) => <PanelRow key={p.label} k={p.label}>{p.text}</PanelRow>)}</dl>}
+                </div>
+              )}
+              {brief.files.length > 0 && (
+                <div className={styles.section}>
+                  <span className={styles.label}>{t("leader.attachments")}</span>
+                  <FileRows files={brief.files} />
+                </div>
+              )}
+            </Fold>
           )}
-        </section>
-      </div>
+          <Fold summary={t("leader.whatAiFound")} name="ai">
+            <AiBrief brief={brief} srcId={uid + "-ai"}><ScoreRows scores={brief.scores} srcId={uid + "-score"} /></AiBrief>
+          </Fold>
+          <Fold summary={t("leader.commentsFold")} meta={feed.length > 0 ? feed.length : undefined} name="comments" open={commentIsTheMove}>
+            <FeedBody brief={brief} feed={feed} open={aff?.startsWith("f:") ? Number(aff.slice(2)) : null} onPerson={(i) => toggle("f:" + i)} onComment={onComment} />
+          </Fold>
+          {happened.length > 0 && (
+            <Fold summary={t("leader.whatHappened")} name="happened">
+              <ul className={styles.happened}>{happened.map((l, i) => <li key={i}>{l}</li>)}</ul>
+            </Fold>
+          )}
+        </div>
+      </article>
 
       <aside className={styles.side}>
-        <YourMove status={status?.label} lines={status?.lines} moves={deskMoves(brief, onDecide)} />
-        <Feed brief={brief} feed={feed} open={aff?.startsWith("f:") ? Number(aff.slice(2)) : null} onPerson={(i) => toggle("f:" + i)} onComment={onComment} />
+        <YourMove status={status?.label} moves={moves} />
       </aside>
     </div>
+  );
+}
+
+/** The text in three lines, with "Read more" when it runs longer. */
+function Clamped({ text }: { text: string }) {
+  const t = useT();
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [long, setLong] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setLong(el.scrollHeight > el.clientHeight + 1));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text]);
+  return (
+    <>
+      <p ref={ref} className={styles.lede} data-clamped={open ? undefined : "true"}>{text}</p>
+      {long || open ? <button type="button" className={styles.readMore} aria-expanded={open} onClick={() => setOpen((v) => !v)}>{t(open ? "leader.showLess" : "leader.readMore")}</button> : null}
+    </>
   );
 }
 
@@ -179,15 +178,5 @@ function PersonChip({ p, on, author, onToggle }: { p: AffectedPerson; on: boolea
       </button>
       {on && <div className={styles.pop}><PersonCard p={p} why={p.why} /></div>}
     </span>
-  );
-}
-
-function Feed({ brief, feed, open, onPerson, onComment }: { brief: IdeaBrief; feed: FeedEntry[]; open: number | null; onPerson: (i: number) => void; onComment?: (text: string) => void }) {
-  const t = useT();
-  return (
-    <section className={styles.sideCard} aria-label={t("leader.fromTheFeed")}>
-      <h2 className={styles.sideTitle}>{t("leader.fromTheFeed")}</h2>
-      <FeedBody brief={brief} feed={feed} open={open} onPerson={onPerson} onComment={onComment} />
-    </section>
   );
 }

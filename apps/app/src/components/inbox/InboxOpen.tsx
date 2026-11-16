@@ -2,7 +2,8 @@
 // The inbox with one item open, on a screen wider than a phone: the layout of the old leader inbox (components/dashboard/
 // leader/InboxView, before #746) that Kevin and Sam liked. Left, the rail: a tuck button, then one avatar per item to
 // decide, the open one on blue; untucked it shows each item's title, who raised it and its due badge. Beside it the item
-// itself (IdeaDetail): the idea card, and "Your decision" and "From the feed" on the right. ↑/↓ walk the items, Escape
+// itself (IdeaDetail): the item and its folds, and "Your move" on the right. The bar names the inbox and the item's
+// title is the page's one heading, so the rail has no title of its own. ↑/↓ walk the items, Escape
 // closes. Props in, JSX out: the page decides what is listed and what is open.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
@@ -43,13 +44,11 @@ export function InboxOpen({ items, openId, detail, onPick, onClose, sheetOpen }:
 
   return (
     <div className={styles.page} data-tucked={tucked ? "true" : undefined} data-testid="inbox-open">
-      <h1 className={styles.srOnly}>{t("inbox.title")}</h1>
       <nav className={styles.rail} aria-label={t("inbox.title")}>
         <div className={styles.railHead}>
           <button type="button" className={styles.tuck} onClick={() => setTucked((v) => !v)} title={t(tucked ? "leader.showInbox" : "leader.tuckInbox")} aria-label={t(tucked ? "leader.showInbox" : "leader.tuckInbox")} aria-expanded={!tucked} data-testid="inbox-tuck">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
           </button>
-          <span className={styles.railTitle}>{t("inbox.title")}</span>
         </div>
         <ul className={styles.list}>
           {items.map((r) => {
