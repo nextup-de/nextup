@@ -1,8 +1,8 @@
 // Pages are named stacks of tool instances. Pure facts and checks shared by the reducer, rights and UI.
 import type { PageIconKey, ProjectPage, ReducedProject, ToolInstance, ToolKind } from "./types";
 
-export const TOOL_KINDS = ["idea", "overview", "board", "list", "calendar", "timeline", "milestones", "results", "files", "doc", "checklist", "table", "links", "requests", "team", "activity", "agent", "archive", "backlog"] as const satisfies readonly ToolKind[];
-export const SINGLE_KINDS: readonly ToolKind[] = ["idea", "overview", "agent", "archive", "backlog"];
+export const TOOL_KINDS = ["idea", "overview", "board", "list", "calendar", "timeline", "milestones", "results", "files", "doc", "checklist", "table", "links", "requests", "team", "activity", "agent", "archive", "backlog", "reports"] as const satisfies readonly ToolKind[];
+export const SINGLE_KINDS: readonly ToolKind[] = ["idea", "overview", "agent", "archive", "backlog", "reports"];
 export const PAGE_ICON_KEYS = ["home", "board", "list", "calendar", "timeline", "flag", "target", "folder", "link", "inbox", "people", "pulse", "doc", "checklist", "table", "star", "chat", "box"] as const satisfies readonly PageIconKey[];
 export const EVENT_BUDGET = 12_000;
 export const fitsEvent = (payload: unknown): boolean => JSON.stringify(payload).length <= EVENT_BUDGET;
@@ -12,7 +12,7 @@ export const kicksJira = (type: string): boolean => type.startsWith("project.") 
 export const TOOL_GROUPS = [
   { title: "projectPages.groupSteps", kinds: ["board", "list", "calendar", "timeline", "milestones", "archive", "backlog"] },
   { title: "projectPages.groupWrite", kinds: ["doc", "files", "links", "checklist", "table"] },
-  { title: "projectPages.groupCollect", kinds: ["requests", "results"] },
+  { title: "projectPages.groupCollect", kinds: ["requests", "results", "reports"] },
   { title: "projectPages.groupProject", kinds: ["idea", "overview", "team", "activity", "agent"] },
 ] as const satisfies readonly { title: string; kinds: readonly ToolKind[] }[];
 
