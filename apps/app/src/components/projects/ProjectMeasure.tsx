@@ -30,7 +30,7 @@ const num = (s: string): number | null => {
 
 export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHint | null }) {
   const ctx = useDemo();
-  const { act, f, S, serverMode, tenant, showToast, actorUserId } = ctx;
+  const { act, f, S, serverMode, tenant, showToast } = ctx;
   const t = useT();
   const locale = useLocale();
   const r = useRights(p);
@@ -76,27 +76,24 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
 
   return (
     <section className={styles.panel} aria-labelledby={"baseline-" + p.id}>
-      <div className={styles.panelHead}>
-        <h2 id={"baseline-" + p.id} className={styles.h2}>{t("projects.stageBaseline")}</h2>
-        <span className={styles.muted}>{b ? t("projects.baselineTaken", { day: f(b.day), name: b.by }) : t("projects.baselineBefore")}</span>
-      </div>
+      <h2 id={"baseline-" + p.id} className={styles.h2}>{t("projects.stageBaseline")}</h2>
+      {/* The number, one chip, one button (DESIGN_RULES §9); who took it, what it measures and its source wait in Details. */}
       {b && (
-        <div className={styles.baseline}>
-          <div className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</div>
-          <div className={styles.muted}>{b.none ? b.why : baselineText(b, locale).split(" · ").slice(1).join(" · ") + (b.source ? " · " + t("projects.baselineSourceIs", { source: b.source }) : "")}</div>
-          {r.baseline && !editing && <button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button>}
+        <div className={styles.checkHead}>
+          <span className={styles.big}>{b.none ? t("projects.noNumberPossible") : fmtNumber(b.value, locale) + (b.unit ? " " + b.unit : "")}</span>
+          {bv.needsConfirm && <span data-testid="baseline-waits"><Pill tone="soft">{t("projects.verdictNotConfirmed")}</Pill></span>}
+          {bv.needsConfirm && bv.canConfirm && (
+            <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} data-testid="baseline-confirm" onClick={confirmBaseline}>{t("projectResult.baselineConfirm")}</button>
+          )}
         </div>
       )}
-      {b && !b.none && bv.confirmed && (
-        <p className={styles.muted} data-testid="baseline-confirmed">{t("projectResult.baselineConfirmed", { name: bv.confirmed.byName, date: f(bv.confirmed.day) })}</p>
-      )}
-      {b && bv.needsConfirm && (
-        <div data-testid="baseline-waits">
-          <p className={styles.muted}>{t("projectResult.baselineWaits")}</p>
-          {bv.canConfirm
-            ? <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" data-testid="baseline-confirm" onClick={confirmBaseline}>{t("projectResult.baselineConfirm")}</button>
-            : actorUserId !== null && (actorUserId === p.leadUserId || actorUserId === b.byUserId) && <p className={styles.muted}>{t("projectResult.baselineNotYou")}</p>}
-        </div>
+      {b && !editing && (
+        <Fold summary={t("projects.checkDetails")} name="baseline-details">
+          <span className={styles.muted}>{b.none ? b.why : baselineText(b, locale).split(" · ").slice(1).join(" · ") + (b.source ? " · " + t("projects.baselineSourceIs", { source: b.source }) : "")}</span>
+          <span className={styles.muted}>{t("projects.baselineTaken", { day: f(b.day), name: b.by })}</span>
+          {!b.none && bv.confirmed && <span className={styles.muted} data-testid="baseline-confirmed">{t("projectResult.baselineConfirmed", { name: bv.confirmed.byName, date: f(bv.confirmed.day) })}</span>}
+          {r.baseline && <span><button type="button" className={styles.quiet} onClick={() => setEditing(true)}>{t("projects.takeAgain")}</button></span>}
+        </Fold>
       )}
       {!b && !r.baseline && <p className={styles.emptyLine}>{t("projects.baselineNotTaken")}</p>}
       {open && (
@@ -104,17 +101,10 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
           {hint && !none && (
             <div className={styles.suggestRow}>
               <span className={styles.suggestLabel}>{t("projects.suggested")}</span>
-              <span className={styles.suggestText}>
-                {hint.metric}{hint.unit ? ", " + hint.unit : ""}{hint.better ? ", " + betterText(hint.better, locale) : ""}
-                {hint.goal && <span className={styles.muted}> · {t("projects.fromGoal", { goal: hint.goal })}</span>}
-              </span>
+              <span className={styles.suggestText}>{hint.metric}{hint.unit ? ", " + hint.unit : ""}{hint.better ? ", " + betterText(hint.better, locale) : ""}</span>
               <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={applyHint}>{t("projects.useIt")}</button>
             </div>
           )}
-          <label className="nh-check">
-            <input type="checkbox" checked={none} onChange={(e) => setNone(e.target.checked)} />
-            {t("projects.noNumberIsPossible")}
-          </label>
           {none ? (
             <label className="nh-field">
               <span className="nh-label">{t("projects.whyNot")}</span>
@@ -134,17 +124,28 @@ export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHi
                 <span className="nh-label">{t("projects.unit")}</span>
                 <input className={`nh-input ${styles.input}`} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t("projects.unitPlaceholder")} />
               </label>
-              <fieldset className={`${styles.radios} ${styles.wide}`}>
-                <legend className="nh-label">{t("projects.whichWay")}</legend>
-                <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "down"} onChange={() => setBetter("down")} />{t("projects.lowerIsBetter")}</label>
-                <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "up"} onChange={() => setBetter("up")} />{t("projects.higherIsBetter")}</label>
-              </fieldset>
-              <label className={`nh-field ${styles.wide}`}>
-                <span className="nh-label">{t("projects.baselineSource")}</span>
-                <input className={`nh-input ${styles.input}`} value={source} onChange={(e) => setSource(e.target.value)} placeholder={t("projects.sourcePlaceholder")} />
-              </label>
             </div>
           )}
+          {/* Which way is better, the source and "no number is possible" are asked for, not shown (DESIGN_RULES §9). */}
+          <Fold summary={t("projects.baselineMore")} name="baseline-more">
+            {!none && (
+              <>
+                <fieldset className={styles.radios}>
+                  <legend className="nh-label">{t("projects.whichWay")}</legend>
+                  <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "down"} onChange={() => setBetter("down")} />{t("projects.lowerIsBetter")}</label>
+                  <label className="nh-check"><input type="radio" name={"better-" + p.id} checked={better === "up"} onChange={() => setBetter("up")} />{t("projects.higherIsBetter")}</label>
+                </fieldset>
+                <label className="nh-field">
+                  <span className="nh-label">{t("projects.baselineSource")}</span>
+                  <input className={`nh-input ${styles.input}`} value={source} onChange={(e) => setSource(e.target.value)} placeholder={t("projects.sourcePlaceholder")} />
+                </label>
+              </>
+            )}
+            <label className="nh-check">
+              <input type="checkbox" checked={none} onChange={(e) => setNone(e.target.checked)} />
+              {t("projects.noNumberIsPossible")}
+            </label>
+          </Fold>
           <span className={styles.actionRow}>
             <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projects.saveBaseline")}</button>
             {editing && <button type="button" className={styles.quiet} onClick={() => setEditing(false)}>{t("common.cancel")}</button>}
@@ -402,64 +403,70 @@ export function RewardPanel({ p }: { p: ReducedProject }) {
   const [amount, setAmount] = useState<string | null>(null); // null: still the rule's suggestion
   const [note, setNote] = useState("");
   if (!rewardShown(S.rules)) return null;
-  const waiting = !p.reward && !p.rewardDue && rule.kind !== "none" && p.doneDay !== null && !p.stopped;
-  if (!p.reward && !p.rewardDue && !waiting && !(p.status === "measured" && rule.kind === "none")) return null;
+  // Not drawn before a reward is due (DESIGN_RULES §9): no "a reward is due after…" and no "this company gives none".
+  if (!p.reward && !p.rewardDue) return null;
 
   const suggested = suggestedReward(rule, num(saving));
   const takesAmount = rule.kind === "fixed" || rule.kind === "share";
   const shown = amount ?? (suggested !== null ? String(suggested) : "");
+  const shownAmount = takesAmount ? num(shown) : null;
   const handle = persona.who.handle;
-  // While a reward is due, recognition is due by a date (D17).
+  const anon = handle !== null && actorUserId !== null && p.authorUserIds.includes(actorUserId);
+  // While a reward is due, recognition is due by a date (D17): the one due line.
   const recognitionDay = measureView(p, S, idViewerOf(ctx), S.day).recognitionDueDay;
+  const record = (e: React.FormEvent) => {
+    e.preventDefault();
+    send("project.rewarded", {}, () => act.project.reward(p.id, rule.kind, shownAmount ?? undefined, note.trim() || undefined));
+  };
 
   return (
     <section className={styles.panel} aria-labelledby={"reward-" + p.id}>
-      <div className={styles.panelHead}>
-        <h2 id={"reward-" + p.id} className={styles.h2}>{t("projects.rewardTitle")}</h2>
-        <span className={styles.muted}>{t("projects.rewardSub")}</span>
-      </div>
-      {!p.reward && recognitionDay !== null && <p className={styles.muted} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>}
+      <h2 id={"reward-" + p.id} className={styles.h2}>{t("projects.rewardTitle")}</h2>
       {p.reward ? (
-        <div className={styles.baseline}>
-          <div className={styles.strong}>{p.reward.amount !== null ? euros(p.reward.amount, locale) : p.reward.rule === "thanks" ? t("projects.ruleThanks") : p.reward.rule}</div>
-          <div className={styles.muted}>{t("projects.rewardRecorded", { day: f(p.reward.day), name: p.reward.by })}{p.reward.note ? ": " + p.reward.note : ""}</div>
-          {p.claimed ? (
-            <div className={styles.muted}>{t("projects.rewardClaimed", { day: f(p.claimed.day) })}</div>
-          ) : r.claim ? (
-            <div className={styles.claim}>
-              <span>{handle && actorUserId !== null && p.authorUserIds.includes(actorUserId) ? t("projects.claimAnon", { handle }) : t("projects.claimPlain")}</span>
-              <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => send("project.claimed", {}, () => act.project.claim(p.id))}>{t("projects.claimBtn")}</button>
-            </div>
-          ) : null}
-        </div>
-      ) : waiting ? (
-        <p className={styles.emptyLine}>{t("projects.rewardNotDueYet")}</p>
-      ) : rule.kind === "none" ? (
-        <p className={styles.emptyLine}>{t("projects.rewardNone")}</p>
+        <>
+          <div className={styles.checkHead}>
+            <span className={styles.big}>{p.reward.amount !== null ? euros(p.reward.amount, locale) : p.reward.rule === "thanks" ? t("projects.ruleThanks") : p.reward.rule}</span>
+            {p.claimed && <Pill tone="soft">{t("projects.rewardClaimedChip")}</Pill>}
+            {!p.claimed && r.claim && (
+              <button type="button" className={`nh-btn nh-btn-primary nh-btn-sm ${styles.checkMove}`} title={anon && handle ? t("projects.claimAnon", { handle }) : undefined}
+                onClick={() => send("project.claimed", {}, () => act.project.claim(p.id))}>{t("projects.claimBtn")}</button>
+            )}
+          </div>
+          <Fold summary={t("projects.checkDetails")} name="reward-details">
+            <span className={styles.muted}>{t("projects.rewardRecorded", { day: f(p.reward.day), name: p.reward.by })}{p.reward.note ? ": " + p.reward.note : ""}</span>
+            {p.claimed && <span className={styles.muted}>{t("projects.rewardClaimed", { day: f(p.claimed.day) })}</span>}
+          </Fold>
+        </>
       ) : r.reward ? (
-        <form className={styles.form} aria-label={t("projects.move_reward")}
-          onSubmit={(e) => { e.preventDefault(); const a = takesAmount ? num(shown) : null; send("project.rewarded", {}, () => act.project.reward(p.id, rule.kind, a ?? undefined, note.trim() || undefined)); }}>
-          <div className={styles.due}>{t("projects.rewardDueYours", { rule: rewardRuleText(rule, locale) })}</div>
-          {rule.kind === "share" && (
+        <form className={styles.form} aria-label={t("projects.move_reward")} onSubmit={record}>
+          {recognitionDay !== null && <p className={styles.checkLine} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>}
+          <span className={styles.actionRow}>
+            <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{shownAmount !== null ? t("projects.recordRewardAmount", { amount: euros(shownAmount, locale) }) : t("projects.move_reward")}</button>
+          </span>
+          <Fold summary={t("projects.rewardChange")} name="reward-change">
+            <span className={styles.muted}>{t("projects.rewardDueYours", { rule: rewardRuleText(rule, locale) })}</span>
+            {rule.kind === "share" && (
+              <label className="nh-field">
+                <span className="nh-label">{t("projects.yearlySaving")}</span>
+                <input className={`nh-input ${styles.input}`} inputMode="decimal" value={saving} onChange={(e) => { setSaving(e.target.value); setAmount(null); }} />
+              </label>
+            )}
+            {takesAmount && (
+              <label className="nh-field">
+                <span className="nh-label">{t("projects.amount")}</span>
+                <input className={`nh-input ${styles.input}`} inputMode="decimal" value={shown} onChange={(e) => setAmount(e.target.value)} />
+              </label>
+            )}
             <label className="nh-field">
-              <span className="nh-label">{t("projects.yearlySaving")}</span>
-              <input className={`nh-input ${styles.input}`} inputMode="decimal" value={saving} onChange={(e) => { setSaving(e.target.value); setAmount(null); }} />
+              <span className="nh-label">{t("projects.noteOptional")}</span>
+              <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.notePlaceholder")} />
             </label>
-          )}
-          {takesAmount && (
-            <label className="nh-field">
-              <span className="nh-label">{t("projects.amount")}{suggested !== null ? " - " + t("projects.ruleSuggests", { amount: euros(suggested, locale) }) : ""}</span>
-              <input className={`nh-input ${styles.input}`} inputMode="decimal" value={shown} onChange={(e) => setAmount(e.target.value)} />
-            </label>
-          )}
-          <label className="nh-field">
-            <span className="nh-label">{t("projects.noteOptional")}</span>
-            <input className={`nh-input ${styles.input}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.notePlaceholder")} />
-          </label>
-          <span className={styles.actionRow}><button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projects.move_reward")}</button></span>
+          </Fold>
         </form>
+      ) : recognitionDay !== null ? (
+        <p className={styles.checkLine} data-testid="recognition-due">{t("projectResult.recognitionDue", { date: f(recognitionDay) })}</p>
       ) : (
-        <p className={styles.emptyLine}>{t("projects.rewardDueCompany", { rule: rewardRuleText(rule, locale) })}</p>
+        <p className={styles.checkLine}>{t("projects.rewardDueCompany", { rule: rewardRuleText(rule, locale) })}</p>
       )}
     </section>
   );

@@ -363,7 +363,8 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await page.getByLabel("What is measured").filter({ visible: true }).fill(BASELINE.metric);
       await page.getByLabel(/Today.s number/).filter({ visible: true }).fill(BASELINE.value);
       await page.getByLabel("Unit").filter({ visible: true }).fill(BASELINE.unit);
-      await page.getByLabel("Lower is better").filter({ visible: true }).check();
+      await page.locator('[data-name="baseline-more"] > summary').filter({ visible: true }).click(); // direction and source are folded (DESIGN_RULES §9)
+    await page.getByLabel("Lower is better").filter({ visible: true }).check();
       await page.getByLabel("Where the number comes from").filter({ visible: true }).fill("Stopwatch on three changeovers");
       await page.getByRole("button", { name: "Save the baseline" }).click();
       await expect.poll(async () => (await eventsOf("project.baseline", projectA)).length).toBe(1);
