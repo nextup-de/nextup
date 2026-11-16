@@ -24,3 +24,5 @@
   .form, .sheet { max-width: none; }
   .short { width: 100%; }
 }
+/* A folded line's answer stands while it is closed; open, the body says it (DESIGN_RULES §9). */
+details[open] > summary .closedOnly { display: none; }

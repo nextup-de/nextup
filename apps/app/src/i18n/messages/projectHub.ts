@@ -4,6 +4,9 @@ import { defineMessages } from "../define";
 export const projectHub = defineMessages({
   en: {
     overviewTitle: "Overview",
+    overviewResult: "Result",
+    overviewSteps: "Steps",
+    overviewNoSteps: "No steps yet",
     overviewAriaLabel: "Project overview",
     overviewStepsDone: "Steps done this week",
     overviewWaiting: "Waiting on someone",
@@ -239,6 +242,9 @@ export const projectHub = defineMessages({
   },
   de: {
     overviewTitle: "Übersicht",
+    overviewResult: "Ergebnis",
+    overviewSteps: "Schritte",
+    overviewNoSteps: "Noch keine Schritte",
     overviewAriaLabel: "Projektübersicht",
     overviewStepsDone: "Diese Woche erledigte Schritte",
     overviewWaiting: "Warten auf jemanden",

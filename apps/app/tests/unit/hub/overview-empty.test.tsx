@@ -24,10 +24,10 @@ const wrap = (children: ReturnType<typeof h>) => html(h(I18nProvider, { locale: 
 }) }));
 const render = (p: ReducedProject) => wrap(h(Overview, { p, page, tool: page.tools[0] }));
 
-it("OVERVIEW without steps: one card asks for the first step; no tiles, no chart, no empty lists", () => {
+it("OVERVIEW without steps: no tiles, no chart, no empty lists and no sentence about how the page fills in", () => {
   const markup = render(project({ steps: [] }));
-  expect(markup).toContain("Plan the first steps");
-  for (const empty of ["Steps done this week", "Where the steps are", "Steps done per week", "No steps yet.", "No steps completed in this period."]) expect(markup).not.toContain(empty);
+  // Adding the first step is the move card's, for who may add steps (DESIGN_RULES §9); a reader sees no Steps line at all.
+  for (const empty of ["Steps done this week", "Where the steps are", "Steps done per week", "No steps yet.", "No steps completed in this period.", "Nothing to show yet"]) expect(markup).not.toContain(empty);
 });
 
 it("OVERVIEW with steps: where the steps are shows; the weekly chart stays away while nothing is done", () => {
@@ -66,7 +66,7 @@ it("WHAT HAPPENS NEXT stays away when every step is done, and asks for the first
 it("DONE CARD carries what comes next: a recognised project says where it stands and offers no button", () => {
   const markup = render(project({ status: "recognised", steps: [step("a", { column: "done", doneDay: -5 })] }));
   expect(markup).toContain("The one step is done");
-  expect(markup).toContain("Recognised");
+  expect(markup).toContain('data-name="overview-result"'); // the Result line says where it stands
   expect(markup).not.toContain("Mark it done");
 });
 
