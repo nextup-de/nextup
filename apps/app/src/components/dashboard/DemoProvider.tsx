@@ -31,6 +31,7 @@ import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
 import { exportSnippet } from "@/features/cases/selectors";
 import { isSampleId, sampleDataOn, withSampleData } from "@/features/demo/sample-data";
+import { isAddedSample, sampleProjectEvents } from "@/features/demo/sample-project";
 import type { Persona, RolePersona, Seed, SeedCase } from "@/features/demo/types";
 import { normalizeDots, type Dots } from "@/features/design/dots";
 import { counts, demoData, type Counts, type DemoData } from "@/features/metrics";
@@ -94,6 +95,8 @@ export type DemoContext = {
   /** A feature flag for this company (src/config/flags.ts); without a value from the server, its demo default. */
   flag: (key: FlagKey) => boolean;
   resetDemo: () => void; deleteAdded: () => void; copySnippet: () => void; logout: () => void;
+  /** Dev panel: add a running sample project led by the viewer, kept in this browser; returns its id. */
+  addSampleProject: () => string;
   locale: Locale;
   f: DayFmt; // demo day offset -> "today" / "12 Sep"
   href: (path: string) => string; // "/ideas?id=i1" -> "/acme/ideas?id=i1"
@@ -243,7 +246,8 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     const known = new Set(shipped.events.map((e) => e.id));
     const older = loaded.events.filter((e) => !known.has(e.id));
     // What was done to the sample data stays in this browser: the server has no such cases.
-    const sample = sampleData ? persisted.log.events.filter((e) => isSampleId(e.target)) : [];
+    // The dev panel's added sample projects stay too, with the switch on or off.
+    const sample = persisted.log.events.filter((e) => isSampleId(e.target) && (sampleData || isAddedSample(e.target)));
     const base = older.length + sample.length === 0 ? shipped : { events: older.concat(shipped.events, sample), day: shipped.day };
     const have = new Set(base.events.map((e) => e.id));
     const extra = pending.filter((e) => !have.has(e.id));
@@ -518,9 +522,13 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     const said = t("dashboard.providerDeleted", { count: ids.size });
     dropShots(slug, ids);
     setSheet(null);
+    // Sample projects added from the dev panel live in this browser only: drop them here, the server never had them.
+    if (serverMode && [...ids].some(isAddedSample)) updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !isAddedSample(e.target)) }));
+    const server = [...ids].filter((id) => !isAddedSample(id));
     if (serverMode) {
+      if (server.length === 0) { showToast(said); return; }
       startTransition(async () => {
-        const res = await deleteAddedAction(slug, [...ids]);
+        const res = await deleteAddedAction(slug, server);
         showToast(res.ok ? said : res.error);
       });
       return;
@@ -528,6 +536,14 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     updateLog(slug, (prev) => ({ ...prev, events: prev.events.filter((e) => !(e.target && ids.has(e.target))) }));
     showToast(said);
   }, [S, slug, showToast, serverMode, t]);
+
+  // Dev panel: one more running sample project, from an idea the viewer raised; its events stay in this browser.
+  const addSampleProject = useCallback(() => {
+    const n = S.cases.filter((c) => isAddedSample(c.id)).length;
+    const { projectId, events } = sampleProjectEvents(n, newId("x"), { userId: actorUserId, name: persona.who.name });
+    for (const e of events) void emit(e.type, e.target, e.payload);
+    return projectId;
+  }, [S, actorUserId, persona.who.name, emit]);
 
   // Log out: forget the persona in this browser and go back to the company login. Demo log stays.
   // `leaving` first: clearing the prefs drops the role to the page-load guess, and without the
@@ -584,7 +600,7 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
     q, setQ, pop, setPop, togglePop: (p) => setPop((cur) => (cur === p ? null : p)),
     sheet, openSheet: (kind, id, init) => { setSheet({ kind, id, text: "", picked: null, people: [], ...init }); setPop(null); },
     closeSheet: () => setSheet(null), patchSheet: (p) => setSheet((s) => (s ? { ...s, ...p } : s)),
-    toast, showToast, menu, setMenu, dev, setDev, act, loadCase, flag, resetDemo, deleteAdded, copySnippet, logout,
+    toast, showToast, menu, setMenu, dev, setDev, act, loadCase, flag, resetDemo, deleteAdded, copySnippet, logout, addSampleProject,
     locale, f, href,
   };
 

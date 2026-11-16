@@ -1,10 +1,11 @@
 "use client";
 // Dev panel (bottom-right): switch the persona, view the inbox as another desk holder, advance
-// the demo clock, fill the raise page with a sample idea, demo data on for this tab, delete what this browser added, reset - and, on its own Design
+// the demo clock, fill the raise page with a sample idea, demo data on for this tab, add a sample project, delete what this browser added, reset - and, on its own Design
 // page, the design tweaks under review (animations on/off, old round corners, blue or black accent, the dot grid - which
 // localhost can save as the default for every device). It stays open
 // while settings change; a click anywhere else or Escape closes it. Demo only - sessions replace it.
 // On the static demo the demo controls sit right under it (DemoControls.tsx).
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { meOfSeat, type SeatRow } from "@/features/auth/identity";
@@ -20,6 +21,9 @@ export function DevPanel() {
   const ctx = useDemo();
   const { seed, S, role, persona, demo, dev, setDev, leadAs, motion, setMotion, roundCorners, setRoundCorners, blackAccent, setBlackAccent, dots, dotsCustom, setDots, resetDots } = ctx;
   const [page, setPage] = useState<"demo" | "design">("demo");
+  const router = useRouter();
+  // A running project led by whoever is looking, kept in this browser; it opens right away.
+  const addSampleProject = () => { const id = ctx.addSampleProject(); setDev(false); ctx.showToast("Sample project added"); router.push(ctx.href("/projects/" + encodeURIComponent(id))); };
   const [saved, setSaved] = useState<string | null>(null); // the "Set as default" outcome
   const canSave = process.env.NODE_ENV === "development"; // the default is a source file: localhost writes it
   const isDefault = dots.dotsStrength === DOTS_DEFAULT.dotsStrength && dots.dotSpacing === DOTS_DEFAULT.dotSpacing;
@@ -143,6 +147,13 @@ export function DevPanel() {
             <span className={styles.rowTitle}>Demo data</span>
             <span className={styles.track} data-on={demo ? "true" : undefined}><span className={styles.knob} /></span>
           </button>
+
+          {ctx.flag("projects") && (
+            <button type="button" className={styles.rowBtn} onClick={addSampleProject} title="Adds a running project led by you: an idea, a goal, a baseline and three steps. In this browser only.">
+              <span className={styles.rowTitle}>Add sample project</span>
+              <span className={styles.trash}>+</span>
+            </button>
+          )}
 
           <button type="button" className={styles.rowBtn} onClick={ctx.deleteAdded} disabled={!newCount}>
             <span className={styles.rowTitle}>Delete added cases{newCount ? " · " + newCount : ""}</span>
