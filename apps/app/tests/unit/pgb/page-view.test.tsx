@@ -77,5 +77,5 @@ it("PGB fills page: a page's first Board fills the page; a Board further down, o
   expect(fillsPage(steps, steps.tools[0])).toBe(true);
   expect(fillsPage(steps, steps.tools[1])).toBe(false);
   expect(fillsPage({ tools: [steps.tools[1], steps.tools[0]] }, steps.tools[0])).toBe(false);
-  expect(fillsPage(READY_PAGES[3], READY_PAGES[3].tools[0])).toBe(false); // Results is not a page-filling tool yet
+  expect(fillsPage({ tools: [{ ...steps.tools[0], id: "doc-1", kind: "doc" }] }, { id: "doc-1", kind: "doc" })).toBe(false); // a Doc keeps its frame
 });
