@@ -29,8 +29,7 @@ const num = (s: string): number | null => {
   return s.trim() !== "" && Number.isFinite(n) ? n : null;
 };
 
-/** `onSaved`: called once a baseline is saved (the draft's setup moves on to its next open step). */
-export function BaselinePanel({ p, hint, onSaved }: { p: ReducedProject; hint: BaselineHint | null; onSaved?: () => void }) {
+export function BaselinePanel({ p, hint }: { p: ReducedProject; hint: BaselineHint | null }) {
   const ctx = useDemo();
   const { act, f, S, serverMode, tenant, showToast } = ctx;
   const t = useT();
@@ -73,7 +72,7 @@ export function BaselinePanel({ p, hint, onSaved }: { p: ReducedProject; hint: B
     const payload: EventPayload = none ? { none: true, why: why.trim() } : { metric: metric.trim(), unit: unit.trim(), value: v ?? Number.NaN, better, source: source.trim() };
     const ok = send("project.baseline", payload, () =>
       act.project.baseline(p.id, none ? { none: true, why: why.trim() } : { metric: metric.trim(), unit: unit.trim(), value: v as number, better, source: source.trim() }));
-    if (ok) { setEditing(false); onSaved?.(); }
+    if (ok) setEditing(false);
   };
 
   return (

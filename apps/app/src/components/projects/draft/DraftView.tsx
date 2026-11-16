@@ -78,7 +78,8 @@ export function DraftView({ p }: { p: ReducedProject }) {
   const stepDone = step !== "start" && view.checklist[step] === "done";
   // Template and team are optional: while open, "Skip" is the step's main button; elsewhere Next is main once the step is done.
   const optional = step === "template" || step === "team";
-  // A step's main button saves and moves on to the next step still open (the start once all are done).
+  // "Save the goal" saves and moves on to the next step still open (the start once all are done). The baseline stays after its save:
+  // it shows the number and, where a second person confirms it, who; Next is then the main button.
   const onToNextOpen = (from: SetupStep) => pick(STEPS.slice(STEPS.indexOf(from) + 1).find((k) => k === "start" || view.checklist[k] !== "done") ?? "start");
 
   return (
@@ -115,7 +116,7 @@ export function DraftView({ p }: { p: ReducedProject }) {
         )}
         {step === "team" && <InvitePanel p={p} bare />}
         {step === "goal" && <DraftGoal p={p} view={view} onSaved={() => onToNextOpen("goal")} />}
-        {step === "baseline" && <div className={styles.card}><BaselinePanel p={p} hint={baseHint} onSaved={() => onToNextOpen("baseline")} /></div>}
+        {step === "baseline" && <div className={styles.card}><BaselinePanel p={p} hint={baseHint} /></div>}
         {step === "start" && (
           <>
             <section className={`${styles.section} ${styles.startCard}`} aria-labelledby={"start-" + p.id}>
