@@ -398,17 +398,17 @@ a.key:hover { text-decoration: underline; }
   .sheet { width: 100%; }
 }
 
-/* ── the hub: projects and ideas side by side ── */
+/* ── the hub: the Overview tab, projects only ── */
 /* About 80% of the screen (never narrower than the normal page); the shell's data-wide lets it past 1120px. */
 .hub { width: 100%; max-width: max(80vw, 1120px); margin: 0 auto; padding-top: 8px; }
-.hubCols { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 28px; align-items: start; }
-.hubProjects, .hubIdeas { min-width: 0; }
-.hubHead { display: flex; align-items: center; min-height: 36px; margin-bottom: 16px; } /* as tall as the ideas' Filter / Sort row */
+.hubProjects { min-width: 0; container-type: inline-size; }
+/* An idea opened in place on its old address (/idea?id=) fills the screen. */
+.hub:has([data-open="true"]) { max-width: none; }
+.hubHead { display: flex; align-items: center; min-height: 36px; margin-bottom: 16px; }
 .hubTitle { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; color: var(--nh-ink); letter-spacing: -0.01em; line-height: 22px; }
 .hubProjects .group:first-of-type { margin-top: 0; }
 .hubProjects .cards { grid-template-columns: minmax(0, 1fr); }
-/* Fewer boxes: all projects sit on one surface, side column or stacked, the stages as its dividers and
-   the projects as rows divided by hairlines. */
+/* Fewer boxes: all projects sit on one surface, the stages as its dividers and the projects as rows divided by hairlines. */
 .hubProjects .group { margin: 0; padding-top: 12px; background: var(--nh-card); border: 1px solid var(--nh-line-soft); border-top: 0; }
 .hubProjects .group:first-of-type { border-top: 1px solid var(--nh-line-soft); border-radius: var(--radius-md, 18px) var(--radius-md, 18px) 0 0; }
 .hubProjects .group:last-of-type { border-radius: 0 0 var(--radius-md, 18px) var(--radius-md, 18px); }
@@ -419,22 +419,24 @@ a.key:hover { text-decoration: underline; }
 .hubProjects .group:last-of-type .card:last-child { border-bottom: 0; border-radius: 0 0 var(--radius-md, 18px) var(--radius-md, 18px); }
 .hubProjects .card:hover { background: var(--nh-surface); }
 .hubProjects .cardFoot { border-top: 0; padding-top: 0; }
-/* An idea opened in place fills the screen as on the Overview: the projects step aside for it. */
-.hub:has([data-open="true"]) { max-width: none; }
-.hub:has([data-open="true"]) .hubCols { display: block; }
-.hub:has([data-open="true"]) .hubProjects { display: none; }
-
-@media (max-width: 1100px) {
-  .hubCols { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+/* Wide enough, a project is one row across the page: what it is, how far its steps are, the next move and its date.
+   One project then reads as a whole page, not as a narrow card beside an empty space. */
+@container (min-width: 760px) {
+  .hubProjects .card {
+    display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(160px, 1fr) minmax(0, 1.2fr);
+    grid-template-areas: "top steps foot" "title steps foot" "meta steps foot";
+    column-gap: 28px; row-gap: 4px; align-items: center; padding: 14px 20px;
+  }
+  .hubProjects .groupHead { padding: 0 20px; }
+  .hubProjects .cardTop { grid-area: top; }
+  .hubProjects .cardTitle { grid-area: title; }
+  .hubProjects .cardMeta { grid-area: meta; }
+  .hubProjects .cardSteps { grid-area: steps; margin-top: 0; }
+  .hubProjects .cardFoot { grid-area: foot; justify-content: flex-end; margin-top: 0; text-align: right; }
 }
-
 
 /* Next to the projects sidebar (ProjectsFrame) the sidebar lists the project's pages and the way back, open or
    hidden: the strip of tabs and the back link step aside. Phones keep them. */
 @media (min-width: 761px) {
   :global([data-psb]) .top > nav, :global([data-psb]) .hero > .back { display: none; }
-}
-/* The sidebar takes 256px: the Overview's two columns stack 256px sooner than they do without it. */
-@media (min-width: 761px) and (max-width: 1356px) {
-  :global([data-psb="open"]) .hubCols { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }

@@ -1,12 +1,13 @@
 "use client";
 // The one inbox (plan INB): what is asked of this person in three asks - Decide, Approve or confirm, Do my part - from
 // `inboxItems`, with the Today line above and the notices below. A decide item opens in place with the same detail
-// the leader inbox uses; every other item goes to its own page. Same for every role, in the demo and on a company.
+// the leader inbox uses, in the old leader inbox's layout (InboxOpen: the avatar rail beside the item); every other item
+// goes to its own page. Same for every role, in the demo and on a company.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
+import { inboxIdeas } from "@/components/dashboard/derive";
 import { IdeaDetailPhone } from "@/components/dashboard/leader/IdeaDetailPhone";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
@@ -24,6 +25,7 @@ import type { MessageKey } from "@/i18n";
 import { showInboxCase } from "@/lib/demo-controls";
 import { useIdInUrl } from "@/lib/use-url-id";
 import { markNoticesReadAction } from "@/server/actions/notices";
+import { InboxOpen, type RailItem } from "./InboxOpen";
 import { useOpenItem } from "./useOpenItem";
 import styles from "./InboxPage.module.css";
 
@@ -129,6 +131,51 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
     if (r.ok) { setReadIds((s) => new Set(s).add(id)); router.refresh(); } else setFailed(true);
   });
 
+  // Who raised each item to decide, for its avatar on the rail: the idea's proposer ("C. Ilg, Ops") or the case's raiser.
+  const ideaBy = new Map(inboxIdeas(ctx).map((x) => [x.id, x.proposedBy.split(", ")[0]]));
+  const whoOf = (i: InboxItem) => { const id = openId(i); return ideaBy.get(id) ?? S.cases.find((c) => c.id === id)?.from ?? ""; };
+  const rail: RailItem[] = decide.map((i) => ({ id: openId(i), title: i.title, who: whoOf(i), late: i.late, dueSoon: i.dueSoon }));
+
+  // The notices: below the lists, and below the open item too, so they stay one scroll away.
+  const noticesCard = (
+    <SectionCard
+      title={t("inbox.notices")}
+      name="inbox-notices"
+      action={serverMode && unread.length > 0 ? <button type="button" className={styles.markAll} onClick={markAll} disabled={pending}>{t("inbox.markAllRead")}</button> : undefined}
+    >
+      {shown.length === 0 ? <p className={styles.empty}>{t("inbox.noticesEmpty")}</p> : (
+        <ul className={styles.notices}>
+          {shown.map((n) => {
+            const isRead = n.read || readIds.has(n.id);
+            return (
+              <li key={n.id} className={styles.notice} data-testid="inbox-notice" data-read={isRead ? "true" : "false"}>
+                <span className={styles.unreadDot} data-on={isRead ? undefined : "true"} aria-hidden="true" />
+                <span className={styles.noticeMain}>
+                  <span className={styles.noticeSubject}>{n.subject}{!isRead && <span className={styles.srOnly}> ({t("inbox.unread")})</span>}</span>
+                  <span className={styles.noticeText}>{n.text.split("\n")[0]}</span>
+                </span>
+                <span className={styles.noticeActions}>
+                  {n.link && /^https?:\/\//.test(n.link) ? <a href={n.link} className={styles.link}>{t("inbox.openLink")}</a> : n.link && n.link.startsWith("/") ? <Link href={href(n.link)} className={styles.link}>{t("inbox.openLink")}</Link> : null}
+                  {!isRead && serverMode && <button type="button" className={styles.link} onClick={() => markOne(n.id)} disabled={pending}>{t("inbox.markRead")}</button>}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {failed && <p className={styles.error} role="alert">{t("inbox.markFailed")}</p>}
+    </SectionCard>
+  );
+
+  if (isOpen && !phone && cid !== null) {
+    return (
+      <div className={styles.page}>
+        <InboxOpen items={rail} openId={cid} detail={detail} onPick={pick} onClose={() => setCid(null)} sheetOpen={!!ctx.sheet} />
+        {noticesCard}
+      </div>
+    );
+  }
+
   if (isOpen && phone) {
     return (
       <div className={styles.page}>
@@ -164,7 +211,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
       )}
       {selecting && <div className={styles.bulk}><BulkBar cases={selectedCases} onDone={() => setSelected(new Set())} /></div>}
 
-      <div className={styles.body} data-open={isOpen ? "true" : undefined}>
+      <div className={styles.body}>
         <div className={styles.lists}>
           {items.length === 0 ? (
             <SectionCard name="inbox-empty"><p className={styles.empty}>{t("inbox.empty")}</p></SectionCard>
@@ -206,40 +253,9 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
             );
           })}
         </div>
-        {isOpen && (
-          <div className={styles.pane}>
-            <IdeaDetail key={detail.idea.id} {...detail} />
-          </div>
-        )}
       </div>
 
-      <SectionCard
-        title={t("inbox.notices")}
-        name="inbox-notices"
-        action={serverMode && unread.length > 0 ? <button type="button" className={styles.markAll} onClick={markAll} disabled={pending}>{t("inbox.markAllRead")}</button> : undefined}
-      >
-        {shown.length === 0 ? <p className={styles.empty}>{t("inbox.noticesEmpty")}</p> : (
-          <ul className={styles.notices}>
-            {shown.map((n) => {
-              const isRead = n.read || readIds.has(n.id);
-              return (
-                <li key={n.id} className={styles.notice} data-testid="inbox-notice" data-read={isRead ? "true" : "false"}>
-                  <span className={styles.unreadDot} data-on={isRead ? undefined : "true"} aria-hidden="true" />
-                  <span className={styles.noticeMain}>
-                    <span className={styles.noticeSubject}>{n.subject}{!isRead && <span className={styles.srOnly}> ({t("inbox.unread")})</span>}</span>
-                    <span className={styles.noticeText}>{n.text.split("\n")[0]}</span>
-                  </span>
-                  <span className={styles.noticeActions}>
-                    {n.link && /^https?:\/\//.test(n.link) ? <a href={n.link} className={styles.link}>{t("inbox.openLink")}</a> : n.link && n.link.startsWith("/") ? <Link href={href(n.link)} className={styles.link}>{t("inbox.openLink")}</Link> : null}
-                    {!isRead && serverMode && <button type="button" className={styles.link} onClick={() => markOne(n.id)} disabled={pending}>{t("inbox.markRead")}</button>}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {failed && <p className={styles.error} role="alert">{t("inbox.markFailed")}</p>}
-      </SectionCard>
+      {noticesCard}
     </div>
   );
 }

@@ -1,9 +1,8 @@
 "use client";
 // The Projects sidebar (Paper page "Projects page", frames C1-C6 and D1-D2). On top the area's pages
-// (Overview, Decisions, Collaboration, Progress). Below them two layers. Layer 1 lists the open ideas from
-// the Overview, by stage (three dashes that fill: with the team lead, then on the way to a decision), and
-// your projects (a ring that fills as the project moves along); a blue dot says it is your move, an orange
-// dot that it is late. Pick one and layer 2 takes its place: a way back, its title and status, and its
+// (Overview, Decisions, Collaboration, Progress). Below them two layers. Layer 1 lists your projects (a ring
+// that fills as the project moves along); an orange dot says it is late. Projects only: ideas live in the Ideas
+// tab (Kevin and Sam, 16 Nov 2026). Pick one and layer 2 takes its place: a way back, its title and status, and its
 // pages - a project's six, an idea's Overview, Files and Chats - plus the pages its people added. Everyone
 // added who is not only a viewer may add pages (page, checklist, table, link), drag any page to a new
 // place, and rename, re-icon or delete the added ones. The added pages are a stand-in (projectPagesPreview.ts).
@@ -13,14 +12,13 @@ import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { visibleTo } from "@/components/dashboard/derive";
 import { sectionTabsFor, type ProjectsTabKey } from "@/config/nav";
-import { holdsRole } from "@/features/auth/identity";
-import { dashboardRow, raisedWith } from "@/features/cases/rows";
+import { raisedWith } from "@/features/cases/rows";
 import { commentsOn } from "@/features/cases/selectors";
 import { decisionsWaiting } from "@/features/metrics";
 import { PROJECT_TABS, projectTabOf, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import {
-  IDEA_EXTRA_TABS, IDEA_TABS, PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, mayEditIdeaPages, mayReviseIdea, movePage, pageList, removePage, ringOf, sidebarIdeas, sidebarProjects, updatePage,
-  type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring, type SidebarIdea,
+  IDEA_EXTRA_TABS, IDEA_TABS, PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, mayEditIdeaPages, mayReviseIdea, movePage, pageList, removePage, ringOf, sidebarProjects, updatePage,
+  type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring,
 } from "@/features/projects/sidebar";
 import { isOpenDraft, visibleProjectsFor } from "@/features/projects/views";
 import { SETUP_PAGE, showsSetup } from "@/features/projects/page-route";
@@ -39,12 +37,11 @@ import { useAgentTab } from "./agent/useAgentTab";
 import s from "./ProjectsSidebar.module.css";
 
 const MAX_ROWS = 8; // layer 1 shows this many projects; "All n projects" opens the rest
-const MAX_IDEAS = 6;
 
 export function ProjectsSidebar({ area, projectId, caseId, onHide }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; onHide: () => void }) {
   const ctx = useDemo();
   const t = useT();
-  const { S, D, demo, href, role, serverMode, me, log } = ctx;
+  const { S, D, demo, href, role, serverMode } = ctx;
   const params = useSearchParams();
   const [query, setQuery] = useState("");
   // An idea opens on the Overview (/idea?id=…, the table's own page); the older /cases/<id> counts too.
@@ -59,13 +56,6 @@ export function ProjectsSidebar({ area, projectId, caseId, onHide }: { area: Pro
   const layer2 = !listOpen && !query && (project || idea);
   const nav = sectionTabsFor("projects", { role, serverMode });
   const waiting = decisionsWaiting(D).length;
-  // The ideas as the Overview's table has them: still moving, the stage, whether it waits on this person.
-  const myMove = (c: ReducedCase) => holdsRole(me, c.assigneeRoleId) && c.status !== "asked";
-  const rows = D.cases.filter((c) => visibleTo(ctx, c)).map((c) => dashboardRow(c, ctx.seed.promiseDays, me, log));
-  const ideas = sidebarIdeas(rows, (id) => {
-    const r = rows.find((x) => x.id === id), c = D.cases.find((x) => x.id === id);
-    return r?.status === "move" || (!!c && myMove(c));
-  }, query);
 
   return (
     <div className={s.sb}>
@@ -95,7 +85,7 @@ export function ProjectsSidebar({ area, projectId, caseId, onHide }: { area: Pro
         ) : layer2 && idea ? (
           <IdeaPages c={idea} onBack={() => setListFor(idea.id)} />
         ) : (
-          <List ideas={ideas} projects={projects} query={query} openId={openId} />
+          <List projects={projects} query={query} openId={openId} />
         )}
       </div>
     </div>
@@ -104,38 +94,19 @@ export function ProjectsSidebar({ area, projectId, caseId, onHide }: { area: Pro
 
 // ── Layer 1 ─────────────────────────────────────────────────────────────────────────────────────────
 
-function List({ ideas, projects, query, openId }: { ideas: SidebarIdea[]; projects: ReducedProject[]; query: string; openId: string | null }) {
+function List({ projects, query, openId }: { projects: ReducedProject[]; query: string; openId: string | null }) {
   const { href } = useDemo();
   const t = useT();
   const rows = sidebarProjects(projects, query);
-  const shownIdeas = query ? ideas : ideas.slice(0, MAX_IDEAS);
-  const stages: IdeaStage[] = ["lead", "decision"];
   return (
     <div className={s.layer}>
-      {stages.map((stage) => {
-        const list = shownIdeas.filter((i) => i.stage === stage);
-        if (!list.length) return null;
-        return (
-          <div key={stage} className={s.block}>
-            <span className={s.group}>{t(stage === "lead" ? "projects.sbIdeasLead" : "projects.sbIdeasDecision")}</span>
-            {list.map((i) => (
-              <Link key={i.id} href={href("/idea?id=" + encodeURIComponent(i.id))} className={s.row} data-project aria-current={i.id === openId ? "page" : undefined}>
-                <span className={s.slot}><StageMark stage={i.stage} /></span>
-                <span className={s.label}>{i.title}</span>
-                <EndDot late={i.late} move={i.yourMove} />
-                <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
-              </Link>
-            ))}
-          </div>
-        );
-      })}
       <div className={s.block}>
         <span className={s.group}>{t("projects.sbProjects")}</span>
         {rows.slice(0, query ? undefined : MAX_ROWS).map((p) => (
           <Link key={p.id} href={href("/projects/" + p.id)} className={s.row} data-project aria-current={p.id === openId ? "page" : undefined}>
             <span className={s.slot}><RingMark ring={ringOf(p.status)} /></span>
             <span className={s.label}>{p.title}</span>
-            <EndDot late={p.overdue} move={false} />
+            <EndDot late={p.overdue} />
             <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
           </Link>
         ))}
@@ -151,12 +122,12 @@ function List({ ideas, projects, query, openId }: { ideas: SidebarIdea[]; projec
   );
 }
 
-/** The dot at a row's end: orange when late, blue when it is this person's move. */
-function EndDot({ late, move }: { late: boolean; move: boolean }) {
+/** The dot at a row's end: orange when late. */
+function EndDot({ late }: { late: boolean }) {
   const t = useT();
-  if (!late && !move) return null;
-  const label = late ? t("projects.sbLateHint") : t("projects.sbYourMove");
-  return <span className={s.late} data-tone={late ? "late" : "move"} title={label} aria-label={label} />;
+  if (!late) return null;
+  const label = t("projects.sbLateHint");
+  return <span className={s.late} data-tone="late" title={label} aria-label={label} />;
 }
 
 // ── Layer 2 ─────────────────────────────────────────────────────────────────────────────────────────
