@@ -154,12 +154,15 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
   });
 
   await test.step("marks it done; the 30-day check opens 30 days later", async () => {
-    await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
     // Every step is done, so the Overview's done card offers the same sheet as Manage › Mark it done (Kevin, 16 Nov 2026).
+    // The card is on the project's own Overview page (`project-overview`), not on `?page=overview`, which is the Idea page.
+    await projectPage(page, "overview");
     const doneCard = page.getByRole("region", { name: "All 2 steps done" });
     await doneCard.getByRole("button", { name: "Mark it done…" }).click();
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("form", { name: "Mark the project done" }).getByRole("button", { name: "Mark it done", exact: true }).click();
+    await expect(doneCard.getByTestId("overview-stands"), "past running: the card says where it stands, no button").toBeVisible();
+    await page.goto("/acme/projects/pj4?page=overview"); // the project's head and its actions are on the Idea page
     await expect(head(page)).toContainText("P-4 · Measuring");
     await projectPage(page, "results");
     await openResult(page);
