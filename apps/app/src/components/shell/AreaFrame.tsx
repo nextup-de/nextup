@@ -35,10 +35,11 @@ export function AreaFrame({ section, active, children }: { section: SectionKey; 
   const set = (v: Sb) => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const pages = sectionTabsFor(section, { role, serverMode });
+  const name = pages[0] ? t(pages[0].labelKey) : section; // the area's name; "Main" is the bar's nav alone
 
   return (
     <div className={s.root} data-sb={sb} data-section={section} data-testid="area-frame">
-      <aside className={s.side} aria-label={pages[0] ? t(pages[0].labelKey) : section} inert={sb === "hidden"}>
+      <aside className={s.side} aria-label={name} inert={sb === "hidden"}>
         {/* Hidden, it draws nothing: no list or links left in the page for a reader or a test. */}
         {sb === "open" && (
           <div className={s.sb}>
@@ -47,7 +48,7 @@ export function AreaFrame({ section, active, children }: { section: SectionKey; 
                 <PanelIcon />
               </button>
             </div>
-            <nav className={s.pages} aria-label={t("shell.navMain")} data-testid={`${section}-pages`}>
+            <nav className={s.pages} aria-label={name} data-testid={`${section}-pages`}>
               {pages.map((page) => (
                 <Link key={page.key} href={href(page.href)} className={s.row} aria-current={page.key === active ? "page" : undefined}>
                   <span className={s.slot}><PageIcon k={page.key} /></span>
