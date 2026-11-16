@@ -46,7 +46,7 @@ const answer = (id: string, index: number, approvalAnswer: "yes" | "conditions" 
 
 const state = (day: number, ...events: CaseEvent[]): State => reduce(SEED, { events, day });
 const caseOf = (s: State, id = "ca"): ReducedCase => s.cases.find((c) => c.id === id) as ReducedCase;
-const WORLD: StatusWorld = { seats: SEATS, roles: ROLES, approvals: { councils: [COUNCIL] } };
+const WORLD: StatusWorld = { seats: SEATS, roles: ROLES, approvals: state(0).approvals };
 const t = createT("en");
 const line = (s: State, id = "ca") => ideaStatusText(ideaStatus(caseOf(s, id), WORLD), t);
 
@@ -76,6 +76,10 @@ describe("the status line of an idea I raised", () => {
     const s = state(3, raise(), provisional(1), answer("a1", 0, "yes", "u_own", 2));
     expect(approvalProgress(caseOf(s), WORLD)).toEqual({ state: "pending", approved: 1, total: 3, waitingOn: ["Anna Weber"], returnedReason: "" });
     expect(line(s)).toBe("1 of 3 approved · waiting on Anna Weber");
+  });
+
+  it("names who it waits on alone before the first yes, never 0 of n", () => {
+    expect(line(state(2, raise(), provisional(1)))).toBe("Waiting on Tom Vogel");
   });
 
   it("names a council by its name when it is next", () => {

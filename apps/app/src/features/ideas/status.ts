@@ -5,8 +5,8 @@
 import type { SeatRow } from "@/features/auth/identity";
 import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { ClockSpec } from "@/features/clock";
-import { currentStep, stepLabel } from "@/features/approvals/steps";
-import type { ApprovalConfig, ApprovalRoleInfo } from "@/features/approvals/types";
+import { ideaApprovalStatus } from "@/features/approvals/status";
+import { currentStep } from "@/features/approvals/steps";
 import { deskLabel, openSince, type OpenSince, type RoleTitle } from "@/features/overview/rows";
 import { projectLabel, projectOfCase } from "@/features/projects/selectors";
 import type { ReducedProject } from "@/features/projects/types";
@@ -23,52 +23,54 @@ export type IdeaStatus =
   | { kind: "withdrawn" }
   | { kind: "merged" };
 
-/** What the status reads besides the case: the seats (who holds a desk), the roles' titles and the councils. */
+/** What the status reads besides the case: the seats (who holds a desk), the roles' titles and the company's approval settings. */
 export type StatusWorld = {
   seats: readonly SeatRow[];
   roles: readonly RoleTitle[];
-  approvals: Pick<ApprovalConfig, "councils">;
+  approvals: State["approvals"];
 };
 
 /**
- * How far the approvals of an idea are, in the states of the approval flow's `ideaApprovalStatus` (features/approvals/status,
- * branch feat/parallel-approvals): its `waitingOn` people by name, and the reason of a send-back (`returned.reason` there).
+ * How far the approvals of an idea are, in the states of the approval flow's `ideaApprovalStatus` (features/approvals/status):
+ * its `waitingOn` people by name, and the reason of a send-back (`returned.reason` there).
  */
 export type ApprovalProgress = {
   state: "none" | "pending" | "returned" | "approved" | "refused";
   approved: number; total: number; waitingOn: string[]; returnedReason: string;
 };
 
-type StatusCase = Pick<ReducedCase, "withdrawn" | "merged" | "decided" | "status" | "question" | "discussion" | "approvals" | "assigneeRoleId" | "escalated">;
+type StatusCase = Pick<ReducedCase, "withdrawn" | "merged" | "decided" | "status" | "question" | "discussion" | "approvals" | "approvalRuns" | "openingRunId" | "assigneeRoleId" | "escalated">;
 
 const holdersOf = (seats: readonly SeatRow[], roleId: string | undefined): string[] =>
   [...new Set(seats.filter((s) => s.roleId === roleId && s.userId !== null).sort((a, b) => a.sort - b.sort).map((s) => s.label))];
 
 /**
- * THE SEAM for the approval flow: the one place the Mine list learns how far an idea's approvals are.
- * TODO(approval-flow): once `ideaApprovalStatus` from features/approvals/status is on main, replace the body with
- *   const s = ideaApprovalStatus(c, state);
- *   return { state: s.state, approved: s.approved, total: s.total, waitingOn: s.waitingOn.map((a) => a.name), returnedReason: s.returned?.reason ?? "" };
- * (StatusCase then also picks "approvalRuns" | "openingRunId", and StatusWorld carries the state it reads.) Nothing else
- * in this file or in the Mine list changes. Until then it reads the active run as today's reducer keeps it: steps said yes
- * (or yes with conditions) of all steps, who holds the step that is due, and a send-back as that step's latest answer.
+ * The one place the Mine list learns how far an idea's approvals are: the approval flow's `ideaApprovalStatus` (decisions A to
+ * D, 16 Nov 2026). A named approver is waited on by name; an old run's step by the people who hold its role, else by the role's
+ * or council's name. An old sequential run sends an idea back with a "back" answer on the step that is due; the parallel flow
+ * with a no (`returned`).
  */
 export function approvalProgress(c: StatusCase, world: StatusWorld): ApprovalProgress | null {
-  const run = c.approvals;
-  if (run === null || run.steps.length === 0) return null;
-  const step = currentStep(run);
-  const last = step?.answers[step.answers.length - 1];
-  const roles = world.roles.map((r): ApprovalRoleInfo => ({ id: r.id, title: r.title ?? "", reportsToId: null, spendLimitEur: null }));
-  // The people who hold the role of the step that is due; a council, or a role nobody holds, by its name.
-  const holders = step !== null && step.kind !== "council" ? holdersOf(world.seats, step.roleId).slice(0, 2) : [];
-  const label = step === null ? "" : stepLabel(step, world.approvals, roles).name;
-  const returned = last?.answer === "back";
+  const s = ideaApprovalStatus(c, { seats: [...world.seats], approvals: world.approvals });
+  if (s.state === "none" || s.total === 0) return null;
+  const steps = c.approvals?.steps ?? [];
+  const due = c.approvals === null ? null : currentStep(c.approvals);
+  // An old sequential run waits on the step that is due only; the parallel flow on every pending approver.
+  const pending = s.parallel ? s.waitingOn : s.waitingOn.filter((a) => a.stepId === due?.id);
+  const waitingOn = pending.flatMap((a): string[] => {
+    if (a.userId !== null) return a.name ? [a.name] : [];
+    const step = steps.find((x) => x.id === a.stepId);
+    const holders = step !== undefined && step.kind !== "council" ? holdersOf(world.seats, step.roleId).slice(0, 2) : [];
+    return holders.length ? holders : a.name ? [a.name] : [];
+  });
+  const last = due?.answers[due.answers.length - 1];
+  const oldBack = !s.parallel && s.state === "pending" && last?.answer === "back";
   return {
-    state: run.done ? (run.outcome === "no" ? "refused" : "approved") : returned ? "returned" : "pending",
-    approved: run.steps.filter((s) => s.state === "yes" || s.state === "conditions").length,
-    total: run.steps.length,
-    waitingOn: holders.length ? holders : label ? [label] : [],
-    returnedReason: returned ? (last?.reason ?? "").trim() : "",
+    state: oldBack ? "returned" : s.state,
+    approved: s.approved,
+    total: s.total,
+    waitingOn,
+    returnedReason: (s.returned?.reason ?? (oldBack ? last?.reason ?? "" : "")).trim(),
   };
 }
 
@@ -102,6 +104,8 @@ export function ideaStatusText(s: IdeaStatus, t: T): string {
     case "discussion": return t("ideas.mineDiscussion");
     case "sentBack": return s.reason ? t("ideas.mineSentBack", { reason: s.reason }) : t("ideas.mineSentBackPlain");
     case "approving": {
+      // No zero is shown (DESIGN_RULES 2): before the first yes the line is who it waits on alone.
+      if (s.approved === 0 && s.waitingOn.length) return t("ideas.mineWaitingOn", { who: names(t, s.waitingOn) });
       const done = t("ideas.mineApproved", { approved: s.approved, total: s.total });
       return s.waitingOn.length ? done + " · " + t("ideas.mineWaitingOnLower", { who: names(t, s.waitingOn) }) : done;
     }
