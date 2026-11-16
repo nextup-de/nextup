@@ -1,20 +1,24 @@
-/* The Files page (plan FIL). The icon colours are local to this module (D3), not new global tokens. */
-.files { --files-sheet: #1f7a3a; --files-pdf: #d70015; --files-doc: var(--nh-brand); --files-slides: #c25a00; --files-image: #6f42c1; --files-other: #6e6e73; --files-folder-back: var(--nh-brand-line); --files-folder-front: var(--nh-brand); display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 16px; align-items: start; min-width: 0; }
-.list { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
-.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+/* The Files page (plan FIL, Paper "Files · 3"). The icon colours are local to this module (D3), not new global tokens. */
+.files { --files-sheet: var(--nh-file-sheet); --files-pdf: var(--nh-file-pdf); --files-doc: var(--nh-file-doc); --files-slides: var(--nh-file-slides); --files-image: var(--nh-file-image); --files-image-back: var(--nh-file-image-back); --files-folder-back: var(--nh-file-folder-back); --files-folder-front: var(--nh-file-folder-front); display: flex; gap: 16px; align-items: stretch; min-width: 0; }
+.list { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; overflow: clip; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+/* The toolbar and the table run edge to edge (Paper); the states, uploads, the grid and the Jira group sit 20px in. */
+.list > :not([data-edge]):not(:empty) { margin: 0 20px 16px; }
+.side { display: flex; flex-direction: column; flex: 0 0 288px; width: 288px; min-width: 0; padding: 20px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
 .files :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.icon { flex-shrink: 0; }
-.page { fill: var(--nh-card); stroke: var(--nh-line); stroke-width: 1; }
-.corner { fill: var(--nh-fill-2); stroke: var(--nh-line); stroke-width: 1; }
-.icon[data-kind="sheet"] .markBand { fill: var(--files-sheet); }
-.icon[data-kind="pdf"] .markBand { fill: var(--files-pdf); }
-.icon[data-kind="doc"] .markBand { fill: var(--files-doc); }
-.icon[data-kind="slides"] .markBand { fill: var(--files-slides); }
-.icon[data-kind="other"] .markBand { fill: var(--files-other); }
-.icon[data-kind="image"] .mark { fill: var(--files-image); }
-.markText { fill: var(--nh-card); font-family: var(--nh-font); font-weight: 700; }
+.icon { flex-shrink: 0; overflow: visible; filter: drop-shadow(0 1px 1px rgb(40 60 100 / 18%)); }
+.page { fill: var(--nh-card); stroke: var(--nh-line-2); stroke-width: 0.75; }
+.corner { fill: var(--nh-line); }
+.lines { fill: none; stroke: var(--nh-ghost); }
+.cut { fill: none; stroke: var(--nh-card); }
+.sheet { fill: var(--files-sheet); }
+.pdf { fill: var(--files-pdf); }
+.doc { fill: none; stroke: var(--files-doc); }
+.slides { fill: var(--files-slides); }
+.slidesStand { fill: none; stroke: var(--files-slides); }
+.image { fill: var(--files-image); }
+.imageBack { fill: var(--files-image-back); }
 .folderBack { fill: var(--files-folder-back); }
 .folderFront { fill: var(--files-folder-front); }
-@media (width < 900px) { .files { grid-template-columns: minmax(0, 1fr); } }
+@media (width < 900px) { .files { flex-direction: column; } .side { flex-basis: auto; width: auto; } }
 /* An idea's Files page (IdeaFilesView): the head and the two cards, clear of the bar above. */
 .ideaPage { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }

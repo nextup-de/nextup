@@ -1,4 +1,5 @@
 .section { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--nh-line); border-radius: var(--nh-r-lg); background: var(--nh-card); overflow: clip; }
+.fill { min-width: 0; }
 .section[data-drop="before"] { box-shadow: 0 calc(var(--nh-space) * -0.5) 0 0 var(--nh-brand); }
 .section[data-drop="after"] { box-shadow: 0 calc(var(--nh-space) * 0.5) 0 0 var(--nh-brand); }
 .section[data-dragging="true"] { opacity: 0.5; }

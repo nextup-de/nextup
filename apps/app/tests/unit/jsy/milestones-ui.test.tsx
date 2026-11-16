@@ -98,5 +98,7 @@ it("JSY jira tags: the Milestones head carries the Jira pill, Open in Jira and A
   expect(off.open).toBeUndefined();
   expect(head("milestones", row("synced"), false).primary).toBeUndefined();
   expect(head("files", row("synced")).source?.system).not.toBe("jira");
-  expect(head("results", row("synced"))).toEqual({ title: "Plan" });
+  // Results carry the Jira pill while synced, but no Add step (Paper "Jira pages · new header").
+  expect(head("results", row("synced"))).toMatchObject({ title: "Plan", source: { system: "jira" } });
+  expect(head("results", row("synced")).primary).toBeUndefined();
 });

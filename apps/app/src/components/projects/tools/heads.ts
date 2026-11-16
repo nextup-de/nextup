@@ -8,6 +8,8 @@ import { filesHead } from "../files/head";
 
 /** The node in the page header where the first tool puts its filter row. */
 export const headRowId = (pageId: string): string => "head-row-" + pageId;
+/** The node right of the page header's buttons where the first tool puts its own controls (the Overview's range and Share). */
+export const headActionsId = (pageId: string): string => "head-actions-" + pageId;
 
 type T = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -24,6 +26,8 @@ export type HeadProps = {
   /** The Files page: its list reads these as window events (a part of the Files page, not of the page header). */
   onFilesUpload: () => void;
   onFilesSource: () => void;
+  /** "3 min ago": when the Files list last read its folder (the pill's 'Synced … ago'). */
+  filesSyncedAgo?: string;
 };
 
 /** The Jira pill and 'Open in Jira ↗' of a step tool: only while the project's JiraRow is synced (D10). */
@@ -41,13 +45,17 @@ function jiraHead({ jira, t, title, editor, onAddStep }: HeadProps): PageHeadPro
 
 export const TOOL_HEADS: Partial<Record<ToolKind, (c: HeadProps) => PageHeadProps>> = {
   idea: ({ title }) => ({ title }),
-  overview: ({ title }) => ({ title }),
+  // Paper "Jira pages · new header": the Overview carries the Jira pill too, but no Add step.
+  overview: (c) => { const { open: _open, ...head } = jiraHead({ ...c, editor: false }); void _open; return head; },
+  // Paper "Jira pages · new header": Results carries the Jira pill and Open in Jira; it has no Add step.
+  results: (c) => jiraHead({ ...c, editor: false }),
+  requests: (c) => jiraHead({ ...c, editor: false }),
   board: jiraHead,
   list: jiraHead,
   calendar: jiraHead,
   timeline: jiraHead,
   milestones: jiraHead,
-  files: ({ p, t, title, editor, onFilesUpload, onFilesSource }) => ({ ...filesHead(p, t, { onUpload: onFilesUpload, canUpload: editor, onOpenSource: onFilesSource }), title }),
+  files: ({ p, t, title, editor, onFilesUpload, onFilesSource, filesSyncedAgo }) => ({ ...filesHead(p, t, { onUpload: onFilesUpload, canUpload: editor, onOpenSource: onFilesSource, ...(filesSyncedAgo ? { syncedAgo: filesSyncedAgo } : {}) }), title }),
 };
 
 /** The head of a page: its first tool's entry, or the title only. */

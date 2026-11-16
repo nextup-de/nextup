@@ -39,7 +39,7 @@ export function InsideStrip({ rows, more, onSelect, onMore }: { rows: FileRow[];
   return <div className={styles.inside}>
     <span className={styles.insideHead}>{t("projectFiles.inside")}</span>
     <div className={styles.thumbs}>
-      {rows.map((row) => <button key={row.id} type="button" className={styles.thumb} aria-label={row.name} title={row.name} onClick={() => onSelect(row)}><FileIcon kind={row.kind} size={28} /></button>)}
+      {rows.map((row) => <button key={row.id} type="button" className={styles.thumb} aria-label={row.name} title={row.name} onClick={() => onSelect(row)}><FileIcon kind={row.kind} size={34} /></button>)}
       {more > 0 && <button type="button" className={styles.thumb} data-more="true" aria-label={t("projectFiles.openFolder")} onClick={onMore}>{t("projectFiles.moreInside", { count: more })}</button>}
     </div>
   </div>;
@@ -97,7 +97,7 @@ export function FolderPanel({ state, actions }: FilesPartProps) {
     <div className={styles.row}>
       {editor && <button type="button" className={styles.secondary} onClick={() => actions.openDialog({ kind: "request" })}>{t("projectFiles.requestFiles")}</button>}
       {webUrl && <a className={styles.secondary} href={webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.inSharePoint")} ↗</a>}
-      {webUrl && <button type="button" className={styles.secondary} data-icon="true" aria-label={t("projectFiles.copyLink")} title={t("projectFiles.copyLink")} onClick={() => void copy()}>⧉</button>}
+      {webUrl && <button type="button" className={styles.secondary} data-icon="true" aria-label={t("projectFiles.copyLink")} title={t("projectFiles.copyLink")} onClick={() => void copy()}><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.8 9.2l2.4-2.4M7.6 4.6l.9-.9a2.4 2.4 0 0 1 3.4 3.4l-.9.9M8.4 11.4l-.9.9a2.4 2.4 0 0 1-3.4-3.4l.9-.9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg></button>}
     </div>
     {peek.length > 0 && <InsideStrip rows={peek} more={rest} onSelect={actions.select} onMore={() => (folderRow ? actions.open(folderRow) : actions.select(null))} />}
     <div className={styles.meta}>
@@ -109,7 +109,7 @@ export function FolderPanel({ state, actions }: FilesPartProps) {
       {created && <div className={styles.metaRow}><span className={styles.metaLabel}>{t("projectFiles.created")}</span><span className={styles.metaValue}>{created}</span></div>}
     </div>
     <div className={styles.team}>
-      <span className={styles.faces}>{team.slice(0, 3).map((m) => <PersonFace key={m.userId ?? m.name} name={m.name} size="sm" />)}<span>{t("projectFiles.projectTeam")}</span></span>
+      <span className={styles.faces}><span className={styles.faceRow}>{team.slice(0, 3).map((m) => <PersonFace key={m.userId ?? m.name} name={m.name} size="sm" />)}</span><span>{t("projectFiles.projectTeam")}</span></span>
       {webUrl && <a className={styles.link} href={webUrl} target="_blank" rel="noopener noreferrer">{t("projectFiles.access")} ↗</a>}
     </div>
   </section>;

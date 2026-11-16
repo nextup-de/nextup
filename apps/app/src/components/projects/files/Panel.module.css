@@ -1,30 +1,31 @@
 /* The side panels of the Files page (plan FIL-A2): the folder, the file and its history. Sizes follow the Paper frames A, B, 6.2 and 6.3. */
 .panel { display: flex; flex-direction: column; min-width: 0; }
-.preview { display: flex; align-items: center; justify-content: center; height: calc(var(--nh-space) * 18.75); border: 1px solid var(--nh-line-soft); border-radius: var(--nh-r-lg); background: var(--nh-ground); }
-.titleBlock { display: flex; flex-direction: column; gap: 2px; padding: calc(var(--nh-space) * 1.75) 0 var(--nh-pad-card); }
-.name { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.sub { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.primary { display: flex; align-items: center; justify-content: center; gap: var(--nh-space); width: 100%; min-height: calc(var(--nh-space) * 5.5); border: 0; border-radius: var(--nh-r-sm); background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-md); font-weight: 600; text-decoration: none; cursor: pointer; }
+.preview { display: flex; flex-shrink: 0; align-items: center; justify-content: center; height: 150px; border: 1px solid var(--nh-line-soft); border-radius: 10px; background: var(--nh-surface); }
+.titleBlock { display: flex; flex-direction: column; gap: 2px; padding: 14px 0 16px; }
+.name { margin: 0; color: var(--nh-ink); font-size: var(--nh-fs-lg); line-height: 22px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.sub { color: var(--nh-mute); font-size: var(--nh-fs-sm); line-height: 16px; }
+.primary { display: flex; align-items: center; justify-content: center; gap: var(--nh-space); width: 100%; min-height: 44px; border: 0; border-radius: var(--radius-sm); background: var(--nh-brand); color: var(--nh-on-brand); font: inherit; font-size: var(--nh-fs-md); font-weight: 600; text-decoration: none; cursor: pointer; }
 .primary:hover { background: var(--nh-brand-hover); }
 .primary:focus-visible, .secondary:focus-visible, .link:focus-visible, .chip:focus-visible, .thumb:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.row { display: flex; gap: var(--nh-space); padding-top: var(--nh-space); }
-.secondary { display: flex; flex: 1; align-items: center; justify-content: center; min-height: calc(var(--nh-space) * 4.25); padding: 0 var(--nh-gap); border: 0; border-radius: var(--nh-r-sm); background: var(--nh-fill); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.row { display: flex; gap: 8px; padding-top: 8px; }
+.secondary { display: flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: center; min-height: 34px; padding: 0 6px; border: 0; border-radius: var(--radius-sm); background: var(--nh-fill); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .secondary:hover { background: var(--nh-fill-2); }
-.secondary[data-icon="true"] { flex: 0 0 calc(var(--nh-space) * 4.25); padding: 0; }
-.meta { display: flex; flex-direction: column; gap: calc(var(--nh-space) * 1.25); margin-top: var(--nh-pad-card); padding-top: calc(var(--nh-pad-card) * 0.8); border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm); }
+.secondary[data-icon="true"] { flex: 0 0 34px; padding: 0; }
+.meta { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm); line-height: 18px; }
 .metaRow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--nh-gap); }
 .metaLabel { color: var(--nh-mute); }
 .metaValue { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--nh-space); color: var(--nh-ink); text-align: right; overflow-wrap: anywhere; }
 .chip { padding: 0 var(--nh-space); border: 0; border-radius: var(--nh-r-sm); background: var(--nh-fill); color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-xs); cursor: pointer; }
 .late { color: var(--nh-danger); font-weight: 600; }
 .link { padding: 0; border: 0; background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
-.inside { display: flex; flex-direction: column; gap: var(--nh-space); margin-top: var(--nh-pad-card); }
-.insideHead { color: var(--nh-mute); font-size: var(--nh-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.thumbs { display: flex; gap: var(--nh-space); }
-.thumb { display: flex; align-items: center; justify-content: center; width: calc(var(--nh-space) * 7.1); height: calc(var(--nh-space) * 7.1); border: 1px solid var(--nh-line-soft); border-radius: var(--nh-r-sm); background: var(--nh-ground); cursor: pointer; }
-.thumb[data-more="true"] { color: var(--nh-ink-2); font-size: var(--nh-fs-sm); font-weight: 600; }
-.team { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); margin-top: var(--nh-pad-card); padding-top: calc(var(--nh-pad-card) * 0.8); border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm); }
-.faces { display: flex; align-items: center; gap: var(--nh-space); color: var(--nh-mute); }
+.inside { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+.insideHead { color: var(--nh-mute); font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 500; }
+.thumbs { display: flex; gap: 6px; }
+.thumb { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 57px; height: 57px; padding: 0; border: 0; border-radius: var(--radius-sm); background: var(--nh-surface); cursor: pointer; }
+.thumb[data-more="true"] { background: var(--nh-fill); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; }
+.team { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm); line-height: 16px; }
+.faces { display: flex; align-items: center; gap: 8px; color: var(--nh-ink-2); }
+.faceRow { display: flex; gap: 3px; }
 .note { margin: var(--nh-space) 0 0; color: var(--nh-mute); font-size: var(--nh-fs-xs); }
 .toast { margin: var(--nh-space) 0 0; color: var(--nh-ink-2); font-size: var(--nh-fs-sm); }
 .back { align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; }

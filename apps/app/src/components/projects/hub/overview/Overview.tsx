@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
+import { PersonFace } from "@/components/ui/elements";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { DEFAULT_OVERVIEW_RANGE, overviewFacts, parseOverviewRange, type OverviewRange, type WaitingKey } from "@/features/projects/overview-view";
@@ -9,14 +11,13 @@ import { useLocale, useT } from "@/i18n/client";
 import { BaselinePanel } from "../../ProjectMeasure";
 import { useProjectHints } from "../../draft/useProjectHints";
 import { HeadSlot } from "../../tools/HeadSlot";
-import rows from "../../tools/ToolRows.module.css";
 import { RangeMenu } from "./RangeMenu";
 import styles from "./Overview.module.css";
 
 const COLUMNS: StepColumn[] = ["todo", "doing", "blocked", "done"];
 
-export function Overview({ p, page, tool }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance }) {
-  const { S, f, actorUserId } = useDemo();
+export function Overview({ p, page, tool, jiraSynced = false, aside }: { p: ReducedProject; page: ProjectPage; tool: ToolInstance; jiraSynced?: boolean; aside?: ReactNode }) {
+  const { S, f, actorUserId, href } = useDemo();
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -47,50 +48,48 @@ export function Overview({ p, page, tool }: { p: ReducedProject; page: ProjectPa
     try { await navigator.clipboard.writeText(window.location.href); setCopied("ok"); } catch { setCopied("failed"); }
   };
 
+  const maxWho = Math.max(1, ...facts.whoHasWhat.map((r) => r.total));
   return (
     <div className={styles.overview} aria-label={t("projectHub.overviewAriaLabel")}>
       <h2 className="nh-sr">{t("projectHub.overviewTitle")}</h2>
-      <HeadSlot page={page} tool={tool}>
-        <div className={rows.controls}>
-          <RangeMenu value={range} onChange={setRange} />
-          <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={copyLink}>{t("projectHub.overviewCopyLink")}</button>
-        </div>
+      {/* Paper "Jira pages · new header": the range and Share sit right of the title, in the page header. */}
+      <HeadSlot page={page} tool={tool} place="actions">
+        <RangeMenu value={range} onChange={setRange} />
+        <button type="button" className={styles.share} onClick={copyLink}>{t("projectHub.overviewShare")}</button>
       </HeadSlot>
       <p className={styles.status} role="status">{copied === "ok" ? t("projectHub.overviewLinkCopied") : copied === "failed" ? t("projectHub.overviewCopyFailed") : ""}</p>
 
       <div className={styles.tiles}>
-        <div className={styles.tile}><span className={styles.muted}>{t("projectHub.overviewStepsDone")}</span><strong className={styles.num}>{facts.tiles.doneInRange}</strong></div>
-        <div className={styles.tile}><span className={styles.muted}>{t("projectHub.overviewWaiting")}</span><strong className={styles.num}>{facts.tiles.waiting}</strong></div>
-        <div className={styles.tile} data-hot={facts.tiles.late > 0 ? "true" : undefined}><span className={styles.muted}>{t("projectHub.overviewLate")}</span><strong className={styles.num}>{facts.tiles.late}</strong>
-          {facts.tiles.oldestLateDays !== null && <span className={styles.muted}>{t("projectHub.overviewOldestLate", { days: facts.tiles.oldestLateDays })}</span>}</div>
-        <div className={styles.tile}><span className={styles.muted}>{t("projectHub.overviewNextDue")}</span>
-          {facts.tiles.nextDue ? <><strong className={styles.num}>{f(facts.tiles.nextDue.dueDay)}</strong><span className={styles.muted}>{facts.tiles.nextDue.text}</span></> : <span>{t("projectHub.overviewNoNextDue")}</span>}</div>
+        <div className={styles.tile}><strong className={styles.num}>{facts.tiles.doneInRange}</strong><span className={styles.muted}>{t("projectHub.overviewStepsDone")}</span></div>
+        <div className={styles.tile} data-tone="waiting"><strong className={styles.num}>{facts.tiles.waiting}</strong><span className={styles.muted}>{t("projectHub.overviewWaiting")}</span></div>
+        <div className={styles.tile} data-hot={facts.tiles.late > 0 ? "true" : undefined}><strong className={styles.num}>{facts.tiles.late}</strong>
+          <span className={styles.muted}>{t("projectHub.overviewLate")}{facts.tiles.oldestLateDays !== null && ` · ${t("projectHub.overviewOldestLate", { days: facts.tiles.oldestLateDays })}`}</span></div>
+        <div className={styles.tile}>{facts.tiles.nextDue ? <><strong className={styles.num}>{f(facts.tiles.nextDue.dueDay)}</strong><span className={styles.muted}>{t("projectHub.overviewNextDue")} · {facts.tiles.nextDue.text}</span></> : <><strong className={styles.num}>—</strong><span className={styles.muted}>{t("projectHub.overviewNoNextDue")}</span></>}</div>
       </div>
 
+      <div className={styles.grid}>
+      <div className={styles.main}>
       {facts.showBaseline && <BaselinePanel p={p} hint={baseHint} />}
 
       <section className={styles.card} aria-label={t("projectHub.overviewWhereStepsAre")}>
-        <h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3>
+        <div className={styles.cardHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewWhereStepsAre")}</h3><Link className={styles.link} href={href(`/projects/${p.id}?page=steps`)}>{t("projectHub.overviewOpenBoard")} →</Link></div>
         {total === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <>
           <div className={styles.stack} aria-hidden="true">{COLUMNS.filter((c) => facts.columns[c] > 0).map((c) => <span key={c} className={styles.seg} data-column={c} style={{ flexGrow: facts.columns[c] }} />)}</div>
-          <ul className={styles.legend}>{COLUMNS.map((c) => <li key={c}><span className={styles.dot} data-column={c} aria-hidden="true" />{columnLabel[c]} <strong>{facts.columns[c]}</strong></li>)}</ul>
+          <ul className={styles.legend}>{COLUMNS.map((c) => <li key={c} data-column={c}>{columnLabel[c]} <strong>{facts.columns[c]}</strong></li>)}</ul>
         </>}
       </section>
 
       {viewerOnTeam && <section className={styles.card} aria-label={t("projectHub.overviewWhoHasWhat")}>
         <h3 className={styles.cardTitle}>{t("projectHub.overviewWhoHasWhat")}</h3>
-        {facts.whoHasWhat.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <ul className={styles.rows}>
-          {facts.whoHasWhat.map((r) => <li key={r.userId ?? r.owner ?? "none"} className={styles.row}><span>{nameOf(r.userId, r.owner)}{r.userId !== null && r.userId === actorUserId ? ` (${t("projectHub.overviewYou")})` : ""}</span>
-            <span className={styles.muted}>{r.todo > 0 && `${columnLabel.todo} ${r.todo} `}{r.doing > 0 && `${columnLabel.doing} ${r.doing} `}{r.blocked > 0 && `${columnLabel.blocked} ${r.blocked}`}</span><strong>{r.total}</strong></li>)}
+        {facts.whoHasWhat.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <ul className={styles.who}>
+          {facts.whoHasWhat.map((r) => <li key={r.userId ?? r.owner ?? "none"} className={styles.whoRow} data-nobody={r.userId === null && r.owner === null || undefined}>
+            {r.userId !== null || r.owner !== null ? <PersonFace name={nameOf(r.userId, r.owner)} size="sm" /> : <span className={styles.nobody} aria-hidden="true" />}
+            <span className={styles.whoName}>{r.userId !== null && r.userId === actorUserId ? t("projectHub.overviewYou") : nameOf(r.userId, r.owner)}</span>
+            <span className={styles.whoTrack} aria-hidden="true"><span style={{ width: `${(r.total / maxWho) * 100}%` }} /></span>
+            <span className={styles.whoCount} title={[r.todo > 0 && `${columnLabel.todo} ${r.todo}`, r.doing > 0 && `${columnLabel.doing} ${r.doing}`, r.blocked > 0 && `${columnLabel.blocked} ${r.blocked}`].filter(Boolean).join(" · ")}>{r.total}</span></li>)}
         </ul>}
       </section>}
 
-      <section className={styles.card} aria-label={t("projectHub.overviewLatestActivity")}>
-        <h3 className={styles.cardTitle}>{t("projectHub.overviewLatestActivity")}</h3>
-        {latest.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <ul className={styles.rows}>
-          {latest.map((l) => <li key={l.id} className={styles.row}><span>{l.text}</span><span className={styles.muted}>{f(l.day)}</span></li>)}
-        </ul>}
-      </section>
 
       <section className={styles.card} aria-label={t("projectHub.overviewWeeklyChartAriaLabel")}>
         <div className={styles.chartHead}><h3 className={styles.cardTitle}>{t("projectHub.overviewStepsDonePerWeek")}</h3>
@@ -112,6 +111,18 @@ export function Overview({ p, page, tool }: { p: ReducedProject; page: ProjectPa
             <strong>{t("projectHub.overviewWaitingDays", { days: fmtNumber(w.days, locale) })}</strong></div>)}
         </div>}
       </section>}
+      </div>
+      <div className={styles.side}>
+        <section className={styles.card} aria-label={t(jiraSynced ? "projectHub.overviewLatestFromJira" : "projectHub.overviewLatestActivity")}>
+          <h3 className={styles.cardTitle}>{t(jiraSynced ? "projectHub.overviewLatestFromJira" : "projectHub.overviewLatestActivity")}</h3>
+          {latest.length === 0 ? <p className={styles.muted}>{t("projectHub.overviewEmpty")}</p> : <ul className={styles.latest}>
+            {latest.map((l) => <li key={l.id} className={styles.latestRow}>{l.by ? <PersonFace name={l.by} size="sm" /> : <span className={styles.nobody} aria-hidden="true" />}
+              <span className={styles.latestText}><span>{l.by && <b>{l.by} </b>}{l.text}</span><span className={styles.muted}>{f(l.day)}</span></span></li>)}
+          </ul>}
+        </section>
+        {aside}
+      </div>
+      </div>
     </div>
   );
 }

@@ -30,7 +30,7 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
   await page.goto("/acme/projects/pj2?page=plan");
   const calendar = page.getByRole("region", { name: "Calendar of steps" });
   // The tool section and the milestones list are both regions of that name; the list is the inner one.
-  const milestones = page.getByRole("region", { name: "Milestones", exact: true }).filter({ has: page.getByRole("button", { name: "+ Create milestone" }) }).last();
+  const milestones = page.getByRole("region", { name: "Milestones", exact: true }).filter({ has: page.getByRole("button", { name: "Create milestone", exact: true }) }).last();
 
   await test.step("two steps without a due day are added with the dialog", async () => {
     for (const title of [DRAGGED, KEYED]) {
@@ -100,7 +100,7 @@ test("PLN acceptance: schedule from the drawer, stretch on the timeline, ship in
 
   await test.step("a milestone is created, takes a step and is marked shipped", async () => {
     await milestones.scrollIntoViewIfNeeded();
-    await milestones.getByRole("button", { name: "+ Create milestone" }).click();
+    await milestones.getByRole("button", { name: "Create milestone", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Create milestone" });
     await dialog.getByRole("textbox", { name: "Name" }).fill(MILESTONE);
     await dialog.getByLabel("Ships").fill(isoIn(20));

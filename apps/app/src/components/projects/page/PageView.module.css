@@ -21,3 +21,5 @@
 .tag { font-size: var(--nh-fs-xs); color: var(--nh-ink-2); }
 
 .menu::backdrop { background: transparent; }
+.slot { flex: 1 1 100%; min-width: 0; }
+.actionsSlot { display: contents; }

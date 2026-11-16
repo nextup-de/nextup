@@ -57,13 +57,15 @@ export function Calendar({ p, jira, page, tool }: ToolProps) {
   return <section className={styles.calendar} aria-label={t("projectPlan.calendarLabel")}>
     <HeadSlot page={page} tool={tool}><div className={styles.toolbar}>
       <button type="button" className={styles.control} onClick={() => setAnchor(map.today)}>{t("projectPlan.calToday")}</button>
-      <button type="button" className={styles.control} aria-label={t("projectPlan.calPrev")} onClick={() => setAnchor(shiftPeriod(anchor, scale, -1))}>‹</button>
-      <strong className={styles.title}>{title}</strong>
-      <button type="button" className={styles.control} aria-label={t("projectPlan.calNext")} onClick={() => setAnchor(shiftPeriod(anchor, scale, 1))}>›</button>
+      <span className={styles.period}>
+        <button type="button" className={styles.arrow} aria-label={t("projectPlan.calPrev")} onClick={() => setAnchor(shiftPeriod(anchor, scale, -1))}>‹</button>
+        <strong className={styles.title}>{title}</strong>
+        <button type="button" className={styles.arrow} aria-label={t("projectPlan.calNext")} onClick={() => setAnchor(shiftPeriod(anchor, scale, 1))}>›</button>
+      </span>
       <span className={styles.spacer} />
       <button type="button" className={styles.control} aria-expanded={drawer} onClick={() => setDrawer(!drawer)}>{c("notScheduled")}<span className={styles.count}>{loose.length}</span></button>
       <div role="group" aria-label={t("projectPlan.scaleLabel")} className={styles.segmented}>
-        {(["month", "week"] as const).map((s) => <button key={s} type="button" className={styles.control} aria-pressed={scale === s} onClick={() => setScale(s)}>{t(s === "month" ? "projectPlan.calMonth" : "projectPlan.calWeek")}</button>)}
+        {(["month", "week"] as const).map((s) => <button key={s} type="button" className={styles.segment} aria-pressed={scale === s} onClick={() => setScale(s)}>{t(s === "month" ? "projectPlan.calMonth" : "projectPlan.calWeek")}</button>)}
       </div>
     </div></HeadSlot>
     {error && <p role="alert" className={styles.error}>{error}</p>}

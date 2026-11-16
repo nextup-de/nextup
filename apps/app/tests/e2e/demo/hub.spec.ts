@@ -2,7 +2,7 @@
 // range with the keyboard, writes a Doc on the Files page and adds a link; a team leader then reads both after a reload.
 // Demo mode: one browser plays the people through the dev panel.
 import type { Page } from "@playwright/test";
-import { addPages, expect, test } from "../helpers";
+import { addPages, expect, filesSheet, test } from "../helpers";
 
 const LINE = "The depot opens at six, bring the stopwatch";
 const LINK_URL = "https://example.com/depot-guide";
@@ -37,9 +37,12 @@ test("HUB acceptance: change the range, save a doc for the team, add a link", as
 
   await test.step("the lead adds a Doc to the Files page and writes a line that saves", async () => {
     await page.goto("/acme/projects/pj2?page=files");
-    await page.getByRole("button", { name: "+ Add a tool to this page", exact: true }).click();
+    // On the Files page, tools are added and opened from the gear (Paper 7.2): the page itself shows the files.
+    await page.getByRole("button", { name: "Page settings", exact: true }).click();
+    await page.getByRole("menuitem", { name: "+ Add a tool to this page" }).click();
     await page.getByRole("dialog", { name: "Add tool" }).getByRole("button", { name: /^Doc/ }).click();
     await expect(page.getByRole("dialog", { name: "Add tool" })).toHaveCount(0);
+    await filesSheet(page, /^Doc/);
     const body = page.getByRole("textbox", { name: "Document content" });
     await body.fill(LINE);
     await body.blur();
@@ -47,6 +50,7 @@ test("HUB acceptance: change the range, save a doc for the team, add a link", as
   });
 
   await test.step("the lead adds a link that shows with its title", async () => {
+    await filesSheet(page, /^Links/);
     await page.getByRole("button", { name: "+ Add link" }).click();
     const form = page.getByRole("form", { name: "Add a link" });
     await form.getByLabel("Address").fill(LINK_URL);
@@ -60,9 +64,10 @@ test("HUB acceptance: change the range, save a doc for the team, add a link", as
     await viewAs(page, "Team leader");
     await page.goto("/acme/projects/pj2?page=files");
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Doc", level: 2 }).first()).toBeVisible();
+    await expect((await filesSheet(page, /^Doc/)).getByRole("heading", { name: "Doc", level: 2 }).first()).toBeVisible();
     const editable = page.getByRole("textbox", { name: "Document content" });
     if (await editable.count()) await expect(editable).toHaveValue(LINE); else await expect(page.getByText(LINE)).toBeVisible();
+    await filesSheet(page, /^Links/);
     await expect(page.getByRole("link", { name: LINK_TITLE })).toHaveAttribute("href", LINK_URL);
   });
 });
