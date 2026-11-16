@@ -10,6 +10,12 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { DashboardView } from "@/components/dashboard/team/DashboardView";
 import { visibleProjectsFor } from "@/features/projects/views";
+import { visibleTo } from "@/components/dashboard/derive";
+import type { ReducedCase } from "@/features/cases/reducer";
+import { onDeskOf } from "@/features/cases/selectors";
+import { ideaItem, listedIdea, listedProject, projectItem } from "@/features/overview/items";
+import { deskLabel } from "@/features/overview/rows";
+import { OverviewList } from "./overview/OverviewList";
 import { useT } from "@/i18n/client";
 import { ProjectsList } from "./ProjectsView";
 import { idViewerOf } from "./parts";
@@ -40,6 +46,25 @@ export function ProjectsHub({ tab, linkCases = false }: { tab: HubTab; linkCases
   }
 
   const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
+  if (tab === "projects" && flag("overviewList")) {
+    // The Overview list (Paper "Overview · final + interactions"): the ideas still moving and the projects, as one list.
+    const { me, seed } = ctx;
+    const roles = seed.roles ?? [];
+    const ideaMove = (c: ReducedCase) => {
+      const mine = me.userId !== null && c.fromUserId === me.userId;
+      return (mine && c.status === "asked") || (!mine && c.open && c.status !== "asked" && onDeskOf(c, me));
+    };
+    const items = [
+      ...ctx.D.cases.filter((c) => visibleTo(ctx, c) && listedIdea(c)).map((c) => ideaItem(c, S.day, deskLabel(c, seed.seats, roles), ideaMove(c))),
+      ...projects.filter(listedProject).map((p) => projectItem(p, S.day, ctx.actorUserId)),
+    ];
+    return (
+      <div className={styles.hub} data-wide="true">
+        <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
+        <section className={styles.hubProjects} aria-label={t("projects.ovTitle")}><OverviewList items={items} /></section>
+      </div>
+    );
+  }
   return (
     <div className={styles.hub} data-wide="true">
       <h1 className="nh-sr">{t("projects.pageTitle")}</h1>
