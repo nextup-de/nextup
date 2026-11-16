@@ -1,7 +1,7 @@
 .head { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .text { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
-.title { margin: 0; font-family: var(--nh-font); font-size: var(--nh-fs-2xl); line-height: 30px; font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
+.title { margin: 0; font-family: var(--nh-font); font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: var(--nh-ink); }
 .source { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 30px; padding: 0 12px 0 10px; border: 0; border-radius: var(--radius-full); background: var(--nh-fill); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; }
 button.source { cursor: pointer; }
 button.source:hover { background: var(--nh-fill-2); }
@@ -21,4 +21,4 @@ button.source:hover { background: var(--nh-fill-2); }
 .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
 .row:has(> :only-child:empty) { display: none; } /* only an empty slot: no row, no gap */
 .head :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-@media (width < 760px) { .top { flex-direction: column; align-items: stretch; } .actions { justify-content: space-between; } .title { font-size: var(--nh-fs-xl); } }
+@media (width < 760px) { .top { flex-direction: column; align-items: stretch; } .actions { justify-content: space-between; } .title { font-size: var(--nh-fs-2xl); } }

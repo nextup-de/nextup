@@ -14,6 +14,15 @@
   --nh-mute: #6e6e73;
   --nh-mute-2: #8e8e93;
   --nh-ghost: #c7c7cc;       /* chevrons, disabled */
+  /* file-type icons on the Files page (Paper "Files · 3"): one colour per kind, only there */
+  --nh-file-sheet: #2f9e58;
+  --nh-file-pdf: #e5322d;
+  --nh-file-doc: #1b7ce0;
+  --nh-file-slides: #f07a2a;
+  --nh-file-image: #8b6be0;
+  --nh-file-image-back: #eae3fb;
+  --nh-file-folder-back: #3d8fe0;
+  --nh-file-folder-front: #7db8f5;
   --nh-accent: #ff5a1f;      /* time: due now, overdue, worsening */
   /* The composer on the raise page keeps its gold: the ring around the box and the glow behind it. Everything else that acts is blue. */
   --nh-composer-ring: linear-gradient(110deg, #f0c23a 0%, #f7dd93 30%, #fff3d0 52%, #f2cb55 78%, #e6a919 100%);

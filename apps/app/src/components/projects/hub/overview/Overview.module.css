@@ -51,7 +51,7 @@
 .whoTrack > span { border-radius: 3px; background: var(--nh-brand); }
 .whoRow[data-nobody] .whoTrack > span { background: var(--nh-fill-3); }
 .whoCount { flex: 0 0 70px; text-align: right; }
-.nobody { flex-shrink: 0; width: 24px; height: 24px; border: 1.5px dashed #c7c7cc; border-radius: var(--radius-full); }
+.nobody { flex-shrink: 0; width: 24px; height: 24px; border: 1.5px dashed var(--nh-ghost); border-radius: var(--radius-full); }
 .latestRow { display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid var(--nh-line-soft); }
 .latestRow:first-child { padding-top: 0; border-top: 0; }
 .latestText { display: flex; flex-direction: column; min-width: 0; color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 19px; }

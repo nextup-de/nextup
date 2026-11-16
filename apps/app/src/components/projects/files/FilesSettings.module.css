@@ -2,7 +2,7 @@
 .wrap { position: relative; display: inline-flex; }
 .gear { position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--nh-line); border-radius: var(--radius-sm); background: var(--nh-card); color: var(--nh-ink-2); cursor: pointer; }
 .gear:hover { background: var(--nh-fill); }
-.gear[data-open] { background: var(--nh-line); border-color: #c7c7cc; }
+.gear[data-open] { background: var(--nh-line); border-color: var(--nh-ghost); }
 .gear:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 /* 7.1: the hover tip under the gear. */
 .gear::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: -6px; z-index: 20; padding: 6px 10px; border-radius: var(--radius-xs); background: var(--nh-brand-deep); color: var(--nh-on-brand); font-size: var(--nh-fs-xs); font-weight: 400; line-height: 16px; white-space: nowrap; opacity: 0; pointer-events: none; }

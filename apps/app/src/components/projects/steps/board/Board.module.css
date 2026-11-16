@@ -21,7 +21,7 @@
 .cardTop { min-height: 24px; justify-content: flex-start; }
 .cardTop > :last-child { margin-left: auto; }
 .check { display: inline-flex; color: var(--nh-mute); }
-.nobody { flex-shrink: 0; width: 24px; height: 24px; border: 1.5px dashed #c7c7cc; border-radius: var(--radius-full); }
+.nobody { flex-shrink: 0; width: 24px; height: 24px; border: 1.5px dashed var(--nh-ghost); border-radius: var(--radius-full); }
 .key { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
 .cardOpen { appearance: none; padding: 0; border: 0; background: transparent; text-align: left; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-md); font-weight: 500; line-height: 21px; cursor: pointer; }
 .cardFoot { color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 16px; flex-wrap: wrap; }
