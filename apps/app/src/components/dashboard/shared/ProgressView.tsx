@@ -1,6 +1,7 @@
 "use client";
-// Does the system move after a yes: project movement since baseline and the wait ledger after the
-// yes. Counts and medians only; no funnel, no ranking, nothing per person (MET/D2, D18).
+// Does the system move after a yes: how far each project's steps are, project movement since baseline and the wait
+// ledger after the yes. Projects only - no idea rows (Kevin and Sam, 16 Nov 2026). Counts and medians only; no funnel,
+// no ranking, nothing per person (MET/D2, D18).
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { PageHeader, SectionCard } from "@/components/ui/elements";
@@ -8,6 +9,7 @@ import { projectLedger } from "@/features/metrics/progress";
 import { visibleProjectsFor } from "@/features/projects/views";
 import { idViewerOf } from "@/components/projects/parts";
 import { ProjectMovement } from "@/components/projects/ProjectMovement";
+import { ProgressSteps } from "@/components/projects/area/ProgressSteps";
 import { useFormat, useT } from "@/i18n/client";
 import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./ProgressView.module.css";
@@ -31,6 +33,7 @@ export function ProgressView() {
           <SectionCard><div className={styles.empty}>{t("progress.emptyOff")}</div></SectionCard>
         ) : (
           <>
+            {list.length > 0 && <ProgressSteps list={list} />}
             <ProjectMovement />
             <SectionCard title={t("progress.ledgerHead")} hint={t("progress.ledgerSub")}>
               {list.length === 0 ? (
@@ -40,7 +43,7 @@ export function ProgressView() {
                   {L.startMedian !== null && <div className={ui.tile}>
                     <div className={styles.bigV}>{days(L.startMedian)}</div>
                     <div className={ui.tileL}>{t("progress.startWait")}</div>
-                    <div className={ui.rowMeta}>{t("progress.startWaitSub", { count: L.notStarted })}</div>
+                    {L.notStarted > 0 && <div className={ui.rowMeta}>{t("progress.startWaitSub", { count: L.notStarted })}</div>}
                   </div>}
                   {L.measureMedian !== null && <div className={ui.tile}><div className={styles.bigV}>{days(L.measureMedian)}</div><div className={ui.tileL}>{t("progress.measureWait")}</div></div>}
                   {/* The counts show only above 0 (lib/utils/quiet.ts). */}

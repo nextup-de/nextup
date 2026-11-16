@@ -1,21 +1,22 @@
-// Collaboration: the project list is not cut down by a department nobody can see or change, and a phone
-// opens the org chart at a size that can be read, and zooms out from there.
+// Collaboration (Kevin, 16 Nov 2026): projects only, in three lists - the projects you work on, requests to you and your
+// unit, and the projects run across units with the units as a column. The org chart it showed before is gone from here.
 import { expect, test } from "../helpers";
 
 const PAGE = "/demo/projects/collaboration";
 
-test("Collaboration lists the projects this viewer may see", async ({ page }) => {
+test("Collaboration lists the projects run across units, with their units", async ({ page }) => {
   await page.goto(PAGE);
-  await expect(page.getByText(/^\d+ of \d+$/).first()).toHaveText("2 of 2");
-  await expect(page.getByText("No project matches")).toHaveCount(0);
+  const across = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Across units" }) });
+  await expect(across.getByRole("columnheader", { name: "Units" })).toBeVisible();
+  await expect(across.getByRole("link", { name: /^P-\d+ · / }).first()).toBeVisible();
+  await expect(page.getByRole("table", { name: "Problems and ideas" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /zoom out/i })).toHaveCount(0);
 });
 
-test("a phone opens the org chart readable, and can zoom out", async ({ page }) => {
+test("on a phone Collaboration fits the width", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(PAGE);
-  const zoom = page.getByText(/^\d+%$/).first();
-  await expect(zoom).toHaveText("70%");
-  // The demo's own panel can cover the button on a phone; this checks the chart, not that panel.
-  await page.getByRole("button", { name: /zoom out/i }).dispatchEvent("click");
-  await expect.poll(async () => Number((await zoom.innerText()).replace("%", ""))).toBeLessThan(70);
+  await expect(page.getByRole("heading", { name: "Across units" })).toBeVisible();
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 });
