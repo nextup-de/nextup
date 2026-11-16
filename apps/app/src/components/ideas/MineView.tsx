@@ -1,6 +1,6 @@
 "use client";
 // The Ideas tab's "Mine": every idea I raised, one row each - what, open since, and where it stands in one line
-// (features/ideas/status.ts). The title opens the idea page (/cases/<id>), the one home of an idea; an idea that became
+// (features/ideas/status.ts). The title opens the idea page (/idea?id=<id>), the one home of an idea; an idea that became
 // a project links to the project. With nothing raised, one sentence and the way to raise the first one.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -10,6 +10,7 @@ import { ideaStatusText, mineIdeas, type MineIdea } from "@/features/ideas/statu
 import { formatDate } from "@/i18n/format";
 import { useT } from "@/i18n/client";
 import s from "./Mine.module.css";
+import { ideaPath } from "@/features/ideas/page-path";
 
 export function MineView() {
   const t = useT();
@@ -41,7 +42,7 @@ export function MineView() {
               <li key={r.id} className={s.row} data-status={r.status.kind} data-running={r.running ? "true" : undefined}>
                 <span className={s.what}>
                   {r.problem && <span className={s.kind}>{t("team.ideaKindProblem")}</span>}
-                  <Link href={href("/cases/" + encodeURIComponent(r.id))} className={s.title}>{r.title}</Link>
+                  <Link href={href(ideaPath(r.id))} className={s.title}>{r.title}</Link>
                 </span>
                 <span className={s.since}><span className="nh-sr">{t("ideas.mineColSince")} </span>{since(r)}</span>
                 <span className={s.status}>{status(r)}</span>

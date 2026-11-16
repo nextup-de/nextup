@@ -95,6 +95,7 @@ between them is the **last yes**: before it the thing is an idea, after it a pro
 |---|---|
 | **Four places, one job each:** Ideas = raise and follow, Inbox = decide, Feed = social, Projects = do. | this file; not tested as a whole |
 | **No idea under Projects.** Projects lists projects only, in every list, tab, filter, pill and sidebar, for every role and behind every flag. A waiting idea never sits next to a project. | `tests/unit/projects-area/no-ideas.test.tsx`; e2e `the Projects page lists projects only…` (`tests/e2e/demo/projects.spec.ts`) |
+| **One page per idea: `/idea?id=<id>`.** It carries the card, the approval line, the moves and the history. Every link in the app goes there; `/cases/<id>` only moves on to it. An idea has the pages Idea, Files and Chats, never "Add page". | `tests/unit/inb/items.test.ts`, `tests/unit/inb/notice-view.test.ts` (the links) |
 | **An idea's page belongs to the Inbox.** On `/cases/<id>` and `/idea?id=` the bar marks the Inbox; the sidebar shows that idea's own pages and the way back to the Inbox, never the projects list or the Projects tabs. Closing an idea goes to the Inbox. | `tests/unit/design/section-tabs.test.ts`; e2e `an idea opened from the ideas table…` (`tests/e2e/demo/projects.spec.ts`) |
 | **Decisions (every yes and no) is a tab of the Inbox,** not of Projects. | `tests/unit/loop/decisions-nav.test.ts` |
 | **A project draft appears under Projects only after the last yes,** never at the first. | GAT tests (`tests/unit/gat/parallel.test.ts`) |

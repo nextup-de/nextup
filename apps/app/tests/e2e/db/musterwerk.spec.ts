@@ -185,6 +185,8 @@ test.describe.serial("TST acceptance: Musterwerk scenario suite", () => {
     await expect(page.getByText(TITLE)).toHaveCount(0);
     const body = await page.request.get(url(`/cases/${caseId}`));
     expect(await body.text()).not.toContain(TITLE);
+    // /cases/<id> moves on to the idea's one page, /idea?id= (16 Nov 2026): that address keeps it from them too.
+    expect(await (await page.request.get(url(`/idea?id=${caseId}`))).text()).not.toContain(TITLE);
     // The owner, by contrast, gets the case from the same address.
     const desk = await signIn(browser, owner);
     expect(await (await desk.request.get(url(`/cases/${caseId}`))).text()).toContain(TITLE);

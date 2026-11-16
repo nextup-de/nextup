@@ -36,7 +36,7 @@ it("REM inbox lists a comment once per case", () => {
   const events = [raise("c3", 0), comment("c3", "u_own", "First", 1), comment("c3", "u_own2", "Second", 1)];
   const raiser = itemsOf(events, "u_ra", 1).filter((i) => i.kind === "comment");
   expect(raiser).toHaveLength(1);
-  expect(raiser[0]).toMatchObject({ id: "comment:c3", caseId: "c3", ask: "part", count: 2, href: "/cases/c3" });
+  expect(raiser[0]).toMatchObject({ id: "comment:c3", caseId: "c3", ask: "part", count: 2, href: "/idea?id=c3" });
   // Somebody who follows the case in no way gets nothing.
   expect(itemsOf(events, "u_plant", 1).filter((i) => i.kind === "comment")).toEqual([]);
   // The system's raise note is no comment.
@@ -62,7 +62,7 @@ it("REM inbox digest lists comments", () => {
   expect(d).not.toBeNull();
   expect((d!.data as { itemIds: string[] }).itemIds).toContain("comment:c7");
   expect(d!.text).toContain("Case c7 - 1 new comment");
-  expect(d!.text).toContain(`${BASE}/cases/c7`);
+  expect(d!.text).toContain(`${BASE}/idea?id=c7`);
   const de = digestFor("u_ra", state, SEATS, "de", BASE, { flags: FLAGS, events });
   expect(de!.text).toContain("Case c7 - 1 neuer Kommentar");
   // Without the log there is nothing to list.

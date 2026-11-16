@@ -43,6 +43,7 @@ import { ProjectMenu, ProjectSheet, type HeadSheet } from "./head/ProjectMenu";
 import { useDismiss } from "./head/useDismiss";
 import head from "./head/Head.module.css";
 import styles from "./Projects.module.css";
+import { ideaPath } from "@/features/ideas/page-path";
 
 /** `jira`: the company's Jira as the server read it (null: static demo, or no database). `tab`: from ?tab=. */
 export function ProjectView({ projectId, jira, tab }: { projectId: string; jira: JiraStatusView | null; tab: ProjectTab }) {
@@ -264,7 +265,7 @@ function ProjectInfo({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   useDismiss(box);
   const sourceOf = (id: string) => {
     const c = S.cases.find((x) => x.id === id);
-    if (c) return { title: c.title, to: href("/cases/" + id) };
+    if (c) return { title: c.title, to: href(ideaPath(id)) };
     const i = S.ideas.find((x) => x.id === id);
     return i ? { title: i.title, to: href("/ideas?id=" + id) } : { title: id, to: null };
   };
