@@ -26,7 +26,7 @@ export function LinksTool({ p, tool }: ToolProps) {
     </li>)}</ul>}
     {!links.length && !save.editor && <p className={styles.empty}>{t("projectHub.linksEmpty")}</p>}
     {save.editor && <div>
-      <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>+ {t("projectHub.linksAdd")}</button>
+      <button type="button" className={s.addLink} aria-expanded={open} onClick={() => setOpen(!open)}>+ {t("projectHub.linksAdd")}</button>
       {open && <form className={s.popover} aria-label={t("projectHub.linksAddTitle")} onSubmit={(event) => {
         event.preventDefault();
         if (!valid) return;
