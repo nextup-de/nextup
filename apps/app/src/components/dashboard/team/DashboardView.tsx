@@ -262,9 +262,9 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       added: added.map((m) => ({ text: m.text, when: f(m.day) + (isMe(m.byUserId) ? "" : " · " + m.by) })),
       versions: c.versions.length > 1 ? c.versions.map((v) => ({ n: v.version, when: f(v.day), title: v.title })) : [],
       mode, onMode: setMode, onClose: inPage ? undefined : closeCase,
-      // Everyone who can open it edits it, open or after its yes (features/cases/permissions.ts, case.revised): the
+      // The raiser edits it while open, the project lead after its yes (features/cases/permissions.ts, case.revised): the
       // title and text go out as the next version; Affects and Context stay in this browser for now.
-      edit: mayReviseIdea(c, me.userId) ? {
+      edit: mayReviseIdea(c, me.userId, ctx.S.projects) ? {
         onSave: (ch) => {
           if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
           if (ch.title !== undefined || ch.body !== undefined) {

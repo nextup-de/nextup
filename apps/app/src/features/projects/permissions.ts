@@ -94,10 +94,6 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   // The decider sets the draft up until the lead has taken it (D17); then it is the lead's.
   const decider = draft && p.leadState === "pending" && isMe(p.deciderUserId);
   const onTeam = isLead || p.memberUserIds.some(isMe) || decider;
-  // An idea and its project are one thing to the people on it: whoever may see a started project works on it the way its
-  // team does - its pages and tools, its steps, its milestones. An employee sees the projects they lead, are on or raised
-  // (views.ts visibleProjectsFor); a team lead and a manager see them all. An open draft stays its team's (plan SET).
-  const works = onTeam || (!(draft && planning) && uid !== null && (actor.role !== "member" || p.authorUserIds.some(isMe)));
   // The seat holder the draft was escalated to may keep, hand on or stop it while the escalation is live (D15).
   const escalatedSeat = draft && planning && p.escalated !== null && p.escalated.what === "draft" && p.escalated.live ? p.escalated.toSeatId : null;
   const escalatedHolder = escalatedSeat !== null && isMe(state.seats.find((s) => s.id === escalatedSeat)?.userId ?? null);
@@ -124,7 +120,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
     case "project.tool.restored":
     case "project.page.merged":
     case "project.page.unmerged": {
-      if (!works) return no("projectPages.permPageWho");
+      if (!onTeam) return no("projectPages.permPageWho");
       if (!live) return no("projectPages.permPageClosed");
       if (!fitsEvent(pl)) return no("projectPages.permEventTooLong");
       // Defaults and hidden Agent tools count towards every limit before the first page event too.
@@ -349,7 +345,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       return baselineNeedsConfirm(p, state.rules) ? no("projectResult.permStartNeedsConfirm") : OK;
 
     case "project.step.added":
-      if (!works) return no("projects.permStepTeamAdd");
+      if (!onTeam) return no("projects.permStepTeamAdd");
       if (!live) return no("projects.permClosed");
       if (!isProjectId(pl.stepId) || p.steps.some((s) => s.id === pl.stepId)) return no("projects.permStepIdUnusable");
       if (pl.to !== undefined && !(typeof pl.to === "string" && STARTS.includes(pl.to))) return no("projects.permStepStart");
@@ -358,7 +354,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
 
     case "project.step.checklist":
     case "project.step.commented": {
-      if (!(works || (ev.type === "project.step.commented" && isMe(p.sponsorUserId)))) return no("projectSteps.permStepTeam");
+      if (!(onTeam || (ev.type === "project.step.commented" && isMe(p.sponsorUserId)))) return no("projectSteps.permStepTeam");
       if (!live) return no("projectSteps.permClosed");
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projectSteps.permNoStep");
@@ -380,8 +376,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
     case "project.step.moved": {
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projects.permNoStep");
-      // An unowned step is the team's: anyone who works on the project may pick it up and move it.
-      if (!(isLead || isMe(step.ownerUserId ?? null) || ((step.ownerUserId ?? null) === null && works))) return no("projects.permStepMoveOwner");
+      // An unowned step is the team's: anyone on it may pick it up and move it. Seeing a project is not working on it (Kevin, 16 Nov 2026).
+      if (!(isLead || isMe(step.ownerUserId ?? null) || ((step.ownerUserId ?? null) === null && onTeam))) return no("projects.permStepMoveOwner");
       if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("projects.permNoStepAbove");
       // F5 (D18): a step goes to Blocked with its reason, whoever moves it.
       const column = pl.to;
@@ -398,7 +394,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
     case "project.step.edited": {
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projects.permNoStep");
-      if (!works) return no("projects.permStepTeamChange");
+      if (!onTeam) return no("projects.permStepTeamChange");
       if (!live) return no("projects.permClosed");
       if (pl.removed) return isLead || isMe(step.byUserId ?? null) ? OK : no("projects.permStepRemove");
       if (pl.text !== undefined && !text(pl.text, 500)) return no("projects.permStepText");
@@ -413,7 +409,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
 
     case "project.milestone.added":
     case "project.milestone.edited": {
-      if (!works) return no("projectPlan.permMilestoneTeam");
+      if (!onTeam) return no("projectPlan.permMilestoneTeam");
       if (!live) return no("projectPlan.permClosed");
       const added = ev.type === "project.milestone.added";
       const current = p.milestones.find((m) => m.id === pl.milestoneId);
