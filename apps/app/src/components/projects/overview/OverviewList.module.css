@@ -33,7 +33,7 @@
 .pills { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .pill { padding: 6px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; line-height: 16px; white-space: nowrap; cursor: pointer; }
 .pill:hover { background: var(--fill); }
-.pill[aria-selected="true"] { background: var(--ink); color: #fff; }
+.pill[aria-selected="true"] { background: var(--nh-brand); color: #fff; }
 .pillCount { color: var(--mute); }
 .pillCount[data-move="true"] { color: var(--brand); }
 .pill[aria-selected="true"] .pillCount { color: #fff; opacity: 0.6; }
@@ -83,7 +83,7 @@
 .desk[data-active="true"] .face { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--nh-brand-line); }
 .muted { color: var(--mute); font-size: var(--nh-fs-sm); }
 .face { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; background: var(--nh-avatar, #e5e5ea); color: var(--nh-avatar-ink, var(--ink-2)); font-size: var(--nh-fs-xs); font-weight: 600; line-height: 14px; letter-spacing: -0.02em; }
-.face[data-you="true"] { background: var(--ink); color: #fff; }
+.face[data-you="true"] { background: var(--nh-brand); color: #fff; }
 .face[data-small="true"] { width: 22px; height: 22px; letter-spacing: -0.04em; }
 
 .chip { display: inline-flex; padding: 2px 6px; border: 0; border-radius: 4px; background: var(--fill); color: var(--ink-2); font: inherit; font-size: var(--nh-fs-xs); font-weight: 500; line-height: 16px; white-space: nowrap; }

@@ -180,7 +180,7 @@ function Row({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
       <span role="cell" className={s.cName}>
         <Thumb i={i} />
         <span className={s.nameText}>
-          <Link className={s.rowTitle} href={ctx.href(i.path)}><Marked text={i.title} q={ctx.q} /></Link>
+          <Link className={s.rowTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
           <span className={s.rowSub} data-key={i.key ? "true" : undefined}>{i.key ? i.key + " · " + t("projects.ovProject") : [t("projects.ovIdea"), i.from, i.area].filter(Boolean).join(" · ")}</span>
           <span className={s.phoneMeta}>{phoneMeta(i, t)}</span>
         </span>
@@ -208,7 +208,7 @@ function Card({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
         {pic && <span className={s.coverText}><span className={s.coverStat}>{pic.stat}</span><span className={s.coverHook}>{pic.hook}</span></span>}
         <span className={s.coverMore}><More i={i} ctx={ctx} /></span>
       </div>
-      <Link className={s.cardTitle} href={ctx.href(i.path)}><Marked text={i.title} q={ctx.q} /></Link>
+      <Link className={s.cardTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
       <span className={s.cardMeta}>
         <span className={s.cardWho}>
           <Face name={i.desk.name} you={i.desk.you} small />
