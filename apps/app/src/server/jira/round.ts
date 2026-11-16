@@ -10,11 +10,11 @@ import { isSystemActor, maySystemAppend, parseInbound, syncIdemKey } from "@/fea
 import { epicKeyOf, jiraIndex, summaryOf, syncMode } from "@/features/integrations/jira/map";
 import { planPush, type SeqEvent } from "@/features/integrations/jira/plan";
 import { planPull, type PullEvent } from "@/features/integrations/jira/pull";
-import { markerOf, MAX_VERSION_WRITES, planVersionPull, planVersionPush, type VersionJob } from "@/features/integrations/jira/versions";
+import { markerOf, MAX_VERSION_WRITES, planVersionPull, planVersionPush, type HeldWrite, type VersionJob } from "@/features/integrations/jira/versions";
 import { jiraIssueUrl, REMOVED_LABEL } from "@/features/integrations/jira/settings";
 import { pickTransition, sameState } from "@/features/integrations/jira/status";
 import { JiraError, type Job, type JiraAccount, type JiraApi, type JiraIssue, type JiraSettings, type JiraVersion } from "@/features/integrations/jira/types";
-import type { StepColumn, ReducedProject } from "@/features/projects/types";
+import type { MilestoneSync, StepColumn, ReducedProject } from "@/features/projects/types";
 
 /** What a round needs from the company's log. server/jira-sync.ts backs it with the database. */
 export type RoundStore = {
@@ -61,6 +61,20 @@ class Refused extends Error {}
 
 /** 401 and anything that says Jira is not answering end the round; the rest is about one issue. */
 const endsRound = (e: unknown): boolean => e instanceof JiraError && (e.status === 401 || e.status === 429 || e.status === 0 || e.status >= 500);
+
+/**
+ * What a milestone's write to Jira came to this round, as the mark the Milestones tool shows (plan JSY D24). `why` is a code the
+ * screen words, never display text: `permission` (no Administer Projects), `cap` (over the round's budget), `refused` (Jira said
+ * no for good), `owner` (the version is not marked for it any more), `retry` (anything else; the next round tries again).
+ */
+const heldMark = (h: HeldWrite): MilestoneSync => (h.why === "permission" ? { state: "failed", op: h.op, why: "permission" } : { state: "pending", op: h.op, why: "cap" });
+function failedMark(op: MilestoneSync["op"], e: unknown): MilestoneSync {
+  if (e instanceof Refused && /not marked for/.test(e.message)) return { state: "failed", op, why: "owner" };
+  if (e instanceof JiraError && e.status >= 400 && e.status < 500 && e.status !== 429) return { state: "failed", op, why: "refused" };
+  return { state: "pending", op, why: "retry" };
+}
+const sameMark = (a: MilestoneSync | null | undefined, b: MilestoneSync | null | undefined) =>
+  (a ?? null) === (b ?? null) || (!!a && !!b && a.state === b.state && a.op === b.op && (a.why ?? "") === (b.why ?? ""));
 
 const versionUrl = (s: Pick<JiraSettings, "siteUrl" | "projectKey">, id: string) => `${s.siteUrl.replace(/\/+$/, "")}/projects/${s.projectKey}/versions/${id}`;
 const quote = (s: string) => `"${s.replace(/["\\]/g, "")}"`;
@@ -194,6 +208,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   let versionPending: { milestones: string[]; steps: string[] } = { milestones: [], steps: [] };
   // The push half could not read the versions, so it does not know what a person changed that Jira has not got yet.
   let versionsUnread = false;
+  let marksWrote = false;
   if (wantVersions) {
     const earliest = (list: readonly SeqEvent[]) => (list.length ? Math.min(...list.map((e) => e.seq)) : Infinity);
     let versions: JiraVersion[] | null = null;
@@ -216,6 +231,10 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       }
       const opts = { enabledAt: input.enabledAt, clock: { mode: "workdays", calendar: input.calendar } as const, administer };
       let plan = planVersionPush(state0, versions, windowEvents, settings, opts);
+      // Each milestone's outcome this round; a milestone not in here keeps its mark unless that mark no longer holds (below).
+      const outcome = new Map<string, MilestoneSync | null>();
+      const mkey = (projectId: string, milestoneId: string) => `${projectId}\u0000${milestoneId}`;
+      for (const h of plan.held) if (h.op === "create") outcome.set(mkey(h.projectId, h.milestoneId), heldMark(h));
       let stateV = state0;
       let current = versions;
       const link = (job: Extract<VersionJob, { kind: "create" | "adopt" }>, id: string) =>
@@ -240,9 +259,11 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
             await link(job, job.version.id);
             versionsWrote = true;
           }
+          outcome.set(mkey(job.projectId, job.milestoneId), null);
         } catch (e) {
           if (endsRound(e)) throw e;
           warnings.push(`${job.kind} ${job.milestoneId}: ${e instanceof Error ? e.message : String(e)}`);
+          outcome.set(mkey(job.projectId, job.milestoneId), failedMark("create", e));
         }
       }
       // Fix versions, edits and archives work on what is there now: the linked state and a fresh version list.
@@ -254,6 +275,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
       }
       versionList = current;
       versionPending = plan.pending;
+      for (const h of plan.held) if (h.op === "update") outcome.set(mkey(h.projectId, h.milestoneId), heldMark(h));
       for (const w of plan.warnings) if (!warnings.includes(w)) warnings.push(w);
       if (plan.deferredSeq !== null) holdAt = Math.min(holdAt, plan.deferredSeq);
 
@@ -275,6 +297,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
             wrote++;
             versionsWrote = true;
             doneM.add(job.milestoneId);
+            outcome.set(mkey(job.projectId, job.milestoneId), null);
           } else if (job.kind === "archive") {
             if (owns(job)?.archived) continue;
             await api.updateVersion(job.versionId, { archived: true });
@@ -300,6 +323,25 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
           // (not a Jira answer at all) is retried from the cursor.
           const permanent = e instanceof Refused || (e instanceof JiraError && e.status >= 400 && e.status < 500 && e.status !== 429);
           if (!permanent) holdAt = Math.min(holdAt, job.seq);
+          if (job.kind === "update") outcome.set(mkey(job.projectId, job.milestoneId), failedMark("update", e));
+        }
+      }
+      // Mark what did not reach Jira, and clear a mark that no longer holds: a pending one with nothing outstanding, a missing
+      // permission that is not missing any more. A write Jira refused for good stays marked until a later write of it goes through.
+      const stateM = versionsWrote ? await store.state() : stateV;
+      for (const p of stateM.projects) {
+        if (syncMode(p, settings, enabledAtMs) === "off") continue;
+        for (const m of p.milestones) {
+          const k = mkey(p.id, m.id);
+          const stale = !!m.sync && (m.sync.state === "pending" || m.sync.why === "permission");
+          const want = outcome.has(k) ? outcome.get(k)! : stale ? null : (m.sync ?? null);
+          if (sameMark(want, m.sync)) continue;
+          try {
+            const tag = want ? `${want.state}-${want.op}-${want.why ?? ""}` : "clear";
+            if (await append({ type: "project.milestone.edited", target: p.id, payload: { milestoneId: m.id, sync: want }, idemKey: syncIdemKey("milestone.sync", [p.id, m.id, String(p.history.length), tag]) }, stateM)) marksWrote = true;
+          } catch (e) {
+            warnings.push(`mark ${m.id}: ${e instanceof Error ? e.message : String(e)}`);
+          }
         }
       }
       // What reached Jira (or was already there) is not pending any more; what is deferred or failed stays protected from the pull.
@@ -312,7 +354,7 @@ export async function runRound(api: JiraApi, store: RoundStore, input: RoundInpu
   const pushedSeq = Math.max(input.pushedSeq, Number.isFinite(holdAt) ? holdAt - 1 : batchMax);
 
   // ---- pull ---------------------------------------------------------------------------------------
-  const state1 = jobs.length || versionsWrote ? await store.state() : state0;
+  const state1 = jobs.length || versionsWrote || marksWrote ? await store.state() : state0;
   const enabledAt = input.enabledAt ? input.enabledAt.getTime() : null;
   const linked = [...jiraIndex(state1)].filter(([, ref]) => {
     const p = state1.projects.find((x) => x.id === ref.projectId);
