@@ -48,7 +48,7 @@ describe("the Projects area", () => {
   });
   it("names the tab of each address, and none on a project's own page", () => {
     expect(projectsTabAt("/projects")).toBe("overview");
-    expect(projectsTabAt("/overview")).toBe("overview");
+    expect(projectsTabAt("/overview")).toBeNull(); // the old ideas table moves on to the Inbox (§8)
     expect(projectsTabAt("/projects/collaboration")).toBe("collaboration");
     expect(projectsTabAt("/projects/progress")).toBe("progress");
     expect(projectsTabAt("/projects/P-4")).toBeNull();

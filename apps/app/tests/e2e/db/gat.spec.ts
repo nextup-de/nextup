@@ -142,7 +142,8 @@ const approvalRow = (page: Page, title: string) => page.locator('[data-testid="i
 async function openFromInbox(page: Page, title: string, caseId: string) {
   await expect(async () => {
     await approvalRow(page, title).click();
-    await expect(page).toHaveURL(new RegExp(`/cases/${caseId}$`), { timeout: 3_000 });
+    // One idea page, /idea?id= (16 Nov 2026): the row links there, not to /cases/<id>.
+    await expect(page).toHaveURL(new RegExp(`/idea\\?id=${caseId}$`), { timeout: 3_000 });
   }).toPass({ timeout: 20_000 });
 }
 

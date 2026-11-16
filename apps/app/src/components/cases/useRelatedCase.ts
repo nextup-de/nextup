@@ -5,6 +5,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { canOpen } from "@/components/dashboard/derive";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import { isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { ideaPath } from "@/features/ideas/page-path";
 
 export type Related = { title: string | null; to: string | null };
 
@@ -18,7 +19,7 @@ export function useRelatedCase() {
   /** A case of the company: its title and page when the viewer may open it. */
   const ofCase = (id: string): Related => {
     const c = S.cases.find((x) => x.id === id);
-    return c && canOpen(ctx, c) ? { title: c.title, to: href("/cases/" + encodeURIComponent(c.id)) } : { title: null, to: null };
+    return c && canOpen(ctx, c) ? { title: c.title, to: href(ideaPath(c.id)) } : { title: null, to: null };
   };
   /** A case or a project (a duplicate may be either): a draft the viewer may not read counts as hidden. */
   const ofCaseOrProject = (id: string): Related => {

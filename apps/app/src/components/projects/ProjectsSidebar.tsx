@@ -16,7 +16,7 @@ import { raisedWith } from "@/features/cases/rows";
 import { commentsOn } from "@/features/cases/selectors";
 import { PROJECT_TABS, projectTabOf, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import {
-  IDEA_EXTRA_TABS, IDEA_TABS, PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, mayEditIdeaPages, mayReviseIdea, movePage, pageList, removePage, ringOf, sidebarProjects, updatePage,
+  IDEA_EXTRA_TABS, IDEA_TABS, PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, mayReviseIdea, movePage, pageList, removePage, ringOf, sidebarProjects, updatePage,
   type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring,
 } from "@/features/projects/sidebar";
 import { isOpenDraft, visibleProjectsFor } from "@/features/projects/views";
@@ -310,12 +310,12 @@ function IdeaPages({ c, back, onBack }: { c: ReducedCase; back: string; onBack: 
   const { S, href, log, me, act, showToast } = useDemo();
   const t = useT();
   const params = useSearchParams();
-  const editor = mayEditIdeaPages({ userId: me.userId });
   const base = href("/idea?id=" + encodeURIComponent(c.id));
   const stage: IdeaStage = c.status === "discussion" ? "decision" : "lead";
   const counts: Record<string, number | undefined> = { files: raisedWith(c).attachments || undefined, chats: commentsOn(log, c.id).length || undefined };
   return (
-    <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={IDEA_TABS} extraTabs={IDEA_EXTRA_TABS} base={base} pageUrl={(id) => base + "&page=" + id} editor={editor}
+    // An idea is no project (docs/DESIGN_RULES.md §8): it has its own fixed pages - Idea, Files, Chats - and no "Add page".
+    <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={[...IDEA_TABS, ...IDEA_EXTRA_TABS]} base={base} pageUrl={(id) => base + "&page=" + id} editor={false}
       current={params.get("page") ?? "overview"}
       tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
       tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : k === "overview" ? <PageGlyph icon="star" /> : <TabIcon k={k} />, count: counts[k] })}

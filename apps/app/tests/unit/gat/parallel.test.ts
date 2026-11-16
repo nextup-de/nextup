@@ -142,7 +142,7 @@ it("GAT parallel returns the idea to its raiser with the reason on one no", () =
   expect(caseOf(overruled)).toMatchObject({ status: "approval", decided: null });
   // The raiser finds it in their inbox; the approvers no longer do.
   const items = (userId: string) => inboxItems({ state: back, me: meFor(userId, SEATS), seats: SEATS, today: 6, demo: false, flags: { projects: true, discussion: true }, role: "member" }).filter((i) => i.kind === "approval");
-  expect(items("u_ra")).toEqual([expect.objectContaining({ id: "approval-back:prov", ask: "part", caseId: "ca", href: "/cases/ca" })]);
+  expect(items("u_ra")).toEqual([expect.objectContaining({ id: "approval-back:prov", ask: "part", caseId: "ca", href: "/idea?id=ca" })]);
   expect(items("u_legal")).toEqual([]);
   // The raiser is told who said no and why; and may take the idea back instead.
   const people: Person[] = Object.entries(NAME).map(([id, name]) => ({ id, name, email: `${id}@x.example` }));

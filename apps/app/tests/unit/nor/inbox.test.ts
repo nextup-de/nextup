@@ -42,7 +42,7 @@ describe("NOR inbox items", () => {
     const state = appealed("s_dep");
     const deputy = itemsFor(state, "u_dep");
     expect(ofKind(deputy, "appeal")).toEqual([{
-      id: "appeal:c_a", ask: "decide", kind: "appeal", caseId: "c_a", title: "Shorter changeover", href: "/cases/c_a", dueDay: 8, late: false, dueSoon: false, pinned: false, deskRoleId: "role_deputy",
+      id: "appeal:c_a", ask: "decide", kind: "appeal", caseId: "c_a", title: "Shorter changeover", href: "/idea?id=c_a", dueDay: 8, late: false, dueSoon: false, pinned: false, deskRoleId: "role_deputy",
     }]);
     // The person who said no, a holder of another desk, the raiser and a manager while the desk can answer: no item.
     expect(ofKind(itemsFor(state, "u_own"), "appeal")).toEqual([]);
@@ -55,7 +55,7 @@ describe("NOR inbox items", () => {
     const state = appealed(null); // no occupied seat could take it
     const manager = ofKind(itemsFor(state, "u_boss", "manager"), "appeal");
     expect(manager).toHaveLength(1);
-    expect(manager[0]).toMatchObject({ ask: "decide", kind: "appeal", href: "/cases/c_a", dueDay: 8, deskRoleId: null });
+    expect(manager[0]).toMatchObject({ ask: "decide", kind: "appeal", href: "/idea?id=c_a", dueDay: 8, deskRoleId: null });
     expect(ofKind(itemsFor(state, "u_dep"), "appeal")).toEqual([]);
     // A manager who said the no cannot answer it.
     const own = ofKind(itemsFor(state, "u_own", "manager"), "appeal");

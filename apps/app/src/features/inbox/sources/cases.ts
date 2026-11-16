@@ -7,6 +7,7 @@ import type { ReducedCase } from "@/features/cases/reducer";
 import { deskOf, onDeskOf } from "@/features/cases/selectors";
 import { decisionsWaiting } from "@/features/metrics";
 import type { InboxInput, InboxItem } from "../types";
+import { ideaPath } from "@/features/ideas/page-path";
 
 /** The input of the sources: the signed-in person's role is only read for what a manager alone is asked (the legacy ideas, the reward due). */
 export type InboxSourceInput = InboxInput & { role?: Role };
@@ -66,19 +67,19 @@ export function caseItems(input: InboxSourceInput): InboxItem[] {
     const manager = input.role === "manager" && appealRouting(c, input.seats).state === "unroutable" && mayAnswerAppeal(c, me, true, input.seats);
     if (!holder && !manager) continue;
     const deskRoleId = appealDeskRoles(c, input.seats).find((r) => me.roleIds.includes(r)) ?? null;
-    out.push({ id: `appeal:${c.id}`, ask: "decide", kind: "appeal", caseId: c.id, title: c.title, href: `/cases/${encodeURIComponent(c.id)}`, dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId });
+    out.push({ id: `appeal:${c.id}`, ask: "decide", kind: "appeal", caseId: c.id, title: c.title, href: ideaPath(c.id), dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId });
   }
 
   if (input.flags.discussion) {
     for (const c of cases) {
       if (!invitedTo(c, me) || onDeskOf(c, me) || c.fromUserId === me.userId) continue;
-      out.push({ id: `view:${c.id}`, ask: "part", kind: "view", caseId: c.id, title: c.title, href: `/cases/${encodeURIComponent(c.id)}`, dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId: null });
+      out.push({ id: `view:${c.id}`, ask: "part", kind: "view", caseId: c.id, title: c.title, href: ideaPath(c.id), dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId: null });
     }
   }
 
   for (const c of cases) {
     if (me.userId === null || c.fromUserId !== me.userId || c.status !== "asked") continue;
-    out.push({ id: `question:${c.id}`, ask: "part", kind: "question", caseId: c.id, title: c.title, href: `/cases/${encodeURIComponent(c.id)}`, dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId: null });
+    out.push({ id: `question:${c.id}`, ask: "part", kind: "question", caseId: c.id, title: c.title, href: ideaPath(c.id), dueDay: c.dueDay, late: false, dueSoon: false, pinned: false, deskRoleId: null });
   }
 
   if (input.demo && input.role === "manager") {

@@ -16,6 +16,7 @@ import { Banner, DeptChip, PageHeader, PersonFace, SectionCard } from "@/compone
 import { setLocale } from "@/i18n/actions";
 import { useLocale, useT } from "@/i18n/client";
 import { LOCALES, type Locale, type MessageKey } from "@/i18n";
+import { ideaPath } from "@/features/ideas/page-path";
 
 type WorkKind = "ideaRaised" | "problemRaised" | "collaboration" | "idea";
 const WORK_LABEL: Record<WorkKind, MessageKey> = {
@@ -59,7 +60,7 @@ export function ProfileView({ m365, mailPrefs }: { m365?: M365CardData | null; m
   const linkOf = (personName: string) => { const userId = seed.seats.find((s) => s.label === personName)?.userId; return userId ? personHref(tenant, userId) : null; };
   const colleagues = seed.people.filter((p) => p.name !== name && p.name !== manager?.name && p.dept === deptId && linkOf(p.name)).slice(0, 4);
   const work = [
-    ...(cases.map((c) => ({ id: c.id, title: c.title, type: (c.kind === "idea" ? "ideaRaised" : "problemRaised") as WorkKind, status: CASE_STATUS[c.status] ? t(CASE_STATUS[c.status]) : c.status[0].toUpperCase() + c.status.slice(1), href: href("/cases/" + encodeURIComponent(c.id)) }))),
+    ...(cases.map((c) => ({ id: c.id, title: c.title, type: (c.kind === "idea" ? "ideaRaised" : "problemRaised") as WorkKind, status: CASE_STATUS[c.status] ? t(CASE_STATUS[c.status]) : c.status[0].toUpperCase() + c.status.slice(1), href: href(ideaPath(c.id)) }))),
     ...initiatives.map((i) => ({ id: i.id, title: i.name, type: "collaboration" as WorkKind, status: i.status, href: href("/collaboration?id=" + encodeURIComponent(i.id)) })),
     ...ideas.map((i) => ({ id: i.id, title: i.title, type: "idea" as WorkKind, status: i.status, href: href("/ideas?id=" + encodeURIComponent(i.id)) })),
   ].slice(0, 6);

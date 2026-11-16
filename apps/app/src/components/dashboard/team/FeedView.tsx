@@ -24,6 +24,7 @@ import { useT } from "@/i18n/client";
 import type { T } from "@/i18n";
 import s from "./Feed.module.css";
 import { libraryCoverFor, sampleCoverFor } from "@/features/cases/thumbs";
+import { ideaPath } from "@/features/ideas/page-path";
 
 const ALL_SITES = "*"; // the "every site" filter value; shown as feedAllSites
 const ALL_UNITS = "*"; // the "every unit" filter value; shown as feed.allUnits
@@ -96,7 +97,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
   const { chips: deptChipNames, more: moreDepts } = deptChips(seed, deptCount, dept); // at most three, the rest in a menu
   const chips = ["All", ...deptChipNames];
 
-  const open = (id: string) => router.push(href("/cases/" + encodeURIComponent(id)));
+  const open = (id: string) => router.push(href(ideaPath(id)));
   const support = (x: Item) => { act.affect(x.c.id); };
   // The latest-event line: what last happened, by whom (their desk role, else the event's label), and when.
   const latestLine = (c: ReducedCase, a: Activity | null): string => {
@@ -117,7 +118,7 @@ export function FeedView({ initialId }: { initialId?: string } = {}) {
 
   // An old address with ?id= (a notice, a shared link) goes on to the idea page, when the viewer may open that case.
   const forward = ready && initialId ? D.cases.find((k) => k.id === initialId && canOpen(ctx, k))?.id ?? null : null;
-  useEffect(() => { if (forward) router.replace(href("/cases/" + encodeURIComponent(forward))); }, [forward, router, href]);
+  useEffect(() => { if (forward) router.replace(href(ideaPath(forward))); }, [forward, router, href]);
 
   // Escape closes the open menu.
   const onKey = useEffectEvent((e: KeyboardEvent) => {

@@ -21,6 +21,7 @@ import { roundState } from "@/features/cases/discussion";
 import type { MineRow, MineStatus } from "@/features/cases/rows";
 import styles from "./SentView.module.css";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
+import { ideaPath } from "@/features/ideas/page-path";
 
 // The four steps in the words an employee uses, not the system's.
 const STEP_LABEL: Record<string, MessageKey> = { "Sent": "team.sentStepSent", "Read by a human": "team.sentStepRead", "Decided": "team.sentStepAnswered", "Shipped": "team.sentStepLive" };
@@ -80,7 +81,7 @@ export function SentView() {
               {asked.map((c) => {
                 const rs = roundState(c, S.rules, S.day);
                 return (
-                  <Link key={c.id} href={href("/cases/" + c.id)} className={styles.askedRow}>
+                  <Link key={c.id} href={href(ideaPath(c.id))} className={styles.askedRow}>
                     <span className={styles.askedCase}>{c.title}</span>
                     <span className={styles.askedMeta}>{t("team.sentAskedMeta", { who: c.discussion?.by ?? "", state: rs ? (rs.ready ? t("team.sentReadyToDecide") : t("team.sentRound", { round: rs.round, of: rs.of, date: f(rs.dueDay) })) : "" })}</span>
                   </Link>
@@ -149,7 +150,7 @@ export function SentView() {
             </div>
             {(linked.length > 0 || (c && mayFollow(c, me.userId))) && (
               <ul className={styles.links} data-testid="sent-links">
-                {linked.map((l) => <li key={l.id}><Link href={href("/cases/" + l.id)} className={styles.link}>{l.text}</Link></li>)}
+                {linked.map((l) => <li key={l.id}><Link href={href(ideaPath(l.id))} className={styles.link}>{l.text}</Link></li>)}
                 {c && mayFollow(c, me.userId) && <li><Link href={href(followHref(c.id))} className={styles.link} data-testid="sent-start-better">{t("caseSee.startBetter")}</Link></li>}
               </ul>
             )}
@@ -164,9 +165,9 @@ export function SentView() {
 
             <div className={styles.foot}>
               {m.canReply && <button type="button" className={styles.answer} onClick={() => openSheet("reply", m.id)}>{t("team.sentAnswer", { who: m.replyTo })}</button>}
-              {!!TALK[m.status] && <Link href={href("/cases/" + m.id)} className={styles.more}>{t("team.sentRevise")}</Link>}
+              {!!TALK[m.status] && <Link href={href(ideaPath(m.id))} className={styles.more}>{t("team.sentRevise")}</Link>}
               {m.project && <Link href={href("/projects/" + m.project.id)} className={styles.more}>{m.project.label} {m.project.title} &rarr;</Link>}
-              {m.kind === "case" && <Link href={href("/cases/" + m.id)} className={styles.more}>{t("team.sentHistory")}</Link>}
+              {m.kind === "case" && <Link href={href(ideaPath(m.id))} className={styles.more}>{t("team.sentHistory")}</Link>}
             </div>
           </SectionCard>
           </article>

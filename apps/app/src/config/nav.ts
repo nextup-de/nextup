@@ -69,8 +69,8 @@ export function projectsTabsFor(role: Role): ProjectsTabItem[] {
 
 /** Which tab an address (relative to /[company]) is, or null outside the area: a project's own page has its own tabs. */
 export function projectsTabAt(path: string): ProjectsTabKey | null {
-  // Ideas are not part of Projects (Kevin and Sam, 16 Nov 2026): an idea's page (/idea, /cases/<id>) is no tab here.
-  if (path === "/overview") return "overview";
+  // Ideas are not part of Projects (Kevin and Sam, 16 Nov 2026): an idea's page (/idea, /cases/<id>) and the old ideas
+  // table (/overview, which moves on to the Inbox while projects is on) are no tab here.
   return PROJECTS_TABS.find((tab) => tab.href === path)?.key ?? null;
 }
 

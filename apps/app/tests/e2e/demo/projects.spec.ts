@@ -265,9 +265,9 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
   });
 });
 
-// Projects shows projects only (Kevin and Sam, 16 Nov 2026): the Overview list (flag overviewList, on for demo companies) lists
-// projects and no idea. The ideas table keeps its old address, /overview.
-test("the Projects page lists projects only; the ideas table stays at /overview", async ({ page }) => {
+// Projects shows projects only (Kevin and Sam, 16 Nov 2026, docs/DESIGN_RULES.md §8): the Overview list (flag overviewList,
+// on for demo companies) lists projects and no idea, and the old ideas table (/overview) moves on to the Inbox.
+test("the Projects page lists projects only; the old ideas table moves to the Inbox", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Overview" })).toHaveCount(0);
@@ -279,65 +279,50 @@ test("the Projects page lists projects only; the ideas table stays at /overview"
   await expect(page.getByRole("tab", { name: /^Ideas/ })).toHaveCount(0);
   await expect(page.getByRole("table", { name: "Problems and ideas" })).toHaveCount(0);
   await page.goto("/acme/overview");
-  await expect(page.getByRole("heading", { name: "Ideas", level: 2 })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Problems and ideas" })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Overview" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/acme\/inbox$/);
 });
 
-test("an idea opened from the ideas table has its own address, /idea?id=", async ({ page }) => {
-  const idea = /\/acme\/idea\?id=[^&]+$/;
+// Each idea has one page, /idea?id= (Kevin, 16 Nov 2026): it counts as the Inbox, and its old addresses land on it.
+test("an idea has one address, /idea?id=, and counts as the Inbox", async ({ page }) => {
   const inbox = /\/acme\/inbox$/;
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/overview");
-  const table = page.getByRole("table", { name: "Problems and ideas" });
-  const row = table.getByRole("row").nth(1);
-  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
-  await row.click();
-  await expect(page).toHaveURL(idea);
-  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await page.goto("/acme/idea?id=c1");
+  await expect(page).toHaveURL(/\/acme\/idea\?id=c1$/);
+  const heading = page.getByRole("main").getByRole("heading", { level: 1 }).first();
   await expect(heading).toBeVisible();
+  const title = (await heading.innerText()).trim();
+  const named = page.getByRole("heading", { name: title, level: 1 }).first();
   const at = page.url();
 
-  // A reload and a link land on the same idea. An idea is no part of Projects (Kevin and Sam, 16 Nov 2026): the nav shows the Inbox.
+  // A reload lands on the same idea; the nav shows the Inbox, never Projects.
   await page.reload();
-  await expect(heading).toBeVisible();
+  await expect(named).toBeVisible();
   await expect(page).toHaveURL(at);
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /^Inbox/ })).toHaveAttribute("aria-current", "page");
 
-  // Opened at its own address, closing goes to the Inbox; Back reopens the idea and Forward closes it again.
+  // Closing goes to the Inbox; Back reopens the idea and Forward closes it again.
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(inbox);
   await page.goBack();
   await expect(page).toHaveURL(at);
-  await expect(heading).toBeVisible();
+  await expect(named).toBeVisible();
   await page.goForward();
   await expect(page).toHaveURL(inbox);
 
-  // The nav link leaves an idea opened in place for the projects, and the old addresses still land on the idea.
-  await page.goto("/acme/overview");
-  await table.getByRole("row").nth(1).click();
-  await expect(page).toHaveURL(idea);
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Projects", exact: true }).click();
-  await expect(page).toHaveURL(/\/acme\/projects$/);
-  await expect(page.getByRole("heading", { name: "Overview", level: 2 })).toBeVisible();
-  const id = new URL(at).searchParams.get("id") ?? "";
-  for (const old of ["/acme/projects", "/acme/overview"]) {
-    await page.goto(old + "?id=" + encodeURIComponent(id));
+  // The old addresses land on the idea's one page.
+  for (const old of ["/acme/cases/c1", "/acme/projects?id=c1"]) {
+    await page.goto(old);
     await expect(page).toHaveURL(at);
-    await expect(heading).toBeVisible();
+    await expect(named).toBeVisible();
   }
 });
 
 test("Back right after closing an idea reopens it, on a slow machine too", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Team leader");
-  await page.goto("/acme/overview");
-  const table = page.getByRole("table", { name: "Problems and ideas" });
-  const row = table.getByRole("row").nth(1);
-  const title = (await row.getByRole("cell").first().locator("span").first().innerText()).trim();
-  await row.click();
-  const heading = page.getByRole("heading", { name: title, level: 1 });
+  await page.goto("/acme/idea?id=c1");
+  const heading = page.getByRole("main").getByRole("heading", { level: 1 }).first();
   await expect(heading).toBeVisible();
   await page.reload();
   await expect(heading).toBeVisible();
@@ -345,9 +330,9 @@ test("Back right after closing an idea reopens it, on a slow machine too", async
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/acme\/inbox$/); // opened at its own address (the reload), it closes to the Inbox
+  await expect(page).toHaveURL(/\/acme\/inbox$/); // opened at its own address, it closes to the Inbox
   await page.goBack();
-  await expect(page).toHaveURL(/\/acme\/idea\?id=/);
+  await expect(page).toHaveURL(/\/acme\/idea\?id=c1$/);
   await expect(heading).toBeVisible({ timeout: 15_000 });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
 });

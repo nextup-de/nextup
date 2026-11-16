@@ -119,12 +119,10 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await card.getByRole("link", { name: /Full history/ }).click();
     await expect(page.getByRole("note", { name: "Archived" })).toContainText(/Accepted · being set up by .+, start expected/); // the raiser is not on the draft (D13)
 
-    // The page shows the projects beside the ideas: the new project carries the title, the open ideas no longer do.
-    await page.goto("/acme/overview");
-    const ideas = page.getByRole("region", { name: "Ideas" });
-    await expect(ideas.getByText(TITLE)).toHaveCount(0);
-    await ideas.getByRole("button", { name: /^Open\s*\d+$/ }).click();
-    await ideas.getByRole("menuitemradio", { name: /Became a project/ }).click();
-    await expect(ideas.getByText(TITLE)).toBeVisible();
+    // The raiser follows it under Ideas › Mine (no ideas table any more, 16 Nov 2026): it became a project, with a link.
+    await page.goto("/acme/ideas");
+    const mine = page.getByRole("main").locator("li, tr, article, [data-row]").filter({ hasText: TITLE }).first();
+    await expect(mine).toBeVisible();
+    await expect(mine.getByRole("link", { name: /P-\d+/ })).toBeVisible();
   });
 });

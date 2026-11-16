@@ -12,6 +12,7 @@ import type { ApprovalStep } from "@/features/approvals/types";
 import type { State } from "@/features/cases/reducer";
 import type { Me } from "@/features/auth/identity";
 import type { InboxInput, InboxItem } from "../types";
+import { ideaPath } from "@/features/ideas/page-path";
 
 /** The role this person answers the step as: the step's role (a council's secretary role), else the role of the seat a late hand-over named. */
 function answeringRole(step: ApprovalStep, me: Me, state: Pick<State, "seats" | "approvals">): string | null {
@@ -28,7 +29,7 @@ export function approvalItems(input: InboxInput): InboxItem[] {
   const out: InboxItem[] = [];
   for (const c of state.cases) {
     const run = c.approvals ?? null; // a hand-built case of an old test may not carry the field
-    const href = `/cases/${encodeURIComponent(c.id)}`;
+    const href = ideaPath(c.id);
     if (run === null) {
       // Returned to its raiser (decision B): their move, to change it and send it again.
       const back = c.approvalRuns ? returnedRun(c) : null;

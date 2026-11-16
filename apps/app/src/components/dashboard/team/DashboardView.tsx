@@ -41,9 +41,13 @@ import { DeptChip, PersonFace } from "@/components/ui/elements";
 import { useIdInUrl, useUrlId } from "@/lib/use-url-id";
 import { CustomPageView } from "@/components/projects/CustomPageView";
 import { IdeaFilesView } from "@/components/projects/files/IdeaFilesView";
+import { CaseDetailView } from "@/components/dashboard/shared/CaseDetailView";
+import { CasePlanPanel } from "@/components/agent/CasePlanPanel";
+import { caseApprovalView } from "@/features/approvals/case-view";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { mayEditIdeaPages, mayReviseIdea } from "@/features/projects/sidebar";
-import { isOpenDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
+import { isOpenDraft, mayReadDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
 import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
@@ -119,19 +123,24 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 /** The band on top of an idea opened on its own: "Idea", and where it stands - not a project yet, declined, withdrawn, or said yes to. */
 function IdeaKind({ c }: { c: ReducedCase }) {
   const t = useT();
-  const { href } = useDemo();
+  const { href, S, role, actorUserId } = useDemo();
   const projectId = c.decided?.answer === "yes" ? c.decided.projectId ?? null : null;
+  // A draft is for the people on it (SET D13): anyone else reads that it is being set up, with no link to it.
+  const project = projectId ? S.projects.find((p) => p.id === projectId) : undefined;
+  const hiddenDraft = project !== undefined && isOpenDraft(project)
+    && !mayReadDraft(project, { role, userId: actorUserId }, S.cases.some((x) => project.sources.includes(x.id) && isPrivateIdea(x)));
+  const linkTo = projectId && project && !hiddenDraft ? projectId : null;
   const text = c.withdrawn ? t("team.ideaKindWithdrawn") : c.decided ? (projectId ? t("team.ideaKindProject") : t("team.ideaKindDeclined")) : t("team.ideaKindOpen");
   return (
     <div className={s.kind} data-kind={c.kind === "problem" ? "problem" : "idea"} data-state={c.withdrawn ? "withdrawn" : c.decided ? (projectId ? "project" : "declined") : "open"}>
       <span className={s.kindChip}>{t(c.kind === "problem" ? "team.ideaKindProblem" : "team.ideaKind")}</span>
       <span className={s.kindText}>{text}</span>
-      {projectId && <Link className={s.kindLink} href={href("/projects/" + projectId)}>{t("team.ideaKindOpenProject")} →</Link>}
+      {linkTo && <Link className={s.kindLink} href={href("/projects/" + linkTo)}>{t("team.ideaKindOpenProject")} →</Link>}
     </div>
   );
 }
 
-export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean } = {}) {
+export function DashboardView({ caseId, linkCases = false, embedded = false, title, inPage = false, raiserInactive = false }: { caseId?: string; linkCases?: boolean; embedded?: boolean; title?: React.ReactNode; inPage?: boolean; raiserInactive?: boolean } = {}) {
   const t = useT();
   const ctx = useDemo();
   const { seed, D, log, role, ready, href, tenant, act, me, f, motion, flag } = ctx;
@@ -333,6 +342,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       const ids = shown.map((r) => r.id), at = ids.indexOf(c.id);
       phoneCase = (
         <OverviewPhone key={c.id} idea={ideaProps} chats={chats} yourMove={yourMove(row)}
+          after={<CaseDetailView key={"case-" + c.id} caseId={c.id} raiserInactive={raiserInactive} embedded />}
           nav={{ index: at, count: ids.length, onPrev: () => at > 0 && openCase(ids[at - 1]), onNext: () => at < ids.length - 1 && openCase(ids[at + 1]) }} />
       );
     } else {
@@ -346,8 +356,13 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
               <div className={s.div21} ref={paneRef}>
                 {/* An idea never looks like a project (Kevin, 16 Nov 2026): it says what it is and that it is not a project yet. */}
                 {view === "idea" && (inPage ? <p className={s.kindOrigin}>{t("team.ideaKindOrigin")}</p> : <IdeaKind c={c} />)}
-                {view === "idea" && deskItem && <DeskDecision brief={deskItem.brief} status={deskItem.status} onDecide={deskItem.onDecide} />}
+                {/* A pending review forwards; it never says yes (plan GAT): the review block under the card is the move then. */}
+                {view === "idea" && deskItem && !caseApprovalView(c, ctx.S, me).review?.pending && <DeskDecision brief={deskItem.brief} status={deskItem.status} onDecide={deskItem.onDecide} />}
                 {view === "idea" && <OverviewIdea key={c.id} {...ideaProps} />}
+                {/* The idea's one page (Kevin, 16 Nov 2026): under the card, what only the case view had - the approval line,
+                    the moves, routing, cost and the history. A project's own Idea page (inPage) is its origin and stays read only. */}
+                {view === "idea" && !inPage && <CaseDetailView key={"case-" + c.id} caseId={c.id} raiserInactive={raiserInactive} embedded />}
+                {view === "idea" && !inPage && <CasePlanPanel caseId={c.id} />}
                 {view === "files" && <IdeaFilesView items={ideaProps.files} folder={c.folder} />}
                 {view === "added" && addedPage && <CustomPageView storeId={ideaPagesId(c.id)} page={addedPage} editor={editsPages} />}
               </div>
