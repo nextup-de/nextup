@@ -617,11 +617,7 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 .kind { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; padding: 10px 14px; border-radius: var(--radius-sm, 14px); background: var(--nh-idea-tint); color: var(--nh-ink); border: 1px solid var(--nh-idea-line); }
 .kind[data-kind="problem"] { background: var(--nh-problem-tint); border-color: var(--nh-problem-line); }
 .kind[data-state="declined"], .kind[data-state="withdrawn"] { background: var(--nh-fill); border-color: var(--nh-line); color: var(--nh-mute); }
-.kind[data-state="project"] { background: var(--nh-brand-tint); border-color: var(--nh-line); }
-.kindChip { flex: none; font-size: var(--nh-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--nh-idea); color: #fff; }
-.kind[data-kind="problem"] .kindChip { background: var(--nh-problem); }
 .kindText { flex: 1 1 200px; min-width: 0; font-size: var(--nh-fs-sm); }
-.kindLink { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-brand-ink); text-decoration: none; }
 .kindOrigin { margin: 0 0 10px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 
 /* The idea's one page with "Your move" beside it (DESIGN_RULES §9): the idea and what only the case view had on the left, the move on the right,

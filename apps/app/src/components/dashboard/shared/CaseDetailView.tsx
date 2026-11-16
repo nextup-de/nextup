@@ -11,7 +11,7 @@ import { canOpen } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { translate, type MessageKey } from "@/i18n";
 import { reasonTone, statusTone, type Tone } from "@/components/dashboard/shared/primitives";
-import { DeptChip, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
+import { DeptChip, Fold, PageHeader, PersonFace, SectionCard } from "@/components/ui/elements";
 import { AnswerPromise } from "@/components/cases/AnswerPromise";
 import { CaseRelations } from "@/components/cases/CaseRelations";
 import { CaseRouting } from "@/components/cases/CaseRouting";
@@ -186,12 +186,13 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
       </div>
 
       <div className={styles.stack}>
-      {/* The moves are "Your move" beside the idea (components/cases/IdeaMove); this card keeps the score and who stands behind it. */}
-      <SectionCard title={embedded ? undefined : t("dashboard.detailYourMove")} name="your-move">
-        <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || t("dashboard.detailBaseOnly")}>
+      {/* The moves are "Your move" beside the idea (components/cases/IdeaMove). Embedded, this card is who stands behind it and what was
+          corrected, drawn only when there is any (DESIGN_RULES §1, §9): the score is in the idea's AI view, the project in "Your move". */}
+      {(!embedded || updates.length > 0 || standing.length > 0 || reasons.length > 0) && <SectionCard title={embedded ? undefined : t("dashboard.detailYourMove")} name="your-move">
+        {!embedded && <div className={styles.score} title={score.parts.map((p) => "+" + p.points + " " + p.label).join("\n") || t("dashboard.detailBaseOnly")}>
           <span className={styles.scoreV} data-band={scoreBand(score.value)}>{score.value}</span>
           <span className={styles.scoreL}>{t("dashboard.detailScore", { parts: score.parts.length ? score.parts.map((p) => p.label.toLowerCase()).join(", ") : t("dashboard.detailBaseOnlyLc") })}</span>
-        </div>
+        </div>}
         {updates.map((u) => (
           <div key={u.id} className={styles.corr}>{t("dashboard.detailCorrected", { text: u.text, by: isMe(u.byUserId) ? t("dashboard.detailYou") : u.by, date: f(u.day) })}</div>
         ))}
@@ -214,7 +215,7 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
               </div>
             </div>
           ))}
-          {project ? (
+          {project && !embedded ? (
             <div className={styles.moved}>{t("dashboard.detailArchivedMoved")} <Link href={href("/projects/" + project.id)}>{projectLabel(project)} {project.title} →</Link></div>
           ) : hiddenDraft || embedded ? null : (
           <div className={styles.noteRow}>
@@ -224,9 +225,11 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
           </div>
           )}
         </div>
-      </SectionCard>
+      </SectionCard>}
 
-      <SectionCard title={t("dashboard.detailWhatHappened")} name="what-happened">
+      {/* What happened: one line that opens (DESIGN_RULES §9), its last day beside it. */}
+      <SectionCard name="what-happened">
+        <Fold summary={t("dashboard.detailWhatHappened")} meta={c.history.length > 0 ? f(c.history[c.history.length - 1].day) : undefined} name="what-happened">
         <ol className={styles.timeline}>
           {c.history.map((e) => (
             <li key={e.id} className={styles.event}>
@@ -247,7 +250,7 @@ export function CaseDetailView({ caseId, raiserInactive = false, embedded = fals
             </li>
           )}
         </ol>
-        <div className={styles.small}>{t("dashboard.detailLogNote")}</div>
+        </Fold>
       </SectionCard>
       </div>
     </div>

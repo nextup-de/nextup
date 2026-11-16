@@ -106,9 +106,11 @@ test("the interview script: employee raises, team leader finds it, manager sees 
     // The idea card (one idea page, 16 Nov 2026): the answer's two halves as label and text, the desk and the promise.
     await expect(main).toContainText("It serves the changeover goal");
     await expect(main).toContainText(MORE[0].split(": ")[1]);
-    await expect(main).toContainText(/of the 5-day promise/);
-    await expect(main).toContainText(/On the desk of[\s\S]*T\. Vogel/);
-    // "What happened": the log so far is one line.
+    // The desk and its date once, in the answer-by panel (the card's own desk row is left out then: DESIGN_RULES §9).
+    await expect(main.getByTestId("case-answer-by")).toBeVisible();
+    await expect(main.getByTestId("case-holder")).toContainText("T. Vogel");
+    // "What happened" is one line that opens; the log so far is one line.
+    await main.getByTestId("fold").filter({ hasText: "What happened" }).locator("summary").click();
     await expect(main.getByRole("listitem").filter({ hasText: "raised this" })).toBeVisible();
   });
 

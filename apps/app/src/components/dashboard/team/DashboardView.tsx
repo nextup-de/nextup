@@ -43,15 +43,15 @@ import { CustomPageView } from "@/components/projects/CustomPageView";
 import { IdeaFilesView } from "@/components/projects/files/IdeaFilesView";
 import { CaseDetailView } from "@/components/dashboard/shared/CaseDetailView";
 import { CasePlanPanel } from "@/components/agent/CasePlanPanel";
-import { isPrivateIdea } from "@/features/cases/visibility";
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { mayEditIdeaPages, mayReviseIdea } from "@/features/projects/sidebar";
-import { isOpenDraft, mayReadDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
+import { isOpenDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
 import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
 import { useOpenItem } from "@/components/inbox/useOpenItem";
 import { IdeaMove } from "@/components/cases/IdeaMove";
+import { seesRouting } from "@/features/cases/routing-trail";
 
 // A count beside a menu label: nothing at 0 (lib/utils/quiet.ts).
 const quietCount = (n: number) => (n > 0 ? <span className={s.count}>{n}</span> : null);
@@ -119,22 +119,17 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
  * `inPage`: the idea drawn as one page of its project (tools/IdeaTool): the idea alone, at its own height, with no
  * close button, no chats column and no small-screen sheet - the project page around it brings the way back.
  */
-/** The band on top of an idea opened on its own: "Idea", and where it stands - not a project yet, declined, withdrawn, or said yes to. */
-function IdeaKind({ c }: { c: ReducedCase }) {
+/**
+ * The band on top of an idea that is closed without a project (DESIGN_RULES §9, one status, one carrier): withdrawn or declined. An open idea
+ * needs no band (its steps and "Your move" say where it stands), and one said yes to links to its project from "Your move".
+ */
+function IdeaClosed({ c }: { c: ReducedCase }) {
   const t = useT();
-  const { href, S, role, actorUserId } = useDemo();
-  const projectId = c.decided?.answer === "yes" ? c.decided.projectId ?? null : null;
-  // A draft is for the people on it (SET D13): anyone else reads that it is being set up, with no link to it.
-  const project = projectId ? S.projects.find((p) => p.id === projectId) : undefined;
-  const hiddenDraft = project !== undefined && isOpenDraft(project)
-    && !mayReadDraft(project, { role, userId: actorUserId }, S.cases.some((x) => project.sources.includes(x.id) && isPrivateIdea(x)));
-  const linkTo = projectId && project && !hiddenDraft ? projectId : null;
-  const text = c.withdrawn ? t("team.ideaKindWithdrawn") : c.decided ? (projectId ? t("team.ideaKindProject") : t("team.ideaKindDeclined")) : t("team.ideaKindOpen");
+  const declined = c.decided !== null && !(c.decided.answer === "yes" && c.decided.projectId);
+  if (!c.withdrawn && !declined) return null;
   return (
-    <div className={s.kind} data-kind={c.kind === "problem" ? "problem" : "idea"} data-state={c.withdrawn ? "withdrawn" : c.decided ? (projectId ? "project" : "declined") : "open"}>
-      <span className={s.kindChip}>{t(c.kind === "problem" ? "team.ideaKindProblem" : "team.ideaKind")}</span>
-      <span className={s.kindText}>{text}</span>
-      {linkTo && <Link className={s.kindLink} href={href("/projects/" + linkTo)}>{t("team.ideaKindOpenProject")} →</Link>}
+    <div className={s.kind} data-kind={c.kind === "problem" ? "problem" : "idea"} data-state={c.withdrawn ? "withdrawn" : "declined"}>
+      <span className={s.kindText}>{t(c.withdrawn ? "team.ideaKindWithdrawn" : "team.ideaKindDeclined")}</span>
     </div>
   );
 }
@@ -281,8 +276,9 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
     };
     const canAnswer = row.mine && c.status === "asked";
     const ideaProps: OverviewIdeaProps = {
-      id: c.id, title: c.title, raised: f(c.raisedDay), dept: (row.mine ? "" : c.from + " · ") + c.fromDept,
-      steps: overviewSteps(c, f, row.mine, ctx.locale), desk,
+      // A problem says so where the idea says who raised it (DESIGN_RULES §2: told apart by a label); the band of old is gone.
+      id: c.id, title: c.title, raised: f(c.raisedDay), dept: (c.kind === "problem" ? t("team.ideaKindProblem") + " · " : "") + (row.mine ? "" : c.from + " · ") + c.fromDept,
+      steps: overviewSteps(c, f, row.mine, ctx.locale), desk, deskBelow: !inPage && seesRouting(c, me, role) && !c.withdrawn,
       wait: {
         text: !running(row) ? t("team.dashWaitAnswered", { n: row.clock }) : late ? t("team.dashWaitLate", { n: row.clock, days: P }) : t(row.paused ? "team.dashWaitOpenPaused" : "team.dashWaitOpen", { n: row.clock, days: P }),
         pct: Math.min(100, (row.clock / P) * 100), tone: !running(row) ? "done" : late ? "late" : "open",
@@ -354,7 +350,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
             {view !== "chats" && (
               <div className={s.div21} ref={paneRef}>
                 {/* An idea never looks like a project (Kevin, 16 Nov 2026): it says what it is and that it is not a project yet. */}
-                {view === "idea" && (inPage ? <p className={s.kindOrigin}>{t("team.ideaKindOrigin")}</p> : <IdeaKind c={c} />)}
+                {view === "idea" && (inPage ? <p className={s.kindOrigin}>{t("team.ideaKindOrigin")}</p> : <IdeaClosed c={c} />)}
                 {/* "Your move" beside the idea (DESIGN_RULES §9): the one place for every move on it, the desk's decision as the inbox has it,
                     an approver's vote, the raiser's answer or resend. A project's own Idea page (inPage) is its origin and stays read only. */}
                 {view === "idea" && (inPage ? <OverviewIdea key={c.id} {...ideaProps} /> : (

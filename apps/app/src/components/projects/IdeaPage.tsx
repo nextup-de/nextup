@@ -7,6 +7,7 @@
 // changes on hover; a double-click opens a part. Props in, JSX out; DashboardView saves.
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
+import { Fold } from "@/components/ui/elements";
 import type { MessageKey } from "@/i18n";
 import { pageChanges, type IdeaContent, type IdeaFileRef, type Line, type PageChanges } from "@/features/ideas/edits";
 import s from "./IdeaPage.module.css";
@@ -133,7 +134,8 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
         </div>
       ) : <p className={s.desc} {...dbl(ed, "description", hint)}>{c.description}</p>}
 
-      <section className={s.sec} data-tone="affects" data-open={own("affects")} {...dbl(ed, "affects", hint)}>
+      {/* A part with nothing in it is not drawn unless it is being edited (DESIGN_RULES §1, §9); the pencil opens every part. */}
+      {(ed.editing("affects") || c.affects.length > 0) && <section className={s.sec} data-tone="affects" data-open={own("affects")} {...dbl(ed, "affects", hint)}>
         <Head label={t("team.ideaAffects")}><OwnButtons ed={ed} part="affects" /></Head>
         {ed.editing("affects") ? (
           <>
@@ -147,17 +149,17 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
               </div>
             )}
           </>
-        ) : c.affects.length ? (
+        ) : (
           // One row per team or person, with why it is affected where the analysis said so.
           <div className={s.tintList}>
             {c.affects.map((a) => (
               <div key={a} className={s.tintRow}><span className={s.tintChip}>{a}</span>{whyOf(a) && <span className={s.why}>{whyOf(a)}</span>}</div>
             ))}
           </div>
-        ) : <span className={s.none}>{t("ideas.cardNoTeams")}</span>}
-      </section>
+        )}
+      </section>}
 
-      <section className={s.sec} data-tone="context" data-open={own("context")} {...dbl(ed, "context", hint)}>
+      {(ed.editing("context") || !!c.context || c.lines.length > 0) && <section className={s.sec} data-tone="context" data-open={own("context")} {...dbl(ed, "context", hint)}>
         <Head label={t("team.ideaContext")}><OwnButtons ed={ed} part="context" /></Head>
         {ed.editing("context") ? (
           <>
@@ -188,12 +190,11 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
           <>
             {c.context && <p className={s.ctx}>{c.context}</p>}
             {c.lines.length > 0 && <Lines lines={c.lines} />}
-            {!c.context && !c.lines.length && <span className={s.none}>{t("ideas.cardNothingAdded")}</span>}
           </>
         )}
-      </section>
+      </section>}
 
-      <section className={s.sec} data-tone="files" data-open={own("files")} {...dbl(ed, "files", hint)}>
+      {(ed.editing("files") || c.files.length > 0) && <section className={s.sec} data-tone="files" data-open={own("files")} {...dbl(ed, "files", hint)}>
         <Head label={t("team.ideaAttachments")}><OwnButtons ed={ed} part="files" /></Head>
         <div className={s.files}>
           {(ed.editing("files") ? d.files : c.files).map((f, i) => (
@@ -203,18 +204,18 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
               {ed.editing("files") && <X what={f.name} onClick={() => ed.setDraft({ ...d, files: d.files.filter((_, k) => k !== i) })} />}
             </span>
           ))}
-          {!ed.editing("files") && !c.files.length && <span className={s.none}>{t("team.ideaNoAttachments")}</span>}
           {ed.editing("files") && <button type="button" className={s.addFile} onClick={() => fileInput.current?.click()}><Plus />{t("ideas.cardAddFile")}</button>}
           <input ref={fileInput} className={s.hidden} type="file" multiple onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
         </div>
-      </section>
+      </section>}
 
       {after}
 
+      {/* Who: set by the routing map and read only, folded (DESIGN_RULES §9). The raiser is named above the title, the desk and its date in the
+          answer-by panel, so they are not repeated here. */}
       <section className={s.sec} data-tone="who" data-dim={ed.all || undefined}>
-        <Head label={t("team.ideaWho")}><span className={s.locked}><Lock />{t("team.ideaRoutingMap")}</span></Head>
+        <Fold summary={t("team.ideaWho")} meta={<span className={s.locked}><Lock />{t("team.ideaRoutingMap")}</span>} name="idea-who">
         <div className={s.tintLines}>
-          <span className={s.tintLabel}>{t("team.ideaRaisedBy")}</span><span className={s.tintText}>{who.raisedBy}</span>
           {who.team && <><span className={s.tintLabel}>{t("team.ideaTeam")}</span><span className={s.tintText}>{who.team}</span></>}
           {who.routing.map((r, k) => (
             <Fragment key={r.name + k}>
@@ -224,6 +225,7 @@ export function IdeaSections({ ed, who, depts, whyOf, after }: {
           ))}
           {who.lines.map((l) => <Fragment key={l.label}><span className={s.tintLabel}>{l.label}</span><span className={s.tintText}>{l.text}</span></Fragment>)}
         </div>
+        </Fold>
       </section>
     </div>
   );
