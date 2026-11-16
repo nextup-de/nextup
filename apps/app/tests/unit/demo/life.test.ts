@@ -121,4 +121,17 @@ describe("Musterwerk's working day", () => {
       if (step?.ownerUserId === kevin) expect(step.doneDay! - step.startedDay!).toBeGreaterThanOrEqual(5);
     }
   });
+
+  it("decides an old generated case the clock passed to a seat that owns no route, as that seat's holder", () => {
+    const up = { id: "seat_up", roleId: "role_up", label: members[0].name, userId: members[0].id, sort: 9 };
+    const seed: ReduceSeed = { ...SEED, seats: [...SEED.seats!, up] };
+    const raised = { id: "e1", ts: 0, day: 1, type: "case.raised", actor: members[1].name, actorUserId: members[1].id, target: "mw-c1",
+      payload: { title: "Alter Fall", body: "x", routeId: "maintenance", assignee: members[0].name, assigneeRoleHolderId: "seat_up", kind: "idea" } } as CaseEvent;
+    const state = reduce(seed, { events: [raised], day: 30 } as EventLog);
+    expect(state.cases.find((c) => c.id === "mw-c1")?.assigneeSeatId).toBe("seat_up");
+    const out = lifeDay({ slug: "mw", iso: isoOf(30), today: 30, state, promiseDays: PROMISE, routes, people, humans: new Set() });
+    const decided = out.find((e) => e.type === "case.decided" && e.targetId === "mw-c1");
+    expect(decided?.actorUserId).toBe(members[0].id);
+  });
 });
+
