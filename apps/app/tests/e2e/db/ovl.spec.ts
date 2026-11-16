@@ -286,6 +286,8 @@ test.describe("OVL acceptance: an away holder is covered and an overloaded desk 
       await expect.poll(() => seatOfCase(a2), { message: "the case is on that seat" }).toBe(seat.d);
       // The case page says who has it now (the deputy desk's holder) and that the clock handed it there because of the absence, with no more than that.
       await openCase(hugo, a1);
+      // The history sits in its fold, "What happened" (DESIGN_RULES §9, folded by default): opened here on purpose.
+      await hugo.getByRole("main").getByTestId("fold").filter({ hasText: "What happened" }).locator("summary").click();
       await expect(hugo.getByText(`system:clock handed it to ${COVER_K}`)).toBeVisible();
       await expect(hugo.getByText(COVER_K).first()).toBeVisible();
       // The cover hands nothing on, and the clock's own hand-over did not count as a pass.
