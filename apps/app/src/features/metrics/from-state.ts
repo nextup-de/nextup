@@ -83,5 +83,6 @@ export function ledgerInputFromState(S: State, log: EventLog, seed: Seed, today:
     demoClock,
     stalled: stalledOf(S.projects, (id) => unitOfCase.get(id) ?? null),
     projects: kpiProjectsOf(S.projects, (id) => raiserUnitOf.get(id) ?? null),
+    hourCostEur: seed.hourCostEur ?? null,
   };
 }

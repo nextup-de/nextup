@@ -1,6 +1,6 @@
 // The pilot's own metrics (MET D14), one entry per PILOT_METRIC_KEYS in order. Pure. People are only ever counted
 // (distinct raiser keys), never returned (D2); a number with fewer than MIN_GROUP people behind it is hidden (D6).
-import { countedIn, countsAsVerified, REPORT_RULE, verifiedSum } from "./impact";
+import { countedIn, countsAsVerified, euroOf, REPORT_RULE, verifiedSum } from "./impact";
 import { median } from "./index";
 import { MIN_GROUP, PILOT_METRIC_KEYS, type Baseline, type KpiProject, type LedgerInput, type PilotMetric, type PilotMetricKey, type Period } from "./types";
 
@@ -11,7 +11,7 @@ const tooFew = { value: null, hidden: true, note: "too-few" as const };
 const pct = (part: number, whole: number) => (whole === 0 ? null : Math.round((part / whole) * 100));
 const inPeriod = (d: number | null, p: Period): d is number => d !== null && d >= p.from && d <= p.to;
 
-function count(ledger: LedgerInput, projects: KpiProject[], period: Period, peopleInScope: number): Counted {
+function count(ledger: LedgerInput, projects: KpiProject[], period: Period, peopleInScope: number, hourCostEur: number | null): Counted {
   const raised = ledger.cases.filter((c) => inPeriod(c.raisedDay, period));
 
   const firstReasoned = raised.flatMap((c) => (c.firstReasonedAnswerDay === null ? [] : [c.firstReasonedAnswerDay - c.raisedDay]));
@@ -58,7 +58,7 @@ function count(ledger: LedgerInput, projects: KpiProject[], period: Period, peop
     shopFloorPct: { value: null, hidden: false, note: "not-recorded" },
     implementationPct: ok(pct(decided.filter((p) => inPeriod(p.doneDay, period)).length, decided.length)),
     verifiedOutcomes: ok(good.filter((m) => m.length > 0).length),
-    verifiedSavingsEur: ok(sum((m) => m.eur)),
+    verifiedSavingsEur: ok(sum((m) => euroOf(m, hourCostEur))),
     verifiedEnergyKwh: ok(sum((m) => m.kwh)),
     verifiedCo2Kg: ok(sum((m) => m.co2Kg)),
     overrideRatePct: ok(pct(o.overridden, o.proposed)),
@@ -73,10 +73,13 @@ export function pilotMetrics(input: {
   peopleInScope: number;
   baseline: { input: LedgerInput; projects: KpiProject[]; period: Period } | null;
   imported: Baseline["imported"];
+  /** The company's hour cost (rule hour_cost): prices a result's hours where it has no euro figure. */
+  hourCostEur?: number | null;
 }): PilotMetric[] {
   const { ledger, projects, period, peopleInScope, baseline, imported } = input;
-  const now = count(ledger, projects, period, peopleInScope);
-  const before = baseline ? count(baseline.input, baseline.projects, baseline.period, peopleInScope) : null;
+  const rate = input.hourCostEur ?? null;
+  const now = count(ledger, projects, period, peopleInScope, rate);
+  const before = baseline ? count(baseline.input, baseline.projects, baseline.period, peopleInScope, rate) : null;
   return PILOT_METRIC_KEYS.map((key) => ({
     key,
     ...now[key],

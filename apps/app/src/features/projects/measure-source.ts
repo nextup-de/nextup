@@ -11,9 +11,11 @@ export type MeasureImpact = {
   co2KgPerYear?: number;
   energyKwhPerYear?: number;
   scrapPartsPerYear?: number;
+  /** Working hours the result saves per year; the Dashboard prices them with the company's hour cost (rule hour_cost). */
+  hoursPerYear?: number;
 };
 
-const IMPACT_KEYS = ["savingEurPerYear", "co2KgPerYear", "energyKwhPerYear", "scrapPartsPerYear"] as const;
+const IMPACT_KEYS = ["savingEurPerYear", "co2KgPerYear", "energyKwhPerYear", "scrapPartsPerYear", "hoursPerYear"] as const;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const str = (v: unknown): v is string => typeof v === "string";
@@ -33,7 +35,7 @@ export function readSource(v: unknown): MeasureSource {
   return { kind: "typed" };
 }
 
-/** Only the four keys, each a finite number >= 0; anything else is null. An empty object is null too. */
+/** Only the five keys, each a finite number >= 0; anything else is null. An empty object is null too. */
 export function readImpact(v: unknown): MeasureImpact | null {
   if (!isRecord(v)) return null;
   const out: MeasureImpact = {};
