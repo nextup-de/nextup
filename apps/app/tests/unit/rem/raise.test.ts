@@ -77,6 +77,6 @@ it("REM raise vacant desk names the seat above", () => {
   expect(deskWho(desk(), en)).toBe("Vacant - waits until someone sits here");
   expect(deskWho(desk({ vacant: false, holders: ["T. Vogel", "N. Keller"] }), en)).toBe("T. Vogel, N. Keller");
   // And the dialog's row shows it.
-  const page = html(h(DeskDialog, { desks: [above], aiOff: false, search: () => [], work: null, sent: null, casesHref: "/team", onCancel: () => {}, onConfirm: () => {} }));
+  const page = html(h(DeskDialog, { desks: [above], aiOff: false, search: () => [], work: null, sent: null, mineHref: "/ideas", onCancel: () => {}, onConfirm: () => {} }));
   expect(page).toContain("Vacant - goes to K. Head");
 });

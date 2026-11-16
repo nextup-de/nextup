@@ -17,8 +17,7 @@ export type IdeaRow = { id: string; title: string; when: string; group: WhenGrou
 
 const GROUPS = [["today", "ideas.sideToday"], ["week", "ideas.sideThisWeek"], ["earlier", "ideas.sideEarlier"]] as const;
 export type DraftCard = {
-  title: string; published: boolean; canPublish: boolean; pubHint: string;
-  onPublish: () => void; working: Work | null; onRename: (title: string) => void;
+  title: string; published: boolean; working: Work | null; onRename: (title: string) => void;
   hasIdea: boolean; ideaOn: boolean; ideaEdited: boolean; onIdea: () => void;
   aiOn: boolean; analysed: boolean; onAI: () => void;
   acts: Chip[]; files: Chip[];
@@ -111,17 +110,13 @@ function Row({ r, onPick, onPin }: { r: IdeaRow; onPick: (id: string) => void; o
 function Card({ c }: { c: DraftCard }) {
   const t = useT();
   const [sure, setSure] = useState(false); // "Remove from list" / "Discard draft" pressed once: the confirming button shows
-  const state = c.published ? "published" : c.working ? "working" : c.canPublish ? "ready" : "off";
 
   return (
     <div className={s.card}>
       <div className={s.cardAnchor}>{c.menu}</div>
-      <button type="button" className={s.publish} data-state={state} disabled={state !== "ready"} onClick={c.onPublish} title={c.pubHint}>
-        {c.working ? <Working work={c.working} /> : <>
-          <Icon name={c.published ? "check" : "up"} size={11.25} width={c.published ? 2.8 : 2.4} />
-          {c.published ? t("ideas.sidePublished") : t("ideas.sidePublish")}
-        </>}
-      </button>
+      {/* One Publish, under the coach's latest reply (DESIGN_RULES §9): here only what it is doing, or that it went out. */}
+      {c.working ? <div className={s.publish} data-state="working" role="status"><Working work={c.working} /></div>
+        : c.published ? <div className={s.publish} data-state="published"><Icon name="check" size={11.25} width={2.8} />{t("ideas.sidePublished")}</div> : null}
 
       <div className={s.halves}>
         {c.hasIdea && (

@@ -6,7 +6,6 @@
 
 .head { flex: none; display: flex; align-items: center; gap: 12px; padding: 22px 22px 16px 24px; }
 .headText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.kicker { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
 .heading { margin: 0; font-size: var(--nh-fs-xl); font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
 .close { width: 34px; height: 34px; flex: none; padding: 0; border: none; border-radius: 50%; background: var(--nh-card); color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 160ms ease; }
 .close:hover { background: var(--nh-line); }
@@ -83,11 +82,6 @@
 .stillOpen { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: var(--radius-md, 16px); background: var(--nh-card); }
 .stillOpenLabel { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink-2); }
 .stillOpenList { margin: 0; padding-left: 18px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
-.ai { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md, 16px); border: 1px dashed var(--nh-ghost); }
-.aiIcon { width: 32px; height: 32px; flex: none; border-radius: var(--radius-sm, 10px); background: var(--nh-line); display: flex; align-items: center; justify-content: center; }
-.aiText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.aiTitle { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink-2); }
-.aiSub { font-size: var(--nh-fs-sm); line-height: 1.45; color: var(--nh-mute); text-wrap: pretty; }
 
 .foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid var(--nh-line); background: var(--nh-card); }
 .hint { flex: 1; min-width: 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
