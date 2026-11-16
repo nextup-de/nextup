@@ -44,9 +44,10 @@ import { IdeaFilesView } from "@/components/projects/files/IdeaFilesView";
 import { CaseDetailView } from "@/components/dashboard/shared/CaseDetailView";
 import { CasePlanPanel } from "@/components/agent/CasePlanPanel";
 import { caseApprovalView } from "@/features/approvals/case-view";
+import { isPrivateIdea } from "@/features/cases/visibility";
 import { ideaPagesId, useProjectPages } from "@/components/projects/projectPagesPreview";
 import { mayEditIdeaPages, mayReviseIdea } from "@/features/projects/sidebar";
-import { isOpenDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
+import { isOpenDraft, mayReadDraft, onDraft, visibleProjectsFor } from "@/features/projects/views";
 import { idViewerOf } from "@/components/projects/parts";
 import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/edits";
 import { useIdeaEdits } from "./ideaEditsPreview";
@@ -122,14 +123,19 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 /** The band on top of an idea opened on its own: "Idea", and where it stands - not a project yet, declined, withdrawn, or said yes to. */
 function IdeaKind({ c }: { c: ReducedCase }) {
   const t = useT();
-  const { href } = useDemo();
+  const { href, S, role, actorUserId } = useDemo();
   const projectId = c.decided?.answer === "yes" ? c.decided.projectId ?? null : null;
+  // A draft is for the people on it (SET D13): anyone else reads that it is being set up, with no link to it.
+  const project = projectId ? S.projects.find((p) => p.id === projectId) : undefined;
+  const hiddenDraft = project !== undefined && isOpenDraft(project)
+    && !mayReadDraft(project, { role, userId: actorUserId }, S.cases.some((x) => project.sources.includes(x.id) && isPrivateIdea(x)));
+  const linkTo = projectId && project && !hiddenDraft ? projectId : null;
   const text = c.withdrawn ? t("team.ideaKindWithdrawn") : c.decided ? (projectId ? t("team.ideaKindProject") : t("team.ideaKindDeclined")) : t("team.ideaKindOpen");
   return (
     <div className={s.kind} data-kind={c.kind === "problem" ? "problem" : "idea"} data-state={c.withdrawn ? "withdrawn" : c.decided ? (projectId ? "project" : "declined") : "open"}>
       <span className={s.kindChip}>{t(c.kind === "problem" ? "team.ideaKindProblem" : "team.ideaKind")}</span>
       <span className={s.kindText}>{text}</span>
-      {projectId && <Link className={s.kindLink} href={href("/projects/" + projectId)}>{t("team.ideaKindOpenProject")} →</Link>}
+      {linkTo && <Link className={s.kindLink} href={href("/projects/" + linkTo)}>{t("team.ideaKindOpenProject")} →</Link>}
     </div>
   );
 }
