@@ -128,6 +128,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
+    await page.locator('[data-name="baseline-more"] > summary').click(); // which way is better and the source are folded (DESIGN_RULES §9)
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();
@@ -199,7 +200,7 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     await page.goto("/acme/projects/pj4?page=results");
     await expect(head(page)).toContainText(/4-series\s*Measured/);
     await openResult(page);
-    await expect(page.getByRole("region", { name: "Reward" })).toContainText("A reward is due after a confirmed better result.");
+    await expect(page.getByRole("region", { name: "Reward" }), "the Reward is not drawn before a reward is due (DESIGN_RULES §9)").toHaveCount(0);
     await expect(page.getByRole("button", { name: "Record the reward" })).toHaveCount(0);
   });
 });
@@ -222,6 +223,7 @@ test("RES demo: the lead finishes and drops open steps at done, and a stop retur
     await page.getByLabel("What is measured").fill("Deburring queue");
     await page.getByLabel(/Today.s number/).fill("25");
     await page.getByLabel("Unit").fill("minutes");
+    await page.locator('[data-name="baseline-more"] > summary').click(); // which way is better and the source are folded (DESIGN_RULES §9)
     await page.getByLabel("Lower is better").check();
     await page.getByLabel("Where the number comes from").fill("Stopwatch, five shift starts");
     await page.getByRole("button", { name: "Save the baseline" }).click();

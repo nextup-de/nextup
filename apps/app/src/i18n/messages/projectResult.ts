@@ -49,7 +49,6 @@ export const projectResult = defineMessages({
     baselineConfirm: "Confirm the baseline",
     baselineConfirmed: "Confirmed by {name} on {date}",
     baselineWaits: "A second person confirms the baseline before the start, because a reward is possible.",
-    baselineNotYou: "The sponsor or the route's deputy confirms it, not the lead or who typed it.",
     // The Done sheet, the stop choice and the raiser's panel (RES-U1).
     doneSheetLabel: "Mark the project done",
     doneWhenLabel: "Done when",
@@ -131,7 +130,6 @@ export const projectResult = defineMessages({
     baselineConfirm: "Ausgangswert bestätigen",
     baselineConfirmed: "Bestätigt von {name} am {date}",
     baselineWaits: "Eine zweite Person bestätigt den Ausgangswert vor dem Start, weil eine Belohnung möglich ist.",
-    baselineNotYou: "Ihn bestätigen der Sponsor oder die Stellvertretung der Route, nicht die Leitung und nicht, wer ihn eingetragen hat.",
     doneSheetLabel: "Das Projekt als erledigt markieren",
     doneWhenLabel: "Erledigt, wenn",
     noDoneWhen: "Es wurde kein Erledigt-wenn festgelegt",

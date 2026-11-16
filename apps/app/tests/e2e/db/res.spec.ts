@@ -235,7 +235,7 @@ test.describe("RES acceptance: a result that closes properly", () => {
       await expect(page.getByRole("button", { name: "Start the project" })).toBeDisabled();
       await setupStep(page, "Baseline");
       await expect(page.getByTestId("baseline-confirm"), "the lead has no confirm button").toHaveCount(0);
-      await expect(page.getByTestId("baseline-waits")).toContainText("The sponsor or the route's deputy confirms it");
+      await expect(page.getByTestId("baseline-waits")).toContainText("Not confirmed yet"); // one chip; no sentence about who confirms (DESIGN_RULES §9)
       await page.context().close();
       // The server says the same: not the lead, and not the start.
       const lead = { name: LEAD, id: id.lead, role: "leader" as const };
