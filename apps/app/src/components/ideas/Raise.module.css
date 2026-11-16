@@ -8,7 +8,7 @@
 /* The page fills the shell below its bar, edge to edge (the shell's content box is centred and padded). */
 .root {
   position: relative; display: flex; overflow: hidden; min-height: 0;
-  width: var(--nh-screen-w); height: calc(var(--nh-screen-h) - var(--nh-bar-h));
+  width: var(--nh-screen-w); height: calc(var(--nh-screen-h) - var(--nh-bar-h) - var(--nh-tabs-h, 0px)); /* under the bar and the Ideas tab strip */
   margin: -20px 0 -40px calc((min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x)) - var(--nh-screen-w)) / 2);
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink); -webkit-font-smoothing: antialiased;
 }
@@ -139,7 +139,7 @@
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 /* Start */
-.start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 18px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(min-content, 1fr) var(--nh-bar-h); justify-items: center; } /* the last row is the shell bar's height: the composer sits at the centre of the screen, not of the area below the bar. The row under it never shrinks below the "How it works" card: on a short laptop the composer moves up instead of the card running off the screen. */
+.start { animation: affSoft 260ms ease backwards; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 18px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(min-content, 1fr) calc(var(--nh-bar-h) + var(--nh-tabs-h, 0px)); justify-items: center; } /* the last row is the shell bar's height (and the tab strip's): the composer sits at the centre of the screen, not of the area below the bar. The row under it never shrinks below the "How it works" card: on a short laptop the composer moves up instead of the card running off the screen. */
 .h1 { align-self: end; width: 100%; max-width: 720px; margin: 0; padding-bottom: 21px; text-align: center; font-size: var(--nh-fs-3xl); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: var(--nh-ink); }
 .below { grid-row: 3 / 5; width: 100%; max-width: 720px; align-self: start; padding: 21px 0 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 21px; }
 
@@ -660,7 +660,7 @@ a.quickBtn { text-decoration: none; }
 
 /* ── Phones: the sidebar becomes a drawer over the page, the rail and the side padding go ── */
 @media (max-width: 760px) {
-  .root { height: calc(var(--nh-screen-h) - var(--nh-bar-h)); margin-bottom: -16px; }
+  .root { height: calc(var(--nh-screen-h) - var(--nh-bar-h) - var(--nh-tabs-h, 0px)); margin-bottom: -16px; }
   .sbShell { position: absolute; inset: 0 auto 0 0; width: min(300px, 86%); transform: translateX(-100%); visibility: hidden; transition: transform 420ms cubic-bezier(.2,.8,.2,1), visibility 0s 420ms; }
   .sb { width: 100%; }
   .root[data-sb="open"] .sbShell { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(20,30,60,0.18); transition: transform 420ms cubic-bezier(.2,.8,.2,1); }

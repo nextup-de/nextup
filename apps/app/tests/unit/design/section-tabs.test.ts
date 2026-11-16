@@ -27,6 +27,16 @@ describe("section tabs", () => {
     expect(sectionTabsFor("dashboard", { role: "leader", serverMode: true }).map((t) => t.key)).toEqual(["ledger"]);
   });
 
+  it("Ideas gets a strip of New idea and Mine for those who raise, offline too; a manager raises nothing and gets none", () => {
+    for (const role of ["member", "leader"] as const) {
+      const who = { role, serverMode: false, flag: on };
+      expect(sectionTabAt("/raise", who)).toEqual({ section: "ideas", tab: "raise" });
+      expect(sectionTabAt("/ideas", who)).toEqual({ section: "ideas", tab: "mine" });
+    }
+    expect(sectionTabAt("/raise", manager)).toBeNull();
+    expect(sectionTabAt("/ideas", manager)).toBeNull();
+  });
+
   it("Projects keeps its tabs while the flag is on, and other pages have no strip", () => {
     expect(sectionTabAt("/projects", manager)).toEqual({ section: "projects", tab: "overview" });
     expect(sectionTabAt("/idea", manager)).toEqual({ section: "projects", tab: "overview" });
