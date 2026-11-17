@@ -591,7 +591,7 @@ export const ideas = defineMessages({
     sideChatsDrafts: "Chats & drafts",
     sideDraft: "Draft",
     sideDraftHint: "Draft · not published yet",
-    sideEmpty: "Nothing yet. Your ideas and drafts land here.",
+    sideEmpty: "Nothing yet",
     sideHide: "Hide sidebar",
     // the Ideas tab: its two tabs and the Mine list (components/ideas/MineView, features/ideas/status)
     tabRaise: "New idea",
@@ -1226,7 +1226,7 @@ export const ideas = defineMessages({
     sideChatsDrafts: "Chats & Entwürfe",
     sideDraft: "Entwurf",
     sideDraftHint: "Entwurf · noch nicht veröffentlicht",
-    sideEmpty: "Noch nichts da. Ihre Ideen und Entwürfe landen hier.",
+    sideEmpty: "Noch nichts",
     sideHide: "Seitenleiste ausblenden",
     // der Ideen-Tab: seine zwei Tabs und die Liste „Meine“ (components/ideas/MineView, features/ideas/status)
     tabRaise: "Neue Idee",

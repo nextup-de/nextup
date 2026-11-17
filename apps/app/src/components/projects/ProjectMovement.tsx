@@ -15,7 +15,9 @@ import ui from "@/components/dashboard/shared/ui.module.css";
 import styles from "./Projects.module.css";
 
 const days = (n: number | null, t: T, locale: Locale) => (n === null ? "" : t("projects.waitDays", { count: n, value: fmtNumber(n, locale) }));
-const waitSub = (w: WaitStat, still: string, t: T) => (w.n ? t("projects.waitMedian", { count: w.n }) : t("projects.waitNothing")) + (w.waiting ? " · " + w.waiting + " " + still : "");
+// A tile says what it counts and what still waits; how the median is made is its tooltip (DESIGN_RULES §9, no explaining line).
+const waitStill = (w: WaitStat, still: string) => (w.waiting ? " · " + w.waiting + " " + still : "");
+const waitHow = (w: WaitStat, t: T) => (w.n ? t("projects.waitMedian", { count: w.n }) : t("projects.waitNothing"));
 
 export function ProjectMovement() {
   const ctx = useDemo();
@@ -40,9 +42,10 @@ export function ProjectMovement() {
                 <Link href={href("/projects/" + p.id)} className={styles.link}>{projectLabel(p)} · {p.title}</Link>
                 <VerdictChip verdict={p.verdict} />
               </div>
-              {p.baseline && !p.baseline.none && <div className={ui.rowMeta}>{p.baseline.metric}, {betterText(p.baseline.better, locale)}</div>}
+              {p.baseline && !p.baseline.none && <div className={ui.rowMeta} title={betterText(p.baseline.better, locale)}>{p.baseline.metric}</div>}
+              {/* The latest check only: the earlier ones are on the project's own page (one fact once, DESIGN_RULES §9). */}
               <div className={`${ui.chips} ${styles.moves}`}>
-                {p.measures.map((m) => (
+                {p.measures.slice(-1).map((m) => (
                   <span key={m.check} className={styles.move}>
                     <span className={styles.label}>{m.check} {t("projects.unitDays")}</span> {movement(p.baseline, m, locale)}
                     {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
@@ -56,8 +59,8 @@ export function ProjectMovement() {
 
       {hasWait && <SectionCard title={t("projects.waitTitle")}>
         <div className={ui.grid2}>
-          {waits.started.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")} · {waitSub(waits.started, t("projects.waitNotStarted"), t)}</div></div>}
-          {waits.measured.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")} · {waitSub(waits.measured, t("projects.waitFirstCheck"), t)}</div></div>}
+          {waits.started.medianDays !== null && <div className={ui.tile} title={waitHow(waits.started, t)}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")}{waitStill(waits.started, t("projects.waitNotStarted"))}</div></div>}
+          {waits.measured.medianDays !== null && <div className={ui.tile} title={waitHow(waits.measured, t)}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")}{waitStill(waits.measured, t("projects.waitFirstCheck"))}</div></div>}
           {L.projectsEscalated > 0 && <div className={ui.tile}><div className={ui.tileV} data-hot="true">{L.projectsEscalated}</div><div className={ui.tileL}>{t("projects.waitEscalated")}</div></div>}
           {L.measuresOwed > 0 && <div className={ui.tile}><div className={ui.tileV} data-hot="true">{L.measuresOwed}</div><div className={ui.tileL}>{t("projects.waitOwed")}</div></div>}
           {L.unmeasured > 0 && <div className={ui.tile}><div className={ui.tileV}>{L.unmeasured}</div><div className={ui.tileL}>{t("projects.waitUnmeasured")}</div></div>}
