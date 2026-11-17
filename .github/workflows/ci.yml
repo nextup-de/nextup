@@ -1,17 +1,28 @@
 # CI for NextUp (npm workspaces: the Next.js app lives in apps/app, root scripts run it via turbo).
 #
-# Six jobs, all must pass before a PR can merge:
+# Three tiers (Kevin, 17 Nov 2026). A PR runs only what a merge waits for; main and the nightly run run everything.
+#
+# Every PR, all four required by the main ruleset:
 #   guard   — no secrets / forbidden files / oversized files / Kevin-owned paths
 #   app     — npm ci, npm audit (prod, high+), lint, typecheck, unit tests, production build
-#   e2e     — Playwright, demo mode (no database): the inbox loop, role homes,
-#             escalation to the deputy, every page at phone width
-#   zap     — OWASP ZAP baseline scan of the demo app; fails on a High alert not in .zap/ignore.json
-#   e2e-db  — Playwright against Postgres: a company made in /admin, personal
-#             login codes, the loop across real sessions, Settings -> Members
-#   load    — 200 Musterwerk accounts against the built app: inbox and case pages p95 < 1 s (apps/app/tests/load)
+#   e2e     — Playwright, demo mode (no database): the inbox loop, role homes, escalation to the deputy.
+#             On a PR the desktop project only; main and nightly add the phone project (mobile.spec.ts)
 #   db-tests    — vitest against Postgres: apps/app/tests/db via ops/test-db.sh
+#
+# A PR that touches services/brain/ (or this file), and every main push and nightly run:
 #   brain-tests — pytest for services/brain, run in the uv image
 #   brain-eval  — routing eval set rules + recorded answers vs threshold (no model)
+#
+# Main pushes and the nightly run only, never a PR:
+#   e2e-db  — Playwright against Postgres: a company made in /admin, personal
+#             login codes, the loop across real sessions, Settings -> Members, every page at phone width
+#   load    — 200 Musterwerk accounts against the built app: inbox and case pages p95 < 1 s (apps/app/tests/load)
+#   zap     — OWASP ZAP baseline scan of the demo app; fails on a High alert not in .zap/ignore.json
+#
+# Why: on 16-17 Nov 2026 main was red in 12 of 35 pushes. e2e, db-tests and e2e-db were not required, so
+# their reds merged and every later PR showed them; and 9 jobs a push queued for the org's runners
+# (p90 7 min). images.yml still deploys only a push whose whole CI run is green, so nothing ships untested.
+# A red nightly run mails whoever last changed its cron line.
 #
 # The legacy demo's syntax + smoke jobs went with legacy/ in #61; e2e is their port.
 #
@@ -24,11 +35,16 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Nightly, everything on main's tip: 02:17 UTC is 03:17 in Zurich in winter. Also startable by hand.
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
 
 # A newer push to a PR branch cancels its older run. On main every commit keeps its run: cancelling
 # there left the newest commit without a green CI (#148, 5 Oct 2026), so images never started.
+# The event is in the group so a nightly run on main never pushes a main push's run out of the queue.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -38,12 +54,15 @@ jobs:
   guard:
     name: guard · secrets & forbidden files
     runs-on: ubuntu-latest
+    outputs:
+      brain: ${{ steps.changed.outputs.brain }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: List changed files
+        id: changed
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -52,6 +71,14 @@ jobs:
             git diff --name-only --diff-filter=ACMR HEAD~1 HEAD > changed.txt || : > changed.txt
           fi
           echo "Changed files:"; cat changed.txt
+          # A PR runs the brain jobs only when it touches services/brain/ or this file, deleted files included.
+          # Main pushes and the nightly run always run them.
+          brain=true
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > touched.txt
+            grep -Eq '^services/brain/|^\.github/workflows/ci\.yml$' touched.txt || brain=false
+          fi
+          echo "brain=$brain" >> "$GITHUB_OUTPUT"; echo "brain jobs: $brain"
 
       - name: Block forbidden files
         shell: bash
@@ -112,8 +139,10 @@ jobs:
 
       # The open-source gitleaks scanner (MIT) itself. Its GitHub Action wants a paid licence for
       # organization repos since the move to nextup-de; the scanner needs none. A pinned version,
-      # checked against the release's own checksum list.
+      # checked against the release's own checksum list. A PR's or a push's own commits only: the nightly
+      # run and a run by hand bring none, and without a base it would scan the whole history.
       - name: Secret scan (gitleaks)
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         shell: bash
         env:
           GITLEAKS_VERSION: 8.30.1
@@ -168,9 +197,12 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       # playwright.config.ts builds the app, starts it on :3100 with DATABASE_URL="" and runs
-      # tests/e2e/demo. CI=true turns on forbidOnly and one retry.
+      # tests/e2e/demo. CI=true turns on forbidOnly and one retry. A PR runs the desktop project only;
+      # main and nightly add the phone project (mobile.spec.ts, Pixel 7).
       - name: Run the demo suite
-        run: npm run e2e
+        env:
+          PROJECTS: ${{ github.event_name == 'pull_request' && '--project=desktop' || '' }}
+        run: npm run e2e -- $PROJECTS
 
       - name: Upload the Playwright report
         if: failure()
@@ -184,8 +216,10 @@ jobs:
   # (production build, next start on :3100, no database, no sessions), runs the official image pinned by
   # version and digest on the host network, then ops/zap-gate.mjs fails the job on any High alert that
   # .zap/ignore.json does not cover. Medium and Low alerts are warnings. Not a scan of staging.
+  # Main pushes and nightly only.
   zap:
     name: zap · OWASP baseline scan
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -232,8 +266,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # Main pushes and nightly only (~16 min). Before a PR that changes server code, run `npm run e2e:db` for the specs it touches.
   e2e-db:
     name: e2e-db · Playwright against Postgres
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -287,8 +323,10 @@ jobs:
           path: apps/app/playwright-report/
           retention-days: 14
 
+  # Main pushes and nightly only.
   load:
     name: load · 200 Musterwerk accounts against the built app
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -374,8 +412,11 @@ jobs:
       - name: Run the database suite (apps/app/tests/db)
         run: bash ops/test-db.sh
 
+  # A PR that touches services/brain/ (guard decides), every main push and nightly run.
   brain-tests:
     name: brain-tests · pytest
+    needs: guard
+    if: needs.guard.outputs.brain == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -388,6 +429,8 @@ jobs:
   # answers of the last run still score at or above their threshold. No model is called.
   brain-eval:
     name: brain-eval · routing set
+    needs: guard
+    if: needs.guard.outputs.brain == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
