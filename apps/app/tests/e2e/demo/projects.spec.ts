@@ -161,8 +161,8 @@ test("a lead plans, runs and measures a project; no reward is due on unconfirmed
     // Every step is done, so the Overview's move card offers the same sheet as Manage › Mark it done (Kevin, 16 Nov 2026).
     // The card is on the project's own Overview page (`project-overview`), not on `?page=overview`, which is the Idea page.
     await projectPage(page, "overview");
-    // One line per section (DESIGN_RULES §9): the Steps line answers "All 2 steps done" while it is closed.
-    await expect(page.locator('[data-name="overview-steps"] > summary')).toContainText("All 2 steps done");
+    // The Overview's first card says how far the steps are (Kevin, 17 Nov 2026).
+    await expect(page.locator('[data-name="overview-steps"]')).toContainText("All 2 steps done");
     await page.getByRole("region", { name: "Your move" }).getByRole("button", { name: "Mark it done…" }).click(); // the one move, in its card
     await page.getByRole("textbox", { name: "What is done" }).fill("Second bench in use on every shift");
     await page.getByRole("form", { name: "Mark the project done" }).getByRole("button", { name: "Mark it done", exact: true }).click();
@@ -405,10 +405,8 @@ test("a step goes straight into Doing, gets an owner and details in its sheet, a
   await projectPage(page, "overview");
   // The Overview tool (HUB-A1) shows the new owner in its activity and in what happens next.
   // "Latest from Jira" while the project syncs with Jira, "Latest activity" otherwise.
-  // Each section is one line that opens (DESIGN_RULES §9).
-  await page.locator('[data-name="overview-activity"] > summary').click();
+  // What happens next and the latest few things that happened are open on the Overview (Kevin, 17 Nov 2026).
   await expect(page.getByRole("region", { name: /^Latest (activity|from Jira)$/ })).toContainText("changed “" + TYPED + "”: gave it to L. Brandt");
-  await page.locator('[data-name="overview-steps"] > summary').click();
   await expect(page.getByRole("region", { name: "What happens next" }).getByRole("listitem").filter({ hasText: TYPED })).toContainText("L. Brandt");
 });
 

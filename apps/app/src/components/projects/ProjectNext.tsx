@@ -12,8 +12,8 @@ import { columnLabel } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
 import styles from "./Projects.module.css";
 
-/** `bare`: inside the Overview's Steps line, which has its own title and its one "Open the board" link. */
-export function NextPanel({ p, bare = false }: { p: ReducedProject; bare?: boolean }) {
+/** `bare`: inside the Overview's card, which hands in its one "Open the board" link as `action`. */
+export function NextPanel({ p, bare = false, action }: { p: ReducedProject; bare?: boolean; action?: React.ReactNode }) {
   const { S, href, f } = useDemo();
   const t = useT();
   const locale = useLocale();
@@ -25,7 +25,7 @@ export function NextPanel({ p, bare = false }: { p: ReducedProject; bare?: boole
 
   return (
     <section className={styles.panel} aria-label={t("projects.nextTitle")}>
-      {bare ? <h3 className={styles.h3}>{t("projects.nextTitle")}</h3> : <div className={styles.panelHead}>
+      {bare ? <div className={styles.panelHead}><h3 className={styles.h3}>{t("projects.nextTitle")}</h3>{action}</div> : <div className={styles.panelHead}>
         <h2 className={styles.h2}>{t("projects.nextTitle")}</h2>
         <Link href={href("/projects/" + p.id) + tabQuery("board")} className={styles.link} scroll={false}>{t("projects.nextOpenBoard")}</Link>
       </div>}

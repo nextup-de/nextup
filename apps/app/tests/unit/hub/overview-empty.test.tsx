@@ -30,18 +30,18 @@ it("OVERVIEW without steps: no tiles, no chart, no empty lists and no sentence a
   for (const empty of ["Steps done this week", "Where the steps are", "Steps done per week", "No steps yet.", "No steps completed in this period.", "Nothing to show yet"]) expect(markup).not.toContain(empty);
 });
 
-it("OVERVIEW with steps: where the steps are shows; the weekly chart stays away while nothing is done", () => {
+it("OVERVIEW with steps: one card says how far the steps are, what happens next sits beside it, no weekly chart", () => {
   const markup = render(project({ steps: [step("s1", { column: "doing" })] }));
-  expect(markup).toContain("Where the steps are");
-  expect(markup).not.toContain("Plan the first steps");
-  expect(markup).not.toContain("Steps done per week");
+  expect(markup).toContain('aria-label="0 of 1 steps done"');
+  expect(markup).toContain('aria-label="Doing 1"'); // the bar says it in words
+  expect(markup).toContain("What happens next");
+  for (const gone of ["Plan the first steps", "Steps done per week", "Where the steps are", "Who has what"]) expect(markup).not.toContain(gone);
 });
 
-it("OVERVIEW tiles are quiet: one step in Doing for 42 days shows Stuck and no zero or dash tile", () => {
+it("OVERVIEW quiet: a step in Doing for 42 days shows as stuck in what happens next, no zero or dash anywhere", () => {
   const markup = render(project({ steps: [step("Ursache eingrenzen", { column: "doing", movedDay: -42 })] }));
-  expect(markup).toContain("Stuck");
-  expect(markup).toContain("Ursache eingrenzen, 42 days in Doing");
-  for (const quiet of ["Steps done this week", "Waiting on someone", "No upcoming due date", ">0<", "—"]) expect(markup).not.toContain(quiet);
+  expect(markup).toContain('data-stuck="true">42 days in Doing');
+  for (const quiet of ["Steps done this week", "Waiting on someone", "No upcoming due date", ">0<", "—", "Not taken yet"]) expect(markup).not.toContain(quiet);
 });
 
 it("OVERVIEW with only a fresh step: no tile row at all", () => {
