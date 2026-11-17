@@ -10,7 +10,7 @@ import { ProjectsFrame } from "@/components/projects/ProjectsFrame";
 import { caseIdAt, projectIdAt } from "@/features/projects/sidebar";
 import { SITE } from "@/config/site";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { inboxTotal, mineRows } from "@/components/dashboard/derive";
+import { ideaHomeOf, inboxTotal, mineRows } from "@/components/dashboard/derive";
 import { useT } from "@/i18n/client";
 import { AreaFrame } from "./AreaFrame";
 import { NavSearch, navLabel } from "./NavSearch";
@@ -23,6 +23,8 @@ import styles from "./SimpleShell.module.css";
 
 /** An idea's page sits in the Inbox's side view, its Inbox page the way back (DESIGN_RULES §8). */
 const IDEA_AREA = { section: "inbox", tab: "inbox" } as const;
+// A raiser whose bar has no Inbox finds an opened idea under Ideas › Mine instead (derive.ts ideaHomeOf).
+const MINE_AREA = { section: "ideas", tab: "mine" } as const;
 
 export function SimpleShell({ children }: { children: React.ReactNode }) {
   const ctx = useDemo();
@@ -44,7 +46,8 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   // Any other area with several pages lists them in its own side view (AreaFrame); the strip then shows on a phone only.
   // A page that brings its own side view (the raise page) is not wrapped in a second one; its strip is still a phone's alone.
   const ownSide = area !== null && !inProjects && hasSideView(area.section) && bringsOwnSideView(pathname.slice(tenant.prefix.length));
-  const sideArea = area && !inProjects && hasSideView(area.section) && !ownSide ? area : onIdea && !inProjects ? IDEA_AREA : null;
+  const ideaArea = onIdea && ideaHomeOf(ctx) === "mine" ? MINE_AREA : IDEA_AREA;
+  const sideArea = area && !inProjects && hasSideView(area.section) && !ownSide ? area : onIdea && !inProjects ? ideaArea : null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -96,7 +99,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
             // Without projects a case opens from the Overview, so its page counts as the Overview. With projects it counts as the Inbox.
             const inOverview = pathname === tenant.prefix + "/overview" || (!onIdea && (pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/")));
             const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area?.section === "projects")
-              || (n.href === "/inbox" && (area?.section === "inbox" || onIdea)) || (n.href === "/raise" && area?.section === "ideas");
+              || (n.href === "/inbox" && (area?.section === "inbox" || (onIdea && ideaArea === IDEA_AREA))) || (n.href === "/raise" && (area?.section === "ideas" || (onIdea && ideaArea === MINE_AREA)));
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>

@@ -13,6 +13,7 @@ import type { DemoContext } from "./DemoProvider";
 import { withoutLinkedCases } from "./inbox-order";
 import { inboxCounts, inboxItems, type CommentsInboxInput } from "@/features/inbox";
 import { agentForInbox } from "@/features/inbox/sources/agent";
+import { visibleSimpleNav } from "@/config/nav";
 
 // Live cases on someone's desk (open) - the number the rail shows as "Inbox" and the dev panel
 // shows next to each leader; the desk including those paused on a question.
@@ -40,6 +41,12 @@ export const inboxInputOf = (ctx: DemoContext): CommentsInboxInput => ({
 });
 // What the Inbox badge counts: every item in the one inbox (features/inbox inboxCounts total, never a sum of the overlapping counts).
 export const inboxTotal = (ctx: DemoContext): number => inboxCounts(inboxItems(inboxInputOf(ctx))).total;
+/**
+ * Where an opened idea sits for the person looking: in the Inbox's side view while the bar shows an Inbox, else (a raiser
+ * with nothing in their inbox, whose bar has no Inbox) in the Ideas side view under Mine, beside their own ideas.
+ */
+export const ideaHomeOf = (ctx: DemoContext): "inbox" | "mine" =>
+  visibleSimpleNav(ctx.role, ctx.flag, { inbox: inboxTotal(ctx), decisions: 0 }).some((n) => n.href === "/inbox") ? "inbox" : "mine";
 /** @deprecated Use `inboxTotal`. Kept so nothing that still imports it breaks; it is the same number now. */
 export const inboxCount = inboxTotal;
 
