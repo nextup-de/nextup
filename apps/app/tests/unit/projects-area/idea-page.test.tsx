@@ -1,6 +1,7 @@
 // A project's Idea page is its origin, read only (DESIGN_RULES §8): the idea card is the head of the page. It says the title
-// and who raised it, and its top row carries the project's own buttons (Manage, ⓘ, Start) and the viewer's move. There is no
-// project head, done-by line or move banner above it (Sam, 17 Nov 2026). One fact once (§9): the title is said once, in the card.
+// and who raised it, and its top row carries what a project's head carries: the done-by date, the viewer's move, Manage and ⓘ.
+// There is no project head or move banner above it (Sam, 17 Nov 2026), and no Start button on it: that one is in the Overview's
+// move card, and a button that does nothing yet is not drawn (§9). One fact once (§9): the title is said once, in the card.
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -55,16 +56,20 @@ describe("a project's Idea page", () => {
     expect(above).not.toContain(p.title);
     expect(above).not.toContain('data-testid="done-by-line"');
     expect(above).not.toContain("MANAGE");
-    expect(out).not.toContain('data-testid="done-by-line"');
   });
 
-  it("carries Manage and the lead's Your move in the card, the move leading to the Overview where its button is", () => {
+  it("carries the done-by date, Manage and the lead's Your move in the card, the move leading to the Overview where its button is", () => {
     const out = page();
     const card = out.slice(out.indexOf("data-idea-card"));
+    expect(card).toContain('data-testid="done-by-line"');
     expect(card).toContain("MANAGE");
     expect(card).toContain("Your move");
     expect(card).toContain(`/demo/projects/${p.id}?page=project-overview`);
     expect(out.slice(0, out.indexOf("data-idea-card"))).not.toContain("Your move");
+  });
+
+  it("draws no Start button: the lead of a planned project starts it on the Overview", () => {
+    expect(page()).not.toContain("Start the project");
   });
 
   it("hands the idea card the idea and one slot for the project's buttons, nothing else", () => {

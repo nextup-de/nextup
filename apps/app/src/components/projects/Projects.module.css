@@ -94,7 +94,16 @@ a.toolChip:hover { background: var(--nh-surface); }
 .quietLink:hover { text-decoration: underline; }
 
 .yourMoveLabel { font-weight: 600; color: var(--nh-brand); }
-.moveLine { font-size: var(--nh-fs-sm); text-align: right; }
+/* The idea card's top row on a project's Idea page (ProjectView › IdeaHome): the done-by date and the viewer's move, then
+   Manage and the (i). On a phone the two buttons stay beside "Raised …" and the facts get the line below, from the left. */
+.cardTools { display: flex; align-items: center; gap: 8px; }
+.cardFacts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 12px; }
+.cardFacts:empty { display: none; }
+.moveLine { font-size: var(--nh-fs-sm); }
+@media (max-width: 760px) {
+  .cardTools { display: contents; }
+  .cardFacts { order: 1; flex: 1 1 100%; justify-content: flex-start; }
+}
 
 /* the summary band: the life of the project and its numbers */
 .summary { background: var(--nh-card); border-radius: var(--radius-md, 18px); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); padding: 24px; display: flex; flex-direction: column; gap: 18px; }

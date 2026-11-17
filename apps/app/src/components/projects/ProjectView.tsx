@@ -81,9 +81,10 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
   );
 }
 
-/** The Idea page of a project that has started: the idea card carries the project's buttons (Start, Manage, (i)) in its top row,
- *  so there is no head, done-by line or move banner above it; the viewer's move is a line in that row. A pause or a missing
- *  lead still shows, and the sheet Manage opens. */
+/** The Idea page of a project that has started: the idea card is the head. Its top row carries what the project's head carries
+ *  on the Overview: the done-by date, the viewer's move as a link to the Overview, Manage and the (i). There is no Start button
+ *  here: it sits in the Overview's move card, and one that does nothing yet is not drawn (DESIGN_RULES §9). A pause or a
+ *  missing lead still shows above the card, and the sheet Manage opens. */
 function IdeaHome({ p, jira, page, overviewId }: { p: ReducedProject; jira: JiraRow; page: ProjectPage; overviewId: string | null }) {
   const [sheet, setSheet] = useState<HeadSheet | null>(null);
   return <>
@@ -91,7 +92,7 @@ function IdeaHome({ p, jira, page, overviewId }: { p: ReducedProject; jira: Jira
     <NoLeadBanner p={p} />
     {sheet && <ProjectSheet key={sheet} p={p} sheet={sheet} onClose={() => setSheet(null)} />}
     <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]}
-      headAction={<div className={head.tools}><MoveLink p={p} overviewId={overviewId} /><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>} />
+      headAction={<div className={styles.cardTools}><div className={styles.cardFacts}><DoneByLine p={p} /><MoveLink p={p} overviewId={overviewId} /></div><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>} />
   </>;
 }
 

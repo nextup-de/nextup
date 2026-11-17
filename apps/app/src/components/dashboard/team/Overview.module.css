@@ -612,6 +612,8 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
 .root[data-in-page="true"] { width: auto; height: auto; min-height: 0; margin: 0; }
 .root[data-in-page="true"] .div20 { height: auto; padding: 0; max-width: none; }
 .root[data-in-page="true"] .div21 { height: auto; overflow: visible; }
+/* Its top row carries the project's Manage and (i) (ProjectView › IdeaHome): on a phone their popovers span the row and open under it. */
+.root[data-in-page="true"] .div25 { position: relative; }
 
 /* An idea says it is an idea (not a project yet), so it is never taken for one (Kevin, 16 Nov 2026). */
 .kind { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; padding: 10px 14px; border-radius: var(--radius-sm, 14px); background: var(--nh-idea-tint); color: var(--nh-ink); border: 1px solid var(--nh-idea-line); }

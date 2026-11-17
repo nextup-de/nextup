@@ -373,6 +373,7 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
       await expect(page).toHaveURL(new RegExp(`/projects/${quiet.projectId}\\?page=overview$`));
 
       await test.step("the sponsor sets a new done-by date in the UI; the escalation ends", async () => {
+        await expect(page.getByTestId("done-by-line")).toContainText("Done by");
         await page.locator('summary[aria-label="Manage the project"]').click(); // the moves are behind Manage, right of the title
         await page.getByRole("button", { name: "Move the done-by date…" }).click();
         const form = page.getByRole("form", { name: "Move the done-by date" });
