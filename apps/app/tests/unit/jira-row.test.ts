@@ -87,17 +87,27 @@ describe("jiraRowOf", () => {
     expect(row).toMatchObject({ state: "ready", epicKey: null });
   });
 
-  it("shows a sync problem: the project's own first, else the round's error, else an expired token", () => {
+  it("says a failed sync in plain words and when it last worked, never the technical reason", () => {
     const sent = project({ sync: synced, links: [epicLink] });
-    const own = view({ problems: [{ projectId: "other", stepId: null, message: "no" }, { projectId: "pj1", stepId: "a", message: "No permission to create issues" }] });
-    expect(jiraRowOf(sent, own, NOW).chip).toEqual({ tone: "problem", text: "Sync problem: No permission to create issues" });
-    expect(jiraRowOf(sent, view({ lastError: "500 Jira is down" }), NOW).chip?.text).toBe("Sync problem: 500 Jira is down");
-    expect(jiraRowOf(sent, view({ lastError: "401 Unauthorized", tokenExpired: true }), NOW).chip?.text).toMatch(/^Sync problem: the Jira token has expired/);
+    const raw = "issue t:quick-win:1:0: payload.stepId is not a step id.";
+    expect(jiraRowOf(sent, view({ lastError: raw }), NOW).chip).toEqual({ tone: "problem", text: "Sync failed · last good 1 min ago" });
+    expect(jiraRowOf(sent, view({ lastError: "500 Jira is down", lastOkAt: null }), NOW).chip?.text).toBe("Sync failed · your admin sees why");
+    expect(jiraRowOf(sent, view({ lastError: "401 Unauthorized", tokenExpired: true }), NOW).chip?.text).toBe("Sync stopped · your admin needs a new Jira token");
+    expect(jiraRowOf(sent, view({ lastError: raw }), NOW, "de").chip?.text).toBe("Abgleich fehlgeschlagen · zuletzt erfolgreich " + agoText(new Date(NOW - 60_000).toISOString(), NOW, "de"));
+    for (const v of [view({ lastError: raw }), view({ lastError: "x".repeat(400), lastOkAt: null })]) {
+      const text = jiraRowOf(sent, v, NOW).chip?.text ?? "";
+      expect(text).not.toMatch(/payload|stepId|t:quick|xxx/);
+      expect(text.length).toBeLessThan(60);
+    }
   });
 
-  it("cuts a long error and never carries the site's secrets", () => {
-    const chip = jiraRowOf(project({ sync: synced }), view({ lastError: "x".repeat(400) }), NOW).chip;
-    expect(chip?.text.length).toBeLessThan(150);
+  it("a project's own missing epic or issue is on its way while the sync runs, not a problem", () => {
+    const waiting = view({ problems: [{ projectId: "pj1", stepId: "a", message: "Step \"a\" of \"P\" has no issue in Jira yet." }] });
+    expect(jiraRowOf(project({ sync: synced }), waiting, NOW).chip).toEqual({ tone: "sending", text: "Sending…" });
+    expect(jiraRowOf(project({ sync: synced, links: [epicLink] }), waiting, NOW).chip?.tone).toBe("ok");
+  });
+
+  it("never carries the site's secrets", () => {
     expect(JSON.stringify(jiraRowOf(project(), view(), NOW))).not.toMatch(/secret|token/i);
   });
 
