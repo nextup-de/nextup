@@ -21,6 +21,9 @@ import { InputSheet } from "./InputSheet";
 import { SectionTabs } from "./SectionTabs";
 import styles from "./SimpleShell.module.css";
 
+/** An idea's page sits in the Inbox's side view, its Inbox page the way back (DESIGN_RULES §8). */
+const IDEA_AREA = { section: "inbox", tab: "inbox" } as const;
+
 export function SimpleShell({ children }: { children: React.ReactNode }) {
   const ctx = useDemo();
   const t = useT();
@@ -31,14 +34,15 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
   const area = sectionTabAt(pathname.slice(tenant.prefix.length), { role, serverMode: ctx.serverMode, flag: ctx.flag });
   // The Projects area (its tabs and every project's page) sits next to the projects sidebar, which then carries the tabs.
   const projectId = ctx.flag("projects") ? projectIdAt(pathname.slice(tenant.prefix.length)) : null;
-  // An idea's page (/cases/<id>, or /idea?id=) keeps the sidebar for its own pages, but it is no part of Projects (Kevin and
-  // Sam, 16 Nov 2026): it belongs to the Inbox, where ideas are decided, and its sidebar shows that idea alone.
+  // An idea's page (/cases/<id>, or /idea?id=) is no part of Projects (Kevin and Sam, 16 Nov 2026): it belongs to the Inbox,
+  // where ideas are decided, and sits in the Inbox's side view, with the walk through the inbox and its own pages under it
+  // (Kevin, 17 Nov 2026: one layout for an open idea, however it was opened; components/inbox/IdeaInboxSide.tsx).
   const caseId = ctx.flag("projects") ? caseIdAt(pathname.slice(tenant.prefix.length)) : null;
   const onIdea = ctx.flag("projects") && (caseId !== null || pathname === tenant.prefix + "/idea");
   const projectsArea = area?.section === "projects" ? (area.tab as ProjectsTabKey) : null;
-  const inProjects = projectsArea !== null || projectId !== null || onIdea;
+  const inProjects = projectsArea !== null || projectId !== null;
   // Any other area with several pages lists them in its own side view (AreaFrame); the strip then shows on a phone only.
-  const sideArea = area && !inProjects && hasSideView(area.section) ? area : null;
+  const sideArea = area && !inProjects && hasSideView(area.section) ? area : onIdea && !inProjects ? IDEA_AREA : null;
   // The blue thumb slides under the current place: measured from the active link, re-measured on resize.
   const navRef = useRef<HTMLElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
@@ -141,7 +145,7 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
 
       <main className={styles.content}>
         <div className={styles.contentInner}>
-          {inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId} caseId={caseId} idea={onIdea}>{children}</ProjectsFrame>
+          {inProjects ? <ProjectsFrame area={projectsArea} projectId={projectId}>{children}</ProjectsFrame>
             : sideArea ? <AreaFrame section={sideArea.section} active={sideArea.tab}>{children}</AreaFrame>
             : children}
         </div>

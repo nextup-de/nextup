@@ -1,8 +1,10 @@
 // One idea or problem, open: /idea?id=<id>, the idea's one page (Kevin, 16 Nov 2026). The idea card, and under it the
 // approval line, the moves and the history. An id the viewer may not open is a 404, as /cases/<id> was (VIS/D9); an idea
 // not in the shipped log is loaded first. Without an id the view moves the address on (to the Inbox with projects on).
+// It sits in the Inbox's side view, with the walk through the inbox and the idea's pages (IdeaInboxSide, Kevin 17 Nov 2026).
 import { notFound } from "next/navigation";
 import { LoadCase } from "@/components/dashboard/DemoProvider";
+import { IdeaInboxSide } from "@/components/inbox/IdeaInboxSide";
 import { ProjectsHub } from "@/components/projects/ProjectsHub";
 import { getViewerFor } from "@/features/auth/session";
 import { getT } from "@/i18n/server";
@@ -25,5 +27,5 @@ export default async function IdeaPage({ params, searchParams }: Props) {
       raiserInactive = await orDemo(() => raiserIsInactive(viewer.companyId, id), () => false);
     }
   }
-  return id ? <LoadCase caseId={id}><ProjectsHub tab="ideas" raiserInactive={raiserInactive} /></LoadCase> : <ProjectsHub tab="ideas" />;
+  return id ? <LoadCase caseId={id}><IdeaInboxSide /><ProjectsHub tab="ideas" raiserInactive={raiserInactive} /></LoadCase> : <ProjectsHub tab="ideas" />;
 }

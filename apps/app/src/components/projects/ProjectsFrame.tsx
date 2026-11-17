@@ -21,8 +21,7 @@ const listeners = new Set<() => void>();
 const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
-/** `idea`: the page is an idea's own (no part of Projects), so the sidebar shows that idea's pages alone. */
-export function ProjectsFrame({ area, projectId, caseId, idea = false, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; idea?: boolean; children: React.ReactNode }) {
+export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTabKey | null; projectId: string | null; children: React.ReactNode }) {
   const t = useT();
   const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
   // The NextUp AI side chat, on a project's own pages only (flag projectAi).
@@ -35,7 +34,7 @@ export function ProjectsFrame({ area, projectId, caseId, idea = false, children 
     <div className={s.root} data-wide="true" data-psb={sb} data-testid="projects-area">
       <aside className={s.side} aria-label={t("projects.sbLabel")} inert={sb === "hidden"}>
         {/* Hidden, it draws nothing: no search field, list or links left in the page for a reader or a test. */}
-        {sb === "open" && <ProjectsSidebar area={area} projectId={projectId} caseId={caseId} idea={idea} onHide={() => set("hidden")} />}
+        {sb === "open" && <ProjectsSidebar area={area} projectId={projectId} onHide={() => set("hidden")} />}
       </aside>
       <div className={s.main}>
         {sb === "hidden" && (
