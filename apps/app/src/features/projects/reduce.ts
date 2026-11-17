@@ -6,7 +6,7 @@ import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/ev
 import { DONE_BY_DEFAULT_DAYS } from "@/features/clock/kinds/project";
 import type { Route } from "@/features/demo/types";
 import type { LoopRules } from "@/features/loop/rules";
-import { templateSteps } from "@/features/templates/library";
+import { templateStepId, templateSteps } from "@/features/templates/library";
 import type { CheckDue, Invite, InviteRole, Milestone, MilestoneExternal, MilestoneSync, ProjectPage, ReducedProject, Request, SeedProject, Step, StepColumn, ToolInstance } from "./types";
 import { STEP_COLUMNS, SYNC_SYSTEMS } from "./types";
 import { readImpact, readSource, sourceLabel } from "./measure-source";
@@ -442,7 +442,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const old = p.template;
       if (old) p.steps = p.steps.filter((x) => !x.id.startsWith(`t:${old.key}:${old.version}:`) || touchedSteps.has(x));
       steps.forEach((t, i) => {
-        const id = `t:${key}:${version}:${i}`;
+        const id = templateStepId(key, version, i);
         if (p.steps.some((x) => x.id === id)) return;
         p.steps.push({
           checklist: [], comments: [], waitingOn: null,

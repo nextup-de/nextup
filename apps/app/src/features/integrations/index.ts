@@ -9,6 +9,7 @@ import { CLOCK_REASONS, isClockReason } from "@/features/clock/actor";
 import type { Verdict } from "@/features/cases/permissions";
 import type { State } from "@/features/cases/reducer";
 import { isProjectId } from "@/features/projects/permissions";
+import { isTemplateStepId } from "@/features/templates/library";
 import { STEP_COLUMNS } from "@/features/projects/types";
 
 /**
@@ -168,6 +169,8 @@ export function parseInbound(body: unknown, idempotencyKey?: string | null, opts
   };
 }
 
+/** A step that is already on the board: one a person or connector minted (isProjectId), or one a template put there (t:quick-win:1:0). */
+const isStepRef = (v: unknown): v is string => isProjectId(v) || isTemplateStepId(v);
 const words = (v: unknown, max: number): v is string => typeof v === "string" && v.trim().length > 0 && v.length <= max;
 // Links end up as <a href> on the board, so only http(s) - never javascript: or data:.
 const webUrl = (v: unknown): v is string => typeof v === "string" && v.length <= 1000 && /^https?:\/\/[^\s]+$/i.test(v);
@@ -188,11 +191,11 @@ function projectPayloadProblem(type: string, p: Record<string, unknown>, via: "a
       return x.url === undefined || webUrl(x.url) ? null : "payload.external.url must be an http(s) address.";
     }
     case "project.step.moved":
-      if (!isProjectId(p.stepId)) return "project.step.moved needs payload.stepId.";
+      if (!isStepRef(p.stepId)) return "project.step.moved needs payload.stepId.";
       if (!(STEP_COLUMNS as readonly unknown[]).includes(p.to)) return `payload.to must be one of ${STEP_COLUMNS.join(", ")}.`;
       return p.why === undefined || words(p.why, 500) ? null : "payload.why must be text.";
     case "project.step.edited": {
-      if (!isProjectId(p.stepId)) return "project.step.edited needs payload.stepId.";
+      if (!isStepRef(p.stepId)) return "project.step.edited needs payload.stepId.";
       // Text only. Owner, due day, details and removal are people's: a connector never reassigns or deletes.
       // The Jira sync may also set the step's milestone (plan JSY D12): a fix version changed in Jira.
       const allowed = via === "sync" ? ["stepId", "text", "milestoneId"] : ["stepId", "text"];
@@ -208,7 +211,7 @@ function projectPayloadProblem(type: string, p: Record<string, unknown>, via: "a
       if (!(LINK_SYSTEMS as readonly unknown[]).includes(p.system)) return `payload.system must be one of ${LINK_SYSTEMS.join(", ")}.`;
       if (!webUrl(p.url)) return "project.linked needs payload.url, an http(s) address.";
       if (p.key !== undefined && !words(p.key, 100)) return "payload.key must be text.";
-      return p.stepId === undefined || isProjectId(p.stepId) ? null : "payload.stepId is not a step id.";
+      return p.stepId === undefined || isStepRef(p.stepId) ? null : "payload.stepId is not a step id.";
     case "project.milestone.added":
     case "project.milestone.edited":
       return milestoneProblem(type, p);
