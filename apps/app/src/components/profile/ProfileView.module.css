@@ -14,6 +14,9 @@ a.affiliation:hover { color: var(--nh-brand-ink); }
 
 .columns { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 16px; }
 .mainColumn, .sideColumn { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Nothing of the person's own to show (no work, no absence): no empty half; the settings and people take the width. */
+.mainColumn:empty { display: none; }
+.columns:has(> .mainColumn:empty) { grid-template-columns: minmax(0, 1fr); }
 
 .workList { display: flex; flex-direction: column; }
 .workItem { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 12px; margin-inline: -12px; border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }

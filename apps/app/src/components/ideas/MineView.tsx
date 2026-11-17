@@ -1,5 +1,5 @@
 "use client";
-// The Ideas tab's "Mine": every idea I raised, one row each - what, open since, and where it stands in one line
+// The Ideas tab's "Mine": every idea I raised, one row each - what, open since (while it runs), and where it stands in one line
 // (features/ideas/status.ts). The title opens the idea page (/idea?id=<id>), the one home of an idea; an idea that became
 // a project links to the project. With nothing raised, one sentence and the way to raise the first one.
 import Link from "next/link";
@@ -44,7 +44,7 @@ export function MineView() {
                   {r.problem && <span className={s.kind}>{t("team.ideaKindProblem")}</span>}
                   <Link href={href(ideaPath(r.id))} className={s.title}>{r.title}</Link>
                 </span>
-                <span className={s.since}><span className="nh-sr">{t("ideas.mineColSince")} </span>{since(r)}</span>
+                <span className={s.since}>{r.running && <><span className="nh-sr">{t("ideas.mineColSince")} </span>{since(r)}</>}</span>
                 <span className={s.status}>{status(r)}</span>
               </li>
             ))}

@@ -86,7 +86,7 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
   const q = sc.question;
   const plain = briefForCase(sc, briefCtx, { promiseDays: P, viewer: me, affected: standing, attachments: raised.attachments, updates: rescoresOn(log, sc.id).length, passTo: handTo, history: handedNote });
   const brief = viewing && d ? { ...plain, actions: [], rec: "", recText: t("leader.askedViewDecide", { by: d.by }), next: t("leader.commentBelow"), by: rs ? t("leader.beforeCheckin", { day: f(rs.dueDay) }) : null }
-    : talk ? withDiscussion(plain, sc, { fast: fastLane(sc.body, S.rules.fastLaneEur), costEur: costEurOf(sc.body), limitEur: S.rules.fastLaneEur })
+    : talk ? withDiscussion(plain, sc, { fast: fastLane(sc.body, S.rules.fastLaneEur), costEur: costEurOf(sc.body), limitEur: S.rules.fastLaneEur }, locale)
       : plain;
   const talkNote = d && rs ? {
     label: viewing ? t("leader.askedForView") : rs.ready ? t("leader.readyToDecide") : t("leader.inDiscussionRound", { round: rs.round, of: rs.of }),

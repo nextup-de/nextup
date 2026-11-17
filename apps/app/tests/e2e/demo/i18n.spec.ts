@@ -31,6 +31,8 @@ const ROUTES: Route[] = [
   { file: "[company]/(app)/projects/page.tsx", path: "/acme/projects" },
   { file: "[company]/(app)/projects/[projectId]/page.tsx", path: "/acme/projects/pj2" },
   { file: "[company]/(app)/inbox/page.tsx", path: "/acme/inbox", as: "Team leader" },
+  // The opened item with the desk's own moves on it ("Discuss first" is built in features/, not in a component).
+  { file: "[company]/(app)/inbox/page.tsx", path: `/acme/inbox?id=${CASE}`, as: "Team leader" },
   { file: "[company]/(app)/leader/page.tsx", path: "/acme/leader", lands: "/acme/inbox", as: "Team leader" },
   { file: "[company]/(app)/cases/[caseId]/page.tsx", path: `/acme/cases/${CASE}`, lands: `/acme/idea?id=${CASE}`, as: "Manager" },
   { file: "[company]/(app)/dashboard/page.tsx", path: "/acme/dashboard", as: "Manager" },
