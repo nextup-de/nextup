@@ -378,10 +378,12 @@ export function jiraRowOf(p: Pick<ReducedProject, "sync" | "links" | "steps" | "
       hint: n > 0 ? t("projects.jiraReadyIssues", { key, issues: t("projects.issueCount", { count: n }) }) : t("projects.jiraReadyEmpty", { key }),
     };
   }
-  const mine = view.problems.find((x) => x.projectId === p.id);
-  const detail = mine?.message ?? (view.tokenExpired ? t("projects.jiraTokenExpired") : view.lastError ? view.lastError.slice(0, 120) : null);
+  // The chip says what happened in the reader's words and when it last worked; the technical reason stays on the admin's
+  // Jira page (jiraHeadline), never in a project's head (Kevin, 17 Nov 2026). A project's own missing epic or issue is only
+  // on its way while the rounds succeed (jiraLinkSummary), so it reads as Sending…, not as a problem.
   let chip: JiraRowChip;
-  if (detail) chip = { tone: "problem", text: t("projects.jiraProblem", { detail }) };
+  if (view.tokenExpired) chip = { tone: "problem", text: t("projects.jiraChipToken") };
+  else if (view.lastError) chip = { tone: "problem", text: view.lastOkAt ? t("projects.jiraChipFailedSince", { ago: agoText(view.lastOkAt, nowMs, locale) }) : t("projects.jiraChipFailed") };
   else if (!epicKey) chip = { tone: "sending", text: t("projects.jiraSending") };
   else chip = { tone: "ok", text: view.lastOkAt ? t("projects.jiraSyncedChecked", { epic: epicKey, ago: agoText(view.lastOkAt, nowMs, locale) }) : t("projects.jiraSynced", { epic: epicKey }) };
   return { ...base, state: "synced", send: null, hint: "", chip, waiting: true };
