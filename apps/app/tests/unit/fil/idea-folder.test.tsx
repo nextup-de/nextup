@@ -27,5 +27,13 @@ describe("IdeaFilesView", () => {
   it("offers the folder when nothing was raised with the idea", () => {
     const html = render(URL, []);
     expect(html).toContain('data-testid="idea-folder-open"');
+    expect(html.split("Open in SharePoint").length - 1).toBe(1);
+  });
+
+  it("says once that nothing was raised with it: no side panel, no 0 files, no explaining line", () => {
+    const html = render(null, []);
+    expect(html).toContain("No files raised with this idea");
+    expect(html).not.toContain("0 files");
+    expect(html).not.toContain("<aside");
   });
 });

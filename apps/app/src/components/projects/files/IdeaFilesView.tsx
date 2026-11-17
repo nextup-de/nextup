@@ -2,7 +2,8 @@
 // The Files page of an idea that has no project yet: the same page as a project's Files (plan FIL, Paper "Files · 3"),
 // with the files raised with the idea. An idea and its project are one thing: the folder job makes the idea its own
 // SharePoint folder when it is raised (server/files/auto-folder.ts), and once the idea gets its yes its project's Files page
-// opens that same folder. Until the folder is there, there is nothing to upload into.
+// opens that same folder. Until the folder is there, there is nothing to upload into. With no files the page says so once:
+// no side panel for a selection that cannot happen, no "0 files", no second copy of the line (DESIGN_RULES §9).
 import { useState } from "react";
 import { PageHead } from "@/components/ui/elements/PageHead";
 import { kindOf } from "@/features/files/items";
@@ -27,7 +28,7 @@ export function IdeaFilesView({ items, folder = null }: { items: IdeaFile[]; fol
       <section className={files.list} aria-label={t("projectFiles.pageLabel")}>
         {items.length === 0 ? <div className={states.state}>
           <h2 className={states.title}>{t("projectFiles.ideaNoneTitle")}</h2>
-          <p className={states.hint}>{t(folder ? "projectFiles.ideaHasFolder" : "projectFiles.ideaHint")}</p>
+          {folder && <p className={states.hint}>{t("projectFiles.ideaHasFolder")}</p>}
           {folder && <a className="nh-btn nh-btn-primary nh-btn-sm" href={folder} target="_blank" rel="noopener noreferrer" data-testid="idea-folder-open">{t("projectFiles.openInSharePoint")} ↗</a>}
         </div> : <div className={list.listWrap}>
           <table className={list.table}>
@@ -52,7 +53,7 @@ export function IdeaFilesView({ items, folder = null }: { items: IdeaFile[]; fol
           </table>
         </div>}
       </section>
-      <aside className={files.side}>
+      {items.length > 0 && <aside className={files.side}>
         <section className={panel.panel} aria-label={t("projectFiles.panelLabel")}>
           <div className={panel.preview}><FileIcon kind={sel ? kindOf(sel.name) : "folder"} size={84} /></div>
           <div className={panel.titleBlock}>
@@ -62,7 +63,7 @@ export function IdeaFilesView({ items, folder = null }: { items: IdeaFile[]; fol
           <p className={panel.note}>{t(folder ? "projectFiles.ideaHasFolder" : "projectFiles.ideaHint")}</p>
           {folder && <a className="nh-btn nh-btn-primary nh-btn-sm" href={folder} target="_blank" rel="noopener noreferrer">{t("projectFiles.openInSharePoint")} ↗</a>}
         </section>
-      </aside>
+      </aside>}
     </div>
   </div>;
 }
