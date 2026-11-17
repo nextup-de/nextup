@@ -34,6 +34,19 @@
 .version[data-current="true"] .who { font-weight: 600; }
 .who { color: var(--nh-ink); }
 .when { color: var(--nh-mute); }
+/* A narrow side card (the AI chat open): a smaller preview, the buttons full width, each detail's label above its value. */
+@container files-side (width < 230px) {
+  .preview { height: 96px; }
+  .preview svg { width: 56px; height: 56px; }
+  .row { flex-wrap: wrap; }
+  .row > :first-child:nth-last-child(n + 3) { flex-basis: 100%; }
+  .meta { gap: 12px; margin-top: 18px; padding-top: 14px; }
+  .metaRow { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .metaValue { justify-content: flex-start; text-align: left; }
+  .team { flex-wrap: wrap; row-gap: 8px; }
+  .thumb { width: 44px; height: 44px; }
+  .thumb svg { width: 26px; height: 26px; }
+}
 .dialog { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: var(--nh-pad-card); background: rgb(0 0 0 / 0.3); }
 .sheet { display: flex; flex-direction: column; gap: var(--nh-gap); width: min(calc(var(--nh-space) * 52), 100%); max-height: 100%; overflow-y: auto; padding: calc(var(--nh-pad-card) * 1.25); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
 .sheetHead { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); }
