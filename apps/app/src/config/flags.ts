@@ -81,6 +81,14 @@ export const FLAGS = {
     added: "2026-11-16",
     removeBy: "2027-01-31",
   },
+  // components/projects/ai: Paper "Project · AI side chat" v2 (PROJECT-AI-FOR-KEVIN.txt)
+  projectAi: {
+    description: "A project's pages get the NextUp AI side chat: a tab on the right edge that opens a chat column. Off: no tab",
+    owner: "Sam",
+    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    added: "2026-11-17",
+    removeBy: "2027-02-28",
+  },
 } as const satisfies Record<string, FlagDef>;
 
 export type FlagKey = keyof typeof FLAGS;
