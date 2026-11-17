@@ -53,7 +53,7 @@ running it, so the run has to confirm it.
 | FX7 | German where people decide: `features/ideas/brief.ts:38` labels, admin console, and real dates in mails instead of "Tag {day}" (`i18n/messages/mail.ts:80`). Remove the name comparison at `brief.ts:343` | LNG, CLK, IDN | Checked in code |
 | FX8 | Refuse a forged `why: "deadline"` hand-over from a desk holder (`features/cases/stamp.ts:9`, `permissions.ts:51`) | LOOP, MET | From review |
 | FX9 | Teams works on a real stack: `stack/compose.yml` passes no `TEAMS_*`. Removing the bot falls back to mail. People who signed in by SCIM, SAML or OIDC can be linked | TMS, OPS, EID | Compose checked; rest from review |
-| FX10 | Make `e2e`, `e2e-db` and `db-tests` required on `main`. The ruleset requires only `guard` and `app`, which is how red merges reached `main` | AUD, all | Ruleset read 2026-11-04 |
+| FX10 | Make `e2e`, `e2e-db` and `db-tests` required on `main`. The ruleset requires only `guard` and `app`, which is how red merges reached `main` | AUD, all | Ruleset read 2026-11-04. **17 Nov 2026 (Kevin):** `e2e` and `db-tests` are required; `e2e-db` (16 min) runs on every `main` push and nightly instead of on PRs, and `images.yml` deploys only a push whose whole CI run is green |
 
 Scope-dependent items: per-site calendars, SFX leavers and unit creation, `/Groups` in SCIM, and incremental notification dispatch.
 An enabled identity method must pass callback binding and replay checks before launch (K2); real-model evaluation blocks AI enablement (G13).

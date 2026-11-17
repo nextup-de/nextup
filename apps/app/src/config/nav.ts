@@ -111,8 +111,22 @@ export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
  * Projects area has them: no strip of tabs under the bar repeats them there (Kevin, 16 Nov 2026: every area). A phone
  * keeps the strip. A section joins this list in the PR that moves its page's own list into the side view.
  */
-export const SIDE_VIEW_SECTIONS: readonly SectionKey[] = ["dashboard", "profile"];
+export const SIDE_VIEW_SECTIONS: readonly SectionKey[] = [
+  "dashboard",
+  "profile",
+  "inbox",
+  "ideas",
+];
 export const hasSideView = (section: SectionKey): boolean => SIDE_VIEW_SECTIONS.includes(section);
+
+/**
+ * Pages of a side-view section that bring their own side view, so the shell does not wrap them in a second one (AreaFrame):
+ * the raise page's sidebar is the Ideas side view, with the area's pages at its top (components/ideas/RaiseSidebar.tsx).
+ */
+export const OWN_SIDE_VIEW_PAGES: readonly string[] = [
+  "/raise",
+];
+export const bringsOwnSideView = (path: string): boolean => OWN_SIDE_VIEW_PAGES.includes(path);
 
 export function sectionTabsFor(section: SectionKey, who: { role: Role; serverMode: boolean }): SectionTabItem[] {
   return SECTION_TABS[section].filter((tab) => (!tab.roles || tab.roles.includes(who.role)) && (!tab.needsServer || who.serverMode));

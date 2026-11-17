@@ -6,8 +6,11 @@ import { reduce } from "@/features/cases/reducer";
 import { inboxOf, mineOf } from "@/features/cases/selectors";
 import { canOpen, unitsOf } from "@/features/cases/visibility";
 import { EMPTY_SEED, LOCAL_SEED } from "@/features/demo";
-import { isSampleId, sampleDataOn, withSampleData, type SampleViewer } from "@/features/demo/sample-data";
+import { DEMO_FOLDER } from "@/features/demo/files-demo";
+import { isSampleId, sampleDataOn, sampleFolderLinks, withSampleData, withSampleFolders, type SampleViewer } from "@/features/demo/sample-data";
 import { sampleDecisionLines } from "@/features/demo/sample-decisions";
+import { byFolderJob } from "@/features/files/folder-actor";
+import { projectFolder } from "@/features/files/link";
 import { inboxItems } from "@/features/inbox";
 import { visibleProjectsFor } from "@/features/projects/views";
 import type { Role } from "@/config/roles";
@@ -124,5 +127,41 @@ describe("the data itself", () => {
   it("moves with the company's day", () => {
     const later = withSampleData(EMPTY_SEED, viewer("member"), 40);
     expect(later.cases.find((c) => c.id === "sample-c6")?.raisedDay).toBe(39);
+  });
+});
+
+describe("a sample project's folder", () => {
+  it("is linked for every project of the sample data, drafts included, from the day it opened", () => {
+    for (const role of ["member", "leader", "manager"] as const) {
+      const { S } = stateFor(role);
+      expect(S.projects.length).toBeGreaterThan(6);
+      for (const p of S.projects) expect([p.id, projectFolder(p)?.url]).toEqual([p.id, DEMO_FOLDER.url]);
+      expect(sampleFolderLinks(S.projects)).toEqual([]);
+    }
+  });
+
+  it("is linked as the folder job links one, for a sample project opened in this browser and for no other", () => {
+    const seed = withSampleData(EMPTY_SEED, viewer("leader"), 0);
+    const yes = { id: "e1", ts: 1, day: 0, type: "case.decided" as const, actor: "R. Tester", actorUserId: "u_leader", target: "sample-c3", payload: { answer: "yes" as const, projectId: "sample-p-new", lead: "R. Tester", leadUserId: "u_leader" } };
+    const S = reduce(seed, { day: 0, events: [yes] });
+    const opened = S.projects.find((p) => p.id === "sample-p-new")!;
+    expect(projectFolder(opened)).toBeNull();
+    const links = sampleFolderLinks([...S.projects, { id: "p-real", links: [] }]);
+    expect(links).toEqual([{ type: "project.linked", actor: "system:files", actorUserId: null, target: "sample-p-new", payload: DEMO_FOLDER }]);
+    expect(byFolderJob(links[0])).toBe(true);
+  });
+
+  it("is written to the log once: a second run finds it there and leaves the log alone", () => {
+    const seed = withSampleData(EMPTY_SEED, viewer("leader"), 3);
+    const yes = { id: "e1", ts: 1, day: 3, type: "case.decided" as const, actor: "R. Tester", actorUserId: "u_leader", target: "sample-c3", payload: { answer: "yes" as const, projectId: "sample-p-new", lead: "R. Tester", leadUserId: "u_leader" } };
+    const before = { day: 3, events: [yes] };
+    const stale = reduce(seed, before).projects;
+    const log = withSampleFolders(before, stale, 3);
+    expect(log.events).toHaveLength(2);
+    expect(log.events[1]).toMatchObject({ type: "project.linked", day: 3, actor: "system:files", actorUserId: null, target: "sample-p-new", payload: DEMO_FOLDER });
+    expect(projectFolder(reduce(seed, log).projects.find((p) => p.id === "sample-p-new")!)?.url).toBe(DEMO_FOLDER.url);
+    // The same stale list again (an effect that ran twice), and the list as it now is: neither writes.
+    expect(withSampleFolders(log, stale, 3)).toBe(log);
+    expect(withSampleFolders(log, reduce(seed, log).projects, 3)).toBe(log);
   });
 });

@@ -28,6 +28,8 @@ export type OverviewIdeaProps = {
   steps: OverviewStep[];
   desk: DeskLabel;
   wait: { text: string; pct: number; tone: "open" | "late" | "done" };
+  /** The answer-by panel under the card names the desk and the date (AnswerPromise): the card leaves its desk row out (DESIGN_RULES §9). */
+  deskBelow?: boolean;
   brief: IdeaBrief;
   files: IdeaFile[];
   added: { text: string; when: string }[]; // new information since it was raised
@@ -145,12 +147,13 @@ export function OverviewIdea(p: OverviewIdeaProps) {
                 <div className={s.div28} data-tone={st.tone} style={{ animationDelay: i * 90 + "ms" }} />
                 <div className={s.div29}>
                   <span className={s.label2} data-tone={st.tone}>{st.label}</span>
-                  <span className={s.sub}>{st.sub}</span>
+                  {/* The step ahead names its due date only when the answer-by panel does not (DESIGN_RULES §9, one date once). */}
+                  {!(p.deskBelow && st.tone === "todo") && <span className={s.sub}>{st.sub}</span>}
                 </div>
               </div>
             ))}
           </div>
-          <div className={s.div30}>
+          {!p.deskBelow && <div className={s.div30}>
             <span className={s.dept}>{t("team.ideaOnDeskOf")}</span>
             <span className={s.deskProfile}>
               <span className={s.initials2} data-avatar={avatarTone(desk.role ?? "")}>{initialsOf(desk.role ?? "?")}</span>
@@ -166,7 +169,7 @@ export function OverviewIdea(p: OverviewIdeaProps) {
               <span className={s.span3}><span className={s.span4} style={{ width: p.wait.pct + "%" }} /></span>
               {p.wait.text}
             </span>
-          </div>
+          </div>}
         </div>
 
         <div className={s.div31}>

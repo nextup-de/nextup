@@ -88,7 +88,7 @@ function NoSheet({ c }: { c: ReducedCase }) {
   const tomorrow = new Date(today.getTime() + 864e5).toISOString().slice(0, 10);
   const dayBad = date !== "" && (day === null || Number.isNaN(day) || sheet.problems.includes("revisit"));
   return (
-    <Frame label={t("shell.noEyebrow")} title={c.title} sub={t("shell.noSub", { from: c.from })}
+    <Frame label={t("shell.noEyebrow")} sub={t("shell.noSub", { from: c.from })}
       actions={<><Btn kind={sheet.ok ? "primary" : "disabled"} onClick={confirm}>{sheet.ok ? t("shell.noSend") : noPrompt(t, sheet.problems, min)}</Btn><Btn fixed onClick={closeSheet}>{t("shell.cancel")}</Btn></>}>
       <div className={styles.leadIn} role="group" aria-label={t("shell.noLeadIn")}>
         <div className={styles.textLabel}>{t("shell.noLeadIn")}</div>
@@ -135,6 +135,8 @@ function NoSheet({ c }: { c: ReducedCase }) {
   );
 }
 
+/** `eyebrow` names the move and is the sheet's heading; `title` is shown only where it is what the sheet is about (the question to
+ *  answer, an idea opened from elsewhere), never a case's title again; `sub` is one line of fact, or empty. */
 type Model = {
   eyebrow: string; title: string; sub: string;
   options?: Option[]; peopleNames?: string[]; extra?: React.ReactNode;
@@ -162,7 +164,7 @@ export function InputSheet() {
     // From the second question on: several questions are a discussion (D20).
     const discuss = askSheet(c, { discussion: ctx.flag("discussion") }).discussFirst;
     m = {
-      eyebrow: t("shell.askEyebrow"), title: c.title, sub: t("shell.askSub", { from: c.from }),
+      eyebrow: t("shell.askEyebrow"), title: "", sub: t("shell.askSub", { from: c.from }),
       extra: discuss ? (
         <div className={styles.discussLine} data-testid="ask-discuss-first">
           <span>{t("shell.askDiscussLine")}</span>
@@ -192,7 +194,7 @@ export function InputSheet() {
     if (pass.mode === "up") {
       // After two passes by people: no seat list, it goes to the seat above the desk (the server sets the seat, D13).
       m = {
-        eyebrow: t("shell.handUpEyebrow"), title: c.title, sub: t("shell.handUpSub", { from: c.from }),
+        eyebrow: t("shell.handUpEyebrow"), title: "", sub: t("shell.handUpSub", { from: c.from }),
         extra: <div className={styles.hint} data-testid="hand-up-line">{pass.up?.label ? t("shell.handUpTo", { name: pass.up.label }) : t("shell.handUpAbove")}</div>,
         textLabel: t("shell.handWhy"), placeholder: t("shell.handUpPlaceholder"),
         ok: pass.ok, primaryLabel: pass.ok ? t("shell.handSendUp") : t("shell.handSayWhy"), primaryKind: "accent",
@@ -202,7 +204,7 @@ export function InputSheet() {
       // A pass needs a reason: the person receiving it and the one who raised it both read it.
       const picked = !!sheet.picked;
       m = {
-        eyebrow: t("shell.handEyebrow"), title: c.title, sub: t("shell.handSub", { from: c.from }),
+        eyebrow: t("shell.handEyebrow"), title: "", sub: t("shell.handSub", { from: c.from }),
         options: [...(notMine ? [notMine] : []), ...cands], textLabel: t("shell.handWhy"), placeholder: t("shell.handPlaceholder"),
         ok: pass.ok, primaryLabel: !picked ? t("shell.handPick") : !why ? t("shell.handSayWhy") : t(pass.mode === "back" ? "shell.handSendBack" : "shell.handPassTo", { name: pickedLabel }), primaryKind: "accent",
         onConfirm: () => { const payload = pass.payload(); if (!payload) return; act.pass(c.id, payload); done(t(pass.mode === "back" ? "shell.handDoneBack" : "shell.handDone", { name: pickedLabel, from: c.from })); },
@@ -241,9 +243,9 @@ export function InputSheet() {
     <>
       <div className={styles.backdrop} onClick={closeSheet} />
       <div className={styles.sheet} role="dialog" aria-modal="true" aria-label={m.eyebrow}>
-        <div className={styles.eyebrow}>{m.eyebrow}</div>
-        <div className={styles.title}>{m.title}</div>
-        <div className={styles.sub}>{m.sub}</div>
+        <h2 className={styles.title}>{m.eyebrow}</h2>
+        {m.title ? <div className={styles.lead}>{m.title}</div> : null}
+        {m.sub ? <div className={styles.sub}>{m.sub}</div> : null}
 
         {m.extra}
 

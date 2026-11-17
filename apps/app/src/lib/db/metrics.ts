@@ -192,7 +192,7 @@ export async function ledgerInputs(companyId: string, period: Period): Promise<L
       raiserUnitId: raiserRole ? unitOfRole.get(raiserRole) ?? null : v.fromUserId ? unitOfMember.get(v.fromUserId) ?? null : null,
     });
   }
-  return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo", ...(await projectFacts(companyId, cases)) };
+  return { cases, facts, org, promiseDays: rules.promiseDays, today, demoClock: clock.mode === "demo", hourCostEur: rules.hourCostEur ?? null, ...(await projectFacts(companyId, cases)) };
 }
 
 /**
@@ -249,6 +249,6 @@ export async function dashboardData(companyId: string, input: DashboardInput): P
     aiOff: ai.settings.choice === "off",
     demoClock: now.demoClock,
     // What confirmed results save, in the same unit scope; nothing while the scope is too small to show (D6).
-    saved: scope.hidden ? null : savedPerYear(now.projects ?? [], period, inScope === null ? null : (u) => u !== null && inScope.has(u)),
+    saved: scope.hidden ? null : savedPerYear(now.projects ?? [], period, inScope === null ? null : (u) => u !== null && inScope.has(u), now.hourCostEur ?? null),
   };
 }

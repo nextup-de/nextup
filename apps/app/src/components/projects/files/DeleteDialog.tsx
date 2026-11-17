@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { removeDemoItem } from "@/features/demo/files-demo";
 import { linkedSteps } from "@/features/files/view";
 import { recycleBinUrl, rx, type RemoveKey } from "@/features/files/remove";
-import { useDemo } from "@/components/dashboard/DemoProvider";
 import { deleteFileAction } from "@/server/actions/project-files-remove";
 import { useLocale, useT } from "@/i18n/client";
+import { useFilesSource } from "./source";
 import type { FilesPartProps } from "./types";
 import styles from "./Menu.module.css";
 
@@ -15,7 +15,7 @@ const TOAST_MS = 10_000;
 export function DeleteDialog({ state, actions }: FilesPartProps) {
   const t = useT();
   const locale = useLocale();
-  const { serverMode } = useDemo();
+  const { demo } = useFilesSource(state.p.id);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<RemoveKey | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export function DeleteDialog({ state, actions }: FilesPartProps) {
   const confirm = async () => {
     if (!row || busy) return;
     setBusy(true); setProblem(null);
-    const outcome = serverMode ? (await deleteFileAction(state.p.id, row.id)).state : removeDemoItem(state.path.join("/"), row.id) ? "ok" : "gone";
+    const outcome = demo ? (removeDemoItem(state.path.join("/"), row.id) ? "ok" : "gone") : (await deleteFileAction(state.p.id, row.id)).state;
     setBusy(false);
     if (outcome === "ok" || outcome === "gone") {
       actions.closeDialog();

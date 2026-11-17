@@ -4,6 +4,7 @@
     "blocked_days",
     "deadline_handover",
     "escalation_days",
+    "hour_cost",
     "loop_steps",
     "no_reason_min",
     "outcome_days",

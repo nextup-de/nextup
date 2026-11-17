@@ -411,7 +411,8 @@ export function briefForCase(c: ReducedCase, ctx: BriefContext, f: CaseFacts): I
     depts: route ? [{ id: route.owner.dept, name: ctx.depts.find((d) => d.id === route.owner.dept)?.name ?? route.owner.dept, ai: false, why: null, members: ctx.people.filter((p) => p.dept === route.owner.dept).map((p) => personOf(p.name, ctx)) }] : [],
     people: f.affected.map((x) => personFor(x, ctx)).filter((p): p is Person => p !== null).map((p) => ({ ...p, ai: false, why: null })),
     scores,
-    summary: overall.parts.length ? t("brief.summaryScoreParts", { what, score: overall.value, parts: overall.parts.map((p) => p.label.toLowerCase()).join(", ") }) : t("brief.summaryScore", { what, score: overall.value }),
+    // Each part as it is written (lower-casing it broke German nouns: "nutzen genannt"), one · between them.
+    summary: overall.parts.length ? t("brief.summaryScoreParts", { what, score: overall.value, parts: overall.parts.map((p) => p.label).join(" · ") }) : t("brief.summaryScore", { what, score: overall.value }),
     lead: null, bars: null, after: null,
     actions, rec, recText, next, by,
     timeline: null,

@@ -103,7 +103,7 @@ test("an idea is discussed, revised, checked in twice, then becomes a project", 
     await page.getByRole("button", { name: /^Yes, do it/ }).click();
     const sheet = page.getByRole("dialog", { name: "Yes, do it" });
     await expect(sheet.getByRole("combobox", { name: "Who sets it up" }).locator("option:checked")).toHaveText(/^T. Vogel/); // the value is a user id
-    await sheet.getByRole("button", { name: "Say yes and open the draft" }).click();
+    await sheet.getByRole("button", { name: "Say yes", exact: true }).click();
     await expect(sheet).toContainText(/P-\d+ is open/);
     await expect(sheet.getByRole("link", { name: /^Open P-\d+$/ })).toHaveAttribute("href", /\/acme\/projects\/p_/);
     await sheet.getByRole("button", { name: "Done" }).click();

@@ -33,7 +33,6 @@ export function FormsPanel({ p, forms }: { p: ReducedProject; forms: ReturnType<
     <aside className={styles.side} aria-labelledby={"forms-" + p.id}>
       <div className={styles.sideHead}>
         <h3 id={"forms-" + p.id} className={styles.title}>{t("projectRequests.forms")}</h3>
-        <p className={styles.sub}>{text("formsHint")}</p>
         {rights.addStep && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => open("new")}>{text("formNew")}</button>}
       </div>
       {forms.map(({ form, answers, fresh }) => (

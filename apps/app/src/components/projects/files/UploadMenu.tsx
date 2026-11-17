@@ -7,6 +7,7 @@ import { ut } from "@/features/files/upload";
 import { useLocale, useT } from "@/i18n/client";
 import { trailOf } from "./Breadcrumb";
 import { uploadAccessAction } from "@/server/actions/project-files-upload";
+import { useFilesSource } from "./source";
 import type { FilesPartProps } from "./types";
 import styles from "./Upload.module.css";
 
@@ -16,7 +17,8 @@ type Access = "checking" | "ok" | "read-only" | "no-access" | "not-connected" | 
 export function UploadMenu({ state, actions }: FilesPartProps) {
   const t = useT();
   const locale = useLocale();
-  const { serverMode, persona, href } = useDemo();
+  const { persona, href } = useDemo();
+  const { demo } = useFilesSource(state.p.id);
   const files = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
   const [access, setAccess] = useState<Access>("checking");
@@ -35,17 +37,17 @@ export function UploadMenu({ state, actions }: FilesPartProps) {
   useEffect(() => {
     if (!open) return;
     let stale = false;
-    if (!serverMode) { void Promise.resolve().then(() => { if (!stale) setAccess("ok"); }); return () => { stale = true; }; }
+    if (demo) { void Promise.resolve().then(() => { if (!stale) setAccess("ok"); }); return () => { stale = true; }; }
     void uploadAccessAction(projectId).then((a) => { if (!stale) setAccess(a.state); });
     return () => { stale = true; };
-  }, [open, serverMode, projectId]);
+  }, [open, demo, projectId]);
 
   const path = state.path.join("/");
   const name = state.path.at(-1) ?? trailOf(state.folder?.url).at(-1) ?? "";
   const pick = (list: FileList | null) => {
     const picked = list ? [...list] : [];
     actions.closeDialog();
-    if (picked.length) void startUploads(picked, { projectId, path, demo: !serverMode, by: persona.who.name, landed: actions.reload });
+    if (picked.length) void startUploads(picked, { projectId, path, demo, by: persona.who.name, landed: actions.reload });
   };
   const can = access === "ok";
 

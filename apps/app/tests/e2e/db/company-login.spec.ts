@@ -90,7 +90,7 @@ test.describe.serial("a new company, from its codes to a decided case", () => {
     await expect(leader.getByRole("main").getByText(title).first()).toBeVisible();
     await leader.getByRole("button", { name: "Yes, do it" }).click();
     // Projects are on by default, so the yes opens a sheet that names who sets the draft up.
-    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes and open the draft" }).click();
+    await leader.getByRole("dialog", { name: "Yes, do it" }).getByRole("button", { name: "Say yes", exact: true }).click();
 
     await member.reload();
     await expect(member.getByRole("article", { name: title })).toContainText("Approved");

@@ -17,6 +17,7 @@ import { formatEuro, formatNumber } from "@/i18n/format";
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import type { RewardRule } from "@/features/loop/rules";
 import { mayConfirm, unconfirmedOf } from "./confirm";
+import { mayConfirmBaseline } from "./result";
 import { nextMove, type ProjectMove } from "./selectors";
 import type { Baseline, Measure, ProjectStatus, ReducedProject, Step, StepColumn, VerdictWord } from "./types";
 
@@ -53,28 +54,41 @@ export function approverOfDraft(cases: readonly ReducedCase[], v: IdViewer, stat
 }
 
 /**
- * A draft is only for the people on it, the holder of the seat it was escalated to and, unless the idea is private, managers and the approvers of
- * its yes (D13, GAT D24). `privateIdea`: the raiser made the idea private. `approver`: see approverOfDraft.
+ * The draft's baseline waits for this viewer's confirmation (D16): the accepted sponsor is on the draft anyway; without one it is a holder of the
+ * route's deputy role, or a manager when that role has no holder. They are asked to confirm a number, so they read the draft it belongs to, for
+ * as long as it waits for them and whether or not the idea is private. By user and role id from `me`, never by name.
  */
-export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean, approver = false): boolean {
-  return onDraft(p, v.userId) || escalatedToViewer(p, v) || ((v.role === "manager" || approver) && !privateIdea);
+export function confirmsDraftBaseline(p: ReducedProject, v: IdViewer, state: Pick<State, "rules" | "routes" | "seats">): boolean {
+  return v.me !== undefined && mayConfirmBaseline(p, state, v.me, v.role === "manager");
+}
+
+/**
+ * A draft is only for the people on it, the holder of the seat it was escalated to, whoever its baseline waits for and, unless the idea is
+ * private, managers and the approvers of its yes (D13, D16, GAT D24). `privateIdea`: the raiser made the idea private. `approver`: see
+ * approverOfDraft. `confirmer`: see confirmsDraftBaseline.
+ */
+export function mayReadDraft(p: ReducedProject, v: IdViewer, privateIdea: boolean, approver = false, confirmer = false): boolean {
+  return onDraft(p, v.userId) || escalatedToViewer(p, v) || confirmer || ((v.role === "manager" || approver) && !privateIdea);
 }
 
 /** A draft that has not started: the only kind D13 hides. A legacy project and a started one are as before. */
 export const isOpenDraft = (p: ReducedProject): boolean => p.draft && p.status === "planning";
 
 /** The projects this person may see: a member sees the projects they lead, are on, or whose idea they raised; a draft only who is on it (D13). */
-export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: State["cases"]; seats?: State["seats"]; approvals?: State["approvals"] }, v: IdViewer, demo = true): ReducedProject[] {
+export function visibleProjectsFor(state: Pick<State, "projects"> & { cases?: State["cases"]; seats?: State["seats"]; approvals?: State["approvals"]; rules?: State["rules"]; routes?: State["routes"] }, v: IdViewer, demo = true): ReducedProject[] {
   const all = demo ? state.projects : state.projects.filter((p) => !p.seed);
   const casesOf = (p: ReducedProject) => (state.cases ?? []).filter((c) => p.sources.includes(c.id));
   const privateIdea = (p: ReducedProject) => casesOf(p).some(isPrivateIdea);
   // The approvers of the draft's yes read it too (GAT D24); without the company's roles and seats there are none to know.
   const approver = (p: ReducedProject) => state.seats !== undefined && state.approvals !== undefined && approverOfDraft(casesOf(p), v, { seats: state.seats, approvals: state.approvals });
-  const open = all.filter((p) => !isOpenDraft(p) || mayReadDraft(p, v, privateIdea(p), approver(p)));
+  // Whoever the draft's baseline waits for reads it too (D16); without the company's rules, routes and seats nobody is known to.
+  const confirmer = (p: ReducedProject) => state.seats !== undefined && state.rules !== undefined && state.routes !== undefined
+    && confirmsDraftBaseline(p, v, { rules: state.rules, routes: state.routes, seats: state.seats });
+  const open = all.filter((p) => !isOpenDraft(p) || mayReadDraft(p, v, privateIdea(p), approver(p), confirmer(p)));
   if (v.role !== "member") return open;
   const id = v.userId;
   if (id === null) return [];
-  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id) || (isOpenDraft(p) && (escalatedToViewer(p, v) || (!privateIdea(p) && approver(p)))));
+  return open.filter((p) => p.leadUserId === id || p.memberUserIds.includes(id) || p.authorUserIds.includes(id) || onDraft(p, id) || (isOpenDraft(p) && (escalatedToViewer(p, v) || confirmer(p) || (!privateIdea(p) && approver(p)))));
 }
 
 /** The line a viewer who may not read a draft gets (D13): the lead's seat role and the start day; `roleTitle` says a role's label. */

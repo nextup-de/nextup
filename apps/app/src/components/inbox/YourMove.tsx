@@ -2,12 +2,13 @@
 // "Your move" (DESIGN_RULES §9, plan quiet-screens): the one place an item asks something of the viewer, the same block
 // for every kind of item. One status line, the question to answer when there is one, at most one filled button (the
 // recommended move), yes and no as quiet buttons, and every other move under More. A move that does nothing yet is
-// never passed in, so it is not drawn. Props in, JSX out: what each move does is the caller's.
+// never passed in, so it is not drawn. A move that needs words (a reason, a condition) opens its form under the buttons
+// (`children`). Props in, JSX out: what each move does is the caller's.
 import { useEffect, useId, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
 import styles from "./YourMove.module.css";
 
-export type Move = { key: string; label: string; onSelect: () => void; danger?: boolean };
+export type Move = { key: string; label: string; onSelect: () => void; danger?: boolean; disabled?: boolean; testId?: string };
 export type Moves = { primary: Move | null; quiet: Move[]; more: Move[] };
 
 /** The plain answers: they stay in view as quiet buttons when they are not the recommended move. */
@@ -20,12 +21,16 @@ export function sortMoves(moves: readonly Move[], rec: string): Moves {
   return { primary, quiet: rest.filter((m) => PAIR.has(m.key)), more: rest.filter((m) => !PAIR.has(m.key)) };
 }
 
-export function YourMove({ status, lines = [], quote, moves, name }: {
-  status?: string | null; lines?: readonly string[]; quote?: string | null; moves: Moves; name?: string;
+export function YourMove({ status, lines = [], quote, moves, name, children }: {
+  status?: React.ReactNode; lines?: readonly string[]; quote?: string | null; moves: Moves; name?: string; children?: React.ReactNode;
 }) {
   const t = useT();
   const any = moves.primary !== null || moves.quiet.length > 0 || moves.more.length > 0;
-  if (!status && !quote && !any) return null;
+  if (!status && !quote && !any && !children) return null;
+  // Only moves under More (taking an idea back while it waits on a desk): it is not the viewer's turn, so no heading says so.
+  if (!status && !quote && !moves.primary && moves.quiet.length === 0 && !children) {
+    return <section className={styles.card} aria-label={t("inbox.more")} data-testid="your-move" data-name={name} data-quiet="true"><MoreMenu moves={moves.more} /></section>;
+  }
   return (
     <section className={styles.card} aria-label={t("inbox.yourMove")} data-testid="your-move" data-name={name}>
       <h2 className={styles.title}>{t("inbox.yourMove")}</h2>
@@ -33,16 +38,17 @@ export function YourMove({ status, lines = [], quote, moves, name }: {
       {lines.map((l, i) => <p key={i} className={styles.line}>{l}</p>)}
       {quote ? <blockquote className={styles.quote}>“{quote}”</blockquote> : null}
       {moves.primary ? (
-        <button type="button" className="nh-btn nh-btn-primary nh-btn-block" onClick={moves.primary.onSelect}>{moves.primary.label}</button>
+        <button type="button" className="nh-btn nh-btn-primary nh-btn-block" disabled={moves.primary.disabled} data-testid={moves.primary.testId} onClick={moves.primary.onSelect}>{moves.primary.label}</button>
       ) : null}
       {moves.quiet.length > 0 ? (
         <div className={styles.quietRow}>
           {moves.quiet.map((m) => (
-            <button key={m.key} type="button" className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.quiet}`} data-danger={m.danger ? "true" : undefined} onClick={m.onSelect}>{m.label}</button>
+            <button key={m.key} type="button" className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.quiet}`} data-danger={m.danger ? "true" : undefined} disabled={m.disabled} data-testid={m.testId} onClick={m.onSelect}>{m.label}</button>
           ))}
         </div>
       ) : null}
       {moves.more.length > 0 ? <MoreMenu moves={moves.more} /> : null}
+      {children}
     </section>
   );
 }
@@ -67,7 +73,7 @@ function MoreMenu({ moves }: { moves: readonly Move[] }) {
       {open ? (
         <div className={styles.menu} role="menu" id={id}>
           {moves.map((m) => (
-            <button key={m.key} type="button" role="menuitem" className={styles.item} data-danger={m.danger ? "true" : undefined} onClick={() => { setOpen(false); m.onSelect(); }}>{m.label}</button>
+            <button key={m.key} type="button" role="menuitem" className={styles.item} data-danger={m.danger ? "true" : undefined} disabled={m.disabled} data-testid={m.testId} onClick={() => { setOpen(false); m.onSelect(); }}>{m.label}</button>
           ))}
         </div>
       ) : null}

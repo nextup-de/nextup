@@ -1,9 +1,11 @@
 /* The Files page (plan FIL, Paper "Files · 3"). The icon colours are local to this module (D3), not new global tokens. */
-.files { --files-sheet: var(--nh-file-sheet); --files-pdf: var(--nh-file-pdf); --files-doc: var(--nh-file-doc); --files-slides: var(--nh-file-slides); --files-image: var(--nh-file-image); --files-image-back: var(--nh-file-image-back); --files-folder-back: var(--nh-file-folder-back); --files-folder-front: var(--nh-file-folder-front); display: flex; gap: 16px; align-items: stretch; min-width: 0; }
-.list { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; overflow: clip; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+.files { --files-sheet: var(--nh-file-sheet); --files-pdf: var(--nh-file-pdf); --files-doc: var(--nh-file-doc); --files-slides: var(--nh-file-slides); --files-image: var(--nh-file-image); --files-image-back: var(--nh-file-image-back); --files-folder-back: var(--nh-file-folder-back); --files-folder-front: var(--nh-file-folder-front); display: flex; gap: 16px; align-items: stretch; min-width: 0; container: files / inline-size; }
+.list { container: files-list / inline-size; display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; overflow: clip; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
 /* The toolbar and the table run edge to edge (Paper); the states, uploads, the grid and the Jira group sit 20px in. */
 .list > :not([data-edge]):not(:empty) { margin: 0 20px 16px; }
-.side { display: flex; flex-direction: column; flex: 0 0 288px; width: 288px; min-width: 0; padding: 20px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+/* The side card stays a column beside the list. Where the page is narrow (the NextUp AI chat open, Paper
+   "Project · AI side chat" v2 · 4) it narrows with the page, 288px down to 232px, so nothing jumps while the chat slides. */
+.side { container: files-side / inline-size; display: flex; flex-direction: column; flex: 0 0 clamp(232px, 30cqi, 288px); width: clamp(232px, 30cqi, 288px); min-width: 0; padding: 20px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
 .files :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .icon { flex-shrink: 0; overflow: visible; filter: drop-shadow(0 1px 1px rgb(40 60 100 / 18%)); }
 .page { fill: var(--nh-card); stroke: var(--nh-line-2); stroke-width: 0.75; }
@@ -19,6 +21,7 @@
 .imageBack { fill: var(--files-image-back); }
 .folderBack { fill: var(--files-folder-back); }
 .folderFront { fill: var(--files-folder-front); }
-@media (width < 900px) { .files { flex-direction: column; } .side { flex-basis: auto; width: auto; } }
+@container files (width < 800px) { .side { padding: 16px; } }
+@media (width < 900px) { .files { flex-direction: column; } .side { flex-basis: auto; width: auto; padding: 20px; } }
 /* An idea's Files page (IdeaFilesView): the head and the two cards, clear of the bar above. */
 .ideaPage { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }

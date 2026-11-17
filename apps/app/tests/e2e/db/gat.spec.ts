@@ -13,7 +13,7 @@
 // Set up in the database where the UI is not the point: the org, and the raises that only need to exist. The clock is moved by running it with a later
 // `now`, as tests/db/gat-clock.test.ts does. Own company, made straight in the database and deleted at the end, like nor.spec.ts and res.spec.ts.
 import type { Browser, Page } from "@playwright/test";
-import { expect, passSecondFactor, publishIdea, test, vis } from "../helpers";
+import { expect, passSecondFactor, publishIdea, test, vis, yourMove } from "../helpers";
 import { DEFAULT_CALENDAR } from "../../../src/features/clock";
 import { dateOfWorkday, workdayOf } from "../../../src/features/clock/calendar";
 import { getDb } from "../../../src/lib/db/client";
@@ -310,7 +310,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       expect(approvers.indexOf(PLANT)).toBeGreaterThanOrEqual(0);
       expect(approvers.indexOf(SECRETARY)).toBeGreaterThan(approvers.indexOf(PLANT));
       expect(approvers.indexOf(SAFETY)).toBeGreaterThan(approvers.indexOf(SECRETARY));
-      await expect(sheet.getByRole("button", { name: "Say yes and open the draft" }), "no plain yes").toHaveCount(0);
+      await expect(sheet.getByRole("button", { name: "Say yes", exact: true }), "no plain yes").toHaveCount(0);
       await sheet.getByRole("button", { name: "Yes, if approved" }).click();
       await expect.poll(async () => (await eventsOf("case.provisional", first)).length).toBe(1);
       const run = (await eventsOf("case.provisional", first))[0];
@@ -345,7 +345,7 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       // The council's secretary first, with conditions and how many were present; then the safety officer. Any order.
       await openFromInbox(secretary, FIRST_IDEA, first);
       await vis(secretary, "approval-present").fill("7");
-      await vis(secretary, "approval-conditions").click();
+      await (await yourMove(secretary, "Approve with conditions")).click(); // under More in "Your move" (DESIGN_RULES §9)
       await vis(secretary, "approval-text").fill(CONDITIONS);
       await vis(secretary, "approval-send").click();
       await expect.poll(async () => (await eventsOf("case.approval", first)).length).toBe(1);
@@ -416,7 +416,10 @@ test.describe("GAT acceptance: a review and an approval each hold a desk with a 
       await plant.goto(`/${SLUG}/inbox`);
       await plant.waitForLoadState("networkidle");
       await openFromInbox(plant, THIRD_IDEA, third);
-      await expect(vis(plant, "approval-back"), "no send-back: a no goes to the raiser").toHaveCount(0);
+      await plant.getByTestId("your-move").getByRole("button", { name: "More", exact: true }).click(); // the other answers sit under More
+      await expect(plant.getByTestId("approval-conditions")).toBeVisible();
+      await expect(plant.getByTestId("approval-back"), "no send-back: a no goes to the raiser").toHaveCount(0);
+      await plant.keyboard.press("Escape");
       await vis(plant, "approval-refuse").click();
       await vis(plant, "approval-text").fill(REFUSAL);
       await vis(plant, "approval-send").click();

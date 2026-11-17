@@ -1,5 +1,7 @@
 // Every idea gets its own SharePoint folder when it is raised, and its project links the same folder at the yes
 // (features/files/auto-folder.ts, server/files/auto-folder.ts).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { SeatRow } from "@/features/auth/identity";
 import type { CaseEvent, CaseEventType, EventLog, EventPayload } from "@/features/cases/events";
@@ -105,5 +107,11 @@ describe("folderConfig", () => {
     expect(folderConfig({ ...env, SHAREPOINT_FOLDERS_ROOT: "https://example.com/x" })).toBeNull();
     expect(folderConfig({ ...env, SHAREPOINT_FOLDERS_TENANT_ID: "acme" })).toBeNull();
     expect(folderConfig({ ...env, ENTRA_CLIENT_SECRET: "" })).toBeNull();
+  });
+  it("reaches the app on a stack: the compose file hands it both settings and the Entra app", () => {
+    // The stack's compose names every variable the app gets, so one it does not name never arrives, whatever the instance's .env says.
+    const compose = readFileSync(join(__dirname, "..", "..", "..", "..", "..", "stack", "compose.yml"), "utf8");
+    const app = compose.slice(compose.indexOf("\n  app:\n"), compose.indexOf("\n  caddy:\n"));
+    for (const name of ["SHAREPOINT_FOLDERS_TENANT_ID", "SHAREPOINT_FOLDERS_ROOT", "ENTRA_CLIENT_ID", "ENTRA_CLIENT_SECRET"]) expect(app).toContain(`      ${name}: \${${name}:-}\n`);
   });
 });

@@ -104,6 +104,9 @@ export function RulesForm({ slug, values, demo }: { slug: string; values: Values
             </Row>
           </>
         ) : null}
+        <Row id="hourCostEur" label={t("settingsCompany.hourCost")} wide help={t("settingsCompany.hourCostHelp")} error={err("hourCostEur")}>
+          <div className={s.inline}><Num id="hourCostEur" tid="hour-cost" size="money" value={rules.hourCostEur ?? ""} invalid={Boolean(err("hourCostEur"))} /><span className={s.unit}>€</span></div>
+        </Row>
         {foot()}
       </Card>
 

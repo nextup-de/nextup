@@ -30,7 +30,7 @@ import type { AppEventType } from "@/features/cases/persist";
 import { reduce, type State } from "@/features/cases/reducer";
 import { dayFormatter, type DayFmt } from "@/features/cases/rows";
 import { exportSnippet } from "@/features/cases/selectors";
-import { isSampleId, sampleDataOn, withSampleData } from "@/features/demo/sample-data";
+import { isSampleId, sampleDataOn, sampleFolderLinks, withSampleData, withSampleFolders } from "@/features/demo/sample-data";
 import { isAddedSample, sampleProjectEvents } from "@/features/demo/sample-project";
 import type { Persona, RolePersona, Seed, SeedCase } from "@/features/demo/types";
 import { normalizeDots, type Dots } from "@/features/design/dots";
@@ -339,6 +339,11 @@ export function DemoProvider({ tenant, seed: shippedSeed, initialLog, viewer, ch
   }, []);
 
   const S = useMemo(() => reduce(seed, log), [seed, log]);
+  // A sample project opened in this browser (a yes, the dev panel's Add sample project) gets its folder, as a real one does
+  // from the folder job.
+  useEffect(() => {
+    if (ready && sampleFolderLinks(S.projects).length > 0) updateLog(slug, (prev) => withSampleFolders(prev, S.projects, log.day));
+  }, [ready, S.projects, slug, log.day]);
   const D = useMemo(() => demoData(seed, S, demo), [seed, S, demo]);
   const N = useMemo(() => counts(seed, D), [seed, D]);
 

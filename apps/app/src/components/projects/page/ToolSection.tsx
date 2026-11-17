@@ -3,6 +3,7 @@ import { useRef, useState, type DragEvent, type FormEvent } from "react";
 import { dropBefore, fillsPage, TOOL_GLYPH, toolCount } from "@/features/projects/page-view";
 import { isJiraTool } from "@/features/projects/pages";
 import type { MessageKey } from "@/i18n";
+import { hasDefaultTitle } from "@/features/projects/pages";
 import { useT } from "@/i18n/client";
 import { TOOL_REGISTRY } from "../tools/registry";
 import type { ToolProps } from "../tools/types";
@@ -19,7 +20,7 @@ export type ToolSectionProps = ToolProps & {
 const MIME = "application/x-nextup-tool";
 
 /** One section of a page: its head (grip, name, Jira line, count line, Collapse, ⋯) and the tool's body (D8). */
-export function ToolSection({ p, page, tool, jira, editor, hints }: ToolSectionProps) {
+export function ToolSection({ p, page, tool, jira, editor, hints, index }: ToolSectionProps) {
   const t = useT();
   const acts = usePageActs(p);
   const Tool = TOOL_REGISTRY[tool.kind];
@@ -31,6 +32,8 @@ export function ToolSection({ p, page, tool, jira, editor, hints }: ToolSectionP
   const section = useRef<HTMLElement>(null);
   const kindName = t(`projectPages.tool${tool.kind[0].toUpperCase()}${tool.kind.slice(1)}` as MessageKey);
   const name = tool.title ?? kindName;
+  // The page's first section named like the page (Team on Team, Activity on Activity): the page's head already says it (DESIGN_RULES §9).
+  const repeatsPage = index === 0 && name === (hasDefaultTitle(page) ? t(page.title as MessageKey) : page.title);
   const syncing = isJiraTool(tool.kind) && p.sync?.system === "jira" && p.sync.on;
   const n = toolCount(p, tool.kind);
   const countKey: MessageKey | null = tool.kind === "calendar" || tool.kind === "timeline" ? "projectPages.datedStepsCount" : tool.kind === "board" || tool.kind === "list" ? "projectPages.stepsCount" : tool.kind === "links" ? "projectPages.itemsCount" : null;
@@ -78,7 +81,7 @@ export function ToolSection({ p, page, tool, jira, editor, hints }: ToolSectionP
             <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm">{t("projectPages.save")}</button>
             {error && <span role="alert" className={styles.line}>{error}</span>}
           </form>
-        : <h2 className={styles.name}>{name}</h2>}
+        : <h2 className={repeatsPage ? "nh-sr" : styles.name}>{name}</h2>}
       <span className={`${styles.line} ${styles.grow}`}>
         {syncing && <span className={styles.sync}>⟳ {t("projectPages.syncedWithJira")}</span>}
         {syncing && countLine && " · "}{countLine}

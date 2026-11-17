@@ -1,5 +1,6 @@
 import { beforeEach, expect, it } from "vitest";
-import { addDemoFile, DEMO_TRAIL, listDemoFolder, removeDemoItem, resetDemoFiles } from "./files-demo";
+import { folderOf } from "@/features/files/link";
+import { addDemoFile, DEMO_FOLDER, DEMO_TRAIL, demoVersions, listDemoFolder, removeDemoItem, resetDemoFiles } from "./files-demo";
 
 beforeEach(resetDemoFiles);
 
@@ -33,4 +34,14 @@ it("FIL demo files: uploads and deletes change the tree in memory and a reset br
   expect(listDemoFolder("Delivery reports Q3")).toEqual({ state: "no-access" });
   resetDemoFiles();
   expect(listDemoFolder("Delivery reports Q3").state).toBe("ok");
+});
+
+it("FIL demo files: the demo folder is a SharePoint link a project can have, and a file's history holds its one version", () => {
+  expect(DEMO_FOLDER.system).toBe("sharepoint");
+  expect(folderOf(DEMO_FOLDER.url)).not.toBeNull();
+  const answer = listDemoFolder("");
+  const row = answer.state === "ok" ? answer.rows.find((r) => r.name === "Supplier scorecard.xlsx") : undefined;
+  expect(demoVersions(row!.id)).toEqual({ state: "ok", versions: [{ id: "1.0", modifiedAt: row!.modifiedAt, modifiedBy: row!.modifiedBy, size: row!.size }] });
+  expect(demoVersions("demo-Delivery reports Q3")).toEqual({ state: "no-access" });
+  expect(demoVersions("elsewhere")).toEqual({ state: "no-access" });
 });

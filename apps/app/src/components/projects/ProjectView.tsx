@@ -10,7 +10,7 @@ import { Banner, PageHeader, PersonFace, Tabs as TabBar } from "@/components/ui/
 import type { JiraStatusView } from "@/features/integrations/jira/types";
 import { holdsRole } from "@/features/auth/identity";
 import { nextMove, projectLabel } from "@/features/projects/selectors";
-import type { ReducedProject } from "@/features/projects/types";
+import type { ProjectPage, ReducedProject } from "@/features/projects/types";
 import { connectionsOf, demoJiraView, isOpenDraft, jiraRowOf, moveLabel, toolName, visibleProjectsFor, type JiraRow } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { PROJECT_TABS, tabQuery, type ProjectTab } from "@/features/projects/tabs";

@@ -1,7 +1,8 @@
 .backdrop { position: fixed; inset: 0; z-index: 90; background: rgba(20, 20, 20, 0.42); }
 .sheet { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 95; width: min(460px, calc(var(--nh-screen-w) - 24px)); max-height: calc(var(--nh-screen-h) - 40px); overflow: auto; background: var(--nh-card); border-radius: var(--radius-sm, 16px); padding: 20px 20px 18px; box-shadow: 0 24px 70px rgba(20, 20, 20, 0.35); }
-.eyebrow { font-family: var(--nh-mono); font-size: var(--nh-fs-xs); letter-spacing: 0.13em; text-transform: uppercase; color: var(--nh-ink-2); }
-.title { font-size: var(--nh-fs-lg); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.02em; line-height: 1.3; margin-top: 8px; }
+.title { margin: 0; font-size: var(--nh-fs-lg); font-weight: 800; color: var(--nh-ink); letter-spacing: -0.02em; line-height: 1.3; }
+/* What the sheet is about when it is not on the page behind it: the question to answer, an idea. */
+.lead { margin-top: 8px; font-size: var(--nh-fs-md); line-height: 1.45; color: var(--nh-ink); overflow-wrap: anywhere; }
 .sub { font-size: var(--nh-fs-sm); color: var(--nh-mute); margin-top: 7px; line-height: 1.55; }
 
 .options { display: flex; flex-direction: column; gap: 7px; margin-top: 16px; }

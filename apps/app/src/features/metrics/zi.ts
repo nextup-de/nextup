@@ -1,7 +1,7 @@
 // The ZI report (MET D13): per unit and for the company, for a period. Pure; counts only, never per person (D2).
 // Ideas drive participation, ideas per 100 and the decision median. Implementation is read from the projects
 // decided in the period; verified outcomes and premiums from the projects finished in the period.
-import { countedIn, REPORT_RULE, verifiedSum } from "./impact";
+import { countedIn, euroOf, REPORT_RULE, verifiedSum } from "./impact";
 import { median } from "./index";
 import { MIN_GROUP, type KpiProject, type LedgerCase, type MetricsOrg, type MetricsUnit, type Period, type ZiRow } from "./types";
 
@@ -48,7 +48,7 @@ function headcountOf(units: MetricsUnit[]): number {
   return configured > 0 ? configured : units.reduce((a, u) => a + u.people, 0);
 }
 
-export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org: MetricsOrg; period: Period }): {
+export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org: MetricsOrg; period: Period; hourCostEur?: number | null }): {
   company: ZiRow;
   units: ZiRow[];
 } {
@@ -83,7 +83,7 @@ export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org
         ideasPer100: round((mine.length / headcount) * 100, 1),
         implementationPct: decidedHere.length === 0 ? null : round((decidedHere.filter((p) => inPeriod(p.doneDay)).length / decidedHere.length) * 100),
         medianDaysToDecision: median(days),
-        savingsEur: sum((m) => m.eur),
+        savingsEur: sum((m) => euroOf(m, input.hourCostEur ?? null)),
         energyKwh: sum((m) => m.kwh),
         co2Kg: sum((m) => m.co2Kg),
         premiumsEur: finished.length === 0 ? null : finished.reduce((a, p) => a + p.premiumsEur, 0),

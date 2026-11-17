@@ -4,6 +4,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { startUploads } from "@/features/files/upload-run";
 import { useT } from "@/i18n/client";
 import { trailOf } from "./Breadcrumb";
+import { useFilesSource } from "./source";
 import type { FilesPartProps } from "./types";
 import styles from "./Upload.module.css";
 
@@ -12,11 +13,12 @@ const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types]
 /** Dropping files on the page (3.3): the card says where they will land; the drop starts the uploads into the open folder. */
 export function DropZone({ state, actions }: FilesPartProps) {
   const t = useT();
-  const { serverMode, persona } = useDemo();
+  const { persona } = useDemo();
+  const { demo } = useFilesSource(state.p.id);
   const [count, setCount] = useState<number | null>(null);
   const depth = useRef(0);
-  const live = useRef({ state, actions, serverMode, by: persona.who.name });
-  useEffect(() => { live.current = { state, actions, serverMode, by: persona.who.name }; });
+  const live = useRef({ state, actions, demo, by: persona.who.name });
+  useEffect(() => { live.current = { state, actions, demo, by: persona.who.name }; });
   const armed = state.editor && !!state.folder;
 
   useEffect(() => {
@@ -28,8 +30,8 @@ export function DropZone({ state, actions }: FilesPartProps) {
       if (!hasFiles(e)) return;
       e.preventDefault(); depth.current = 0; setCount(null);
       const dropped = e.dataTransfer ? [...e.dataTransfer.files] : [];
-      const { state: s, actions: a, serverMode: server, by } = live.current;
-      if (dropped.length) void startUploads(dropped, { projectId: s.p.id, path: s.path.join("/"), demo: !server, by, landed: a.reload });
+      const { state: s, actions: a, demo: inBrowser, by } = live.current;
+      if (dropped.length) void startUploads(dropped, { projectId: s.p.id, path: s.path.join("/"), demo: inBrowser, by, landed: a.reload });
     };
     window.addEventListener("dragenter", enter); window.addEventListener("dragover", over); window.addEventListener("dragleave", leave); window.addEventListener("drop", drop);
     return () => { window.removeEventListener("dragenter", enter); window.removeEventListener("dragover", over); window.removeEventListener("dragleave", leave); window.removeEventListener("drop", drop); };
