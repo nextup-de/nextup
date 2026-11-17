@@ -28,7 +28,8 @@ export function Team({ p }: { p: ReducedProject }) {
   return (
     <section className={styles.card} aria-labelledby={"team-" + p.id}>
       <div className={styles.head}>
-        <h2 id={"team-" + p.id} className={styles.title}>{t("projects.teamTitle")}</h2>
+        {/* Its section (or the page) carries the name: kept for screen readers only (DESIGN_RULES §9). */}
+        <h2 id={"team-" + p.id} className="nh-sr">{t("projects.teamTitle")}</h2>
         <span className={styles.muted}>{t("projects.peopleCount", { count: team.length })}</span>
       </div>
       <ul className={styles.rows}>

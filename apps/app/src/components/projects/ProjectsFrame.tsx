@@ -8,7 +8,10 @@ import { useSyncExternalStore } from "react";
 import type { ProjectsTabKey } from "@/config/nav";
 import { SectionTabs } from "@/components/shell/SectionTabs";
 import { useT } from "@/i18n/client";
+import { useDemo } from "@/components/dashboard/DemoProvider";
 import { ProjectsSidebar } from "./ProjectsSidebar";
+import { ProjectAi } from "./ai/ProjectAi";
+import { useProjectAiOpen } from "./ai/projectAiPreview";
 import s from "./ProjectsFrame.module.css";
 
 const KEY = "nh.projectsSidebar";
@@ -18,17 +21,20 @@ const listeners = new Set<() => void>();
 const readSb = (): "open" | "hidden" => { try { return window.localStorage.getItem(KEY) === "open" ? "open" : "hidden"; } catch { return "hidden"; } };
 const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
-/** `idea`: the page is an idea's own (no part of Projects), so the sidebar shows that idea's pages alone. */
-export function ProjectsFrame({ area, projectId, caseId, idea = false, children }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; idea?: boolean; children: React.ReactNode }) {
+export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTabKey | null; projectId: string | null; children: React.ReactNode }) {
   const t = useT();
   const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
+  // The NextUp AI side chat, on a project's own pages only (flag projectAi).
+  const { flag } = useDemo();
+  const ai = projectId !== null && !idea && flag("projectAi");
+  const [aiOpen, setAiOpen] = useProjectAiOpen();
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
 
   return (
     <div className={s.root} data-wide="true" data-psb={sb} data-testid="projects-area">
       <aside className={s.side} aria-label={t("projects.sbLabel")} inert={sb === "hidden"}>
         {/* Hidden, it draws nothing: no search field, list or links left in the page for a reader or a test. */}
-        {sb === "open" && <ProjectsSidebar area={area} projectId={projectId} caseId={caseId} idea={idea} onHide={() => set("hidden")} />}
+        {sb === "open" && <ProjectsSidebar area={area} projectId={projectId} onHide={() => set("hidden")} />}
       </aside>
       <div className={s.main}>
         {sb === "hidden" && (
@@ -39,6 +45,7 @@ export function ProjectsFrame({ area, projectId, caseId, idea = false, children 
         {area && <div className={s.tabs}><SectionTabs section="projects" active={area} /></div>}
         {children}
       </div>
+      {ai && <ProjectAi open={aiOpen} setOpen={setAiOpen} />}
     </div>
   );
 }

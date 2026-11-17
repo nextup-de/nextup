@@ -4,7 +4,7 @@
 import { postAsOf } from "@/features/ideas/posting";
 import { calendarSpec, REGIONS, type CalendarSpec, type Region } from "@/features/clock";
 import { loopRules, OVERLOAD_AT_DEFAULT, type LoopRules, type RewardKind } from "@/features/loop/rules";
-import { DEFAULT_RULES, ESCALATION_DAYS_MAX, PROJECT_START_DAYS_MAX, rulesFromRows, type CompanyRules } from "@/features/knowledge/rules";
+import { HOUR_COST_MAX, DEFAULT_RULES, ESCALATION_DAYS_MAX, PROJECT_START_DAYS_MAX, rulesFromRows, type CompanyRules } from "@/features/knowledge/rules";
 import type { MessageKey } from "@/i18n";
 
 /** The raw form: a field is one string, or a list of strings (checkboxes). */
@@ -125,6 +125,11 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
   const blockedDays = blockedDaysOfForm(text(f, "blockedDays"));
   if (blockedDays === null) return fail("blockedDays", "settingsCompany.errBlockedDays");
 
+  // What an hour of work costs (one value for the company): empty means hours stay hours on the Dashboard.
+  const hourText = text(f, "hourCostEur");
+  const hourCostEur = hourText === "" ? undefined : wholeIn(hourText, 1, HOUR_COST_MAX);
+  if (hourCostEur === null) return fail("hourCostEur", "settingsCompany.errHourCost");
+
   // The spend rule: an empty limit means no rule; a limit needs its sentence.
   let spend: CompanyRules["spend"] = null;
   const limit = text(f, "spendLimitEur");
@@ -178,6 +183,7 @@ export function parseRulesForm(f: FormFields): Parsed<RulesForm> {
         ...(questionDays === undefined ? {} : { questionDays }),
         ...(overloadAt === undefined ? {} : { overloadAt }),
         ...(blockedDays === undefined ? {} : { blockedDays }),
+        ...(hourCostEur === undefined ? {} : { hourCostEur }),
         // Who a member's raise is preselected as (decision Q1.7); anything but "name" keeps the handle.
         postAs: postAsOf(text(f, "postAs")),
         steps: { discussion: on(f, "stepDiscussion"), projects: on(f, "stepProjects"), measure: on(f, "stepMeasure"), recognition: on(f, "stepRecognition") },

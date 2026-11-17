@@ -9,7 +9,7 @@ import { logFromRows, type EventRow } from "@/features/cases/persist";
 import { reduce, type ReducedCase } from "@/features/cases/reducer";
 import { canOpen, membersForViewer, unitsOf, viewerKeys, type VisMember } from "@/features/cases/visibility";
 import type { ReducedProject } from "@/features/projects/types";
-import { approverOfDraft, isOpenDraft, mayReadDraft } from "@/features/projects/views";
+import { approverOfDraft, confirmsDraftBaseline, isOpenDraft, mayReadDraft } from "@/features/projects/views";
 import { isPrivateIdea } from "@/features/cases/visibility";
 import type { Seed, SeedCase } from "@/features/demo/types";
 import type { SeedProject } from "@/features/projects/types";
@@ -128,7 +128,7 @@ export async function cutDrafts(companyId: string, viewer: LogViewer, rows: Even
   for (const p of state.projects) {
     if (!drafts.has(p.id) || !isOpenDraft(p)) continue;
     const cases = state.cases.filter((c) => p.sources.includes(c.id));
-    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats)) continue;
+    if (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state), confirmsDraftBaseline(p, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats)) continue;
     cut.set(p.id, cases.some((c) => c.fromUserId === viewer.userId) ? Object.keys(RAISER_SUMMARY) : Object.keys(DRAFT_SUMMARY));
   }
   // The desk's line to the raiser (D23) is for the raiser and the people on the draft, not for everyone who may read the case.
@@ -138,7 +138,7 @@ export async function cutDrafts(companyId: string, viewer: LogViewer, rows: Even
     const p = state.projects.find((x) => projectIdOf(r.payload).includes(x.id) || x.id === `p_${r.id}`);
     const cases = state.cases.filter((c) => c.id === r.targetId);
     if (cases.some((c) => c.fromUserId === viewer.userId)) return true;
-    return p !== undefined && (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats));
+    return p !== undefined && (mayReadDraft(p, viewer, cases.some(isPrivateIdea), approverOfDraft(cases, { role: viewer.role, userId: viewer.userId, me }, state), confirmsDraftBaseline(p, { role: viewer.role, userId: viewer.userId, me }, state)) || holdsDraftEscalation(p, viewer, seats));
   };
   const stripped = new Set(rows.filter((r) => !noteHeld(r)).map((r) => r.id));
   if (cut.size === 0 && stripped.size === 0) return rows;

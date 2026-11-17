@@ -103,7 +103,7 @@ export function Timeline({ p, jira, page, tool }: { p: ReducedProject; jira: Jir
         <div className={styles.scale} role="radiogroup" aria-label={t("projectPlan.scaleLabel")}>
           {TIMELINE_SCALES.map((sc) => <button key={sc} type="button" role="radio" aria-checked={scale === sc} data-on={scale === sc ? "true" : undefined} onClick={() => setScale(sc)}>{sc === "weeks" ? t("projectPlan.scaleWeeks") : sc === "months" ? t("projectPlan.scaleMonths") : t("projectPlan.scaleQuarters")}</button>)}
         </div>
-        {rights.addStep && page.tools[0]?.id !== tool.id && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => setAdding(true)}>+ {t("projectPlan.timelineAddStep")}</button>}
+        {rights.addStep && page.tools[0]?.id !== tool.id && <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => setAdding(true)}>+ {t("projectPlan.timelineAddStep")}</button>}
       </div></HeadSlot>
     </div>
     {syncing && jira.state === "synced" && <p className={styles.note}>{t("projectPlan.timelineSyncNote")}</p>}

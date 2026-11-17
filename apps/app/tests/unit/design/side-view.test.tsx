@@ -19,6 +19,7 @@ describe("DESIGN side view", () => {
     for (const section of SIDE_VIEW_SECTIONS) expect(SECTION_TABS[section].length).toBeGreaterThan(1);
     expect(hasSideView("dashboard")).toBe(true);
     expect(hasSideView("profile")).toBe(true);
+    expect(hasSideView("inbox")).toBe(true); // Inbox and Decisions (package A, Kevin 16 Nov: every area)
     expect(hasSideView("ideas")).toBe(true);
     // The raise page's own sidebar is the Ideas side view (its pages at the top): the shell wraps it in no second one; Mine sits in AreaFrame.
     expect(bringsOwnSideView("/raise")).toBe(true);
@@ -34,6 +35,21 @@ describe("DESIGN side view", () => {
     expect(out).toContain('aria-label="Show sidebar"');
     expect(out).not.toContain("/acme/dashboard/kpis");
     expect(out).not.toContain("the page&#x27;s list");
+  });
+
+  it("the Inbox starts open, so the walk through it is in view (Kevin, 17 Nov 2026; one constant in AreaFrame)", () => {
+    const out = render(h(AreaFrame, { section: "inbox", active: "inbox", children: h("p", null, "the page") }));
+    expect(out).toContain('data-sb="open"');
+    expect(out).toContain('aria-label="Hide sidebar"');
+    expect(out).not.toContain('aria-label="Show sidebar"');
+  });
+
+  it("no slide on a page load: the width moves only after the button is pressed", () => {
+    const out = render(h(AreaFrame, { section: "inbox", active: "inbox", children: h("p", null, "the page") }));
+    expect(out).not.toContain("data-moved");
+    const css = read("src/components/shell/AreaFrame.module.css");
+    expect(css).toMatch(/\.root\[data-moved="true"\] \.side \{ transition: width/);
+    expect(css).not.toMatch(/^\.side \{[^}]*transition/m); // the bare rule: a load draws it at once
   });
 
   it("the strip of a side-view section is marked, so only a phone draws it; other strips are not", () => {

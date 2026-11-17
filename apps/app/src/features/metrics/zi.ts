@@ -1,6 +1,7 @@
 // The ZI report (MET D13): per unit and for the company, for a period. Pure; counts only, never per person (D2).
 // Ideas drive participation, ideas per 100 and the decision median. Implementation is read from the projects
 // decided in the period; verified outcomes and premiums from the projects finished in the period.
+import { countedIn, euroOf, REPORT_RULE, verifiedSum } from "./impact";
 import { median } from "./index";
 import { MIN_GROUP, type KpiProject, type LedgerCase, type MetricsOrg, type MetricsUnit, type Period, type ZiRow } from "./types";
 
@@ -47,7 +48,7 @@ function headcountOf(units: MetricsUnit[]): number {
   return configured > 0 ? configured : units.reduce((a, u) => a + u.people, 0);
 }
 
-export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org: MetricsOrg; period: Period }): {
+export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org: MetricsOrg; period: Period; hourCostEur?: number | null }): {
   company: ZiRow;
   units: ZiRow[];
 } {
@@ -71,9 +72,9 @@ export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org
     const days = decided.filter((c) => inScope(c.raiserUnitId)).map((c) => c.decidedDay! - c.raisedDay);
     const decidedHere = decidedProjects.filter((p) => inScope(p.raiserUnitId));
     const finished = finishedProjects.filter((p) => inScope(p.raiserUnitId));
-    const good = finished.flatMap((p) => p.measures.filter((m) => m.verified && m.better));
-    const sum = (pick: (m: (typeof good)[number]) => number | null) =>
-      finished.length === 0 ? null : good.reduce((a, m) => a + (pick(m) ?? 0), 0);
+    // Impact figures (D7): the sum and the rule in features/metrics/impact.ts, the same ones the pilot report uses.
+    const counted = countedIn(projects.filter((p) => inScope(p.raiserUnitId)), period, REPORT_RULE);
+    const sum = (pick: (m: KpiProject["measures"][number]) => number | null) => verifiedSum(counted, pick);
     return {
       raisers,
       row: {
@@ -82,7 +83,7 @@ export function ziKpis(input: { cases: LedgerCase[]; projects: KpiProject[]; org
         ideasPer100: round((mine.length / headcount) * 100, 1),
         implementationPct: decidedHere.length === 0 ? null : round((decidedHere.filter((p) => inPeriod(p.doneDay)).length / decidedHere.length) * 100),
         medianDaysToDecision: median(days),
-        savingsEur: sum((m) => m.eur),
+        savingsEur: sum((m) => euroOf(m, input.hourCostEur ?? null)),
         energyKwh: sum((m) => m.kwh),
         co2Kg: sum((m) => m.co2Kg),
         premiumsEur: finished.length === 0 ? null : finished.reduce((a, p) => a + p.premiumsEur, 0),

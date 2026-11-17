@@ -114,6 +114,7 @@ export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
 export const SIDE_VIEW_SECTIONS: readonly SectionKey[] = [
   "dashboard",
   "profile",
+  "inbox",
   "ideas",
 ];
 export const hasSideView = (section: SectionKey): boolean => SIDE_VIEW_SECTIONS.includes(section);

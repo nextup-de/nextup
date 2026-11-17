@@ -4,6 +4,7 @@ import type { ReducedCase, State } from "@/features/cases/reducer";
 import type { CaseEvent, EventLog } from "@/features/cases/events";
 import type { Seed } from "@/features/demo/types";
 import { overrideRate } from "@/features/routing/override";
+import { kpiProjectsOf } from "./impact";
 import { stalledOf } from "./stalled";
 import type { LedgerCase, LedgerFacts, LedgerInput, MetricsOrg } from "./types";
 
@@ -72,6 +73,7 @@ export function ledgerInputFromState(S: State, log: EventLog, seed: Seed, today:
   const unitOfDept = (label: string) => org.units.find((u) => u.id === label || u.name === label)?.id ?? null;
   const cases = S.cases.map((c) => ledgerCase(c, unitOfRole, unitOfDept));
   const unitOfCase = new Map(cases.map((c) => [c.caseId, c.unitId]));
+  const raiserUnitOf = new Map(cases.map((c) => [c.caseId, c.raiserUnitId]));
   return {
     cases,
     facts: factsOf(S, log),
@@ -80,5 +82,7 @@ export function ledgerInputFromState(S: State, log: EventLog, seed: Seed, today:
     today,
     demoClock,
     stalled: stalledOf(S.projects, (id) => unitOfCase.get(id) ?? null),
+    projects: kpiProjectsOf(S.projects, (id) => raiserUnitOf.get(id) ?? null),
+    hourCostEur: seed.hourCostEur ?? null,
   };
 }

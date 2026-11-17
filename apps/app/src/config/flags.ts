@@ -74,12 +74,22 @@ export const FLAGS = {
     removeBy: "2027-06-30",
   },
   // components/projects/overview: Paper "Overview · final + interactions" (OVERVIEW-LIST-FOR-KEVIN.txt)
+  // On for every stage since 17 Nov 2026 (Kevin: the list staging shows is the right one, Musterwerk showed the old grouped one).
+  // Next: delete this entry, the `if` in ProjectsHub and the old grouped list.
   overviewList: {
-    description: "The Projects tab as one Overview list: your open ideas and your projects together, list or grid, with pills, search and sort. Off: projects only",
+    description: "The Projects tab as one Overview list of projects, list or grid, with pills and search. Off: the old list grouped by stage",
     owner: "Sam",
-    defaults: { demo: true, sandbox: true, pilot: false, live: false },
+    defaults: { demo: true, sandbox: true, pilot: true, live: true },
     added: "2026-11-16",
     removeBy: "2027-01-31",
+  },
+  // components/projects/ai: Paper "Project · AI side chat" v2 (PROJECT-AI-FOR-KEVIN.txt)
+  projectAi: {
+    description: "A project's pages get the NextUp AI side chat: a tab on the right edge that opens a chat column. Off: no tab",
+    owner: "Sam",
+    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    added: "2026-11-17",
+    removeBy: "2027-02-28",
   },
 } as const satisfies Record<string, FlagDef>;
 

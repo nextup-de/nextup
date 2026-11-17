@@ -223,8 +223,9 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await page.getByRole("button", { name: "Yes, do it" }).click();
       const sheet = page.getByRole("dialog", { name: "Yes, do it" });
       await sheet.locator("#accept-lead").selectOption(id.lead);
+      await sheet.getByTestId("fold").filter({ hasText: "More" }).locator("summary").click(); // the line to the raiser is under More (DESIGN_RULES §9)
       await sheet.locator("#accept-note").fill(NOTE);
-      await sheet.getByRole("button", { name: "Say yes and open the draft" }).click();
+      await sheet.getByRole("button", { name: "Say yes", exact: true }).click();
 
       await expect.poll(async () => {
         const row = (await eventsOf("case.decided", caseA))[0];
@@ -258,10 +259,11 @@ test.describe("SET acceptance: the yes opens a project draft", () => {
       await expect(row).toHaveCount(1);
       await row.click();
       await expect(page).toHaveURL(new RegExp(`/projects/${projectA}$`));
-      await expect(page.getByTestId("draft-top-line")).toContainText("once"); // no start day before the lead takes it
+      // The start day is said once, by the stepper's Start line (DESIGN_RULES §9): none before the lead takes it.
+      const startLine = page.getByTestId("draft-progress").getByRole("button", { name: /^Start/ });
+      await expect(startLine).toHaveText(/^Start\s*$/);
       await page.getByRole("button", { name: "Take it" }).click();
-      await expect(page.getByTestId("draft-top-line")).toContainText(/Start expected \S/);
-      await expect(page.getByTestId("draft-top-line")).not.toContainText("once");
+      await expect(startLine).toHaveText(/^Start\s*\S/);
       await expect.poll(async () => (await eventsOf("project.lead.answered", projectA)).length).toBe(1);
       expect((await eventsOf("project.lead.answered", projectA))[0]).toMatchObject({ actorUserId: id.lead, payload: { take: true } });
 

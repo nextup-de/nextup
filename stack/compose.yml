@@ -130,6 +130,11 @@ services:
       # install.sh --entra-tenant-id (copied in once by migrate) or from /admin -> Access.
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      # Idea folders (src/server/files/auto-folder.ts): every idea a person raises gets its own SharePoint folder under
+      # ROOT, made as the Entra app above, which needs the application permission Files.ReadWrite.All in this tenant.
+      # Either one unset = nobody gets a folder automatically, and the app logs "[folders] off" once at start.
+      SHAREPOINT_FOLDERS_TENANT_ID: ${SHAREPOINT_FOLDERS_TENANT_ID:-}
+      SHAREPOINT_FOLDERS_ROOT: ${SHAREPOINT_FOLDERS_ROOT:-}
       # The Teams bot of this stack (ops/teams/README.md). Unset = Teams stays off: the settings page
       # says the bot is not registered. install.sh --teams-app-id sets all three.
       TEAMS_APP_ID: ${TEAMS_APP_ID:-}

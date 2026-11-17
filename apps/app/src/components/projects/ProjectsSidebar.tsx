@@ -3,21 +3,19 @@
 // (Overview, Decisions, Collaboration, Progress). Below them two layers. Layer 1 lists your projects (a ring
 // that fills as the project moves along); an orange dot says it is late. Projects only: ideas live in the Ideas
 // tab (Kevin and Sam, 16 Nov 2026). Pick one and layer 2 takes its place: a way back, its title and status, and its
-// pages - a project's six, an idea's Overview, Files and Chats - plus the pages its people added. Everyone
+// pages - a project's six - plus the pages its people added. An idea's own pages sit in the Inbox's side view
+// (components/inbox/InboxWalk.tsx, Kevin 17 Nov 2026). Everyone
 // added who is not only a viewer may add pages (page, checklist, table, link), drag any page to a new
 // place, and rename, re-icon or delete the added ones. The added pages are a stand-in (projectPagesPreview.ts).
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
-import { visibleTo } from "@/components/dashboard/derive";
 import { sectionTabsFor, type ProjectsTabKey } from "@/config/nav";
-import { raisedWith } from "@/features/cases/rows";
-import { commentsOn } from "@/features/cases/selectors";
 import { PROJECT_TABS, projectTabOf, tabQuery, type ProjectTab } from "@/features/projects/tabs";
 import {
-  IDEA_EXTRA_TABS, IDEA_TABS, PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, mayReviseIdea, movePage, pageList, removePage, ringOf, sidebarProjects, updatePage,
-  type CustomPage, type IdeaStage, type PageEntry, type PageIcon, type PageKind, type Ring,
+  PAGE_ICONS, addTab, removeTab, shownTabs, PAGE_KINDS, addPage, daysLate, movePage, pageList, removePage, ringOf, sidebarProjects, updatePage,
+  type CustomPage, type PageEntry, type PageIcon, type PageKind, type Ring,
 } from "@/features/projects/sidebar";
 import { isOpenDraft, visibleProjectsFor } from "@/features/projects/views";
 import { SETUP_PAGE, showsSetup } from "@/features/projects/page-route";
@@ -28,7 +26,6 @@ import { AddPageDialog } from "./page/AddPageDialog";
 import { MergeDialog } from "./page/MergeDialog";
 import { usePageActs, type PageActOutcome } from "./page/usePageActs";
 import type { PageIconKey, ProjectPage, ReducedProject } from "@/features/projects/types";
-import type { ReducedCase } from "@/features/cases/reducer";
 import { useT } from "@/i18n/client";
 import { idViewerOf, useRights } from "./parts";
 import { ideaPagesId, newPageId, useProjectPages } from "./projectPagesPreview";
@@ -37,38 +34,19 @@ import s from "./ProjectsSidebar.module.css";
 
 const MAX_ROWS = 8; // layer 1 shows this many projects; "All n projects" opens the rest
 
-export function ProjectsSidebar({ area, projectId, caseId, idea: onIdea = false, onHide }: { area: ProjectsTabKey | null; projectId: string | null; caseId: string | null; idea?: boolean; onHide: () => void }) {
+export function ProjectsSidebar({ area, projectId, onHide }: { area: ProjectsTabKey | null; projectId: string | null; onHide: () => void }) {
   const ctx = useDemo();
   const t = useT();
   const { S, demo, href, role, serverMode } = ctx;
-  const params = useSearchParams();
   const [query, setQuery] = useState("");
-  // An idea opens on its own page (/idea?id=… or /cases/<id>).
-  const ideaId = caseId ?? (onIdea ? params.get("id") : null);
-  // Layer 2 shows while a project or idea is open; "‹ back" (or a search) goes back to layer 1 without leaving the page.
-  const openId = projectId ?? ideaId;
+  // Layer 2 shows while a project is open; "‹ back" (or a search) goes back to layer 1 without leaving the page.
+  const openId = projectId;
   const [listFor, setListFor] = useState<string | null>(null); // what was open when the list was asked for
   const listOpen = openId !== null && listFor === openId;
   const projects = visibleProjectsFor(S, idViewerOf(ctx), demo);
   const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
-  const idea = ideaId ? S.cases.find((c) => c.id === ideaId && visibleTo(ctx, c)) ?? null : null;
-  const layer2 = !listOpen && !query && (project || idea);
+  const layer2 = !listOpen && !query && project;
   const nav = sectionTabsFor("projects", { role, serverMode });
-  const router = useRouter();
-
-  // An idea is no part of Projects (Kevin and Sam, 16 Nov 2026): beside its page, only its own pages and the way back to the Inbox.
-  if (onIdea && !projectId) return (
-    <div className={s.sb}>
-      <div className={s.top}>
-        <button type="button" className={s.iconBtn} onClick={onHide} title={t("projects.sbHide")} aria-label={t("projects.sbHide")}>
-          <Svg size={16}><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M6 3V13" /></Svg>
-        </button>
-      </div>
-      <div className={s.lower}>
-        {idea && <IdeaPages c={idea} back={t("shell.navInbox")} onBack={() => router.push(href("/inbox"))} />}
-      </div>
-    </div>
-  );
 
   return (
     <div className={s.sb}>
@@ -94,14 +72,28 @@ export function ProjectsSidebar({ area, projectId, caseId, idea: onIdea = false,
       <div className={s.lower}>
         {layer2 && project ? (
           <ProjectPages p={project} onBack={() => setListFor(project.id)} />
-        ) : layer2 && idea ? (
-          <IdeaPages c={idea} back={t("projects.sbBack")} onBack={() => setListFor(idea.id)} />
         ) : (
           <List projects={projects} query={query} openId={openId} />
         )}
       </div>
     </div>
   );
+}
+
+// A label too long for its row glides left while the row is hovered, so it can be read in full (as in the
+// Ideas sidebar). How far is measured when the mouse arrives: the text's full width against the visible box.
+function Glide({ text }: { text: string }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const el = box.current, row = el?.closest("a, button");
+    if (!el || !row) return;
+    const measure = () => { const inner = el.firstElementChild as HTMLElement | null; setSlide(inner ? Math.max(0, Math.ceil(inner.scrollWidth - el.clientWidth)) : 0); };
+    row.addEventListener("mouseenter", measure); row.addEventListener("focus", measure);
+    return () => { row.removeEventListener("mouseenter", measure); row.removeEventListener("focus", measure); };
+  }, []);
+  const style = slide ? ({ "--slide": `-${slide + 6}px`, "--glide": `${Math.round(400 + slide * 22)}ms` } as React.CSSProperties) : undefined;
+  return <span ref={box} className={s.label} data-glide={slide > 0 || undefined} style={style}><span className={s.labelText}>{text}</span></span>;
 }
 
 // ── Layer 1 ─────────────────────────────────────────────────────────────────────────────────────────
@@ -117,7 +109,7 @@ function List({ projects, query, openId }: { projects: ReducedProject[]; query: 
         {rows.slice(0, query ? undefined : MAX_ROWS).map((p) => (
           <Link key={p.id} href={href("/projects/" + p.id)} className={s.row} data-project aria-current={p.id === openId ? "page" : undefined}>
             <span className={s.slot}><RingMark ring={ringOf(p.status)} /></span>
-            <span className={s.label}>{p.title}</span>
+            <Glide text={p.title} />
             <EndDot late={p.overdue} />
             <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
           </Link>
@@ -269,7 +261,7 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
         }}>
         <Link href={pageUrl(page.id)} className={s.row} draggable={false} aria-current={current === page.id ? "page" : undefined}>
           <span className={s.slot}><span className={s.icon}><PageGlyph icon={page.icon} /></span>{editor && <span className={s.grip} title={t("projectPages.dragPageLabel", { page: title(page) })}>⠿</span>}</span>
-          <span className={s.label}>{title(page)}</span>
+          <Glide text={title(page)} />
           {newPages.includes(page.id) && <span className={s.newTag}>{t("projectPages.newTag")}</span>}
         </Link>
         {editor && <button type="button" className={s.more} disabled={busy} data-open={menu?.id === page.id || undefined} aria-label={t("projectPages.pageMenuLabel", { page: title(page) })}
@@ -304,26 +296,6 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
     <AddPageDialog p={p} open={adding} onClose={() => setAdding(false)} onCreated={(id) => { setNewPages((ids) => [...ids, id]); router.push(pageUrl(id)); }} />
     {merging && <MergeDialog p={p} open fromPageId={merging.from} intoPageId={merging.into} onClose={() => setMerging(null)} onMerged={(id) => router.push(pageUrl(id))} />}
   </div>;
-}
-
-function IdeaPages({ c, back, onBack }: { c: ReducedCase; back: string; onBack: () => void }) {
-  const { S, href, log, me, act, showToast } = useDemo();
-  const t = useT();
-  const params = useSearchParams();
-  const base = href("/idea?id=" + encodeURIComponent(c.id));
-  const stage: IdeaStage = c.status === "discussion" ? "decision" : "lead";
-  const counts: Record<string, number | undefined> = { files: raisedWith(c).attachments || undefined, chats: commentsOn(log, c.id).length || undefined };
-  return (
-    // An idea is no project (docs/DESIGN_RULES.md §8): it has its own fixed pages - Idea, Files, Chats - and no "Add page".
-    <PageLayer storeId={ideaPagesId(c.id)} from={null} tabs={[...IDEA_TABS, ...IDEA_EXTRA_TABS]} base={base} pageUrl={(id) => base + "&page=" + id} editor={false}
-      current={params.get("page") ?? "overview"}
-      tabUrl={(k) => (k === "overview" ? base : base + "&page=" + k)}
-      tabInfo={(k) => ({ label: t(("projects.idea_" + k) as "projects.idea_overview"), icon: k === "chats" ? <PageGlyph icon="chat" /> : k === "overview" ? <PageGlyph icon="star" /> : <TabIcon k={k} />, count: counts[k] })}
-      back={back} onBack={onBack}
-      head={<Head mark={<StageMark stage={stage} />} title={c.title} status={c.decided || c.withdrawn ? undefined : t(c.kind === "problem" ? "projects.sbProblemKind" : "projects.sbIdeaKind")}
-        // Whoever may revise it double-clicks the title to rename it: it goes out as its next version, as on the page.
-        onRename={mayReviseIdea(c, me.userId, S.projects) ? (title) => { act.revise(c.id, c.body, title); showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 })); } : undefined} />} />
-  );
 }
 
 /** The open project's or idea's title; a project also says where it stands (an idea's stage is its mark). `onRename`: a double-click edits the title. */
@@ -447,7 +419,7 @@ function PageLayer({ storeId, from, tabs: baseTabs, extraTabs = [], base, pageUr
                   <span className={s.icon}>{custom ? <PageGlyph icon={custom.icon} /> : info?.icon}</span>
                   {editor && <span className={s.grip} title={t("projects.sbDrag")}><Svg size={16} fill><circle cx="6" cy="4" r="1.1" /><circle cx="10" cy="4" r="1.1" /><circle cx="6" cy="8" r="1.1" /><circle cx="10" cy="8" r="1.1" /><circle cx="6" cy="12" r="1.1" /><circle cx="10" cy="12" r="1.1" /></Svg></span>}
                 </span>
-                <span className={s.label}>{label}</span>
+                <Glide text={label} />
                 {info?.count !== undefined && <span className={s.count}>{info.count}</span>}
               </Link>
               {editor && (custom || extraTabs.includes(k)) && (
@@ -522,16 +494,6 @@ function PageLayer({ storeId, from, tabs: baseTabs, extraTabs = [], base, pageUr
         </>
       )}
     </div>
-  );
-}
-
-/** An idea's stage: three dashes, a small copy of the Overview table's stage dashes - one filled at the team lead, two on the way to a decision. */
-function StageMark({ stage }: { stage: IdeaStage }) {
-  const on = stage === "lead" ? 1 : 2;
-  return (
-    <svg className={s.stage} width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      {[0, 5.75, 11.5].map((x, k) => <rect key={x} x={x} y="6" width="4.5" height="4" rx="1.2" data-on={k < on || undefined} />)}
-    </svg>
   );
 }
 

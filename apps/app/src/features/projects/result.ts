@@ -1,5 +1,7 @@
 // What a result needs that more than one RES task asks (plan RES, D26). Pure: a project and the loop rules in, an answer out. The one
 // place that knows when a reward is possible, which baseline waits for a second person, and which steps are still open.
+import { usersOfRole, type Me } from "@/features/auth/identity";
+import type { State } from "@/features/cases/reducer";
 import { REWARD_REMIND_DAYS } from "@/features/clock/kinds/project";
 import type { LoopRules } from "@/features/loop/rules";
 import type { ReducedProject, Step } from "./types";
@@ -18,6 +20,20 @@ export const rewardPossible = (rules: Pick<LoopRules, "measure" | "recognition" 
 /** A baseline number that waits for a second person before the start: planning, a number baseline, a reward possible, not confirmed yet (D16). */
 export const baselineNeedsConfirm = (p: Pick<ReducedProject, "status" | "baseline">, rules: Pick<LoopRules, "measure" | "recognition" | "reward">): boolean =>
   p.status === "planning" && p.baseline !== null && !p.baseline.none && rewardPossible(rules) && !p.baseline.confirmed;
+
+/**
+ * May this person confirm the baseline that waits (D16): the accepted sponsor, or a holder of the route's deputy role; a manager only when
+ * the project has no accepted sponsor and the deputy role has no holder. Never the lead, never who typed the baseline.
+ */
+export function mayConfirmBaseline(p: ReducedProject, state: Pick<State, "rules" | "routes" | "seats">, me: Me, isManager: boolean): boolean {
+  if (me.userId === null || !baselineNeedsConfirm(p, state.rules)) return false;
+  if (me.userId === p.leadUserId || me.userId === (p.baseline?.byUserId ?? null)) return false;
+  const sponsor = p.sponsorUserId !== null && p.sponsorUserId !== p.leadUserId ? p.sponsorUserId : null;
+  const deputyRole = state.routes.find((r) => r.id === p.routeId)?.deputyRoleId ?? null;
+  if (me.userId === sponsor) return true;
+  if (deputyRole !== null && me.roleIds.includes(deputyRole)) return true;
+  return isManager && sponsor === null && (deputyRole === null || usersOfRole(state.seats, deputyRole).length === 0);
+}
 
 /** The day recognition is due: REWARD_REMIND_DAYS after the reward became due, while it is; else null (D17). */
 export const recognitionDueDay = (p: Pick<ReducedProject, "rewardDue" | "rewardDueDay">): number | null =>

@@ -43,13 +43,12 @@ export function Inbox({ p, page, tool }: { p: ReducedProject; page: ProjectPage;
       <div className={styles.head}>
         <div>
           <h2 id={"requests-" + p.id} className="nh-sr">{t("projectRequests.requestsTitle")}</h2>
-          <p className={styles.sub}>{counts.new > 0 ? text("subtitleNew", { count: counts.new }) : text("subtitleNone")}</p>
         </div>
       </div>
       <HeadSlot page={page} tool={tool}><div className={styles.chips} role="group" aria-label={text("filterLabel")}>
         {REQUEST_FILTERS.map((f) => (
           <button key={f} type="button" className={styles.chip} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-            {t(FILTER_LABEL[f])}{f === "new" || counts[f] > 0 ? <span className={styles.count}>{counts[f]}</span> : null}
+            {t(FILTER_LABEL[f])}{counts[f] > 0 ? <span className={styles.count}>{counts[f]}</span> : null}
           </button>
         ))}
       </div></HeadSlot>

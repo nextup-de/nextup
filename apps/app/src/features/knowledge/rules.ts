@@ -3,7 +3,7 @@
 import type { SpendRule } from "@/features/demo/types";
 import { DEFAULT_POST_AS, postAsOf, type PostAs } from "@/features/ideas/posting";
 
-export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days", "blocked_days", "no_reason_min", "appeal_days", "question_days", "overload_at"] as const;
+export const COMPANY_RULE_KEYS = ["promise_days", "outcome_days", "spend", "deadline_handover", "escalation_days", "loop_steps", "posting", "project_start_days", "blocked_days", "no_reason_min", "appeal_days", "question_days", "overload_at", "hour_cost"] as const;
 export type CompanyRuleKey = (typeof COMPANY_RULE_KEYS)[number];
 
 /** The thresholds of an overloaded desk (plan OVL, D17): open work items per present holder from which it is triage, up and overflow, and how many late ones make it triage. */
@@ -32,6 +32,8 @@ export type CompanyRules = {
   steps: LoopSteps;
   /** Who a member's raise is preselected as on the last look (decision Q1.7); the member can change it per raise. */
   postAs: PostAs;
+  /** What an hour of work costs, whole euros 1 to 1000: one value for the whole company (Kevin, 16 Nov). It prices the hours a result saves on the Dashboard; missing (no row) = hours stay hours. */
+  hourCostEur?: number;
 };
 export const DEFAULT_RULES: CompanyRules = {
   promiseDays: 5,
@@ -43,6 +45,8 @@ export const DEFAULT_RULES: CompanyRules = {
 };
 /** The most working days an escalation may wait, as promise_days. */
 export const ESCALATION_DAYS_MAX = 60;
+/** The highest hour cost a company can set, in whole euros. */
+export const HOUR_COST_MAX = 1000;
 /** The most working days a project draft may have to start. */
 export const PROJECT_START_DAYS_MAX = 60;
 
@@ -124,6 +128,9 @@ export function rulesFromRows(rows: readonly RuleRow[]): CompanyRules {
       const at = overloadAtOf(value);
       if (at !== null) out.overloadAt = at;
     }
+    else if (key === "hour_cost") {
+      if (isObj(value) && intIn(value.eur, 1, HOUR_COST_MAX)) out.hourCostEur = value.eur;
+    }
     else if (key === "loop_steps") out.steps = stepsOf(value);
     else if (key === "posting") out.postAs = postAsOf(isObj(value) ? value.as : undefined);
   }
@@ -146,6 +153,7 @@ export function rowsFromRules(r: CompanyRules): RuleRow[] {
   if (r.questionDays !== undefined) rows.push({ key: "question_days", value: { days: r.questionDays } });
   if (r.overloadAt !== undefined) rows.push({ key: "overload_at", value: { ...r.overloadAt } });
   if (r.spend) rows.push({ key: "spend", value: { limitEur: r.spend.limitEur, text: r.spend.text } });
+  if (r.hourCostEur !== undefined) rows.push({ key: "hour_cost", value: { eur: r.hourCostEur } });
   return rows;
 }
 

@@ -1,7 +1,8 @@
 // One case's history as the case page tells it ("What happened"): one sentence per event, built from the event's own facts
 // (an amount, an approval's answer, a reason). Facts in, one sentence out - nothing here is stored. Pure, so it is tested alone.
 import type { ApprovalStepInput } from "@/features/approvals/types";
-import type { T } from "@/i18n";
+import { byClock } from "@/features/clock/actor";
+import type { MessageKey, T } from "@/i18n";
 import { actorLabel, type ActorLabels } from "./actor-label";
 import type { CaseEvent } from "./events";
 import { NO_CATEGORIES, noCategoryLabel, type NoCategory } from "./no";
@@ -20,6 +21,11 @@ export type TimelineFacts = {
 };
 
 const ANSWER_KEY = { yes: "approvals.stepYes", conditions: "approvals.stepConditions", back: "approvals.stepBack", no: "approvals.stepNo" } as const;
+
+// The clock is no person (DESIGN_RULES §5, employee words): its hand-over says why in plain words, never "system:clock" or
+// its reason's code. A desk nobody holds has its own sentence (evHandedVacant).
+const clockHanded = (why: unknown): MessageKey =>
+  why === "escalation" || why === "deadline" ? "dashboard.evHandedLate" : why === "away" ? "dashboard.evHandedAway" : why === "overflow" ? "dashboard.evHandedFull" : "dashboard.evHandedByClock";
 
 const isNewCategory = (c: unknown): c is NoCategory => (NO_CATEGORIES as readonly unknown[]).includes(c);
 
@@ -46,7 +52,9 @@ export function timelineSentence(e: CaseEvent, t: T, facts: TimelineFacts): stri
     case "case.invite.declined": return t("dashboard.evInviteDeclined", { actor }) + why(p.why);
     case "case.revised": return t("dashboard.evRevised", { actor }) + (typeof p.overall === "number" ? " " + t("dashboard.evScore", { n: p.overall }) : "");
     case "case.checkin": return t("dashboard.evCheckin", { actor, next: p.next === "decide" ? t("dashboard.evReadyToDecide") : t("dashboard.evAnotherRound") }) + (p.open?.length ? " " + t("dashboard.evOpenList", { list: p.open.join(", ") }) : "");
-    case "case.handed": return p.why === "vacant" ? t("dashboard.evHandedVacant", { to: p.to ?? "" }) : t("dashboard.evHanded", { actor, to: p.to ?? "" }) + why(p.why);
+    case "case.handed": return p.why === "vacant" ? t("dashboard.evHandedVacant", { to: p.to ?? "" })
+      : byClock(e) ? t(clockHanded(p.why), { to: p.to ?? "" })
+      : t("dashboard.evHanded", { actor, to: p.to ?? "" }) + why(p.why);
     case "case.asked": return t("dashboard.evAsked", { actor, text: p.text || t("dashboard.evOneQuestion") });
     case "case.answered": return t("dashboard.evAnswered", { actor, text: p.text ?? "" });
     case "case.unanswered": return t("dashboard.evUnanswered");

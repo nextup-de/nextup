@@ -390,7 +390,8 @@ export const PROJECTS: SeedProject[] = [
       { type: 'project.step.moved', day: -160, actor: 'L. Brandt', payload: { stepId: 's2', to: 'done' } },
       { type: 'project.done', day: -157, actor: 'L. Brandt', payload: { note: 'Live at Ulm for every new hire' } },
       { type: 'project.measured', day: -125, actor: 'L. Brandt', payload: { check: 30, value: 11, source: 'HR onboarding log, 4 hires' } },
-      { type: 'project.measured', day: -66, actor: 'L. Brandt', payload: { check: 90, value: 11, source: 'HR onboarding log, 9 hires' } },
+      { type: 'project.measured', day: -66, actor: 'L. Brandt', payload: { check: 90, value: 11, source: 'HR onboarding log, 9 hires', impact: { hoursPerYear: 1700 } } },
+      { type: 'project.measure.confirmed', day: -61, actor: 'B. Hartmann', payload: { check: 90 } },
       { type: 'project.rewarded', day: -60, actor: 'B. Hartmann', payload: { rule: 'thanks', note: 'Thanked at the Ulm site meeting' } }
     ] },
   { id: 'pj2', title: 'Offline job sheets for field service', sources: ['c8'], authors: ['Anonymous #4471'], routeId: 'r8',
@@ -432,14 +433,14 @@ export const PROJECTS: SeedProject[] = [
       { type: 'project.step.moved', day: -96, actor: 'M. Roth', payload: { stepId: 's2', to: 'done' } },
       { type: 'project.step.moved', day: -48, actor: 'J. Klein', payload: { stepId: 's3', to: 'done' } },
       { type: 'project.done', day: -40, actor: 'A. Weber', payload: { note: 'Both kits on the price list, 31 sold' } },
-      { type: 'project.measured', day: -8, actor: 'A. Weber', payload: { check: 30, value: 165, source: 'SAP sales report, Q3' } }
+      { type: 'project.measured', day: -8, actor: 'A. Weber', payload: { check: 30, value: 165, source: 'SAP sales report, Q3', impact: { savingEurPerYear: 180000 } } }
     ] }
 ];
 
 export const SEED: Seed = {
   clock: DEMO_CLOCK,
   seats: [], goals: DEMO_GOALS, spend: DEMO_RULES.spend,
-  promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS,
+  promiseDays: PROMISE_DAYS, outcomeDays: OUTCOME_DAYS, hourCostEur: 45,
   depts: DEPTS, people: PEOPLE, problems: PROBLEMS, ideas: IDEAS, initiatives: INITIATIVES, outcomes: OUTCOMES,
   personas: ROLES, leaders: LEADERS, routes: ROUTES, cases: [...CASES, ...PROJECT_CASES], waitingOn: WAITING_ON, buddies: BUDDIES,
   stall: STALL, ledger: LEDGER, metrics: METRICS, views: VIEWS, projects: PROJECTS

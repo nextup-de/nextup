@@ -46,6 +46,10 @@ export type LedgerInput = {
   demoClock: boolean;
   /** The projects whose stalled escalation stands today, with the unit they count in (plan RES, D22): the unit of their first source case. */
   stalled: { projectId: string; unitId: string | null }[];
+  /** The company's projects with their results, for "Saved per year" (features/metrics/impact.ts); left out where nothing reads them. */
+  projects?: KpiProject[];
+  /** What an hour of work costs the company (rule hour_cost, one value for the company); null while it is not set. */
+  hourCostEur?: number | null;
 };
 
 export type TileId = "firstReasonedAnswer" | "onTime" | "ideaToDecision" | "pastPromise" | "escalated" | "overruled";
@@ -128,15 +132,29 @@ export type DashboardData = {
   scopeHidden: boolean;
   aiOff: boolean;
   demoClock: boolean;
+  /** "Saved per year": what confirmed results save, with the calculation; null when nothing confirmed saved a euro. */
+  saved: Saved | null;
 };
+
+/**
+ * One counted result in "Saved per year": the project, the check it comes from (days after done) and what it saves per year.
+ * `hours` and `rate` are set when the euros are the result's hours priced with the company's hour cost (it had no euro figure).
+ */
+export type SavedRow = { projectId: string; title: string; check: number | null; eur: number; hours: number | null; rate: number | null };
+
+/** "Saved per year" with its calculation: the rows, their sum, the other figures and what is typed but not confirmed yet. */
+export type Saved = { rows: SavedRow[]; eur: number; co2Kg: number; kwh: number; scrap: number; unconfirmedEur: number; unpricedHours: number };
 
 export type KpiProject = {
   caseId: string;
   raiserUnitId: string | null;
   decidedDay: number | null;
   doneDay: number | null;
-  measures: { verified: boolean; better: boolean; eur: number | null; kwh: number | null; co2Kg: number | null }[];
+  measures: { verified: boolean; better: boolean; eur: number | null; kwh: number | null; co2Kg: number | null; scrap?: number | null; hours?: number | null; check?: number; confirmedDay?: number | null }[];
   premiumsEur: number;
+  /** The project itself, for the Dashboard's calculation: its id to link to and its title. */
+  projectId?: string;
+  title?: string;
 };
 
 export type ZiRow = {

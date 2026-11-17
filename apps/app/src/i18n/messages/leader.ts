@@ -1,8 +1,6 @@
 import { defineMessages } from "../define";
 
 export const leader = defineMessages({ en: {
-  showInbox: "Show inbox",
-  tuckInbox: "Tuck inbox away",
   raisedToday: "today",
   raisedYesterday: "yesterday",
   raisedOn: "on {day}",
@@ -66,7 +64,6 @@ export const leader = defineMessages({ en: {
   whatHappened: "What happened",
   readMore: "Read more",
   showLess: "Show less",
-  yourDecision: "Your decision",
   persons_one: "{count} person",
   persons_other: "{count} people",
   nobodyOnChart: "Nobody on the org chart yet.",
@@ -84,8 +81,6 @@ export const leader = defineMessages({ en: {
   similarIdeas: "Similar ideas",
   matchPct: "{pct}% match",
   suggestedReviewers: "Suggested reviewers",
-  aiSuggests: "AI suggests",
-  decisionSoon: "Coming soon: this decision needs a new event type",
   me: "ME",
   addComment: "Add a comment",
   post: "Post",
@@ -93,8 +88,6 @@ export const leader = defineMessages({ en: {
   scores: "Scores",
   scoreAria: "{label} {value} of 100, show the reasoning",
 }, de: {
-  showInbox: "Posteingang einblenden",
-  tuckInbox: "Posteingang ausblenden",
   raisedToday: "heute",
   raisedYesterday: "gestern",
   raisedOn: "am {day}",
@@ -158,7 +151,6 @@ export const leader = defineMessages({ en: {
   whatHappened: "Was passiert ist",
   readMore: "Weiterlesen",
   showLess: "Weniger anzeigen",
-  yourDecision: "Ihre Entscheidung",
   persons_one: "{count} Person",
   persons_other: "{count} Personen",
   nobodyOnChart: "Noch niemand im Organigramm.",
@@ -176,8 +168,6 @@ export const leader = defineMessages({ en: {
   similarIdeas: "Ähnliche Ideen",
   matchPct: "{pct} % Übereinstimmung",
   suggestedReviewers: "Vorgeschlagene Prüfer",
-  aiSuggests: "KI schlägt vor",
-  decisionSoon: "Bald verfügbar: Diese Entscheidung braucht einen neuen Ereignistyp",
   me: "ICH",
   addComment: "Kommentar hinzufügen",
   post: "Senden",
