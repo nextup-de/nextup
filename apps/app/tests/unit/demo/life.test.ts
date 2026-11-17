@@ -26,14 +26,15 @@ const SEED: ReduceSeed = {
 const isoOf = (day: number) => new Date(Date.UTC(2026, 0, 1) + day * 86_400_000).toISOString().slice(0, 10);
 
 /** Play `days` working days; `humans` own their desks. Returns the final state and every event written. */
-function play(days: number, humans: ReadonlySet<string> = new Set(), focus: ReadonlySet<string> = new Set()) {
+function play(days: number, humans: ReadonlySet<string> = new Set(), focus: ReadonlySet<string> = new Set(), edit: (e: LifeEvent) => LifeEvent = (e) => e) {
   const log: CaseEvent[] = [];
   const written: LifeEvent[] = [];
   let state: State = reduce(SEED, { events: [], day: 1 } as EventLog);
   for (let day = 1; day <= days; day++) {
     state = reduce(SEED, { events: log, day } as EventLog);
     const out = lifeDay({ slug: "mw", iso: isoOf(day), today: day, state, promiseDays: PROMISE, routes, people, humans, focus });
-    for (const e of out) {
+    for (const o of out) {
+      const e = edit(o);
       written.push(e);
       log.push({ id: e.id, ts: 0, day, type: e.type, actor: e.actor, actorUserId: e.actorUserId, target: e.targetId, payload: e.payload } as CaseEvent);
     }
@@ -157,6 +158,44 @@ describe("Musterwerk's working day", () => {
     const out = lifeDay({ slug: "mw", iso: isoOf(30), today: 30, state, promiseDays: PROMISE, routes, people, humans: new Set() });
     const decided = out.find((e) => e.type === "case.decided" && e.targetId === "mw-c1");
     expect(decided?.actorUserId).toBe(members[0].id);
+  });
+
+  it("types each 30-day result with what it saves a year, and a second person confirms it", () => {
+    const { state, written } = play(70);
+    const measured = written.filter((e) => e.type === "project.measured");
+    expect(measured.length).toBeGreaterThan(0);
+    for (const e of measured) {
+      const impact = e.payload.impact as { savingEurPerYear?: number; hoursPerYear?: number };
+      expect((impact.savingEurPerYear ?? 0) + (impact.hoursPerYear ?? 0)).toBeGreaterThan(0);
+    }
+    const confirmed = state.projects.flatMap((p) => p.measures.filter((m) => m.confirmed).map((m) => ({ p, m })));
+    expect(confirmed.length).toBeGreaterThan(0);
+    for (const { p, m } of confirmed) {
+      expect(m.confirmedByUserId).not.toBe(p.leadUserId);
+      expect(m.confirmedByUserId).not.toBe(m.byUserId);
+      expect(m.impact).not.toBeNull();
+    }
+    // A rerun of a day writes no second confirmation.
+    expect(new Set(written.map((e) => e.idemKey)).size).toBe(written.length);
+  });
+
+  it("sends a result typed without its saving back once; the lead types it again with the saving, then it is confirmed", () => {
+    // Results typed as before 17 Nov: the number without what it saves.
+    const bare = (e: LifeEvent): LifeEvent => (e.type === "project.measured" && !e.payload.measureEventId ? { ...e, payload: { ...e.payload, impact: undefined } } : e);
+    const { state, written } = play(75, new Set(), new Set(), bare);
+    const asked = written.filter((e) => e.type === "project.measure.questioned");
+    expect(asked.length).toBeGreaterThan(0);
+    for (const q of asked) {
+      const p = state.projects.find((x) => x.id === q.targetId)!;
+      const m = p.measures.find((x) => x.check === q.payload.check)!;
+      expect(m.questions).toHaveLength(1);
+      if (!m.reentered) continue;
+      expect(m.impact).not.toBeNull();
+      expect(m.previous.at(-1)?.value).toBe(m.value);
+    }
+    const fixed = state.projects.flatMap((p) => p.measures).filter((m) => m.reentered && m.confirmed);
+    expect(fixed.length).toBeGreaterThan(0);
+    expect(fixed.every((m) => m.impact !== null)).toBe(true);
   });
 });
 

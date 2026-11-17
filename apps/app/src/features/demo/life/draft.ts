@@ -23,9 +23,12 @@ const dayOf = (p: ReducedProject, type: string): number | null => p.history.find
 /** A working day after `since` the lead gets to it: most days, for sure on the third. */
 const due = (r: Rng, today: number, since: number): boolean => today - since >= 1 && (r.chance(0.6) || today - since >= 3);
 
-/** Who may confirm the baseline number and is a colleague the simulation writes as: the sponsor, the route's deputy, a manager (projects/permissions.ts). */
-function confirmerOf(p: ReducedProject, state: State, ctx: DayCtx): LifePerson | null {
-  const not = (u: string | null) => u !== null && u !== p.leadUserId && u !== (p.baseline?.byUserId ?? null);
+/**
+ * Who may confirm a number the project's lead or `typedBy` typed (the baseline, a result) and is a colleague the simulation writes as: the
+ * sponsor, the route's deputy, a manager (projects/permissions.ts, projects/confirm.ts). Never the lead, never who typed it.
+ */
+export function confirmerOf(p: ReducedProject, state: State, ctx: DayCtx, typedBy: string | null = p.baseline?.byUserId ?? null): LifePerson | null {
+  const not = (u: string | null) => u !== null && u !== p.leadUserId && u !== typedBy;
   const sponsor = not(p.sponsorUserId) ? simulated(ctx, p.sponsorUserId) : null;
   if (sponsor) return sponsor;
   const deputyRoleId = state.routes.find((x) => x.id === p.routeId)?.deputyRoleId ?? null;
