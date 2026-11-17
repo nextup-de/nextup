@@ -190,6 +190,6 @@ export function dashboardFromInput(input: LedgerInput, kind: "30d" | "quarter" |
     scopeHidden: scope.hidden,
     aiOff,
     demoClock: true,
-    saved: scope.hidden ? null : savedPerYear(input.projects ?? [], period, inScope === null ? null : (u) => u !== null && inScope.has(u)),
+    saved: scope.hidden ? null : savedPerYear(input.projects ?? [], period, inScope === null ? null : (u) => u !== null && inScope.has(u), input.hourCostEur ?? null),
   };
 }

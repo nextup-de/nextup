@@ -52,6 +52,7 @@ export async function pilotReport(companyId: string, from: number, to: number): 
     peopleInScope: people,
     baseline: basePeriod && baseLedger && baseProjects ? { input: baseLedger, projects: baseProjects, period: basePeriod } : null,
     imported,
+    hourCostEur: ledger.hourCostEur ?? null,
   });
   const importedCount = Object.keys(imported).length;
   const baseline: PilotReport["baseline"] = stored
@@ -67,7 +68,7 @@ export async function pilotReport(companyId: string, from: number, to: number): 
     toDate: calendar ? dateOfWorkday(to, calendar) : null,
     baseline,
     metrics,
-    zi: ziKpis({ cases: ledger.cases, projects, org: ledger.org, period }),
+    zi: ziKpis({ cases: ledger.cases, projects, org: ledger.org, period, hourCostEur: ledger.hourCostEur ?? null }),
   };
 }
 

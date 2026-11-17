@@ -104,6 +104,8 @@ export type SeedRole = { id: string; orgUnitId: string; reportsToId: string | nu
 
 export type Seed = {
   promiseDays: number; outcomeDays: number;
+  /** What an hour of work costs the demo company (rule hour_cost on a real company): prices the hours a result saves. */
+  hourCostEur?: number;
   depts: Dept[]; people: OrgPerson[]; problems: Problem[]; ideas: Idea[]; initiatives: Initiative[]; outcomes: Outcome[];
   personas: RolePersona[]; leaders: string[]; routes: Route[]; cases: SeedCase[]; waitingOn: WaitingOn[]; buddies: Buddy[];
   seats: SeatRow[]; // filled from the OrgRoleHolder rows by structureSeed(), never from seedJson (IDN/D7)

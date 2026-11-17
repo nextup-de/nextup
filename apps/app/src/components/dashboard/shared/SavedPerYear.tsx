@@ -1,7 +1,8 @@
 "use client";
 // "Saved per year" on the Dashboard: one tile with the sum in euros, and on a click the calculation behind it - one row
-// per counted result (the project, its check, euros per year, linked to the project), the sum, the other figures and,
-// apart and never in the sum, what is typed but not confirmed yet. Counted in features/metrics/impact.ts, the same sum as
+// per counted result (the project, its check, euros per year, linked to the project; hours priced with the company's hour
+// cost as the formula "1,700 h × €45 ="), the sum, the other figures, hours nobody could price yet and, apart and never
+// in the sum, what is typed but not confirmed yet. Counted in features/metrics/impact.ts, the same sum as
 // the pilot report. Projects only: no person is named or counted.
 import Link from "next/link";
 import { useDemo } from "@/components/dashboard/DemoProvider";
@@ -44,7 +45,9 @@ export function SavedOverlay({ saved, onClose, close }: { saved: Saved; onClose:
           {saved.rows.map((r) => (
             <div key={r.projectId + ":" + r.check} className={s.calcRow} role="row" data-testid="dashboard-saved-row">
               <span role="cell" className={s.calcName}><Link href={href("/projects/" + encodeURIComponent(r.projectId))} onClick={onClose}>{r.title}</Link></span>
-              <span role="cell" className={s.note}>{r.check !== null ? t("metrics.savedCheck", { check: r.check }) : null}</span>
+              <span role="cell" className={s.note}>
+                {[r.check !== null ? t("metrics.savedCheck", { check: r.check }) : "", r.hours !== null && r.rate !== null ? t("metrics.savedFormula", { hours: fmt.number(r.hours), rate: fmt.euro(r.rate) }) : ""].filter(Boolean).join(" · ")}
+              </span>
               <span role="cell" className={s.num}>{fmt.euro(r.eur)}</span>
             </div>
           ))}
@@ -55,6 +58,7 @@ export function SavedOverlay({ saved, onClose, close }: { saved: Saved; onClose:
           </div>
         </div>
         {others.map((line) => <span key={line} className={s.note}>{line}</span>)}
+        {shows(saved.unpricedHours) && <span className={s.note} data-testid="dashboard-saved-hours">{t("metrics.savedHoursUnpriced", { n: fmt.number(saved.unpricedHours) })}</span>}
         {shows(saved.unconfirmedEur) && <span className={s.note} data-testid="dashboard-saved-unconfirmed">{t("metrics.savedUnconfirmed", { eur: fmt.euro(saved.unconfirmedEur) })}</span>}
       </div>
     </div>
