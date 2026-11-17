@@ -1,8 +1,8 @@
 "use client";
-// What "Publish idea" does on the raise page: the button shows the working glyph while NextUp works out
-// where the idea should go, then this window offers up to 3 desks (a role that owns a route, its holders
-// second, D13) with the reasons, or any other desk by search. After sending it says which role owes an
-// answer by which date. Props in.
+// What "Publish" does on the raise page: NextUp works out where the idea should go, then this window offers up
+// to 3 desks (a role that owns a route, its holders second, D13) with the reasons, or any other desk by search.
+// After sending one line, "Sent to {desk} · answer by {date}" (who answers when the holder cannot, plan OVL D25),
+// and one link, to Ideas › Mine, where the raiser follows it (DESIGN_RULES §8, §9). Props in.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OrbState } from "thinking-orbs/engine";
 import Link from "next/link";
@@ -48,13 +48,13 @@ export function deskWho(d: Desk, t: (key: MessageKey, params?: Record<string, st
   return t("ideas.deskVacant");
 }
 
-export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCancel, onConfirm }: {
+export function DeskDialog({ desks, aiOff, search, work, sent, mineHref, onCancel, onConfirm }: {
   desks: Desk[];
   aiOff: boolean; // the proposal came from the keywords
   search: (query: string) => Desk[]; // every other desk, by title and department
   work: Work | null; // publishing: what it is doing
   sent: Sent | null; // after sending
-  casesHref: string;
+  mineHref: string; // Ideas › Mine
   onCancel: () => void;
   onConfirm: (d: Desk) => void;
 }) {
@@ -91,7 +91,7 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
           <span className={s.rcvRadio} aria-hidden="true" />
           <span className={s.rcvWho}>
             <span className={s.rcvNameRow}><span className={s.rcvName}>{d.title}</span>{tag(d) && <span className={s.rcvTag}>{tag(d)}</span>}</span>
-            <span className={s.rcvRole}>{[d.title, d.dept, who(d)].join(" · ")}</span>
+            <span className={s.rcvRole}>{[d.dept, who(d)].filter(Boolean).join(" · ")}</span>
           </span>
         </div>
         {on && d.reasons.length > 0 && (
@@ -110,7 +110,6 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
       <div ref={dialog} className={s.dlg} role="dialog" aria-modal="true" aria-labelledby="rcv-title" tabIndex={-1}>
         <div className={s.dlgHead}>
           <div className={s.dlgHeadText}>
-            <span className={s.dlgKicker}>{t("ideas.publishKicker")}</span>
             <h2 id="rcv-title" className={s.dlgTitle}>{t("ideas.publishTitle")}</h2>
           </div>
           <button type="button" className={s.dlgClose} onClick={onCancel} disabled={busy} title={t("common.close")} aria-label={t("common.close")}><Icon name="x" size={11} width={2.6} /></button>
@@ -123,7 +122,7 @@ export function DeskDialog({ desks, aiOff, search, work, sent, casesHref, onCanc
               : sent.names.length ? t("ideas.deskSent", { role: sent.role, names: sent.names.join(", "), date: sent.date })
                 : sent.deputies.length ? t("ideas.deskSentDeputy", { role: sent.role, names: sent.deputies.join(", "), date: sent.date })
                   : t("ideas.deskSentVacant", { role: sent.role, date: sent.date })}</p>
-            <Link href={casesHref} className={s.rcvRole}>{t("ideas.deskFollow")}</Link>
+            <Link href={mineHref} className={s.rcvRole}>{t("ideas.deskFollow")}</Link>
           </div>
         ) : (
           <div className={s.rcvs} role="radiogroup" aria-label={t("ideas.publishTitle")}>

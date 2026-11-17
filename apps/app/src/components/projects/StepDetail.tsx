@@ -10,7 +10,7 @@ import { newId } from "@/features/cases/events";
 import { helpView } from "@/features/projects/measure-view";
 import { HELP_TEXT_MAX } from "@/features/projects/result";
 import { appendEventAction } from "@/server/actions/events";
-import { PersonFace } from "@/components/ui/elements";
+import { Fold, PersonFace } from "@/components/ui/elements";
 import { STEP_COLUMNS, type ReducedProject, type Step, type StepColumn } from "@/features/projects/types";
 import { columnLabel, safeUrl, systemFrom, timelineOf, toolName, toolOf, TOOLS, type JiraRow } from "@/features/projects/views";
 import { useFormat, useLocale, useT } from "@/i18n/client";
@@ -164,12 +164,12 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
             </div>}
           </div>
 
-          <div className={styles.sheetField}>
+          {(edit || s.note) && <div className={styles.sheetField}>
             <label className={styles.fieldLabel} htmlFor={"step-note-" + s.id}>{t("projects.details")}</label>
             {edit
               ? <textarea id={"step-note-" + s.id} className={`nh-input nh-textarea ${styles.textarea}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("projects.detailsPlaceholder")} maxLength={2000} />
-              : <p className={styles.originBody}>{s.note || <span className={styles.muted}>{t("projects.noDetails")}</span>}</p>}
-          </div>
+              : <p className={styles.originBody}>{s.note}</p>}
+          </div>}
           {edit && (
             <span className={styles.actionRow}>
               <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" disabled={!dirty || !text.trim()} onClick={save}>{t("projects.saveChanges")}</button>
@@ -177,11 +177,13 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
             </span>
           )}
 
-          <div className={styles.sheetField}>
+          {/* The ticket link, the step's facts and its history open on demand (DESIGN_RULES §9). */}
+          <Fold summary={t("projects.stepMore")} name={"step-more-" + s.id}>
+          {(s.external || jira.waiting || r.link) && <div className={styles.sheetField}>
             <span className={styles.fieldLabel}>{t("projects.inATool")}</span>
             {s.external
               ? <span className={styles.muted}>{tool ? toolName(tool, locale) : ""} {s.external.key}{tool?.id === "jira" && jira.state !== "off" ? " · " + t("projects.statusComesBack") : ""}</span>
-              : <span className={styles.muted}>{jira.waiting ? t("projects.waitingForJira") : t("projects.notLinked")}</span>}
+              : jira.waiting && <span className={styles.muted}>{t("projects.waitingForJira")}</span>}
             {r.link && (
               <form className={styles.inline} aria-label={t("projects.linkThisStep")} onSubmit={(e) => {
                 e.preventDefault();
@@ -197,7 +199,7 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
                 {linkUrl.trim() && !badUrl && <span className={styles.hint}>{t("projects.goesTo", { tool: toolName(toolOf(systemFrom(linkUrl, linkKey)), locale) })}{TOOLS.some((x) => x.id === systemFrom(linkUrl, linkKey)) ? "" : " " + t("projects.plainLink")}</span>}
               </form>
             )}
-          </div>
+          </div>}
 
           {(help.canAsk || help.asks.length > 0) && (
             <div className={styles.sheetField} data-testid="step-help">
@@ -236,6 +238,7 @@ export function StepDetail({ p, s, jira, onClose }: { p: ReducedProject; s: Step
               </ol>
             </div>
           )}
+          </Fold>
 
           {r.removeStep(s) && (
             <div className={styles.sheetFoot}>

@@ -80,3 +80,12 @@
   .side { flex-basis: auto; }
   .barRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
 }
+/* One line per section (DESIGN_RULES §9): one white card, a line between sections, the answer at the right while closed. */
+.sections { display: flex; flex-direction: column; padding: 4px 24px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); min-width: 0; }
+.sections > * + * { border-top: 1px solid var(--nh-line-soft); }
+.sections details > summary { min-height: 52px; }
+.sections details[open] > summary .closedOnly { display: none; }
+.sections details > div > section:first-child { padding-top: 0; border-top: 0; }
+.sections .card { padding: 0; background: none; box-shadow: none; }
+.sections .tile { background: var(--nh-ground); box-shadow: none; }
+.sections .tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }

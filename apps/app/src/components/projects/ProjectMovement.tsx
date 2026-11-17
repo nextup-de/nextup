@@ -31,7 +31,7 @@ export function ProjectMovement() {
 
   return (
     <div className={styles.split}>
-      <SectionCard title={t("projects.movementTitle")} hint={t("projects.movementSub")}>
+      <SectionCard title={t("projects.movementTitle")}>
         {measured.length === 0 && <div className={ui.emptyLine}>{t("projects.movementEmpty", { count: S.rules.measureDays[0] })}</div>}
         <div className={ui.list}>
           {measured.map((p) => (
@@ -46,7 +46,6 @@ export function ProjectMovement() {
                   <span key={m.check} className={styles.move}>
                     <span className={styles.label}>{m.check} {t("projects.unitDays")}</span> {movement(p.baseline, m, locale)}
                     {m.changePct !== null && <span className={styles.change} data-verdict={m.verdict}>{changeText(m.changePct, locale)}</span>}
-                    <VerdictChip verdict={m.verdict} />
                   </span>
                 ))}
               </div>
@@ -55,7 +54,7 @@ export function ProjectMovement() {
         </div>
       </SectionCard>
 
-      {hasWait && <SectionCard title={t("projects.waitTitle")} hint={t("projects.waitSub")}>
+      {hasWait && <SectionCard title={t("projects.waitTitle")}>
         <div className={ui.grid2}>
           {waits.started.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.started.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDecidedStarted")} · {waitSub(waits.started, t("projects.waitNotStarted"), t)}</div></div>}
           {waits.measured.medianDays !== null && <div className={ui.tile}><div className={ui.tileV}>{days(waits.measured.medianDays, t, locale)}</div><div className={ui.tileL}>{t("projects.waitDoneMeasured")} · {waitSub(waits.measured, t("projects.waitFirstCheck"), t)}</div></div>}

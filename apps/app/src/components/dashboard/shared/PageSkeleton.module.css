@@ -1,5 +1,5 @@
-/* The layouts the skeletons echo. Dimensions follow the real views (ViewHead, ui.stats, the raise box,
-   the dashboard list) closely enough that the page does not jump when the content lands. */
+/* The layouts the skeletons echo. Dimensions follow the real views (the tiles, the cards of rows, the lines that
+   open, the raise box) closely enough that the page does not jump when the content lands. */
 .page { display: flex; flex-direction: column; gap: 14px; min-height: 40vh; }
 /* Delayed: hidden for 400ms, then fades in (fast loads never flash). Reduced motion keeps the delay, drops the fade. */
 .page[data-delay="true"], .raise[data-delay="true"] { animation: appear 0.25s ease 0.4s both; }
@@ -7,13 +7,11 @@
 @media (prefers-reduced-motion: reduce) { .page[data-delay="true"], .raise[data-delay="true"] { animation-duration: 0s; } }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .headText { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
-.tools { display: flex; gap: 7px; }
 
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); background: var(--nh-card); border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 14px); padding: 4px 0; }
-.stat { display: flex; flex-direction: column; gap: 8px; padding: 12px 18px 11px; border-left: 1px solid var(--nh-line-soft); }
-.stat:first-child { border-left: 0; }
+/* The Dashboard's tiles: a label and a number each. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; background: var(--nh-card); border-radius: var(--nh-r-lg); box-shadow: var(--nh-card-shadow); }
 
 .card { background: var(--nh-card); border-radius: var(--nh-r-lg); padding: 20px 20px 18px; min-width: 0; box-shadow: var(--nh-card-shadow); }
 .cardTitle { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 6px; }
@@ -28,6 +26,13 @@
 
 .list { display: flex; flex-direction: column; background: var(--nh-card); border-radius: var(--nh-r-lg); overflow: hidden; box-shadow: var(--nh-card-shadow); }
 .list .row { padding: 14px 18px 13px; }
+
+/* A line that opens: its name and, on some, one fact at the right. */
+.line { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; border-top: 1px solid var(--nh-line-soft); }
+.line:first-child { border-top: 0; }
+.fields + .line { margin-top: 16px; }
+.who { display: flex; align-items: center; gap: 10px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 .fields { display: flex; flex-direction: column; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 7px; }
@@ -51,8 +56,6 @@
 }
 
 @media (max-width: 760px) {
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .stat:nth-child(odd) { border-left: 0; }
-  .stat:nth-child(n + 3) { border-top: 1px solid var(--nh-line-soft); }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
   .wide { grid-template-columns: 1fr; }
 }

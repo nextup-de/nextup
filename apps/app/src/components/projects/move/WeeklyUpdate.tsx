@@ -3,6 +3,7 @@
 // check-in, edits it and sends it as one project.update; the latest update stays below. No model is asked.
 import { useState } from "react";
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { Fold } from "@/components/ui/elements";
 import type { ReducedProject } from "@/features/projects/types";
 import type { CaseEvent } from "@/features/cases/events";
 import { useT } from "@/i18n/client";
@@ -18,11 +19,21 @@ export function isAiDrafted(p: Pick<ReducedProject, "latestUpdate" | "history">)
   return sent?.payload.aiDrafted === true;
 }
 
-export function WeeklyUpdate({ p }: { p: ReducedProject }) {
+/** `folded`: on the Overview it is one line that opens (DESIGN_RULES §9): ready to send, or when the last one went. */
+export function WeeklyUpdate({ p, folded = false }: { p: ReducedProject; folded?: boolean }) {
+  const { f } = useDemo();
   const t = useT();
   const v = useMoveView(p);
   const latest = p.latestUpdate;
   if (!v.update && !latest) return null;
+  if (folded) return (
+    <div data-testid="weekly-update">
+      <Fold name={"update-" + p.id} summary={t("projectMove.updateTitle")} meta={<span className={styles.closedOnly}>{v.update ? t("projectMove.updateReady") : latest ? t("projectMove.updateSentOn", { date: f(latest.day) }) : ""}</span>}>
+        {v.update && <UpdateForm key={v.update.week} p={p} week={v.update.week} draft={v.update.draft} />}
+        {latest && <LatestUpdate text={latest.text} day={latest.day} ai={isAiDrafted(p)} />}
+      </Fold>
+    </div>
+  );
   return (
     <section className={styles.block} aria-labelledby={"update-" + p.id} data-testid="weekly-update">
       <h2 id={"update-" + p.id} className={styles.title}>{t("projectMove.updateTitle")}</h2>
@@ -40,7 +51,6 @@ function UpdateForm({ p, week, draft }: { p: ReducedProject; week: number; draft
   const [text, setText] = useState(draft);
   return (
     <form className={styles.form} onSubmit={(e) => { e.preventDefault(); send("project.update", { text: text.trim(), week }, () => act.project.update(p.id, text.trim(), week)); }}>
-      <p className={styles.hint}>{t(p.draft ? "projectMove.updateHint" : "projectMove.updateHintLegacy")}</p>
       <label className={styles.field}>
         <span className={styles.label}>{t("projectMove.updateLabel")}</span>
         <textarea className={`nh-input nh-textarea ${styles.textarea}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} rows={7} />

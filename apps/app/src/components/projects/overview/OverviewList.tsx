@@ -101,17 +101,7 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
 
   return (
     <div className={s.root}>
-      <div className={s.head}>
-        <h2 className={s.title}>{t("projects.ovTitle")}</h2>
-        <div className={s.headActions}>
-          <Link className={s.primary} href={href("/raise")} aria-label={t("projects.ovNewIdeaShort")}><span className={s.primaryLong}>{t("projects.ovNewIdea")}</span><span className={s.primaryShort} aria-hidden="true">+</span></Link>
-          <div className={s.views} role="group" aria-label={t("projects.ovViewList") + " / " + t("projects.ovViewGrid")}>
-            <button type="button" className={s.viewBtn} aria-pressed={view === "grid"} aria-label={t("projects.ovViewGrid")} onClick={() => setPrefs({ view: "grid" })}><GridIcon /></button>
-            <button type="button" className={s.viewBtn} aria-pressed={view === "list"} aria-label={t("projects.ovViewList")} onClick={() => setPrefs({ view: "list" })}><ListIcon /></button>
-          </div>
-        </div>
-      </div>
-
+      {/* One row of controls (DESIGN_RULES §1, §9): no heading that repeats the area, and no "New idea" under Projects (§8). */}
       <div className={s.filters}>
         <div className={s.pills} role="tablist" aria-label={t("projects.ovTitle")}>
           {SHOWS.filter((k) => k !== "ideas" && k !== "projects").map((k) => ( // projects only: All and Your move
@@ -126,6 +116,10 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
           <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("projects.ovSearch")} aria-label={t("projects.ovSearch")} />
           {q && <button type="button" className={s.clear} onClick={() => setQ("")} aria-label={t("projects.ovClear")}>×</button>}
         </label>
+        <div className={s.views} role="group" aria-label={t("projects.ovViewList") + " / " + t("projects.ovViewGrid")}>
+          <button type="button" className={s.viewBtn} aria-pressed={view === "grid"} aria-label={t("projects.ovViewGrid")} onClick={() => setPrefs({ view: "grid" })}><GridIcon /></button>
+          <button type="button" className={s.viewBtn} aria-pressed={view === "list"} aria-label={t("projects.ovViewList")} onClick={() => setPrefs({ view: "list" })}><ListIcon /></button>
+        </div>
       </div>
 
       {shown.length === 0 && q ? (
@@ -136,7 +130,6 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
             <SortHead ctx={ctx} k="name" label={t("projects.ovColName")} className={s.cName} />
             <SortHead ctx={ctx} k="stage" label={t("projects.ovColStage")} className={s.cStage} />
             <SortHead ctx={ctx} k="updated" label={t("projects.ovColUpdated")} className={s.cUpdated} />
-            <SortHead ctx={ctx} k="raised" label={t("projects.ovColRaised")} className={s.cRaised} />
             <span role="columnheader" className={s.cDesk}>{t("projects.ovColDesk")}</span>
             <SortHead ctx={ctx} k="needs" label={t("projects.ovColStatus")} className={s.cStatus} />
           </div>
@@ -145,9 +138,6 @@ export function OverviewList({ items }: { items: OverviewItem[] }) {
       ) : (
         <div className={s.grid}>
           {shown.map((i) => <Card key={i.id} i={i} ctx={ctx} />)}
-          {show !== "projects" && !q && !person && (
-            <Link className={s.newCard} href={href("/raise")}><span className={s.newPlus} aria-hidden="true">+</span>{t("projects.ovNewIdeaShort")}</Link>
-          )}
         </div>
       )}
 
@@ -173,21 +163,35 @@ const rowClick = (i: OverviewItem, ctx: RowCtx) => (e: React.MouseEvent) => {
   ctx.open(i);
 };
 
+/** A title too long for its row or card glides left while the mouse is over it, so it can be read in full (as in
+ *  the Ideas and Projects sidebars). How far is measured when the mouse arrives: the text's width against the box. */
+function GlideTitle({ className, href, label, children }: { className: string; href: string; label: string; children: React.ReactNode }) {
+  const box = useRef<HTMLAnchorElement>(null);
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const el = box.current, host = el?.closest("[data-glide-host]");
+    if (!el || !host) return;
+    const measure = () => { const inner = el.firstElementChild as HTMLElement | null; setSlide(inner ? Math.max(0, Math.ceil(inner.scrollWidth - el.clientWidth)) : 0); };
+    host.addEventListener("mouseenter", measure); el.addEventListener("focus", measure);
+    return () => { host.removeEventListener("mouseenter", measure); el.removeEventListener("focus", measure); };
+  }, []);
+  const style = slide ? ({ "--slide": `-${slide + 6}px`, "--glide": `${Math.round(400 + slide * 22)}ms` } as React.CSSProperties) : undefined;
+  return <Link ref={box} className={className} href={href} aria-label={label} data-glide={slide > 0 || undefined} style={style}><span className={s.glideText}>{children}</span></Link>;
+}
+
 function Row({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
   const { t } = ctx;
   return (
-    <div className={s.row} role="row" onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
+    <div className={s.row} role="row" data-glide-host onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
       <span role="cell" className={s.cName}>
         <Thumb i={i} />
         <span className={s.nameText}>
-          <Link className={s.rowTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
-          <span className={s.rowSub} data-key={i.key ? "true" : undefined}>{i.key ? i.key + " · " + t("projects.ovProject") : [t("projects.ovIdea"), i.from, i.area].filter(Boolean).join(" · ")}</span>
+          <GlideTitle className={s.rowTitle} href={ctx.href(i.path)} label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></GlideTitle>
           <span className={s.phoneMeta}>{phoneMeta(i, t)}</span>
         </span>
       </span>
       <span role="cell" className={s.cStage}><StageCell i={i} t={t} /></span>
       <span role="cell" className={s.cUpdated}>{ctx.ago(i.updatedDay)}</span>
-      <span role="cell" className={s.cRaised}>{ctx.ago(i.raisedDay)}</span>
       <span role="cell" className={s.cDesk}><Desk i={i} ctx={ctx} /></span>
       <span role="cell" className={s.cStatus}>
         <Chip i={i} ctx={ctx} />
@@ -201,18 +205,18 @@ function Card({ i, ctx }: { i: OverviewItem; ctx: RowCtx }) {
   const { t } = ctx;
   const pic = libraryCoverFor(i.id);
   return (
-    <div className={s.card} onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
+    <div className={s.card} data-glide-host onClick={rowClick(i, ctx)} data-menu={ctx.pop && ctx.pop.id === i.id ? "true" : undefined}>
       <div className={s.cover}>
         {/* eslint-disable-next-line @next/next/no-img-element -- a local picture from public/feed/library */}
         {pic && <img src={pic.src} alt="" className={s.coverImg} loading="lazy" />}
         {pic && <span className={s.coverText}><span className={s.coverStat}>{pic.stat}</span><span className={s.coverHook}>{pic.hook}</span></span>}
         <span className={s.coverMore}><More i={i} ctx={ctx} /></span>
       </div>
-      <Link className={s.cardTitle} href={ctx.href(i.path)} aria-label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></Link>
+      <GlideTitle className={s.cardTitle} href={ctx.href(i.path)} label={(i.key ? i.key + " " : "") + i.title}><Marked text={i.title} q={ctx.q} /></GlideTitle>
       <span className={s.cardMeta}>
         <span className={s.cardWho}>
           <Face name={i.desk.name} you={i.desk.you} small />
-          <span className={s.cardSub}>{i.key ? i.key + " · " + stageText(i, t) : t("projects.ovIdea") + " · " + stageText(i, t)}</span>
+          <span className={s.cardSub}>{stageText(i, t)}</span>
         </span>
         <Chip i={i} ctx={ctx} />
       </span>
@@ -245,7 +249,7 @@ const stageText = (i: OverviewItem, t: T): string => {
 };
 
 const phoneMeta = (i: OverviewItem, t: T) =>
-  [i.key ?? t("projects.ovIdea"), stageText(i, t), i.desk.you ? t("projects.ovYou") : i.desk.name].filter(Boolean).join(" · ");
+  [stageText(i, t), i.desk.you ? t("projects.ovYou") : i.desk.name].filter(Boolean).join(" · ");
 
 function StageCell({ i, t }: { i: OverviewItem; t: T }) {
   const st = i.stage;
@@ -441,15 +445,12 @@ function SortHead({ ctx, k, label, className }: { ctx: RowCtx; k: SortKey; label
 
 function NoMatch({ q, onClear }: { q: string; onClear: () => void }) {
   const t = useT();
-  const { href } = useDemo();
   return (
     <div className={s.noMatch}>
       <SearchIcon big />
       <b>{t("projects.ovNoMatchTitle", { q })}</b>
-      <p>{t("projects.ovNoMatchSub")}</p>
       <div className={s.noMatchActions}>
         <button type="button" className={s.soft} onClick={onClear}>{t("projects.ovClearSearch")}</button>
-        <Link className={s.primary} href={href("/raise?title=" + encodeURIComponent(q))}>{t("projects.ovRaiseAs", { q })}</Link>
       </div>
     </div>
   );
@@ -457,28 +458,7 @@ function NoMatch({ q, onClear }: { q: string; onClear: () => void }) {
 
 function Empty() {
   const t = useT();
-  const { href } = useDemo();
-  const pic = libraryCoverFor("empty");
-  return (
-    <div className={s.root}>
-      <div className={s.head}>
-        <h2 className={s.title}>{t("projects.ovTitle")}</h2>
-        <Link className={s.primary} href={href("/raise")} aria-label={t("projects.ovNewIdeaShort")}><span className={s.primaryLong}>{t("projects.ovNewIdea")}</span><span className={s.primaryShort} aria-hidden="true">+</span></Link>
-      </div>
-      <div className={s.empty}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- a local picture from public/feed/library */}
-        {pic && <img src={pic.src} alt="" className={s.emptyImg} />}
-        <div className={s.emptyText}>
-          <b>{t("projects.ovEmptyTitle")}</b>
-          <p>{t("projects.ovEmptySub")}</p>
-          <div className={s.noMatchActions}>
-            <Link className={s.primary} href={href("/raise")}>{t("projects.ovEmptyRaise")}</Link>
-            <Link className={s.link} href={href("/feed")}>{t("projects.ovEmptyFeed")}</Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className={s.root}><p className={s.emptyLine}>{t("projects.ovEmptyTitle")}</p></div>;
 }
 
 const SearchIcon = ({ big }: { big?: boolean }) => (

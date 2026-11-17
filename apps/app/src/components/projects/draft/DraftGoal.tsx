@@ -30,7 +30,8 @@ export function initialBrief(p: Pick<ReducedProject, "id" | "goal">, cases: read
   return idea ? briefOfIdea(idea) : "";
 }
 
-export function DraftGoal({ p, view }: { p: ReducedProject; view: DraftView }) {
+/** `onSaved`: the setup moves on to its next open step once the goal is saved. */
+export function DraftGoal({ p, view, onSaved }: { p: ReducedProject; view: DraftView; onSaved?: () => void }) {
   const { act, S, f } = useDemo();
   const t = useT();
   const send = useSend(p);
@@ -60,7 +61,7 @@ export function DraftGoal({ p, view }: { p: ReducedProject; view: DraftView }) {
           onSubmit={(e) => {
             e.preventDefault();
             const payload = { goal: goal.trim(), doneWhen: doneWhen.trim(), ...(doneBy !== undefined ? { doneBy } : {}), ...(brief.trim() ? { brief: brief.trim() } : {}) };
-            send("project.goal", payload, () => act.project.setGoal(p.id, payload));
+            if (send("project.goal", payload, () => act.project.setGoal(p.id, payload))) onSaved?.();
           }}
         >
           <label className={styles.field}>
@@ -80,9 +81,8 @@ export function DraftGoal({ p, view }: { p: ReducedProject; view: DraftView }) {
             <span className={styles.label}>{t("projectDraft.goalBrief")}</span>
             <textarea className={`nh-input nh-textarea ${styles.textarea}`} value={brief} onChange={(e) => setBrief(e.target.value)} maxLength={1200} />
           </label>
-          <span className={styles.hint}>{t("projectDraft.goalHint")}</span>
           <span className={styles.actionRow}>
-            <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={goal.trim().length < 3 || doneWhen.trim().length < 3}>{t("projectDraft.goalSave")}</button>
+            <button type="submit" className="nh-btn nh-btn-primary nh-btn-sm" disabled={goal.trim().length < 3 || doneWhen.trim().length < 3}>{t("projectDraft.goalSave")}</button>
             {g && g.goal === goal.trim() && g.doneWhen === doneWhen.trim() && <span className={styles.muted}>{t("projectDraft.goalSaved")}</span>}
           </span>
         </form>

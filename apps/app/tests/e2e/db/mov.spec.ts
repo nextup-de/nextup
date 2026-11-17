@@ -246,6 +246,8 @@ test.describe("MOV acceptance: a project that keeps moving", () => {
       await page.goto(`/${SLUG}/projects/${weekly.projectId}?page=project-overview`);
       const block = page.getByTestId("weekly-update");
       await expect(block).toBeVisible();
+      await expect(block.locator("summary")).toContainText("Ready to send"); // one line while closed (DESIGN_RULES §9)
+      await block.locator("summary").click();
       const text = block.getByRole("textbox", { name: "The update" });
       await expect(text).not.toHaveValue(""); // the draft is built from the board, offline
       await block.getByRole("button", { name: "Send the update" }).click();

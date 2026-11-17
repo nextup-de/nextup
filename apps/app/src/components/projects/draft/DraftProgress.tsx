@@ -3,10 +3,11 @@
 // start. The page shows one step at a time (Kevin, 13 Nov 2026); a line shows its step. The first open check is the next
 // one. Lead, goal and baseline are needed to start, template and team are optional (features/projects/draft).
 import { useDemo } from "@/components/dashboard/DemoProvider";
+import { waitsForName } from "./waitsFor";
 import type { DraftView } from "@/features/projects/draft";
 import type { ReducedProject } from "@/features/projects/types";
 import type { MessageKey } from "@/i18n";
-import { useT } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import styles from "./Draft.module.css";
 
 /** The setup's steps in order: the five checks, then the start. */
@@ -16,13 +17,11 @@ type Key = Exclude<SetupStep, "start">;
 const NEEDED: ReadonlySet<Key> = new Set(["lead", "goal", "baseline"]);
 const TEMPLATE_NAME: Record<string, MessageKey> = { "quick-win": "projectDraft.tpl_quickWin", "8d": "projectDraft.tpl_eightD", investment: "projectDraft.tpl_investment" };
 
-/** `at`: the step shown under the lines; `onPick` shows another. The first open check is the next one, in blue. */
+/** `at`: the step shown under the lines, in blue; `onPick` shows another. */
 export function DraftProgress({ p, view, at, onPick }: { p: ReducedProject; view: DraftView; at: SetupStep; onPick: (k: SetupStep) => void }) {
-  const { f } = useDemo();
+  const { f, S } = useDemo();
   const t = useT();
-  const checks = STEPS.filter((k): k is Key => k !== "start");
-  const done = checks.filter((k) => view.checklist[k] === "done").length;
-  const next: SetupStep = checks.find((k) => view.checklist[k] !== "done") ?? "start";
+  const locale = useLocale();
   const sub = (k: SetupStep): string => {
     if (k === "start") return view.startDay !== null ? f(view.startDay) : "";
     if (view.checklist[k] === "done") {
@@ -31,18 +30,18 @@ export function DraftProgress({ p, view, at, onPick }: { p: ReducedProject; view
       return t("projectDraft.checkDone");
     }
     if (k === "lead") return t("projectDraft.progressWaitsFor", { name: p.lead });
+    if (k === "baseline" && view.baselineWaits && p.baseline) return t("projectDraft.progressWaitsFor", { name: waitsForName(p, S, t, locale) });
     return t(NEEDED.has(k) ? "projectDraft.progressNeeded" : "projectDraft.progressOptional");
   };
 
   return (
     <section className={`${styles.section} ${styles.progress}`} aria-labelledby={"check-" + p.id} data-testid="draft-progress">
-      <div className={styles.head}>
-        <h2 id={"check-" + p.id} className={styles.h2}>{t("projectDraft.progressTitle")}</h2>
-        <span className={styles.muted}>{t("projectDraft.progressCount", { done, total: checks.length })}</span>
-      </div>
+      {/* The stepper says it all: no "3 of 5 done" over it (DESIGN_RULES §9). */}
+      <h2 id={"check-" + p.id} className="nh-sr">{t("projectDraft.progressTitle")}</h2>
       <ol className={styles.steps}>
         {STEPS.map((k) => {
-          const state = k !== "start" && view.checklist[k] === "done" ? "done" : k === next ? "next" : "open";
+          // One "you are here" mark, on the step in view (DESIGN_RULES §9): not a second one on the first open step.
+          const state = k !== "start" && view.checklist[k] === "done" ? "done" : k === at ? "next" : "open";
           return (
             <li key={k} className={styles.step} data-state={state}>
               <button type="button" className={styles.stepBody} aria-current={k === at ? "step" : undefined} onClick={() => onPick(k)}>

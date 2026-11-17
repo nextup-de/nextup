@@ -1,17 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useDemo } from "@/components/dashboard/DemoProvider";
 import { DeptChip, PersonFace, SectionCard } from "@/components/ui/elements";
 import { useT } from "@/i18n/client";
 import styles from "./PersonView.module.css";
 
-/** The minimal directory entry: name, role and unit path. No contact data, counts or colleagues. */
+/** The minimal directory entry: name, role and unit path. No contact data, counts or colleagues, and no back link to the old Overview (DESIGN_RULES §9). */
 export function PersonView({ name, role, unitPath }: { name: string; role: string; unitPath: string[] }) {
   const t = useT();
-  const { href } = useDemo();
   return <div className={styles.page} data-testid="person-page">
-    <Link href={href("/overview")} className={styles.back}>{t("people.back")}</Link>
     <SectionCard name="person">
       <section className={styles.hero} aria-labelledby="person-name">
         <PersonFace name={name} />

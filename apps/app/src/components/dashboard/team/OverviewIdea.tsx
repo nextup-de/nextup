@@ -36,7 +36,7 @@ export type OverviewIdeaProps = {
   onMode: (m: IdeaMode) => void;
   /** None: the idea is a page of its project and has no close button. */
   onClose?: () => void;
-  /** As a page of its project: the project's buttons, where the close button is on an idea opened on its own. */
+  /** As a page of its project: the project's buttons and move, where the close button is on an idea opened on its own. */
   headAction?: React.ReactNode;
   // On a phone (OverviewPhone) the same page without the close button (the bar has back), and the
   // scores as a row of rings - a tap opens the reasoning in a sheet (onOpenScore).

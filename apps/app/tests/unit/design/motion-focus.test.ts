@@ -14,7 +14,6 @@ const NO_GUARD_ALLOWED: Record<string, string> = {
   "src/components/shell/DemoControls.module.css": "one short transition, no reduced-motion rule",
   "src/components/projects/Projects.module.css": "keyframe animation and transitions, no reduced-motion rule",
   "src/components/admin/connectors/Connectors.module.css": "short state transitions, no reduced-motion rule",
-  "src/components/dashboard/leader/IdeaDetailPhone.module.css": "keyframe animation and transitions, no reduced-motion rule",
   "src/components/dashboard/shared/ViewHead.module.css": "keyframe animation and a transition, no reduced-motion rule",
   "src/components/profile/NotifySettings.module.css": "short state transitions, no reduced-motion rule",
   "src/components/report/ReportButton.module.css": "short state transitions, no reduced-motion rule",

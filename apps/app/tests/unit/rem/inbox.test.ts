@@ -19,11 +19,11 @@ it("REM inbox names who passed and why", () => {
   expect(item?.cause).toBe("passed");
   expect(item?.fromRole).toBe("Quality lead");
   expect(item?.why).toBe("Line 4 is yours");
-  // The page's line, in both languages.
+  // The row's line, in both languages: who passed it (DESIGN_RULES §9, one fact per row). The reason is on the open item.
   const en = createT("en");
   const de = createT("de");
-  expect(en("inbox.passedBy", { role: item!.fromRole!, why: item!.why! })).toBe("Passed to you by Quality lead: Line 4 is yours");
-  expect(de("inbox.passedBy", { role: "Qualitätsleitung", why: "Linie 4 ist Ihre" })).toBe("Von Qualitätsleitung an Sie weitergegeben: Linie 4 ist Ihre");
+  expect(en("inbox.passedByNoWhy", { role: item!.fromRole! })).toBe("Passed to you by Quality lead");
+  expect(de("inbox.passedByNoWhy", { role: "Qualitätsleitung" })).toBe("Von Qualitätsleitung an Sie weitergegeben");
   // The clock's hand-over is no person's pass: no role and no reason (its reason is a code).
   const byClock = [raise("c2", 0), handed("c2", "s_dep", "deadline", 1)];
   const clocked = itemsOf(byClock, "u_dep", 1).find((i) => i.id === "case:c2");

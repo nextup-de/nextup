@@ -7,7 +7,7 @@ const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1
 
 describe("INB page messages", () => {
   it("has every key the page uses, in both languages", () => {
-    for (const k of ["sectionConfirm", "todayDecide", "todayLate", "todayPart", "kindCase", "kindIdea", "kindView", "kindQuestion", "kindConfirm", "kindReward", "kindMove", "markAllRead", "unread", "dueOn", "openLink", "markFailed"]) {
+    for (const k of ["sectionConfirm", "kindIdea", "kindView", "kindQuestion", "kindConfirm", "kindReward", "kindMove", "markAllRead", "unread", "passedByNoWhy", "openLink", "markFailed"]) {
       expect(en.inbox, k).toHaveProperty(k);
       expect(de.inbox, k).toHaveProperty(k);
     }
@@ -17,7 +17,7 @@ describe("INB page messages", () => {
     for (const k of Object.keys(en.inbox) as (keyof typeof en.inbox)[]) {
       expect(placeholders(de.inbox[k]), k).toEqual(placeholders(en.inbox[k]));
     }
-    expect(placeholders(en.inbox.todayDecide)).toEqual(["n"]);
-    expect(placeholders(en.inbox.dueOn)).toEqual(["day"]);
+    expect(placeholders(en.inbox.commentMany)).toEqual(["n"]);
+    expect(placeholders(en.inbox.passedByNoWhy)).toEqual(["role"]);
   });
 });

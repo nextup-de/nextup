@@ -104,6 +104,22 @@ export function ProjectsSidebar({ area, projectId, caseId, idea: onIdea = false,
   );
 }
 
+// A label too long for its row glides left while the row is hovered, so it can be read in full (as in the
+// Ideas sidebar). How far is measured when the mouse arrives: the text's full width against the visible box.
+function Glide({ text }: { text: string }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    const el = box.current, row = el?.closest("a, button");
+    if (!el || !row) return;
+    const measure = () => { const inner = el.firstElementChild as HTMLElement | null; setSlide(inner ? Math.max(0, Math.ceil(inner.scrollWidth - el.clientWidth)) : 0); };
+    row.addEventListener("mouseenter", measure); row.addEventListener("focus", measure);
+    return () => { row.removeEventListener("mouseenter", measure); row.removeEventListener("focus", measure); };
+  }, []);
+  const style = slide ? ({ "--slide": `-${slide + 6}px`, "--glide": `${Math.round(400 + slide * 22)}ms` } as React.CSSProperties) : undefined;
+  return <span ref={box} className={s.label} data-glide={slide > 0 || undefined} style={style}><span className={s.labelText}>{text}</span></span>;
+}
+
 // ── Layer 1 ─────────────────────────────────────────────────────────────────────────────────────────
 
 function List({ projects, query, openId }: { projects: ReducedProject[]; query: string; openId: string | null }) {
@@ -117,7 +133,7 @@ function List({ projects, query, openId }: { projects: ReducedProject[]; query: 
         {rows.slice(0, query ? undefined : MAX_ROWS).map((p) => (
           <Link key={p.id} href={href("/projects/" + p.id)} className={s.row} data-project aria-current={p.id === openId ? "page" : undefined}>
             <span className={s.slot}><RingMark ring={ringOf(p.status)} /></span>
-            <span className={s.label}>{p.title}</span>
+            <Glide text={p.title} />
             <EndDot late={p.overdue} />
             <span className={s.chev} aria-hidden="true"><Svg size={14}><path d="M5.4 3.2L9.2 7L5.4 10.8" /></Svg></span>
           </Link>
@@ -269,7 +285,7 @@ export function LoggedProjectPages({ p, onBack, agent, editor }: { p: ReducedPro
         }}>
         <Link href={pageUrl(page.id)} className={s.row} draggable={false} aria-current={current === page.id ? "page" : undefined}>
           <span className={s.slot}><span className={s.icon}><PageGlyph icon={page.icon} /></span>{editor && <span className={s.grip} title={t("projectPages.dragPageLabel", { page: title(page) })}>⠿</span>}</span>
-          <span className={s.label}>{title(page)}</span>
+          <Glide text={title(page)} />
           {newPages.includes(page.id) && <span className={s.newTag}>{t("projectPages.newTag")}</span>}
         </Link>
         {editor && <button type="button" className={s.more} disabled={busy} data-open={menu?.id === page.id || undefined} aria-label={t("projectPages.pageMenuLabel", { page: title(page) })}
@@ -447,7 +463,7 @@ function PageLayer({ storeId, from, tabs: baseTabs, extraTabs = [], base, pageUr
                   <span className={s.icon}>{custom ? <PageGlyph icon={custom.icon} /> : info?.icon}</span>
                   {editor && <span className={s.grip} title={t("projects.sbDrag")}><Svg size={16} fill><circle cx="6" cy="4" r="1.1" /><circle cx="10" cy="4" r="1.1" /><circle cx="6" cy="8" r="1.1" /><circle cx="10" cy="8" r="1.1" /><circle cx="6" cy="12" r="1.1" /><circle cx="10" cy="12" r="1.1" /></Svg></span>}
                 </span>
-                <span className={s.label}>{label}</span>
+                <Glide text={label} />
                 {info?.count !== undefined && <span className={s.count}>{info.count}</span>}
               </Link>
               {editor && (custom || extraTabs.includes(k)) && (

@@ -118,7 +118,9 @@ function ProfilePop({ profile, onClose, sheet }: { profile: Profile; onClose: ()
 
 /**
  * `inPage`: the idea drawn as one page of its project (tools/IdeaTool): the idea alone, at its own height, with no
- * close button, no chats column and no small-screen sheet - the project page around it brings the way back.
+ * close button, no chats column and no small-screen sheet - the project page around it brings the way back. It is the
+ * project's origin and read only (DESIGN_RULES §8); the card is the head of the page and `headAction` is where the project's
+ * own buttons and move go, in its top row (tools/IdeaTool).
  */
 /** The band on top of an idea opened on its own: "Idea", and where it stands - not a project yet, declined, withdrawn, or said yes to. */
 function IdeaKind({ c }: { c: ReducedCase }) {

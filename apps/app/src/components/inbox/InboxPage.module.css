@@ -1,8 +1,4 @@
 .page { display: flex; flex-direction: column; gap: 16px; padding: 0 0 48px; }
-.today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0; font-size: var(--nh-fs-md); color: var(--nh-ink-2); }
-.todayLabel { font-weight: 600; color: var(--nh-ink); }
-.today [data-hot="true"] { color: var(--nh-danger); font-weight: 600; }
-.dot { color: var(--nh-ghost); }
 
 .body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .lists { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -19,8 +15,9 @@
 .row:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; }
 .rowMain { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rowTitle { font-weight: 600; color: var(--nh-ink); overflow-wrap: anywhere; }
-.row[data-late="true"] .rowTitle { color: var(--nh-danger); }
 .rowKind { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+/* The count beside a group's heading: the group says how many, so no line above the list has to. */
+.count { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-mute); font-variant-numeric: tabular-nums; }
 .badge { flex: none; padding: 2px 8px; border-radius: 999px; font-size: var(--nh-fs-xs); font-weight: 600; }
 .badge[data-tone="late"] { color: var(--nh-danger); background: var(--nh-danger-tint); }
 .badge[data-tone="soon"] { color: var(--nh-warn); background: var(--nh-warn-tint); }
@@ -46,8 +43,6 @@
   .notice { flex-wrap: wrap; }
   .noticeActions { width: 100%; padding-left: 18px; }
 }
-
-.cause { font-weight: 600; color: var(--nh-ink-2); }
 
 /* Holders' triage and bulk (plan OVL-U1, D20, D21): the banner for a desk at triage or above, the selection toggle and the bar, and the pinned line. */
 .triage { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-md); font-weight: 600; }
