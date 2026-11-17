@@ -24,9 +24,9 @@ const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { list
 export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTabKey | null; projectId: string | null; children: React.ReactNode }) {
   const t = useT();
   const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
-  // The NextUp AI side chat, on a project's own pages only (flag projectAi).
+  // The NextUp AI side chat, on a project's own pages only (flag projectAi). An idea's pages are not in this frame.
   const { flag } = useDemo();
-  const ai = projectId !== null && !idea && flag("projectAi");
+  const ai = projectId !== null && flag("projectAi");
   const [aiOpen, setAiOpen] = useProjectAiOpen();
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
 
