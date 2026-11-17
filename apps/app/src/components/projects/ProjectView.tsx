@@ -82,15 +82,16 @@ function Project({ p, jira, tab: asked }: { p: ReducedProject; jira: JiraStatusV
 }
 
 /** The Idea page of a project that has started: the idea card carries the project's buttons (Start, Manage, (i)) in its top row,
- *  so there is no head, done-by line or move banner above it. A pause or a missing lead still shows, and the sheet Manage opens. */
-function IdeaHome({ p, jira, page }: { p: ReducedProject; jira: JiraRow; page: ProjectPage }) {
+ *  so there is no head, done-by line or move banner above it; the viewer's move is a line in that row. A pause or a missing
+ *  lead still shows, and the sheet Manage opens. */
+function IdeaHome({ p, jira, page, overviewId }: { p: ReducedProject; jira: JiraRow; page: ProjectPage; overviewId: string | null }) {
   const [sheet, setSheet] = useState<HeadSheet | null>(null);
   return <>
     <PausePanel p={p} />
     <NoLeadBanner p={p} />
     {sheet && <ProjectSheet key={sheet} p={p} sheet={sheet} onClose={() => setSheet(null)} />}
     <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]}
-      headAction={<div className={head.tools}><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>} />
+      headAction={<div className={head.tools}><MoveLink p={p} overviewId={overviewId} /><StartButton p={p} /><ProjectMenu p={p} onPick={setSheet} /><ProjectInfo p={p} jira={jira} /></div>} />
   </>;
 }
 
@@ -125,28 +126,53 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
     {page && <>
       {home && !onOverview && !ideaOnly && <PageMove p={p} overviewId={overview?.id ?? null} />}
       {answerHere && <InvitePanel p={p} />}
-      {ideaOnly && home ? <IdeaHome p={p} jira={jira} page={page} />
+      {ideaOnly && home ? <IdeaHome p={p} jira={jira} page={page} overviewId={overview?.id ?? null} />
         : ideaOnly ? <IdeaTool p={p} tool={page.tools[0]} page={page} jira={jira} editor={false} hints={[]} />
         : <PageView key={p.id + ":" + page.id} p={p} page={page} jira={jira} agent={agent.view !== null} titled={!(home && page.tools[0]?.kind === "overview")} />}
     </>}
   </>;
 }
 
-/** On the Idea page, the viewer's next move as one line that leads to the Overview, where its button is. */
-function PageMove({ p, overviewId }: { p: ReducedProject; overviewId: string | null }) {
+/** The viewer's next move on this project, or null: the lead's own, a reward a manager records, or one moved to their desk. */
+function useYourMove(p: ReducedProject) {
   const ctx = useDemo();
   const r = useRights(p);
-  const t = useT();
   const locale = useLocale();
+  const t = useT();
   const move = nextMove(p, ctx.S.day);
   const mine = move !== null && (move === "reward" ? r.reward : ctx.actorUserId !== null && p.leadUserId === ctx.actorUserId);
   const escalatedToMe = holdsRole(ctx.me, p.escalated?.toRoleId ?? null);
   if ((!mine && !escalatedToMe) || !move) return null;
+  const moved = escalatedToMe && !mine;
+  return {
+    label: moved ? t("projects.movedToYou") : t("projects.yourMove"),
+    text: moved ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk")) : moveLabel(move, locale),
+    moved,
+  };
+}
+
+/** On the Idea page, the viewer's next move as one line that leads to the Overview, where its button is. */
+function PageMove({ p, overviewId }: { p: ReducedProject; overviewId: string | null }) {
+  const { href } = useDemo();
+  const m = useYourMove(p);
+  if (!m) return null;
   return <div role="status"><Banner tone="info">
-    <span className={styles.yourMoveLabel}>{escalatedToMe && !mine ? t("projects.movedToYou") : t("projects.yourMove")}</span>{" "}
-    {escalatedToMe && !mine ? (p.escalated?.what === "start" ? t("projects.lateStartOnDesk") : t("projects.lateMeasureOnDesk"))
-      : overviewId ? <Link href={ctx.href(`/projects/${p.id}?page=${overviewId}`)} className={styles.link}>{moveLabel(move, locale)} →</Link> : moveLabel(move, locale)}
+    <span className={styles.yourMoveLabel}>{m.label}</span>{" "}
+    {m.moved ? m.text : overviewId ? <Link href={href(`/projects/${p.id}?page=${overviewId}`)} className={styles.link}>{m.text} →</Link> : m.text}
   </Banner></div>;
+}
+
+/** The same line inside the idea card's top row (the Idea page has no banner above the card). It leads to the Overview. */
+function MoveLink({ p, overviewId }: { p: ReducedProject; overviewId: string | null }) {
+  const { href } = useDemo();
+  const m = useYourMove(p);
+  if (!m) return null;
+  return (
+    <span role="status" className={styles.moveLine}>
+      <span className={styles.yourMoveLabel}>{m.label}</span>{" "}
+      {overviewId ? <Link href={href(`/projects/${p.id}?page=${overviewId}`)} className={styles.link}>{m.text} →</Link> : m.text}
+    </span>
+  );
 }
 
 /** The pilot-rc1 body, including browser-only pages, stays behind the company flag. */

@@ -94,6 +94,7 @@ a.toolChip:hover { background: var(--nh-surface); }
 .quietLink:hover { text-decoration: underline; }
 
 .yourMoveLabel { font-weight: 600; color: var(--nh-brand); }
+.moveLine { font-size: var(--nh-fs-sm); text-align: right; }
 
 /* the summary band: the life of the project and its numbers */
 .summary { background: var(--nh-card); border-radius: var(--radius-md, 18px); box-shadow: 0 6px 20px rgb(40 60 100 / 6%); padding: 24px; display: flex; flex-direction: column; gap: 18px; }
