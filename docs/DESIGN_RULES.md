@@ -110,11 +110,11 @@ The screen-by-screen findings and the target per screen are in `docs/plans/2026-
 
 | Rule | Enforced by |
 |---|---|
-| **One name per place.** A page is named once: by its pill in the bar, its entry in the side view or its heading, never by two of them on one screen. A project's or an idea's title is shown once. | not tested |
+| **One name per place.** The bar's pill names the area, the side view (or, on a phone, the strip) names the page; an area's first page may carry the area's name there. No heading repeats either of them, and no two headings on a screen are the same. A project's or an idea's title is shown once. | e2e `quiet screens: one filled button and one name per page…` (`tests/e2e/demo/quiet.spec.ts`), on the main pages as Employee, Team leader and Manager |
 | **One fact, once per screen.** A date, a person, a status or a count appears in one place. A status has one carrier: a chip, a colour or a sentence, never two of them. | not tested |
 | **No grey text that explains.** Muted text carries a fact the reader needs to act: who, when, how much. A line that says how NextUp works, or repeats the heading in other words, goes. | not tested |
 | **Folded by default.** A section shows one line with its answer; the rest opens on demand (`Fold` in `components/ui/elements`). A form appears after its button was pressed. Open without asking is only the one thing the viewer has to do now. | `tests/unit/design/fold.test.tsx` for the element; screens not tested |
-| **One filled button per screen.** The one filled blue button is the viewer's next move. Every other action is a quiet button, a link or sits in the "⋯" menu. Without a next move there is no filled button. A button that does nothing yet is not drawn. | not tested |
+| **One filled button per screen.** The one filled blue button is the viewer's next move. Every other action is a quiet button, a link or sits in the "⋯" menu. Without a next move there is no filled button. A button that does nothing yet is not drawn. A selected state may be blue too (a chosen filter, the current row): it carries `aria-pressed`, `aria-current`, `aria-selected` or `aria-checked`. | same e2e (`tests/e2e/demo/quiet.spec.ts`) |
 | **Status colours are the status tokens.** Good is `--nh-ok`, needs you is `--nh-warn`, late or worse is `--nh-danger`. Blue is for actions and selection, never for a status. No screen keeps a palette of its own. | not tested |
 
 ## 7. Never
