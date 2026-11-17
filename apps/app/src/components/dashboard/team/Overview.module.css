@@ -505,7 +505,7 @@ button.onProfile2, button.onProfile3, button.onProfile4, button.onProfile5, butt
   .div24 { padding: 16px 16px 20px; }
   .title2 { font-size: var(--nh-fs-3xl); }
   .div26 { gap: 4px; }
-  .label2 { font-size: var(--nh-fs-xs); line-height: 1.2; }
+  .label2 { font-size: var(--nh-fs-xs); line-height: 1.2; hyphens: auto; overflow-wrap: break-word; } /* a long German step ("Entscheidung") breaks inside its fifth, not into the next */
   .sub { display: none; }
   .div27:has(.div28[data-tone="now"]) .sub { display: block; font-size: var(--nh-fs-xs); }
   .div36 { padding: 18px 16px 20px; }
