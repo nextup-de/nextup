@@ -6,7 +6,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../helpers";
 
 const PAGES = {
-  "Employee": ["/acme/raise", "/acme/ideas", "/acme/feed", "/acme/projects", "/acme/profile"],
+  "Employee": ["/acme/raise", "/acme/ideas", "/acme/idea?id=c3", "/acme/idea?id=c3&page=files", "/acme/feed", "/acme/projects", "/acme/profile"],
   "Team leader": ["/acme/inbox", "/acme/inbox?id=c1", "/acme/idea?id=c1", "/acme/decisions", "/acme/feed", "/acme/projects", "/acme/projects/pj4", "/acme/projects/pj2", "/acme/projects/collaboration", "/acme/projects/progress", "/acme/profile"],
   "Manager": ["/acme/dashboard", "/acme/inbox", "/acme/decisions", "/acme/projects", "/acme/projects/pj3", "/acme/projects/pj1", "/acme/profile"],
 } as const;
