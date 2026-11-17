@@ -13,6 +13,11 @@ The first two build the app and start it on their own port, one per checkout (`p
 suites of other worktrees can keep running. The first run of the day takes a minute or two because
 of the build.
 
+**In CI** (since 17 Nov 2026): a PR runs the demo suite's `desktop` project only (`npm run e2e -- --project=desktop`),
+and it is a required check. The `phone` project (`mobile.spec.ts`, Pixel 7) and the whole database suite run on every
+push to `main` and in the nightly run, not on PRs. So before a PR that changes server code or a phone layout, run the
+specs it touches yourself: `npm run e2e:db -- tests/e2e/db/<spec>` or `npm run e2e -- --project=phone`.
+
 ## The interview script
 
 `tests/e2e/demo/interview.spec.ts` is the path we click through when we show NextUp to someone:
