@@ -2,7 +2,9 @@
 // The raise page's sidebar: search, the open draft (publish, Idea / Analysis, what was added), and
 // the ideas list with pinned ones on top, then drafts before published ones, one line per idea: a dashed circle after the title marks a draft, and a title too long
 // for the row glides left on hover so it can be read in full. Collapsible; a drawer on phones. Props in, JSX out.
+import Link from "next/link";
 import { useRef, useState } from "react";
+import { PageIcon } from "@/components/shell/AreaFrame";
 import type { WhenGroup } from "@/features/ideas/raise";
 import { ShowAll, useCapped } from "@/components/ui/elements";
 import { LIST_TOP } from "@/lib/utils/quiet";
@@ -26,7 +28,11 @@ export type DraftCard = {
   menu: React.ReactNode | null; // the actions menu, opened from a list row
 };
 
-export function RaiseSidebar({ query, onQuery, onHide, card, rows, loaded, onPick, onPin, onNew }: {
+/** One of the Ideas area's pages at the top of this side view (DESIGN_RULES §4): "New idea" (this page) and "Mine". */
+export type AreaPage = { key: string; label: string; href: string; current: boolean };
+
+export function RaiseSidebar({ pages = [], query, onQuery, onHide, card, rows, loaded, onPick, onPin, onNew }: {
+  pages?: AreaPage[];
   query: string; onQuery: (q: string) => void; onHide: () => void;
   card: DraftCard | null;
   rows: IdeaRow[]; loaded: boolean;
@@ -48,11 +54,20 @@ export function RaiseSidebar({ query, onQuery, onHide, card, rows, loaded, onPic
         <button type="button" className={s.iconBtn} onClick={onHide} title={t("ideas.sideHide")} aria-label={t("ideas.sideHide")}><Icon name="sidebar" size={12} /></button>
       </div>
 
+      {/* The area's pages: this page's row starts a new idea, so the list below needs no second "New idea" button. */}
+      {pages.length > 1 && (
+        <nav className={s.pageRows} aria-label={t("shell.navMain")} data-testid="ideas-pages">
+          {pages.map((page) => page.current
+            ? <button key={page.key} type="button" className={s.pageRow} aria-current="page" onClick={onNew}><span className={s.pageSlot}><PageIcon k={page.key} /></span>{page.label}</button>
+            : <Link key={page.key} href={page.href} className={s.pageRow}><span className={s.pageSlot}><PageIcon k={page.key} /></span>{page.label}</Link>)}
+        </nav>
+      )}
+
       {card && <Card key={card.title} c={card} />}
 
       <div className={s.ideasHead}>
         <span className={s.ideasTitle}>{t("ideas.sideIdeas")}</span>
-        <button type="button" className={s.newIdea} onClick={onNew}><span className={s.plus}><Icon name="plus" size={7.5} stroke="var(--nh-on-brand)" width={3} /></span>{t("ideas.sideNew")}</button>
+        {pages.length < 2 && <button type="button" className={s.newIdea} onClick={onNew}><span className={s.plus}><Icon name="plus" size={7.5} stroke="var(--nh-on-brand)" width={3} /></span>{t("ideas.sideNew")}</button>}
       </div>
       <div className={s.ideas}>
         {/* Pinned ones on top, then the rest under small time labels (Today, This week, Earlier) instead of a date per row. */}
