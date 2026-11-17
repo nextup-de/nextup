@@ -150,3 +150,18 @@ export function overviewFacts(p: ReducedProject, input: { range: OverviewRange; 
     showBaseline: p.status === "planning",
   };
 }
+
+/**
+ * How a running project stands, for the Overview's one status line (DESIGN_RULES §9: status colours are the status tokens).
+ * `late`: past its done-by day with steps still open. `attention`: a step is blocked, stuck or past its due day.
+ * `ok`: none of that. Null when the project does not run or has no open step, where a health word would say nothing.
+ */
+export type OverviewHealth = { tone: "ok" | "attention" | "late"; daysLeft: number | null };
+export function overviewHealth(p: Pick<ReducedProject, "status" | "doneBy" | "steps">, facts: Pick<OverviewFacts, "columns" | "tiles">, day: number): OverviewHealth | null {
+  const open = facts.columns.todo + facts.columns.doing + facts.columns.blocked;
+  if (p.status !== "running" || open === 0) return null;
+  const daysLeft = p.doneBy === null ? null : p.doneBy - day;
+  const tone = daysLeft !== null && daysLeft < 0 ? "late"
+    : facts.columns.blocked > 0 || facts.tiles.stuck > 0 || facts.tiles.late > 0 ? "attention" : "ok";
+  return { tone, daysLeft };
+}

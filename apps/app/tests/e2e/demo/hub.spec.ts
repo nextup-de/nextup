@@ -21,8 +21,7 @@ test("HUB acceptance: change the range, save a doc for the team, add a link", as
   await test.step("the lead picks Last 30 days in the Overview's range menu with the keyboard", async () => {
     await addPages(page, "/acme/projects/pj2", ["Overview"]);
     await page.goto("/acme/projects/pj2?page=project-overview");
-    // The range filters the steps, so it leads the Overview's Steps line, which opens on demand (DESIGN_RULES §9).
-    await page.locator('[data-name="overview-steps"] > summary').click();
+    // The range sits in the page head, right of the title (Paper "Jira pages · new header").
     const range = page.getByRole("button", { name: /^Date range:/ });
     await expect(range).toBeVisible();
     await range.focus();

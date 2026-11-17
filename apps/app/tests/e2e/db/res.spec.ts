@@ -334,7 +334,6 @@ test.describe("RES acceptance: a result that closes properly", () => {
       // every step done is one calm card ("The one step is done") instead of a legend of zeros; a counted drop would make it
       // "All 2 steps done" or bring back "Where the steps are".
       await page.goto(`/${SLUG}/projects/${projectId}?page=project-overview`);
-      await page.locator('[data-name="overview-steps"] > summary').click(); // the Steps line opens on demand (DESIGN_RULES §9)
       const doneCard = page.getByRole("region", { name: "The one step is done" });
       await expect(doneCard).toBeVisible();
       await expect(page.getByRole("region", { name: "Where the steps are" })).toHaveCount(0);
