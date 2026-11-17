@@ -87,7 +87,7 @@ export const FLAGS = {
   projectAi: {
     description: "A project's pages get the NextUp AI side chat: a tab on the right edge that opens a chat column. Off: no tab",
     owner: "Sam",
-    defaults: { demo: true, sandbox: false, pilot: false, live: false },
+    defaults: { demo: true, sandbox: true, pilot: false, live: false },
     added: "2026-11-17",
     removeBy: "2027-02-28",
   },
