@@ -8,7 +8,10 @@ import { useSyncExternalStore } from "react";
 import type { ProjectsTabKey } from "@/config/nav";
 import { SectionTabs } from "@/components/shell/SectionTabs";
 import { useT } from "@/i18n/client";
+import { useDemo } from "@/components/dashboard/DemoProvider";
 import { ProjectsSidebar } from "./ProjectsSidebar";
+import { ProjectAi } from "./ai/ProjectAi";
+import { useProjectAiOpen } from "./ai/projectAiPreview";
 import s from "./ProjectsFrame.module.css";
 
 const KEY = "nh.projectsSidebar";
@@ -21,6 +24,10 @@ const subscribeSb = (fn: () => void) => { listeners.add(fn); return () => { list
 export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTabKey | null; projectId: string | null; children: React.ReactNode }) {
   const t = useT();
   const sb = useSyncExternalStore(subscribeSb, readSb, () => "hidden" as const);
+  // The NextUp AI side chat, on a project's own pages only (flag projectAi).
+  const { flag } = useDemo();
+  const ai = projectId !== null && !idea && flag("projectAi");
+  const [aiOpen, setAiOpen] = useProjectAiOpen();
   const set = (v: "open" | "hidden") => { try { window.localStorage.setItem(KEY, v); } catch { /* storage off */ } listeners.forEach((fn) => fn()); };
 
   return (
@@ -38,6 +45,7 @@ export function ProjectsFrame({ area, projectId, children }: { area: ProjectsTab
         {area && <div className={s.tabs}><SectionTabs section="projects" active={area} /></div>}
         {children}
       </div>
+      {ai && <ProjectAi open={aiOpen} setOpen={setAiOpen} />}
     </div>
   );
 }
