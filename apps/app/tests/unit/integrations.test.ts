@@ -148,12 +148,19 @@ describe("parseInbound: the four project events", () => {
     expect(ok("project.step.moved", { stepId: "s_1", to: "done" })).toBe(true);
     expect(ok("project.linked", { system: "jira", key: "NUP-1", url: jira.url })).toBe(true);
     expect(ok("project.linked", { ...jira, stepId: "s_1" })).toBe(true);
+    // A step a template put on the board (t:<key>:<version>:<index>): the Jira sync links, moves and renames it like any other.
+    expect(ok("project.linked", { ...jira, stepId: "t:quick-win:1:0" })).toBe(true);
+    expect(ok("project.step.moved", { stepId: "t:quick-win:1:0", to: "doing" })).toBe(true);
+    expect(ok("project.step.edited", { stepId: "t:8d:1:3", text: "From Jira" })).toBe(true);
     expect(ok("project.commented", { text: "Jira NUP-2: budget approved" })).toBe(true);
   });
 
   it("refuses payloads the board could not show", () => {
     expect(ok("project.step.added", { text: "no id" })).toBe(false);
     expect(ok("project.step.added", { stepId: "s 1", text: "bad id" })).toBe(false);
+    // A connector never mints a template id for a new step, and a lookalike is no step.
+    expect(ok("project.step.added", { stepId: "t:quick-win:1:0", text: "new" })).toBe(false);
+    expect(ok("project.linked", { ...jira, stepId: "t:quick-win:1:0;drop" })).toBe(false);
     expect(ok("project.step.added", { stepId: "s_1", text: "  " })).toBe(false);
     expect(ok("project.step.added", { stepId: "s_1", text: "x".repeat(501) })).toBe(false);
     expect(ok("project.step.added", { stepId: "s_1", text: "t", dueDay: "Friday" })).toBe(false);

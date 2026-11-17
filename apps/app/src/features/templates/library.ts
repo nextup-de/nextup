@@ -78,3 +78,9 @@ export function latestTemplate(key: string): Template | null {
   const all = TEMPLATES[key];
   return all[all.length - 1] ?? null;
 }
+
+/** The id of a step a template put on the board: `t:<key>:<version>:<index>`, the same on every replay. */
+export const templateStepId = (key: string, version: number, index: number): string => `t:${key}:${version}:${index}`;
+
+/** Is `v` the id of a step a template put on the board (templateStepId)? A connector names such steps like any other. */
+export const isTemplateStepId = (v: unknown): v is string => typeof v === "string" && /^t:[a-z0-9-]{1,40}:\d{1,4}:\d{1,4}$/.test(v);
