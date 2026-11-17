@@ -52,8 +52,8 @@
 /* An open idea in the Inbox fills the screen beside the side view (dashboard/team/Overview.module.css sizes it from the
    screen's width): while the side view is open, the screen of the page is what is left beside it. */
 @media (min-width: 761px) {
-  .root[data-section="inbox"] { --nh-frame-screen-w: var(--nh-screen-w); }
-  .root[data-section="inbox"][data-sb="open"] .main { --nh-screen-w: calc(var(--nh-frame-screen-w) - 256px); }
+  .root[data-section="inbox"], .root[data-section="ideas"] { --nh-frame-screen-w: var(--nh-screen-w); }
+  .root[data-section="inbox"][data-sb="open"] .main, .root[data-section="ideas"][data-sb="open"] .main { --nh-screen-w: calc(var(--nh-frame-screen-w) - 256px); }
 }
 @media (max-width: 760px) {
   .side, .show { display: none; }
