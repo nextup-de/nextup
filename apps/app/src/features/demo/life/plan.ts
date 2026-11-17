@@ -9,7 +9,7 @@
 //   - a yes goes the way the app has it since 16 Nov 2026 (approval.ts): one to three named approvers vote on the following days, one no
 //     returns the idea to its raiser, who sends it again or takes it back, and only the last yes opens the project draft;
 //   - the draft is set up by its lead over the next days (draft.ts) and started; the project is then worked step by step, finished and
-//     measured over the weeks.
+//     measured over the weeks; the 30-day result says what it saves a year and a colleague confirms it (result.ts).
 // So at any time a demo shows ideas on a desk, ideas waiting on their approvers, ideas sent back, drafts in setup and running projects.
 // Desks, approvals and projects of real people (anyone who ever acted in the app) are never touched: those decisions stay theirs. The
 // generator's own old cases are cleared out regardless, since nobody is waiting for them.
@@ -26,6 +26,7 @@ import type { ReducedProject } from "@/features/projects/types";
 import { approvalDay, pickApprovers, provisionalPayload, type DeskYes } from "./approval";
 import { ideasFor } from "./catalog";
 import { draftDay, ideaByTitle, planAndStart } from "./draft";
+import { impactOf, resultDay } from "./result";
 import { rngOf, simulated, type At, type DayCtx, type LifePerson, type Rng } from "./shared";
 
 export type { LifePerson } from "./shared";
@@ -120,7 +121,10 @@ export function lifeDay(input: LifeInput): LifeEvent[] {
     const lead = p.leadUserId ? personById.get(p.leadUserId) ?? null : null;
     if (!lead || (humans.has(lead.id) && !generated.test(p.id))) continue;
     if (p.draft && p.status === "planning") draftDay(p, lead, state, ctx, joined);
-    else if (!p.draft || p.startedDay !== null) projectDay(p, lead, rngOf(`${slug}:${iso}:${p.id}`), today, people, focus, at);
+    else if (!p.draft || p.startedDay !== null) {
+      projectDay(p, lead, rngOf(`${slug}:${iso}:${p.id}`), today, people, focus, at);
+      resultDay(p, ideaByTitle(p.title), state, ctx);
+    }
   }
 
   // 4. New ideas: 2 to 4 a day, none the same as one still open. (One waiting on its approvers does not hold its title back: with three
@@ -219,9 +223,10 @@ function projectDay(p: ReducedProject, lead: LifePerson, r: Rng, today: number, 
     const b = p.baseline && !p.baseline.none ? p.baseline : null;
     if (!b) return;
     const idea = ideaByTitle(p.title);
-    const gain = (idea?.project.gain ?? 0.25) * (0.6 + r.next() * 0.7);
+    const share = 0.6 + r.next() * 0.7;
+    const gain = (idea?.project.gain ?? 0.25) * share;
     const value = Math.round(b.value * (b.better === "down" ? 1 - gain : 1 + gain) * 10) / 10;
-    at(key("measured30"), "project.measured", lead, p.id, { check: 30, value, source: "manual", note: "Gemessen wie die Ausgangslage." });
+    at(key("measured30"), "project.measured", lead, p.id, { check: 30, value, source: "manual", note: "Gemessen wie die Ausgangslage.", impact: impactOf(idea, share, r) });
     if (p.milestones.some((m) => m.id === `${p.id}-m2` && !m.shipped)) at(key("m2:shipped"), "project.milestone.edited", lead, p.id, { milestoneId: `${p.id}-m2`, shipped: true });
   }
 }
