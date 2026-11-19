@@ -104,7 +104,7 @@ function ProjectPageView({ p, jira }: { p: ReducedProject; jira: JiraRow }) {
   // An invitation is answered in the Team tool; a project without one answers it on its home page (the inbox link lands there).
   const answerHere = home && pendingInviteOf(p, actorUserId) !== null && !pages.some((x) => x.tools.some((tool) => tool.kind === "team"));
   return <>
-    <div className={styles.top}>
+    <div className={styles.top} data-back-only={!home && !draft ? "" : undefined}>
       {home ? <Header p={p} jira={jira} />
         : draft ? <div className={styles.hero}><PageHeader title={p.title} /></div>
           : <div className={styles.hero}><Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link></div>}
