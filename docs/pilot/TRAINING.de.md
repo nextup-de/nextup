@@ -1,6 +1,6 @@
 # NextUp-Schulung: 30 Minuten für Mitarbeitende, Tischinhaber und Führungskräfte
 
-> **Stand 2026-11-04.** Für die Pilotleitung, persönlich oder per Call, in der Woche, in der die Firma in den Pilot geht.
+> **Stand 2026-11-11.** Für die Pilotleitung, persönlich oder per Call, in der Woche, in der die Firma in den Pilot geht.
 > Die englische Fassung ist `TRAINING.en.md`; beide sagen dasselbe. Zeigen Sie die echte App Ihrer Firma in der Sandbox und
 > nehmen Sie einen Testfall, keinen echten. Folien braucht es nicht.
 
@@ -92,6 +92,34 @@ dazu zu beurteilen, ob der Ablauf funktioniert, nicht ob Sie funktionieren.
 - Eine Frage zur Bedienung: Ihre Pilotleitung.
 - Etwas ist kaputt: der Problem-Knopf in der App oder der Kontakt, den die Pilotleitung nennt (`docs/pilot/SUPPORT.md`).
 - Ihre Betriebsvereinbarung und die Datenschutzunterlagen: Betriebsrat und Datenschutzbeauftragte.
+
+## Die Ankündigung am Eröffnungstag
+
+> **Entwurf für Marc, 2026-11-11.** Plan S, Issue #664 (Q9.8).
+
+NextUp schickt keine Willkommensmail an alle, wenn Ihre Administration es öffnet. Nur zurückgehaltene Einladungen
+gehen raus. Wer sich mit Microsoft anmeldet oder seinen Anmeldecode von Hand bekommen hat, erfährt von NextUp nur durch
+Sie. Kündigen Sie es deshalb an dem Tag, an dem Ihre Administration „NextUp öffnen“ drückt, in Ihren eigenen Kanälen an:
+eine Mail der Geschäftsleitung oder der Personalabteilung, das Intranet, ein Teams-Beitrag, das Schwarze Brett. Wo Teams
+für alle installiert ist, finden die Leute NextUp auch dort.
+
+Ein Text, den Sie übernehmen und ändern können. Füllen Sie die Klammern aus.
+
+> **Betreff: Ab heute: NextUp für Probleme und Ideen**
+>
+> Ab heute, [Datum], können Sie ein Problem oder eine Idee in NextUp einbringen, und Sie bekommen innerhalb von [5]
+> Arbeitstagen eine Antwort.
+>
+> NextUp schickt, was Sie schreiben, an die Rolle, die diese Art von Fall verantwortet, zum Beispiel die Teamleitung
+> Ihres Bereichs. Sie sehen, bei wem der Fall liegt und bis wann eine Antwort fällig ist. Ist die Person weg, übernimmt
+> die Vertretung. Jede Antwort kommt mit einem Grund.
+>
+> So fangen Sie an: Öffnen Sie [Adresse] und melden Sie sich mit Ihrem Firmenkonto an [oder: mit dem Anmeldecode, den Sie
+> bekommen haben]. Das dauert zwei Minuten.
+>
+> NextUp zählt Fälle und Antworten pro Einheit und Rolle, nie pro Person. Niemand wird gerankt.
+>
+> Die Schulung ist am [Datum, Ort oder Link]. Fragen: [Pilotleitung, Mail].
 
 ## Für die Schulenden
 

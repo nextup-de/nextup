@@ -1,6 +1,6 @@
 # NextUp training: 30 minutes for staff, desk holders and managers
 
-> **Updated 2026-11-04.** For the pilot lead to run, in person or on a call, in the week the company goes to pilot. The
+> **Updated 2026-11-11.** For the pilot lead to run, in person or on a call, in the week the company goes to pilot. The
 > German version is `TRAINING.de.md`; both say the same. Show the real app of your company in sandbox; use a test case,
 > not a real one. No slides are needed.
 
@@ -83,6 +83,32 @@ whether you do.
 - A question about how to use it: your pilot lead.
 - Something broken: the problem button in the app, or the contact the pilot lead names in `docs/pilot/SUPPORT.md`.
 - Your works agreement and data protection papers: your works council and data protection officer.
+
+## The announcement on the opening day
+
+> **Draft for Marc, 2026-11-11.** Plan S, issue #664 (Q9.8).
+
+NextUp does not send a welcome mail to everyone when your admin opens it. Only invitations that were held back go out.
+People who sign in with Microsoft, or whose login code was handed out by hand, hear about NextUp only from you. So on
+the day your admin presses "Open NextUp", announce it in your own channels: a mail from management or HR, the
+intranet, a Teams post, the notice board. Where Teams is installed for everyone, people also find NextUp there.
+
+A text you can use and change. Fill in the brackets.
+
+> **Subject: From today: NextUp for problems and ideas**
+>
+> From today, [date], you can raise a problem or an idea in NextUp, and you get an answer in [5] working days.
+>
+> NextUp sends what you write to the role that owns this kind of case, for example the team lead of your area. You see
+> who has it and by when an answer is due. If the person is away, the deputy takes over. Every answer comes with a
+> reason.
+>
+> How to start: open [address] and sign in with your company account [or: with the login code you received]. It takes
+> two minutes.
+>
+> NextUp counts cases and answers per unit and role, never per person. Nobody is ranked.
+>
+> The training is on [date, place or link]. Questions: [pilot lead, mail].
 
 ## For the trainer
 
