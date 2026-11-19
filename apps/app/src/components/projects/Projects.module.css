@@ -444,4 +444,6 @@ a.key:hover { text-decoration: underline; }
    hidden: the strip of tabs and the back link step aside. Phones keep them. */
 @media (min-width: 761px) {
   :global([data-psb]) .top > nav, :global([data-psb]) .hero > .back { display: none; }
+  /* A head holding only the back link is then empty: gone, so its gap does not push the page 16px lower. */
+  :global([data-psb]) .top[data-back-only] { display: none; }
 }

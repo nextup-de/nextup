@@ -4,6 +4,9 @@
 /* Fonts: loaded via next/font in src/app/layout.tsx (self-hosted, no third-party request). */
 
 *, *::before, *::after { box-sizing: border-box; }
+/* No scrollbar is drawn anywhere; everything still scrolls (wheel, touch, keys). */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 html { -webkit-text-size-adjust: 100%; }
 /* Animations off (dev panel → Design): everything lands in its end state at once. */
 html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {

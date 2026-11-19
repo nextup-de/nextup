@@ -6,6 +6,8 @@
 /* The side card stays a column beside the list. Where the page is narrow (the NextUp AI chat open, Paper
    "Project · AI side chat" v2 · 4) it narrows with the page, 288px down to 232px, so nothing jumps while the chat slides. */
 .side { container: files-side / inline-size; display: flex; flex-direction: column; flex: 0 0 clamp(232px, 30cqi, 288px); width: clamp(232px, 30cqi, 288px); min-width: 0; padding: 20px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); }
+/* The upload menu and the dialogs only hold fixed overlays: their wrappers take no place (and no gap) in the row. */
+.files > :is([data-testid="files-upload-menu"], [data-testid="files-row-menu"], [data-testid="files-delete-dialog"], [data-testid="files-request-dialog"]) { display: contents; }
 .files :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .icon { flex-shrink: 0; overflow: visible; filter: drop-shadow(0 1px 1px rgb(40 60 100 / 18%)); }
 .page { fill: var(--nh-card); stroke: var(--nh-line-2); stroke-width: 0.75; }
