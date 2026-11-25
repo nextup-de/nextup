@@ -18,6 +18,7 @@ import { baselineNeedsConfirm, DROP_WHY_MAX, HELP_TEXT_MAX, openStepsOf, QUESTIO
 import { isMeasureSource, readImpact } from "./measure-source";
 import { untouchedStepOf } from "./reduce";
 import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
+import { hasClosedAudience } from "@/features/cases/visibility";
 import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject, type ToolKind, type ToolInstance } from "./types";
 
 import { canAddTool, fitsEvent, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, TOOL_KINDS } from "./pages";
@@ -105,6 +106,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   // and resume. Everything else of the lead stays with the lead: stop, invitations, numbers, done, hand-over, removing others' steps.
   const isCoLead = (userId: string | null | undefined) => typeof userId === "string" && p.memberUserIds.includes(userId) && (p.coLeadUserIds ?? []).includes(userId);
   const coLead = p.status === "running" && isCoLead(uid);
+  const askedAs = (userId: string, role: InviteRole) => (p.invites ?? []).some((i) => i.userId === userId && i.role === role && (i.state === "pending" || i.state === "accepted"));
+  const sponsorOrAsked = (userId: string) => p.sponsorUserId === userId || askedAs(userId, "sponsor");
+  const coLeadOrAsked = (userId: string) => isCoLead(userId) || askedAs(userId, "colead");
   const onTeam = isLead || p.memberUserIds.some(isMe) || decider;
   // The seat holder the draft was escalated to may keep, hand on or stop it while the escalation is live (D15).
   const escalatedSeat = draft && planning && p.escalated !== null && p.escalated.what === "draft" && p.escalated.live ? p.escalated.toSeatId : null;
@@ -277,6 +281,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!live) return no("projects.permClosed");
       if (typeof pl.userId !== "string" || pl.userId === "") return no("projects.permInviteWhom");
       if (!(INVITE_ROLES as readonly unknown[]).includes(pl.role)) return no("projects.permInviteRole");
+      // Nobody is sponsor and co-lead at once: the sponsor may stop and hand over.
+      if (pl.role === "colead" && sponsorOrAsked(pl.userId)) return no("projects.permCoLeadSponsor");
+      if (pl.role === "sponsor" && coLeadOrAsked(pl.userId)) return no("projects.permCoLeadSponsor");
       return pl.userId === p.leadUserId ? no("projects.permInviteLeadSelf") : OK;
 
     case "project.invite.answered": {
@@ -290,6 +297,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.lapsed !== undefined && typeof pl.lapsed !== "boolean") return no("projects.permNotAllowed");
       if (pl.lapsed) return clock && pl.take === false ? OK : no("projects.permLapsedClock");
       if (!isMe(invite.userId)) return no("projects.permInviteAnswerWho");
+      // Asked before the other role was theirs: taking it is refused too.
+      if (pl.take === true && invite.role === "colead" && p.sponsorUserId === invite.userId) return no("projects.permCoLeadSponsor");
+      if (pl.take === true && invite.role === "sponsor" && (p.coLeadUserIds ?? []).includes(invite.userId)) return no("projects.permCoLeadSponsor");
       return typeof pl.take === "boolean" ? OK : no("projects.permTakeOrDecline");
     }
 
@@ -325,6 +335,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
         return isCoLead(pl.userId) ? OK : no("projects.permCoLeadNone");
       }
       if (!(isLead || coLead)) return no("projects.permLeadOnly");
+      // Being on the team opens the idea: on a private or custom one only the lead adds people.
+      if (!isLead && pl.on !== false && state.cases.some((c) => p.sources.includes(c.id) && hasClosedAudience(c))) return no("projects.permCoLeadClosed");
       // A co-lead takes off only who a co-lead added (nobody the lead put there, so no manager in charge), or leaves. With unassign, so the lead is told.
       if (!isLead && pl.on === false) {
         const added = (p.addedByCoLeadUserIds ?? []).includes(pl.userId ?? "") && !isCoLead(pl.userId) && pl.userId !== p.sponsorUserId;

@@ -7,7 +7,7 @@ A unit test fails when the code and this file disagree, so **every rights change
 Rights changes follow the rules in `CONTRIBUTING.md` ("Rights"): their own PR, the `rights` label, Kevin told.
 
 ✓ may, — may not. Everyone in a column is the same one person in the fixture: J. Schmidt raised the idea and the
-project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, A. Admin took the co-lead role, a sponsor was accepted. Who may
+project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, one member took the co-lead role, a sponsor was accepted. Who may
 *see* what is in `docs/VISIBILITY.md`.
 
 ### A running project
@@ -22,6 +22,7 @@ project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt
 | Comment on a step `project.step.commented` | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | — |
 | Add or change a milestone `project.milestone.added` | ✓ | ✓ | ✓ | — | — | — | ✓ | — | ✓ | — |
 | Add someone to the team `project.member` | ✓ | ✓ | — | — | — | — | ✓ | — | — | — |
+| Add someone to the team when the idea is private `project.member` | ✓ | — | — | — | — | — | ✓ | — | — | — |
 | Take someone the lead added off the team `project.member` | ✓ | — | — | — | — | — | ✓ | — | — | — |
 | Take someone a co-lead added off the team `project.member` | ✓ | ✓ | — | — | — | — | ✓ | — | — | — |
 | Invite someone as member `project.invited` | ✓ | — | — | — | — | — | ✓ | — | — | — |

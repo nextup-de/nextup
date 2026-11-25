@@ -19,7 +19,7 @@ type Who = { key: string; label: string; userId: string; role: Actor["role"] };
 /** The kinds of people the table asks about. Each is one user in the fixture project below. */
 const PEOPLE: Who[] = [
   { key: "lead", label: "Project lead", userId: "u_lb", role: "leader" },
-  { key: "colead", label: "Co-lead", userId: "u_ad", role: "member" },
+  { key: "colead", label: "Co-lead", userId: "u_co", role: "member" },
   { key: "member", label: "Team member", userId: "u_ci", role: "member" },
   { key: "sponsor", label: "Sponsor", userId: "u_sp", role: "leader" },
   { key: "raiser", label: "Raiser (employee, not on the team)", userId: "u_js", role: "member" },
@@ -44,11 +44,12 @@ const ROWS: { group: string; rows: Row[] }[] = [
       { label: "Comment on a step", type: "project.step.commented", target: "p_one", payload: { stepId: "s1", text: "Looks good" } },
       { label: "Add or change a milestone", type: "project.milestone.added", target: "p_one", payload: { milestoneId: "m9", title: "Pilot", dueDay: 40 } },
       { label: "Add someone to the team", type: "project.member", target: "p_one", payload: { name: "X. New", userId: "u_new", on: true } },
+      { label: "Add someone to the team when the idea is private", type: "project.member", target: "p_priv", payload: { name: "X. New", userId: "u_new", on: true } },
       { label: "Take someone the lead added off the team", type: "project.member", target: "p_one", payload: { name: "C. Ilg", userId: "u_ci2", on: false, unassign: true } },
       { label: "Take someone a co-lead added off the team", type: "project.member", target: "p_one", payload: { name: "N. New", userId: "u_n", on: false, unassign: true } },
       { label: "Invite someone as member", type: "project.invited", target: "p_one", payload: { userId: "u_new", role: "member" } },
       { label: "Ask someone to be co-lead", type: "project.invited", target: "p_one", payload: { userId: "u_ci", role: "colead" } },
-      { label: "Take the co-lead role back from someone else", type: "project.member", target: "p_one", payload: { userId: "u_ad2", coLead: false } },
+      { label: "Take the co-lead role back from someone else", type: "project.member", target: "p_one", payload: { userId: "u_co2", coLead: false } },
       { label: "Move a step somebody else owns", type: "project.step.moved", target: "p_one", payload: { stepId: "s3", to: "done" } },
       { label: "Remove a step somebody else added", type: "project.step.edited", target: "p_one", payload: { stepId: "s3", removed: true } },
       { label: "End a pause early", type: "project.resumed", target: "p_pause", payload: {} },
@@ -73,7 +74,7 @@ function fixture(): State {
   const events: CaseEvent[] = [
     ...startedLog(),
     ev("project.member", "L. Brandt", "p_one", { name: "C. Ilg", userId: "u_ci", on: true }, 11),
-    ...["u_ci2", "u_ad", "u_ad2", "u_n", "u_mc"].map((u) => ev("project.member", "L. Brandt", "p_one", { name: u, userId: u, on: true }, 11)),
+    ...["u_ci2", "u_co", "u_co2", "u_n", "u_mc"].map((u) => ev("project.member", "L. Brandt", "p_one", { name: u, userId: u, on: true }, 11)),
     ev("project.step.added", "L. Brandt", "p_one", { stepId: "s1", text: "Nobody's step" }, 11),
     ev("project.step.added", "L. Brandt", "p_one", { stepId: "s2", text: "C. Ilg's step", owner: "C. Ilg", ownerUserId: "u_ci" }, 11),
     ev("project.step.added", "L. Brandt", "p_one", { stepId: "s3", text: "The lead's step", owner: "L. Brandt", ownerUserId: "u_lb" }, 11),
@@ -85,15 +86,17 @@ function fixture(): State {
   p.sponsorUserId = "u_sp";
   // Co-leads come from a draft invitation too; N. New and one manager were added by a co-lead.
   p.draft = true;
-  p.coLeadUserIds = ["u_ad", "u_ad2"];
+  p.coLeadUserIds = ["u_co", "u_co2"];
   p.addedByCoLeadUserIds = ["u_n", "u_mc"];
   // Copies for the rows that need another state: paused, without open steps, and stopped by the lead.
   const c = state.cases.find((x) => x.id === "c_a")!;
   const stop = ev("project.stopped", "L. Brandt", "p_stop", { why: "No longer needed" }, 15);
   state.projects.push(
     { ...p, id: "p_pause", pausedUntil: DAY + 3 }, { ...p, id: "p_done", steps: [] },
+    { ...p, id: "p_priv", sources: ["c_priv"] },
     { ...p, id: "p_stop", status: "stopped", sources: ["c_stop"], history: [...p.history, stop] });
-  state.cases.push({ ...c, id: "c_stop", decided: c.decided ? { ...c.decided, projectId: "p_stop" } : null });
+  const priv = { ...c, id: "c_priv", history: c.history.map((e) => (e.type === "case.raised" ? { ...e, payload: { ...e.payload, visibility: "private" as const } } : e)) };
+  state.cases.push(priv, { ...c, id: "c_stop", decided: c.decided ? { ...c.decided, projectId: "p_stop" } : null });
   return state;
 }
 
@@ -125,7 +128,7 @@ function render(table: ReturnType<typeof verdicts>): string {
     "Rights changes follow the rules in `CONTRIBUTING.md` (\"Rights\"): their own PR, the `rights` label, Kevin told.",
     "",
     "✓ may, — may not. Everyone in a column is the same one person in the fixture: J. Schmidt raised the idea and the",
-    "project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, A. Admin took the co-lead role, a sponsor was accepted. Who may",
+    "project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, one member took the co-lead role, a sponsor was accepted. Who may",
     "*see* what is in `docs/VISIBILITY.md`.",
     "",
     ...groups.flatMap((g) => [g, ""]),

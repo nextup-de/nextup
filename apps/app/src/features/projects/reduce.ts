@@ -58,6 +58,15 @@ function dropCoLead(p: ReducedProject, userId: string): void {
   if (p.invites) p.invites = p.invites.filter((i) => !(i.userId === userId && i.role === "colead"));
 }
 
+/** The lead picks the co-leads: with a new lead every co-lead role and open question ends, and the event that did it is kept for the mail. */
+function newLead(p: ReducedProject, userId: string, eventId: string): void {
+  const ended = (p.coLeadUserIds ?? []).filter((u) => u !== userId && p.memberUserIds.includes(u));
+  if (ended.length) p.coLeadsEnded = { eventId, userIds: ended };
+  if (p.coLeadUserIds) p.coLeadUserIds = [];
+  if (p.invites) p.invites = p.invites.filter((i) => i.role !== "colead");
+  dropAdded(p, userId);
+}
+
 /** Forget that a co-lead added them: the lead put them on the team too, or they are off it. */
 function dropAdded(p: ReducedProject, userId: string): void {
   if (p.addedByCoLeadUserIds) p.addedByCoLeadUserIds = p.addedByCoLeadUserIds.filter((u) => u !== userId);
@@ -424,7 +433,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       p.memberUserIds = p.memberUserIds.filter((u) => u !== toUserId);
       if (to) p.members = p.members.filter((m) => m !== to);
       p.leadUserId = toUserId;
-      dropCoLead(p, toUserId);
+      newLead(p, toUserId, ev.id);
       if (to) p.lead = to;
       if (draftAsk) {
         // The new lead is asked again, unless the one handing it over is the new lead (D11); a new window starts.
@@ -861,7 +870,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (to) p.members = p.members.filter((m) => m !== to);
       if (to) p.lead = to;
       p.leadUserId = toUserId;
-      dropCoLead(p, toUserId);
+      newLead(p, toUserId, ev.id);
       p.leadVacatedDay = null;
       break;
     }

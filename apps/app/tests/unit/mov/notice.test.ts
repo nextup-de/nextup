@@ -63,6 +63,16 @@ function told(last: CaseEvent, state: State): Record<string, string> {
 const who = (m: Record<string, string>) => Object.keys(m).sort();
 
 describe("MOV notices", () => {
+  it("a hand-over tells a co-lead that the role ended, in one mail that also says who leads", () => {
+    const handed = P("project.handed", "u_lead", { to: "Nora New", toUserId: "u_new" });
+    const state = stateOf([], (p) => { team(true)(p); p.leadUserId = "u_new"; p.memberUserIds = ["u_m1", "u_m2", "u_lead"]; p.coLeadsEnded = { eventId: handed.id, userIds: ["u_m1"] }; });
+    const mails = loopNotices({ ev: handed, state, people: noticePeople, baseUrl: "https://app.test" }).filter((x) => x.userId === "u_m1");
+    expect(mails.map((x) => x.subject)).toEqual(["No longer co-lead: P-1 Shorter changeover"]);
+    expect(mails[0].text).toContain("Nora New");
+    // A later hand-over does not say it again.
+    expect(told(P("project.handed", "u_lead", { to: "Nora New", toUserId: "u_new" }), state).u_m1).toBe("Nora New now leads P-1: Shorter changeover");
+  });
+
   it("a hand-over tells the new lead as before, and the team, the sponsor and the raiser who leads now, with the why, never the mover", () => {
     const handed = P("project.handed", "u_lead", { to: "Nora New", toUserId: "u_new", why: "Moving to the night shift" });
     // After the event: the old lead is on the team, the new lead leads.

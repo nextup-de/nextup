@@ -38,7 +38,7 @@ export const PROJECT_EVENT_TYPES = [
 /** Every project.* type, with the fields it carries. */
 export type ProjectAreaEventType =
   // A project, target = its id. It opens with the case.decided yes above (a yes with draft: true opens a draft, D8), never with an event of its own.
-  | "project.member" // { name, userId?, on } or { name, userId, admin }  admin: makes someone on the team an administrator, or takes that back
+  | "project.member" // { name, userId?, on } or { name?, userId, coLead: false }  the co-lead role is taken back or put down
   | "project.handed" // { to, toUserId?, why? }  a new lead; the old one stays on the team
   | "project.baseline" // { metric, unit, value, better: 'up'|'down', source } or { none: true, why }
   | "project.started" // -  refused without a baseline
@@ -125,7 +125,7 @@ export type ProjectAreaPayload = {
   untilDay?: number; // project.paused (a working-day number)
   checkInWeekday?: number; // project.howwework (1 = Monday ... 5 = Friday)
   week?: number; // project.update: the check-in day number of the week it is for
-  coLead?: boolean; // project.member, only false: the co-lead role is taken back
+  coLead?: boolean; // project.member, only false: the co-lead role is taken back; given by an accepted invitation (role colead)
   unassign?: boolean; // project.member with on: false (D22): also clears the person's open steps and drops them as sponsor and follower
   originEventId?: string; // clock.due of a project: the event the occurrence belongs to (a block or vacancy cycle)
   // A result that closes properly (plan RES). check, why, stepId and text are shared (CorePayload).
