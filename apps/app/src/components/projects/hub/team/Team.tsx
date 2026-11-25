@@ -6,7 +6,7 @@ import { DeptChip, PersonFace } from "@/components/ui/elements";
 import type { ReducedProject } from "@/features/projects/types";
 import { useT } from "@/i18n/client";
 import { InvitePanel } from "../../draft/DraftInvites";
-import { isAdministrator, MemberActions } from "../../MemberActions";
+import { isCoLead, MemberActions } from "../../MemberActions";
 import { peopleOf, teamOf, useRights, useSend, withIds } from "../../parts";
 import styles from "./Team.module.css";
 
@@ -37,7 +37,7 @@ export function Team({ p }: { p: ReducedProject }) {
         {team.map((m, k) => (
           <li key={m.userId ?? m.name} className={styles.row}>
             <PersonFace name={m.name} size="sm" />
-            <span className={styles.grow}>{m.name}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}{isAdministrator(p, m.userId) && <span className={styles.leadTag}>{t("projects.adminTag")}</span>}</span>
+            <span className={styles.grow}>{m.name}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}{isCoLead(p, m.userId) && <span className={styles.leadTag}>{t("projects.coLeadTag")}</span>}</span>
             {deptOf(m.name) ? <DeptChip name={deptOf(m.name)} /> : null}
             <span className={styles.muted} title={t("projects.openStepsTheyOwn")}>{load(m.userId) ? t("projects.openCount", { count: load(m.userId) }) : ""}</span>
             {k > 0 && m.userId !== null && live && <MemberActions p={p} who={{ userId: m.userId, name: m.name }} className={styles.quiet} />}
