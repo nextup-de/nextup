@@ -52,9 +52,15 @@ export function addCondition(p: ReducedProject, text: string): void {
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
 
-/** A new lead or someone off the team is no administrator any more: handing the lead on or coming back does not bring it back. */
-function dropAdmin(p: ReducedProject, userId: string): void {
-  if (p.adminUserIds) p.adminUserIds = p.adminUserIds.filter((u) => u !== userId);
+/** A new lead or someone off the team is no co-lead any more. Coming back does not bring it back; the lead may ask again. */
+function dropCoLead(p: ReducedProject, userId: string): void {
+  if (p.coLeadUserIds) p.coLeadUserIds = p.coLeadUserIds.filter((u) => u !== userId);
+  if (p.invites) p.invites = p.invites.filter((i) => !(i.userId === userId && i.role === "colead"));
+}
+
+/** Forget that a co-lead added them: the lead put them on the team too, or they are off it. */
+function dropAdded(p: ReducedProject, userId: string): void {
+  if (p.addedByCoLeadUserIds) p.addedByCoLeadUserIds = p.addedByCoLeadUserIds.filter((u) => u !== userId);
 }
 
 export const newBook = (): ProjectBook => ({ byId: {}, order: [] });
@@ -325,7 +331,7 @@ export function pauseEndedDay(history: readonly CaseEvent[]): number | null {
   return until !== null ? until : ended;
 }
 
-const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "colead", "member", "contributor", "follower"];
 
 /** The lead takes the draft on day `d`: its start window opens, and template steps without a day get theirs. */
 function takeLead(p: ReducedProject, f: DraftFacts, d: number): void {
@@ -380,15 +386,15 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const userId = pl.userId;
       if (!userId || userId === p.leadUserId) break;
       const name = pl.name?.trim() ?? "";
-      if (pl.admin !== undefined) {
-        // Only someone on the team can be an administrator; it never adds or removes anyone.
-        dropAdmin(p, userId);
-        if (pl.admin && p.memberUserIds.includes(userId)) p.adminUserIds = [...(p.adminUserIds ?? []), userId];
+      if (pl.coLead !== undefined) {
+        // Only ever taken back; it never adds or removes anyone.
+        dropCoLead(p, userId);
         break;
       }
+      const byCoLead = ev.actorUserId != null && ev.actorUserId !== p.leadUserId && (p.coLeadUserIds ?? []).includes(ev.actorUserId);
       if (pl.on === false) {
-        // Off the team is no longer an administrator either: coming back does not bring it back.
-        dropAdmin(p, userId);
+        dropCoLead(p, userId);
+        dropAdded(p, userId);
         p.memberUserIds = p.memberUserIds.filter((u) => u !== userId);
         if (name) p.members = p.members.filter((m) => m !== name); // the shown list only
         if (pl.unassign === true) {
@@ -400,7 +406,9 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       } else if (!p.memberUserIds.includes(userId)) {
         p.memberUserIds.push(userId);
         if (name) p.members.push(name);
-      }
+        // A manager a co-lead added is not in charge by it (permissions.ts managerInCharge).
+        if (byCoLead) p.addedByCoLeadUserIds = [...(p.addedByCoLeadUserIds ?? []), userId];
+      } else if (!byCoLead) dropAdded(p, userId);
       break;
     }
     case "project.handed": {
@@ -416,7 +424,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       p.memberUserIds = p.memberUserIds.filter((u) => u !== toUserId);
       if (to) p.members = p.members.filter((m) => m !== to);
       p.leadUserId = toUserId;
-      dropAdmin(p, toUserId);
+      dropCoLead(p, toUserId);
       if (to) p.lead = to;
       if (draftAsk) {
         // The new lead is asked again, unless the one handing it over is the new lead (D11); a new window starts.
@@ -496,7 +504,10 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (pl.take === true) {
         invite.state = "accepted";
         if (invite.role === "sponsor") p.sponsorUserId = invite.userId;
-        else if ((invite.role === "member" || invite.role === "contributor") && invite.userId !== p.leadUserId && !p.memberUserIds.includes(invite.userId)) p.memberUserIds.push(invite.userId);
+        else if ((invite.role === "member" || invite.role === "contributor" || invite.role === "colead") && invite.userId !== p.leadUserId && !p.memberUserIds.includes(invite.userId)) p.memberUserIds.push(invite.userId);
+        // The lead asked them, whoever put them on the team first.
+        dropAdded(p, invite.userId);
+        if (invite.role === "colead" && invite.userId !== p.leadUserId) p.coLeadUserIds = [...(p.coLeadUserIds ?? []).filter((u) => u !== invite.userId), invite.userId];
       } else invite.state = pl.lapsed === true ? "lapsed" : "declined";
       break;
     }
@@ -850,7 +861,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (to) p.members = p.members.filter((m) => m !== to);
       if (to) p.lead = to;
       p.leadUserId = toUserId;
-      dropAdmin(p, toUserId);
+      dropCoLead(p, toUserId);
       p.leadVacatedDay = null;
       break;
     }

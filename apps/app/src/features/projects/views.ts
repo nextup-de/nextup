@@ -640,7 +640,7 @@ export function timelineOf(p: ReducedProject, locale: Locale = DEFAULT_LOCALE): 
     switch (ev.type) {
       case "case.decided": return pl.lead ? t("projects.tlDecidedLead", { lead: pl.lead }) : t("projects.tlDecided");
       case "project.member":
-        if (pl.admin !== undefined) return t(pl.admin ? "projects.tlAdminOn" : "projects.tlAdminOff", { name: pl.name ?? "" });
+        if (pl.coLead !== undefined) return t("projects.tlCoLeadOff", { name: pl.name ?? "" });
         return pl.on === false ? t("projects.tlMemberOff", { name: pl.name ?? "" }) : t("projects.tlMemberOn", { name: pl.name ?? "" });
       case "project.handed": return pl.why ? t("projects.tlHandedWhy", { to: pl.to ?? "", why: pl.why }) : t("projects.tlHanded", { to: pl.to ?? "" });
       case "project.baseline":

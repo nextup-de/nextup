@@ -10,8 +10,8 @@ import type { MessageKey, T } from "@/i18n";
 import { inDays, type NoticeBuilder, type NoticeBuilders } from "./shared";
 
 /** The roles an invitation is for, as the catalog names them. */
-const INVITE_ROLES: Record<"sponsor" | "member" | "contributor" | "follower", MessageKey> = {
-  sponsor: "mail.inviteRoleSponsor", member: "mail.inviteRoleMember", contributor: "mail.inviteRoleContributor", follower: "mail.inviteRoleFollower",
+const INVITE_ROLES: Record<"sponsor" | "colead" | "member" | "contributor" | "follower", MessageKey> = {
+  sponsor: "mail.inviteRoleSponsor", colead: "mail.inviteRoleColead", member: "mail.inviteRoleMember", contributor: "mail.inviteRoleContributor", follower: "mail.inviteRoleFollower",
 };
 /** The weekdays of a check-in, Monday to Friday (project.howwework). */
 const WEEKDAYS: Record<number, MessageKey> = { 1: "projectMove.weekday1", 2: "projectMove.weekday2", 3: "projectMove.weekday3", 4: "projectMove.weekday4", 5: "projectMove.weekday5" };
@@ -107,6 +107,8 @@ const projectInviteAnsweredNotice: NoticeBuilder = ({ pl, state, project, send, 
   if (!invite) return;
   const name = find(invite.userId)?.name ?? "";
   if (invite.state === "accepted") {
+    // A co-lead gets some of the lead's rights: the lead hears the moment they count.
+    if (invite.role === "colead") send(project.leadUserId, (t) => t("mail.coLeadOnSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.coLeadOnIntro", { name: name || t("mail.someone") }), "", projectLink(project)]);
     for (const c of state.cases) {
       if (!project.sources.includes(c.id) || isHandle(c.from)) continue;
       send(c.fromUserId, (t) => t("mail.inviteAcceptedSubject", { label: projectLabel(project), title: project.title }), (t) => [
@@ -142,8 +144,14 @@ const projectMemberNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink
     send(project.leadUserId, (t) => t("projectMove.leftSubject", { name, label: projectLabel(project), title: project.title }), (t) => [t("projectMove.leftIntro", { name }), "", projectLink(project)]);
     return;
   }
-  // Making someone an administrator is not joining the team: no second welcome.
-  if (project && pl.on !== false && pl.admin === undefined && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
+  // The co-lead role taken back: the co-lead hears it, not a second welcome. Who put it down themselves: the lead does.
+  if (project && pl.coLead !== undefined) {
+    const name = find(pl.userId)?.name || pl.name || "";
+    const to = ev.actorUserId === pl.userId ? project.leadUserId : pl.userId;
+    send(to, (t) => t("mail.coLeadOffSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.coLeadOffIntro", { name }), "", projectLink(project)]);
+    return;
+  }
+  if (project && pl.on !== false && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
 };
 
 const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink, people }) => {

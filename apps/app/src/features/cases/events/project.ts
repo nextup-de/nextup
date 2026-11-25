@@ -120,12 +120,12 @@ export type ProjectAreaPayload = {
   lapsed?: boolean; // project.lead.answered, project.invite.answered: nobody answered, the clock wrote it
   version?: number; // project.template
   goal?: string; doneWhen?: string; doneBy?: number; brief?: string; // project.goal (doneBy: a working-day number)
-  role?: "sponsor" | "member" | "contributor" | "follower"; // project.invited
+  role?: "sponsor" | "colead" | "member" | "contributor" | "follower"; // project.invited
   // A project that keeps moving (plan MOV). doneBy is shared with project.goal above (project.doneby.moved reuses it).
   untilDay?: number; // project.paused (a working-day number)
   checkInWeekday?: number; // project.howwework (1 = Monday ... 5 = Friday)
   week?: number; // project.update: the check-in day number of the week it is for
-  admin?: boolean; // project.member about someone already on the team
+  coLead?: boolean; // project.member, only false: the co-lead role is taken back
   unassign?: boolean; // project.member with on: false (D22): also clears the person's open steps and drops them as sponsor and follower
   originEventId?: string; // clock.due of a project: the event the occurrence belongs to (a block or vacancy cycle)
   // A result that closes properly (plan RES). check, why, stepId and text are shared (CorePayload).
