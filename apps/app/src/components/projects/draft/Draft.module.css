@@ -3,6 +3,7 @@
    setup is a process (Kevin, 13 Nov 2026): the status lines on top, one step under them, Back and Next at its foot. */
 .page { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 860px; margin: 0 auto; padding: 0 0 48px; min-width: 0; container-type: inline-size; }
 .back { display: inline-block; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); margin: 0 0 12px; text-decoration: none; }
+.setupBtn { align-self: flex-start; margin: 4px 0 0; }
 .back:hover { color: var(--nh-brand-ink); }
 
 /* Cards: every part of the draft page is one; parts drawn by other components (baseline, how we work) are wrapped. */

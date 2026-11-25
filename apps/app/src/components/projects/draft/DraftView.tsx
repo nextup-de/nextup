@@ -24,6 +24,7 @@ import { DraftLate } from "./DraftLate";
 import { DraftLead } from "./DraftLead";
 import { DraftProgress, STEPS, type SetupStep } from "./DraftProgress";
 import { DraftTemplate } from "./DraftTemplate";
+import { SetupDialog } from "./SetupDialog";
 import { useProjectHints } from "./useProjectHints";
 import styles from "./Draft.module.css";
 import approvalStyles from "./ApprovalSteps.module.css";
@@ -70,6 +71,8 @@ export function DraftView({ p }: { p: ReducedProject }) {
   // Whoever is asked to confirm the baseline (their inbox row links here) lands on the baseline, where the button is.
   const firstOpen: SetupStep = view.may.confirmBaseline ? "baseline" : STEPS.find((k) => k !== "start" && view.checklist[k] !== "done") ?? "start";
   const [opened] = useState<SetupStep>(firstOpen);
+  const [setup, setSetup] = useState(false);
+  const maySetup = r.check("project.invited", { userId: "-", role: "member" }).ok || r.check("project.page.added", { pageId: "probe", title: "-", icon: "doc", tools: [] }).ok;
   const [picked, setPicked] = useState<SetupStep | null>(null);
   const invited = useSyncExternalStore(onHash, () => window.location.hash.startsWith("#invite-"), () => false);
   const step: SetupStep = picked ?? (invited ? "team" : opened);
@@ -87,6 +90,8 @@ export function DraftView({ p }: { p: ReducedProject }) {
       <Link href={href("/projects")} className={styles.back}>{t("projects.backToAll")}</Link>
       {/* The title and the stepper: who leads it and when it starts are said once, by the stepper's lines (DESIGN_RULES §9). */}
       <PageHeader title={p.title} />
+      {maySetup && <button type="button" className={`nh-btn nh-btn-ghost nh-btn-sm ${styles.setupBtn}`} onClick={() => setSetup(true)}>{t("projectDraft.setupTitle")}</button>}
+      {setup && <SetupDialog p={p} onClose={() => setSetup(false)} />}
       {waits && <span className={approvalStyles.badge} data-testid="draft-waits-approval">{t("approvals.waitsForApproval")}</span>}
 
       {view.late && view.may.moveStart && view.startDay !== null && <DraftLate p={p} startDay={view.startDay} />}
