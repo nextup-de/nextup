@@ -26,7 +26,7 @@ const PGE_EVENT_TYPES = [
 ];
 
 describe("REG events split", () => {
-  const recorded: string[] = [...snapshot.appEventTypes, ...PGE_EVENT_TYPES, "project.step.checklist", "project.step.commented", "project.milestone.added", "project.milestone.edited", "project.form.saved", "project.form.answered", "project.request.stepped", "project.request.declined", "project.request.reopened"].sort();
+  const recorded: string[] = [...snapshot.appEventTypes, ...PGE_EVENT_TYPES, "project.step.checklist", "project.step.commented", "project.milestone.added", "project.milestone.edited", "project.form.saved", "project.form.answered", "project.request.stepped", "project.request.declined", "project.request.reopened", "project.renamed"].sort();
   it("every case.* app type is in CASE_EVENT_TYPES and every project.* one in PROJECT_EVENT_TYPES", () => {
     // GAT's four types are case.* by name and live in the approval area.
     expect([...CASE_EVENT_TYPES].sort()).toEqual(recorded.filter((t) => t.startsWith("case.") && !(APPROVAL_EVENT_TYPES as readonly string[]).includes(t)));

@@ -130,7 +130,11 @@ describe("SET draft view", () => {
     const s = stateOf([take, sponsor, P("project.invite.answered", { inviteId: sponsor.id, userId: "u_hs", take: true }, 2, "u_hs")], 3);
     expect(draftView(s.projects[0], as("u_hs"), s).may).toMatchObject({ setGoal: true, setBaseline: false, invite: false });
     expect(draftView(s.projects[0], as("u_mgr", "manager"), s).may.moveStart).toBe(true);
-    expect(draftView(s.projects[0], as("u_lb"), s).may.moveStart).toBe(false);
+    // The lead picks another start before the day; once it has passed only a manager or the seat above does.
+    expect(draftView(s.projects[0], as("u_lb"), s).may.moveStart).toBe(true);
+    const past = stateOf([take], (s.projects[0].startDay as number) + 1);
+    expect(draftView(past.projects[0], as("u_lb"), past).may.moveStart).toBe(false);
+    expect(draftView(past.projects[0], as("u_mgr", "manager"), past).may.moveStart).toBe(true);
   });
 });
 

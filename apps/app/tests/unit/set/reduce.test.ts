@@ -199,6 +199,9 @@ describe("SET reduce", () => {
     expect(all.goal).toEqual({ goal: "Shorter changeover", doneWhen: "42 to 30 min", doneBy: 25, brief: "Why it matters" });
     expect(reduced([yes("u_tv"), P("project.goal", { goal: "g", doneWhen: "w" }, 1)], 2).goal).toEqual({ goal: "g", doneWhen: "w", doneBy: null, brief: "" });
     expect(reduced([yes("u_tv"), P("project.goal", { goal: "g" }, 1)], 2).goal).toBeNull();
+    // A draft takes another name; an empty one changes nothing.
+    expect(reduced([yes("u_tv"), P("project.renamed", { title: " Line 3 cart " }, 1)], 2).title).toBe("Line 3 cart");
+    expect(reduced([yes("u_tv"), P("project.renamed", { title: " " }, 1)], 2).title).toBe(reduced([yes("u_tv")], 2).title);
     // The latest goal wins.
     expect(reduced([yes("u_tv"), P("project.goal", { goal: "g", doneWhen: "w" }, 1), P("project.goal", { goal: "h", doneWhen: "x" }, 2)], 3).goal?.goal).toBe("h");
   });

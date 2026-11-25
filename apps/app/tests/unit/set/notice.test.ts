@@ -213,6 +213,11 @@ describe("SET notices", () => {
     expect(mails(moved, [draftYes()], draft({ startDay: null }))).toEqual([]);
   });
 
+  it("a start the lead moved themselves tells the one who said yes", () => {
+    const moved: CaseEvent = { ...P("project.start.moved", "L. Brandt", { dueDay: 20, why: "Supplier is late" }, 12), actorUserId: "u_lb" };
+    expect(mails(moved, [draftYes()], draft({ startDay: 20, leadUserId: "u_lb", deciderUserId: "u_tv" })).map((m) => m.to)).toEqual(["tv@acme.test"]);
+  });
+
   it("speaks German and every new key exists in both languages", () => {
     const state = stateOf([draftYes()], draft({ leadState: "pending" }));
     const out = loopMails({ ev: draftYes(), state, people, baseUrl: BASE }, "de");

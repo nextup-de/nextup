@@ -238,6 +238,35 @@ describe("SET rights", () => {
     });
   });
 
+  describe("the lead names the draft and picks its start", () => {
+    const open = project({ startDay: 12, openedDay: 0 });
+    const move = (dueDay: number, over: Parameters<typeof project>[0] = {}) => ask(person(LEAD), "project.start.moved", { dueDay, why: "Waiting for the part" }, project({ startDay: 12, openedDay: 0, ...over }));
+    it("another start only before the day, with a why, within 60 days of the yes", () => {
+      expect(move(15)).toEqual(ok);
+      expect(move(60)).toEqual(ok);
+      refused(move(61));
+      expect(ask(manager, "project.start.moved", { dueDay: 61, why: "x" }, open)).toEqual(ok);
+      refused(move(15, { startDay: 9 })); // the day has passed
+      refused(move(15, { escalated: escalation("s_up") }));
+      refused(move(15, { leadState: "pending" }));
+      refused(move(15, { startDay: null }));
+      refused(ask(person(LEAD), "project.start.moved", { dueDay: 15 }, open));
+      refused(ask(person(MEMBER), "project.start.moved", { dueDay: 15, why: "x" }, open));
+      refused(ask(person(LEAD), "project.start.moved", { dueDay: 15, why: "x" }, project({ startDay: 12, draft: false })));
+    });
+    it("the name: the lead, or the decider until the lead took it; never after the start", () => {
+      const title = { title: "Another name" };
+      expect(ask(person(LEAD), "project.renamed", title, open)).toEqual(ok);
+      expect(ask(person(DECIDER), "project.renamed", title, project({ leadState: "pending" }))).toEqual(ok);
+      refused(ask(person(DECIDER), "project.renamed", title, project({ leadState: "taken" })));
+      for (const who of [MEMBER, SPONSOR, OUTSIDER]) refused(ask(person(who), "project.renamed", title, open));
+      refused(ask(person(LEAD), "project.renamed", { title: "  " }, open));
+      refused(ask(person(LEAD), "project.renamed", { title: "x".repeat(201) }, open));
+      refused(ask(person(LEAD), "project.renamed", title, project({ status: "running", startedDay: 5 })));
+      refused(ask(person(LEAD), "project.renamed", title, project({ draft: false })));
+    });
+  });
+
   describe("a late draft and the seat above", () => {
     const late = project({ escalated: escalation("s_up") });
     it("the seat holder it went to moves the start, a manager may too, others may not", () => {

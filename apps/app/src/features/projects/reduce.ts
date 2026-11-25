@@ -529,6 +529,12 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       p.goal = { goal, doneWhen, doneBy: typeof pl.doneBy === "number" ? pl.doneBy : null, brief: pl.brief?.trim() ?? "" };
       break;
     }
+    case "project.renamed": {
+      const title = pl.title?.trim();
+      if (!p.draft || p.startedDay !== null || !live || !title) break;
+      p.title = title;
+      break;
+    }
     case "project.start.moved": {
       const f = factsOf(p);
       if (!p.draft || p.startedDay !== null || !live || p.leadState !== "taken" || typeof pl.dueDay !== "number") break;
