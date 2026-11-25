@@ -12,7 +12,7 @@ import { useT } from "@/i18n/client";
 import { peopleOf, useRights, useSend } from "../parts";
 import styles from "./Draft.module.css";
 
-const ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+const ROLES: readonly InviteRole[] = ["sponsor", "colead", "member", "contributor", "follower"];
 /** Up to two initials of a display name, for the round mark in front of a person. */
 const initialsOf = (name: string) => name.split(/[\s.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 

@@ -161,7 +161,7 @@ function WizardDialog({ p, onClose, onCreated, preselect, jira }: AddPageDialogP
   </div>;
 }
 
-function Glyph({ icon }: { icon: PageIconKey }) {
+export function Glyph({ icon }: { icon: PageIconKey }) {
   const paths: Record<PageIconKey, React.ReactNode> = {
     home: <path d="m2 7 6-5 6 5v7H2z" />, board: <><rect x="2" y="2" width="12" height="12" rx="2" /><path d="M6 2v12M10 2v12" /></>,
     list: <path d="M6 4h8M6 8h8M6 12h8M2 4h1M2 8h1M2 12h1" />, calendar: <><rect x="2" y="3" width="12" height="11" rx="2" /><path d="M2 6h12M5 2v3M11 2v3" /></>,

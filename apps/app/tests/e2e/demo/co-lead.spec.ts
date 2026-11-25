@@ -1,5 +1,5 @@
-// Administrators on the team list: who runs the project adds a person, makes them an administrator and takes the role
-// back, and it fits a phone. Demo mode.
+// Co-leads on the team list: the lead asks, and only an asked person who took it has the role (tests/unit/mov/co-leads).
+// Someone who may not change the team sees no button. Demo mode.
 import type { Page } from "@playwright/test";
 import { addPages, expect, test } from "../helpers";
 
@@ -9,7 +9,7 @@ async function viewAs(page: Page, persona: "Employee" | "Team leader" | "Manager
   await page.keyboard.press("Escape");
 }
 
-test("the team list makes someone an administrator and takes the role back", async ({ page }) => {
+test("the team list keeps its names on a phone and shows no refused button", async ({ page }) => {
   await page.goto("/acme");
   await viewAs(page, "Manager");
   await addPages(page, "/acme/projects/pj2", ["Team"]);
@@ -18,19 +18,11 @@ test("the team list makes someone an administrator and takes the role back", asy
   const name = (await add.locator("option").nth(1).textContent()) ?? "";
   await add.selectOption({ index: 1 });
   await page.getByRole("button", { name: "Add", exact: true }).click();
-
   const row = page.getByRole("main").getByRole("listitem").filter({ hasText: name }).first();
-  await row.getByRole("button", { name: `Make ${name} an administrator` }).click();
-  await expect(row).toContainText("Administrator");
-  await page.reload();
-  await expect(row).toContainText("Administrator");
-
-  await row.getByRole("button", { name: `Make ${name} a team member again` }).click();
-  await expect(row.getByRole("button", { name: `Make ${name} an administrator` })).toBeVisible();
-
-  // On a phone nothing scrolls sideways.
+  await expect(row.getByRole("button", { name: `Take ${name} off the team` })).toBeVisible();
+  // An older project has no invitations, so nobody can be asked to co-lead it.
+  await expect(row.getByRole("button", { name: `Ask ${name} to co-lead` })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
-  // The name stays on one line beside its buttons.
   expect((await row.boundingBox())?.height ?? 999).toBeLessThan(130);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
