@@ -25,7 +25,8 @@ export type IdeaProps = {
   onComment?: (text: string) => void; // comments are live (cases); absent = the box says "coming soon"
   onClose: () => void;
 };
-export type StatusNote = { label: string; lines: string[] };
+/** `quote`: what the raiser answered, `changed`: the version they revised it to. Both stand in "Your move". */
+export type StatusNote = { label: string; lines: string[]; quote?: string | null; changed?: string | null };
 
 export const initialsOf = (name: string) => name.startsWith("Anonymous") ? "?" : name.split(/[\s.]+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 

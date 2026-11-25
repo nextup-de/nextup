@@ -27,7 +27,7 @@ type Form = "withdraw" | "why" | "desk" | null;
 
 /** `desk`: the item as the inbox opens it, when the idea is on the viewer's desk or their view is asked (useOpenItem); null otherwise. */
 export function IdeaMove({ c, desk }: { c: ReducedCase; desk: IdeaProps | null }) {
-  const { S, me, role, act, openSheet, showToast, href, serverMode, seed, log, actorUserId } = useDemo();
+  const { S, me, role, act, openSheet, showToast, href, serverMode, seed, log, actorUserId, f } = useDemo();
   const t = useT();
   const router = useRouter();
   const [form, setForm] = useState<Form>(null);
@@ -37,7 +37,7 @@ export function IdeaMove({ c, desk }: { c: ReducedCase; desk: IdeaProps | null }
   const view = caseApprovalView(c, S, me);
 
   // On the viewer's desk: the desk's decision, the moves the inbox shows. A pending review forwards and never says yes (plan GAT): its block is the move then.
-  if (desk && !view.review?.pending) return <YourMove status={desk.status?.label} moves={deskMoves(desk.brief, desk.onDecide)} name="desk" />;
+  if (desk && !view.review?.pending) return <YourMove status={desk.status?.label} quote={desk.status?.quote} lines={desk.status?.changed ? [desk.status.changed] : []} moves={deskMoves(desk.brief, desk.onDecide)} name="desk" />;
   // An approver with a step open: the vote. It is answered on the server (D8), so a demo without one draws none.
   if (serverMode && view.myStep) {
     const latest = view.runs[0];
@@ -60,6 +60,7 @@ export function IdeaMove({ c, desk }: { c: ReducedCase; desk: IdeaProps | null }
   // The raiser: answer the desk's question, send a returned idea again, take it back while nobody has decided it (decision Q1.14).
   if (mine && c.status === "asked") {
     quote = c.question?.text || null;
+    if (c.question) status = t("dashboard.detailSentBack", { name: c.question.by, date: f(c.question.day) });
     moves.push({ key: "answer", label: t("dashboard.detailAnswerQuestion"), onSelect: () => openSheet("reply", c.id) });
     rec = "answer";
   }
