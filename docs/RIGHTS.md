@@ -43,4 +43,4 @@ project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt
 | Action | Project lead | Co-lead | Team member | Sponsor | Raiser (employee, not on the team) | Team leader, not on the team | Manager in charge (decided it) | Manager, not involved | Manager a co-lead added | Employee, not involved |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | Revise an open idea `case.revised` | — | — | — | — | ✓ | — | — | — | — | — |
-| Revise an idea after its yes (the project's Idea page) `case.revised` | ✓ | — | — | — | — | — | — | — | — | — |
+| Revise an idea after its yes (the project's Idea page) `case.revised` | ✓ | — | — | — | ✓ | — | — | — | — | — |
