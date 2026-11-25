@@ -48,6 +48,13 @@ const teamOf = (p: ReducedProject): (string | null)[] => [p.leadUserId, ...p.mem
 const projectHandedNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink, find }) => {
   if (!project) return;
   send(project.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
+  // A new lead asks again: whoever was co-lead hears that it ended.
+  if (project.coLeadsEnded && project.coLeadsEnded.eventId === ev.id) {
+    for (const who of project.coLeadsEnded.userIds) {
+      const was = find(who)?.name ?? "";
+      send(who, (t) => t("mail.coLeadOffSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.coLeadOffIntro", { name: was }), t("projectMove.handedOthersIntro", { name: find(project.leadUserId)?.name || pl.to || project.lead, label: projectLabel(project) }), "", projectLink(project)]);
+    }
+  }
   // The team (the old lead among them), the sponsor and the raiser hear who leads now, with the why (D23).
   const name = find(project.leadUserId)?.name || pl.to || project.lead;
   for (const who of [...project.memberUserIds, project.sponsorUserId, ...project.authorUserIds]) {

@@ -202,6 +202,8 @@ export type ReducedProject = {
   memberUserIds: string[];
   /** Team members who took the lead's invitation as co-lead. Absent until the first one. */
   coLeadUserIds?: string[];
+  /** Who was co-lead until the latest change of lead ended it, and the event that did. */
+  coLeadsEnded?: { eventId: string; userIds: string[] };
   /** Team members a co-lead added: a manager among them is not in charge by it, and a co-lead may take them off again. */
   addedByCoLeadUserIds?: string[];
   authorUserIds: string[];
