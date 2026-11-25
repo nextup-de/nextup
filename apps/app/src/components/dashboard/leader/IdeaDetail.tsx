@@ -105,7 +105,7 @@ export function IdeaDetail({ idea, brief, status, advice, feed, onDecide, onComm
       </article>
 
       <aside className={styles.side}>
-        <YourMove status={status?.label} moves={moves} />
+        <YourMove status={status?.label} quote={status?.quote} lines={status?.changed ? [status.changed] : []} moves={moves} />
       </aside>
     </div>
   );
