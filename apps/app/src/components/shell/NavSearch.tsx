@@ -28,7 +28,7 @@ const STATUS_LABEL: Record<OverviewStatus, MessageKey> = {
 type Section = { label: string; items: NavHit[] };
 
 const NAV_KEYS: Record<string, MessageKey> = {
-  Dashboard: "shell.navDashboard", Inbox: "shell.navInbox", "My cases": "shell.navMyCases", Problems: "shell.navProblems", Ideas: "shell.navIdeas",
+  Dashboard: "shell.navDashboard", Inbox: "shell.navInbox", "My cases": "shell.navMyCases", Problems: "shell.navProblems", Ideas: "shell.navIdeas", Raise: "shell.navRaise", Explore: "shell.navExplore",
   Feed: "shell.navFeed", Decisions: "decisions.navLabel", Collaboration: "shell.navCollaboration", Projects: "shell.navProjects", Progress: "shell.navProgress", Settings: "shell.navSettings", Overview: "shell.navOverview",
 };
 /** A navigation label from src/config/nav.ts in the viewer's language; an unknown label stays as it is. */

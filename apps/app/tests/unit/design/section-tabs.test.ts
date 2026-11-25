@@ -27,8 +27,13 @@ describe("section tabs", () => {
     expect(sectionTabsFor("dashboard", { role: "leader", serverMode: true }).map((t) => t.key)).toEqual(["ledger"]);
   });
 
-  it("Ideas gets a strip of New idea and Mine for those who raise, offline too; a manager raises nothing and gets none", () => {
-    for (const role of ["member", "leader"] as const) {
+  it("Ideas gets a strip of New idea and Mine for a leader, offline too; a member has both in the bar, a manager raises nothing", () => {
+    for (const role of ["member"] as const) {
+      const who = { role, serverMode: false, flag: on };
+      expect(sectionTabAt("/raise", who)).toBeNull();
+      expect(sectionTabAt("/ideas", who)).toBeNull();
+    }
+    for (const role of ["leader"] as const) {
       const who = { role, serverMode: false, flag: on };
       expect(sectionTabAt("/raise", who)).toEqual({ section: "ideas", tab: "raise" });
       expect(sectionTabAt("/ideas", who)).toEqual({ section: "ideas", tab: "mine" });

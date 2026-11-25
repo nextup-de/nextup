@@ -94,12 +94,15 @@ export function SimpleShell({ children }: { children: React.ReactNode }) {
         <NavSearch>{(searchOpen) => (
         <nav ref={navRef} className={styles.nav} aria-label={t("shell.navMain")} inert={searchOpen} aria-hidden={searchOpen}>
           {thumb && <span className={styles.navThumb} style={{ transform: "translateX(" + thumb.x + "px)", width: thumb.w }} aria-hidden="true" />}
-          {visibleSimpleNav(role, ctx.flag, counts).map((n) => {
+          {visibleSimpleNav(role, ctx.flag, counts).map((n, _i, all) => {
+            const hasProgress = all.some((x) => x.href === "/ideas");
             const href = tenant.prefix + n.href;
             // Without projects a case opens from the Overview, so its page counts as the Overview. With projects it counts as the Inbox.
             const inOverview = pathname === tenant.prefix + "/overview" || (!onIdea && (pathname === tenant.prefix + "/idea" || pathname.startsWith(tenant.prefix + "/cases/")));
             const active = pathname === href || pathname.startsWith(href + "/") || ((n.href === "/overview" || n.href === "/projects") && inOverview) || (n.href === "/projects" && area?.section === "projects")
-              || (n.href === "/inbox" && (area?.section === "inbox" || (onIdea && ideaArea === IDEA_AREA))) || (n.href === "/raise" && (area?.section === "ideas" || (onIdea && ideaArea === MINE_AREA)));
+              || (n.href === "/inbox" && (area?.section === "inbox" || (onIdea && ideaArea === IDEA_AREA))) || (n.href === "/raise" && area?.section === "ideas" && !(hasProgress && area.tab === "mine"))
+              // With a Progress place (members), my ideas and their pages light Progress, not Raise.
+              || (n.href === (hasProgress ? "/ideas" : "/raise") && onIdea && ideaArea === MINE_AREA);
             const n1 = n.count ? counts[n.count] : 0;
             return (
               <Link key={n.href} href={href} className={styles.navItem} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} onClick={() => setPop(null)}>

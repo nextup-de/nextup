@@ -172,9 +172,9 @@ test("leaving during the wait and coming back finds the message still on its way
   await expect(aiMessages(page).first()).toContainText("First reply.");
 
   await say(page, "Sent, then off to the feed.");
-  await page.getByRole("link", { name: "Feed" }).click();
+  await page.getByRole("link", { name: "Explore" }).click();
   await expect(page).toHaveURL(/\/acme\/feed/);
-  await page.getByRole("link", { name: "Ideas" }).click();
+  await page.getByRole("link", { name: "Raise" }).click();
   await expect(page).toHaveURL(/\/acme\/raise/);
   await expect(page.getByText("Sent, then off to the feed.")).toBeVisible();
   await expect(page.getByLabel("NextUp is typing")).toBeVisible();

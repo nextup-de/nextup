@@ -83,10 +83,11 @@
 }
 /* Small phones: three places (manager, leader) plus the wordmark and the avatar must fit in 320-420px. */
 @media (max-width: 420px) {
-  .bar { gap: 8px; padding: 0 12px; }
+  .bar { gap: 6px; padding: 0 10px; }
   .brand { margin-left: 0; }
   .logo { height: 24px; }
-  .navItem { gap: 4px; padding: 7px 9px; font-size: var(--nh-fs-sm); }
+  .navItem { gap: 4px; padding: 7px 6px; font-size: var(--nh-fs-sm); }
+  .nav { gap: 0; }
   .navCount { padding: 1px 5px; }
 }
 /* 360px phones: the wordmark keeps its shape, so the nav gives up the room instead. */

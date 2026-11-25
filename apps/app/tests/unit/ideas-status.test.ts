@@ -8,7 +8,7 @@ import type { CaseEvent, CaseEventType, EventPayload } from "@/features/cases/ev
 import { reduce, type ReduceSeed, type ReducedCase, type State } from "@/features/cases/reducer";
 import { DEMO_CLOCK } from "@/features/clock";
 import type { Route, SeedRole } from "@/features/demo/types";
-import { approvalProgress, ideaStatus, ideaStatusText, mineIdeas, type StatusWorld } from "@/features/ideas/status";
+import { approvalProgress, ideaStatus, ideaStatusText, mineIdeas, progressOf, type StatusWorld } from "@/features/ideas/status";
 import { createT } from "@/i18n";
 
 const SEATS: SeatRow[] = [
@@ -136,5 +136,31 @@ describe("the Mine list", () => {
 
   it("is empty for nobody", () => {
     expect(mineIdeas(state(1, raise()), null, WORLD, DEMO_CLOCK)).toEqual([]);
+  });
+});
+
+describe("Progress columns", () => {
+  const c = { raisedDay: 2, history: [{ day: 5 }, { day: 9 }] } as unknown as Parameters<typeof progressOf>[0];
+  const step = (column: string, dropped = false) => ({ column, dropped: dropped ? { why: "x", day: 1, byUserId: null } : null });
+  const project = (status: string, steps: ReturnType<typeof step>[], day = 12) => ({ status, lead: "D. Ferraro", steps, history: [{ day }] }) as unknown as Parameters<typeof progressOf>[2];
+
+  it("a sent-back idea is the raiser's move, with the chip that says so", () => {
+    const p = progressOf(c, { kind: "sentBack", reason: "Add the numbers" }, null);
+    expect(p).toMatchObject({ stage: "sentBack", with: "you", yourMove: true, chip: { kind: "yourMove" }, updatedDay: 9 });
+  });
+
+  it("approvals count what is approved; a desk names who has it", () => {
+    expect(progressOf(c, { kind: "approving", approved: 1, total: 3, waitingOn: ["B. Hartmann"] }, null)).toMatchObject({ stage: "approving", count: { done: 1, total: 3 }, with: ["B. Hartmann"], chip: null });
+    expect(progressOf(c, { kind: "waiting", on: [], role: "Line lead" }, null)).toMatchObject({ stage: "desk", with: ["Line lead"] });
+  });
+
+  it("a running project counts its steps without the dropped ones and says how many are blocked; the project's last day counts", () => {
+    const p = progressOf(c, { kind: "project", projectId: "p", label: "P-1" }, project("running", [step("done"), step("blocked"), step("todo"), step("done", true)], 20));
+    expect(p).toMatchObject({ stage: "running", count: { done: 1, total: 3 }, with: ["D. Ferraro"], chip: { kind: "blocked", n: 1 }, updatedDay: 20 });
+  });
+
+  it("a recognised project says it in the stage alone, and no step count without steps", () => {
+    expect(progressOf(c, { kind: "project", projectId: "p", label: "P-1" }, project("recognised", [step("done")]))).toMatchObject({ stage: "recognised", count: null, chip: null });
+    expect(progressOf(c, { kind: "project", projectId: "p", label: "P-1" }, project("running", []))).toMatchObject({ count: null });
   });
 });
