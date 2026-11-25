@@ -71,6 +71,49 @@ describe("co-leads", () => {
     expect(may("u_co", "project.member", off("u_mg"), kept)).toBe(false);
   });
 
+  it("on a private or custom idea only the lead adds people", () => {
+    for (const visibility of ["private", "custom"] as const) {
+      const s = world();
+      const c = s.cases.find((x) => x.id === "c_a")!;
+      c.history = c.history.map((e) => (e.type === "case.raised" ? { ...e, payload: { ...e.payload, visibility } } : e));
+      expect(may("u_co", "project.member", ADD, s), visibility).toBe(false);
+      expect(may("u_lb", "project.member", ADD, s), visibility).toBe(true);
+    }
+  });
+
+  it("nobody is sponsor and co-lead at once, asked or taken", () => {
+    const sponsor = (userId: string): CaseEvent => ({ ...by("u_lb", "project.invited", { userId, role: "sponsor" }), id: `i_${userId}_sponsor` });
+    const asked = world(sponsor("u_sp"));
+    expect(may("u_lb", "project.invited", { userId: "u_sp", role: "colead" }, asked)).toBe(false);
+    const is = world(sponsor("u_sp"), by("u_sp", "project.invite.answered", { inviteId: "i_u_sp_sponsor", userId: "u_sp", take: true }));
+    expect(may("u_lb", "project.invited", { userId: "u_sp", role: "colead" }, is)).toBe(false);
+    expect(may("u_lb", "project.invited", { userId: "u_co", role: "sponsor" })).toBe(false);
+    expect(may("u_lb", "project.invited", { userId: "u_co", role: "sponsor" }, stateOf([...START, invite("u_co", "colead")], DAY))).toBe(false);
+    // Both asked by older events: the second one can't be taken.
+    const taken = world(sponsor("u_co"));
+    expect(may("u_co", "project.invite.answered", { inviteId: "i_u_co_sponsor", userId: "u_co", take: true }, taken)).toBe(false);
+    expect(may("u_co", "project.invite.answered", { inviteId: "i_u_co_sponsor", userId: "u_co", take: false }, taken)).toBe(true);
+    const late = world(sponsor("u_x"), by("u_x", "project.invite.answered", { inviteId: "i_u_x_sponsor", userId: "u_x", take: true }), invite("u_x", "colead"));
+    expect(may("u_x", "project.invite.answered", { inviteId: "i_u_x_colead", userId: "u_x", take: true }, late)).toBe(false);
+  });
+
+  it("a new lead ends every co-lead role and is nobody a co-lead may take off later", () => {
+    const back = [by("u_co", "project.member", ADD, 12), by("u_lb", "project.handed", { toUserId: "u_mg", to: "M. Manager" }, 13), by("u_mg", "project.handed", { toUserId: "u_lb", to: "L. Brandt" }, 14)];
+    expect(p(world(...back)).addedByCoLeadUserIds).toEqual([]);
+    const again = world(...back, { ...invite("u_co", "colead"), id: "i_again" }, by("u_co", "project.invite.answered", { inviteId: "i_again", userId: "u_co", take: true }, 15));
+    expect(p(again).coLeadUserIds).toEqual(["u_co"]);
+    expect(may("u_co", "project.member", { userId: "u_mg", name: "M", on: false, unassign: true }, again)).toBe(false);
+    const handed = by("u_lb", "project.handed", { toUserId: "u_ci", to: "C. Ilg" }, 12);
+    const s = world(invite("u_y", "colead"), handed);
+    expect(p(s).coLeadUserIds).toEqual([]);
+    expect(p(s).coLeadsEnded).toEqual({ eventId: handed.id, userIds: ["u_co"] });
+    expect(p(s).invites.some((i) => i.role === "colead")).toBe(false);
+    expect(may("u_co", "project.paused", { untilDay: DAY + 5, why: "x" }, s)).toBe(false);
+    const named = world(by("u_co", "project.member", ADD, 12), by("u_lb", "project.lead.vacated", { userId: "u_lb" }, 13), by("u_tv", "project.lead.changed", { toUserId: "u_mg", to: "M. Manager" }, 14));
+    expect(p(named).coLeadUserIds).toEqual([]);
+    expect(p(named).addedByCoLeadUserIds).toEqual([]);
+  });
+
   it("the role is put down, taken back, or gone with the team, and may be asked again", () => {
     expect(may("u_co", "project.member", { userId: "u_co", coLead: false })).toBe(true);
     expect(may("u_lb", "project.member", { userId: "u_co", coLead: false })).toBe(true);
