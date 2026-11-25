@@ -18,6 +18,7 @@ import { baselineNeedsConfirm, DROP_WHY_MAX, HELP_TEXT_MAX, openStepsOf, QUESTIO
 import { isMeasureSource, readImpact } from "./measure-source";
 import { untouchedStepOf } from "./reduce";
 import { checkInDayOf, previousCheckInDayOf } from "./rhythm";
+import { hasClosedAudience } from "@/features/cases/visibility";
 import { STEP_COLUMNS, SYNC_SYSTEMS, type InviteRole, type ReducedProject, type ToolKind, type ToolInstance } from "./types";
 
 import { canAddTool, fitsEvent, LIMITS, PAGE_ICON_KEYS, pagesOf, SINGLE_KINDS, TOOL_KINDS } from "./pages";
@@ -33,7 +34,7 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const STARTS: readonly string[] = ["todo", "doing", "done"];
 const FIELD_KINDS = ["short", "long", "choice", "date"] as const;
 
-const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+const INVITE_ROLES: readonly InviteRole[] = ["sponsor", "colead", "member", "contributor", "follower"];
 /** A line of `min` to `max` characters once trimmed (the goal and its done-when, D17). */
 const lineOf = (v: unknown, min: number, max: number): v is string => typeof v === "string" && v.trim().length >= min && v.length <= max;
 const templateExists = (key: unknown, version: unknown): boolean =>
@@ -93,7 +94,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   const route = (state.routes ?? []).find((r) => r.id === p.routeId);
   const holdsDesk = actor.me !== undefined && route !== undefined && (holdsRole(actor.me, route.ownerRoleId ?? null) || holdsRole(actor.me, route.deputyRoleId ?? null));
   const invited = (p.invites ?? []).some((i) => isMe(i.userId) && i.state === "accepted" && i.role !== "follower");
-  const managerInCharge = isManager && (isMe(p.deciderUserId) || isMe(p.sponsorUserId) || holdsDesk || p.memberUserIds.some(isMe) || invited);
+  const managerInCharge = isManager && (isMe(p.deciderUserId) || isMe(p.sponsorUserId) || holdsDesk || (p.memberUserIds.some(isMe) && !(p.addedByCoLeadUserIds ?? []).some(isMe)) || invited);
   const isLead = isMe(p.leadUserId) || managerInCharge;
   const live = p.status !== "stopped" && p.status !== "recognised";
   // The project draft (plan SET): a project a yes with draft: true opened. A legacy project keeps today's rules below.
@@ -101,6 +102,13 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
   const planning = p.status === "planning";
   // The decider sets the draft up until the lead has taken it (D17); then it is the lead's.
   const decider = draft && p.leadState === "pending" && isMe(p.deciderUserId);
+  // A co-lead: the lead asked them, they took it (project.invited as colead). On a running project they add people, move any step, pause
+  // and resume. Everything else of the lead stays with the lead: stop, invitations, numbers, done, hand-over, removing others' steps.
+  const isCoLead = (userId: string | null | undefined) => typeof userId === "string" && p.memberUserIds.includes(userId) && (p.coLeadUserIds ?? []).includes(userId);
+  const coLead = p.status === "running" && isCoLead(uid);
+  const askedAs = (userId: string, role: InviteRole) => (p.invites ?? []).some((i) => i.userId === userId && i.role === role && (i.state === "pending" || i.state === "accepted"));
+  const sponsorOrAsked = (userId: string) => p.sponsorUserId === userId || askedAs(userId, "sponsor");
+  const coLeadOrAsked = (userId: string) => isCoLead(userId) || askedAs(userId, "colead");
   const onTeam = isLead || p.memberUserIds.some(isMe) || decider;
   // The seat holder the draft was escalated to may keep, hand on or stop it while the escalation is live (D15).
   const escalatedSeat = draft && planning && p.escalated !== null && p.escalated.what === "draft" && p.escalated.live ? p.escalated.toSeatId : null;
@@ -273,6 +281,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!live) return no("projects.permClosed");
       if (typeof pl.userId !== "string" || pl.userId === "") return no("projects.permInviteWhom");
       if (!(INVITE_ROLES as readonly unknown[]).includes(pl.role)) return no("projects.permInviteRole");
+      // Nobody is sponsor and co-lead at once: the sponsor may stop and hand over.
+      if (pl.role === "colead" && sponsorOrAsked(pl.userId)) return no("projects.permCoLeadSponsor");
+      if (pl.role === "sponsor" && coLeadOrAsked(pl.userId)) return no("projects.permCoLeadSponsor");
       return pl.userId === p.leadUserId ? no("projects.permInviteLeadSelf") : OK;
 
     case "project.invite.answered": {
@@ -286,6 +297,9 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.lapsed !== undefined && typeof pl.lapsed !== "boolean") return no("projects.permNotAllowed");
       if (pl.lapsed) return clock && pl.take === false ? OK : no("projects.permLapsedClock");
       if (!isMe(invite.userId)) return no("projects.permInviteAnswerWho");
+      // Asked before the other role was theirs: taking it is refused too.
+      if (pl.take === true && invite.role === "colead" && p.sponsorUserId === invite.userId) return no("projects.permCoLeadSponsor");
+      if (pl.take === true && invite.role === "sponsor" && (p.coLeadUserIds ?? []).includes(invite.userId)) return no("projects.permCoLeadSponsor");
       return typeof pl.take === "boolean" ? OK : no("projects.permTakeOrDecline");
     }
 
@@ -313,7 +327,21 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       return text(pl.why) ? OK : no("projects.permStartMovedWhy");
 
     case "project.member":
-      if (!isLead) return no("projects.permLeadOnly");
+      if (pl.coLead !== undefined) {
+        // Only ever taken back: it is given by an accepted invitation. By the lead, or by the co-lead who puts it down.
+        if (!(isLead || isMe(pl.userId ?? null))) return no("projects.permLeadOnly");
+        if (!live) return no("projects.permClosed");
+        if (pl.coLead !== false || pl.on !== undefined || pl.unassign !== undefined) return no("projects.permNotAllowed");
+        return isCoLead(pl.userId) ? OK : no("projects.permCoLeadNone");
+      }
+      if (!(isLead || coLead)) return no("projects.permLeadOnly");
+      // Being on the team opens the idea: on a private or custom one only the lead adds people.
+      if (!isLead && pl.on !== false && state.cases.some((c) => p.sources.includes(c.id) && hasClosedAudience(c))) return no("projects.permCoLeadClosed");
+      // A co-lead takes off only who a co-lead added (nobody the lead put there, so no manager in charge), or leaves. With unassign, so the lead is told.
+      if (!isLead && pl.on === false) {
+        const added = (p.addedByCoLeadUserIds ?? []).includes(pl.userId ?? "") && !isCoLead(pl.userId) && pl.userId !== p.sponsorUserId;
+        if (!(isMe(pl.userId ?? null) || added) || pl.unassign !== true) return no("projects.permCoLeadRemove");
+      }
       return typeof pl.userId === "string" && pl.userId !== "" ? OK : no("projects.permMemberWhom");
 
     case "project.handed":
@@ -385,7 +413,7 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       const step = p.steps.find((s) => s.id === pl.stepId);
       if (!step) return no("projects.permNoStep");
       // An unowned step is the team's: anyone on it may pick it up and move it. Seeing a project is not working on it (Kevin, 16 Nov 2026).
-      if (!(isLead || isMe(step.ownerUserId ?? null) || ((step.ownerUserId ?? null) === null && onTeam))) return no("projects.permStepMoveOwner");
+      if (!(isLead || coLead || isMe(step.ownerUserId ?? null) || ((step.ownerUserId ?? null) === null && onTeam))) return no("projects.permStepMoveOwner");
       if (pl.before != null && !p.steps.some((s) => s.id === pl.before)) return no("projects.permNoStepAbove");
       // F5 (D18): a step goes to Blocked with its reason, whoever moves it.
       const column = pl.to;
@@ -631,14 +659,14 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
     }
 
     case "project.paused":
-      if (!isLead) return no("projectMove.permSponsorOrLead");
+      if (!(isLead || coLead)) return no("projectMove.permSponsorOrLead");
       if (p.status !== "running") return no("projectMove.permRunningOnly");
       if (paused) return no("projectMove.permPaused");
       if (!whole(pl.untilDay) || pl.untilDay <= state.day || pl.untilDay > state.day + PAUSE_MAX_DAYS) return no("projectMove.permPauseDays");
       return text(pl.why, 400) ? OK : no("projectMove.permWhy");
 
     case "project.resumed":
-      if (!(isLead || sponsor)) return no("projectMove.permSponsorOrLead");
+      if (!(isLead || coLead || sponsor)) return no("projectMove.permSponsorOrLead");
       return paused ? OK : no("projectMove.permNotPaused");
 
     case "project.howwework":
