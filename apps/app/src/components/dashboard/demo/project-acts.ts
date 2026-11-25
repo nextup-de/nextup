@@ -98,6 +98,8 @@ export type ProjectAct = {
   setGoal: (projectId: string, g: { goal: string; doneWhen: string; doneBy?: number; brief?: string }) => void;
   /** The seat above keeps a late draft with a new start day (D15). */
   moveStart: (projectId: string, dueDay: number, why: string) => void;
+  /** A draft gets another name before its start. */
+  rename: (projectId: string, title: string) => void;
   // A project that keeps moving (plan MOV): each one event.
   /** A new done-by working day, with why (D19). */
   moveDoneBy: (projectId: string, doneBy: number, why: string) => void;
@@ -217,6 +219,7 @@ export function projectActs(d: ActDeps): ProjectAct {
     answerInvite: (id, inviteId, userId, take, reason) => emit("project.invite.answered", id, { inviteId, userId, take, ...(!take && reason ? { reason } : {}) }),
     setGoal: (id, g) => emit("project.goal", id, { goal: g.goal, doneWhen: g.doneWhen, ...(g.doneBy !== undefined ? { doneBy: g.doneBy } : {}), ...(g.brief ? { brief: g.brief } : {}) }),
     moveStart: (id, dueDay, why) => emit("project.start.moved", id, { dueDay, why }),
+    rename: (id, title) => emit("project.renamed", id, { title }),
     moveDoneBy: (id, doneBy, why) => emit("project.doneby.moved", id, { doneBy, why }),
     pause: (id, why, untilDay) => emit("project.paused", id, { why, untilDay }),
     resume: (id) => emit("project.resumed", id),

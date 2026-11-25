@@ -239,6 +239,7 @@ describe("REG demo acts split", () => {
       expect(only((d) => projectActs(d).setGoal("p_1", { goal: "Less scrap", doneWhen: "Under 2 percent", doneBy: 40, brief: "Why" }))).toStrictEqual(["project.goal", "p_1", { goal: "Less scrap", doneWhen: "Under 2 percent", doneBy: 40, brief: "Why" }]);
       expect(only((d) => projectActs(d).setGoal("p_1", { goal: "Less scrap", doneWhen: "Under 2 percent" }))).toStrictEqual(["project.goal", "p_1", { goal: "Less scrap", doneWhen: "Under 2 percent" }]);
       expect(only((d) => projectActs(d).moveStart("p_1", 12, "Waiting for the line"))).toStrictEqual(["project.start.moved", "p_1", { dueDay: 12, why: "Waiting for the line" }]);
+      expect(only((d) => projectActs(d).rename("p_1", "Line 3 cart"))).toStrictEqual(["project.renamed", "p_1", { title: "Line 3 cart" }]);
     });
 
     it("the MOV acts each emit one event: done-by, pause, resume, how we work, update and a new lead", () => {
@@ -254,7 +255,7 @@ describe("REG demo acts split", () => {
 
     it("exposes exactly the project acts", () => {
       expect(Object.keys(projectActs(deps().d)).sort()).toEqual(
-        ["addStep", "answerInvite", "answerLead", "askHelp", "baseline", "changeLead", "claim", "coLeadOff", "comment", "confirmBaseline", "confirmMeasure", "done", "editStep", "form", "hand", "howWeWork", "invite", "link", "measure", "member", "milestone", "moveDoneBy", "moveStart", "moveStep", "page", "pause", "pickTemplate", "question", "reopen", "request", "resume", "reward", "setGoal", "start", "stepCheck", "stepComment", "stop", "stopAndReturn", "sync", "update"]);
+        ["addStep", "answerInvite", "answerLead", "askHelp", "baseline", "changeLead", "claim", "coLeadOff", "comment", "confirmBaseline", "confirmMeasure", "done", "editStep", "form", "hand", "howWeWork", "invite", "link", "measure", "member", "milestone", "moveDoneBy", "moveStart", "moveStep", "page", "pause", "pickTemplate", "question", "rename", "reopen", "request", "resume", "reward", "setGoal", "start", "stepCheck", "stepComment", "stop", "stopAndReturn", "sync", "update"]);
     });
   });
 });

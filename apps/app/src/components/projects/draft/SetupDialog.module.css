@@ -28,6 +28,12 @@
 .hit { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .hit:hover { background: var(--nh-fill); }
 .role { width: auto; flex: none; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: var(--nh-mute); }
+.field input { color: var(--nh-ink); }
+.start { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.start > .sub, .start > [role="alert"] { padding-bottom: 10px; }
+.days { width: 96px; }
+.grow { flex: 1; min-width: 200px; }
 .own { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--nh-line); border-radius: var(--radius-md, 12px); }
 .actions { display: flex; align-items: center; gap: 12px; }
 .quiet { border: 0; background: none; color: var(--nh-mute); font: inherit; cursor: pointer; }

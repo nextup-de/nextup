@@ -1,8 +1,9 @@
 "use client";
-// "Set up project" (Paper, Set up row): the pages a draft starts with and who is asked to join it, in one window. Nothing is sent
-// before Save; every change is then one event the draft page could send too, asked of the server's rules first. The goal,
-// the baseline and the start stay with the draft's own steps: without them the project stays a draft (Kevin, 25 Nov 2026).
+// "Set up project" (Paper, Set up row): the draft's name and start day, the pages it starts with and who is asked to join it, in
+// one window. Nothing is sent before Save; every change is then one event the draft page could send too, asked of the server's
+// rules first. The goal and the baseline stay with the draft's own steps: without them the project stays a draft (Kevin, 25 Nov 2026).
 import { useEffect, useRef, useState } from "react";
+import { START_MOVE_DAYS } from "@/features/projects/permissions";
 import { createPortal } from "react-dom";
 import { useDemo } from "@/components/dashboard/DemoProvider";
 import { PersonFace } from "@/components/ui/elements";
@@ -34,7 +35,7 @@ export function SetupDialog({ p, onClose }: { p: ReducedProject; onClose: () => 
 }
 
 function Dialog({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
-  const { act, flag, seed, showToast, S } = useDemo();
+  const { act, f, flag, seed, showToast, S } = useDemo();
   const t = useT();
   const { check } = useRights(p);
   const send = useSend(p);
@@ -45,6 +46,17 @@ function Dialog({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
   const ready: Page[] = addablePages(there, gone, { agent }).map((x) => ({ key: x.id, pageId: x.id, title: x.title, icon: x.icon, kinds: x.tools.map((tool) => tool.kind) }));
   const mayPages = check("project.page.added", { pageId: "probe", title: "-", icon: "doc", tools: [] }).ok;
   const mayInvite = check("project.invited", { userId: "-", role: "member" }).ok;
+  // The name, and the start in days from today: what the lead may change before the start (rights PR #1042).
+  const mayName = check("project.renamed", { title: p.title }).ok;
+  const mayStart = p.startDay !== null && check("project.start.moved", { dueDay: S.day + 1, why: "-" }).ok;
+  const [title, setTitle] = useState(p.title);
+  const [inDays, setInDays] = useState(p.startDay === null ? "" : String(p.startDay - S.day));
+  const [why, setWhy] = useState("");
+  const days = Math.floor(Number(inDays));
+  const startDay = inDays.trim() !== "" && Number.isFinite(days) ? S.day + days : null;
+  const named = title.trim() !== "" && title.trim() !== p.title;
+  const moved = startDay !== null && startDay !== p.startDay;
+  const startBad = moved && (days < 1 || startDay > p.openedDay + START_MOVE_DAYS);
   // The proposal is made once, for a draft that has no page of its own yet.
   const [pages, setPages] = useState<Page[]>(() => (there.length <= 3 && mayPages ? ready.filter((x) => PROPOSED.has(x.key)) : []));
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -115,6 +127,13 @@ function Dialog({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
     if (busy) return;
     setBusy(true); setError(null);
     try {
+      if (named) {
+        if (!send("project.renamed", { title: title.trim() }, () => act.project.rename(p.id, title.trim()))) return;
+      }
+      if (moved && startDay !== null) {
+        if (!send("project.start.moved", { dueDay: startDay, why: why.trim() }, () => act.project.moveStart(p.id, startDay, why.trim()))) return;
+        setWhy("");
+      }
       // What went through leaves the list, so a retry after a refusal does not send it twice.
       for (const x of pages) {
         const out = await acts.create({ ...(x.pageId ? { pageId: x.pageId } : {}), title: x.title, icon: x.icon, tools: x.kinds.map((kind) => ({ kind })) });
@@ -143,6 +162,34 @@ function Dialog({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
         </header>
 
         <div className={styles.body}>
+          {(mayName || mayStart) && (
+            <section className={styles.section} aria-labelledby="setup-project">
+              <h3 id="setup-project" className={styles.h3}>{t("projectDraft.setupProject")}</h3>
+              {mayName && (
+                <label className={styles.field}>
+                  <span>{t("projectDraft.setupName")}</span>
+                  <input className="nh-input" value={title} maxLength={200} onChange={(e) => change(() => setTitle(e.target.value))} />
+                </label>
+              )}
+              {mayStart && (
+                <div className={styles.start}>
+                  <label className={styles.field}>
+                    <span>{t("projectDraft.setupStartIn")}</span>
+                    <input className={`nh-input ${styles.days}`} type="number" min={1} inputMode="numeric" value={inDays} onChange={(e) => change(() => setInDays(e.target.value))} />
+                  </label>
+                  {startDay !== null && !startBad && <span className={styles.sub}>{f(startDay)}</span>}
+                  {startBad && <span className="nh-error" role="alert">{t("projectDraft.setupStartBad", { days: START_MOVE_DAYS })}</span>}
+                  {moved && !startBad && (
+                    <label className={`${styles.field} ${styles.grow}`}>
+                      <span>{t("projectDraft.lateWhy")}</span>
+                      <input className="nh-input" value={why} maxLength={500} onChange={(e) => change(() => setWhy(e.target.value))} />
+                    </label>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
           {mayPages && (
             <section className={styles.section} aria-labelledby="setup-pages">
               <h3 id="setup-pages" className={styles.h3}>{t("projectDraft.setupPages")}</h3>
@@ -230,7 +277,7 @@ function Dialog({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
           ) : (
             <>
               <button type="button" className="nh-btn nh-btn-ghost" disabled={busy} onClick={close}>{t("common.cancel")}</button>
-              <button type="button" className="nh-btn nh-btn-primary" disabled={busy || (!pages.length && !guests.length)} onClick={save}>{t(busy ? "projectDraft.setupSaving" : "projectDraft.setupSave")}</button>
+              <button type="button" className="nh-btn nh-btn-primary" disabled={busy || (!pages.length && !guests.length && !named && !moved) || (moved && (startBad || !why.trim()))} onClick={save}>{t(busy ? "projectDraft.setupSaving" : "projectDraft.setupSave")}</button>
             </>
           )}
         </footer>
