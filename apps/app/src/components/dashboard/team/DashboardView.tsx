@@ -51,6 +51,7 @@ import { applyIdeaEdits, applyPageEdits, ideaContent } from "@/features/ideas/ed
 import { useIdeaEdits } from "./ideaEditsPreview";
 import { useOpenItem } from "@/components/inbox/useOpenItem";
 import { IdeaMove } from "@/components/cases/IdeaMove";
+import { questionOpen, reviseThenAnswer } from "@/features/cases/case-actions";
 import { seesRouting } from "@/features/cases/routing-trail";
 
 // A count beside a menu label: nothing at 0 (lib/utils/quiet.ts).
@@ -275,6 +276,12 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       return (seat && roleTitles.find((r) => r.id === seat.roleId)?.title) || "";
     };
     const canAnswer = row.mine && c.status === "asked";
+    // A new version while the desk's question is open also answers it, so it goes back to the desk (SEE D20, as in VersionsPanel).
+    const revise = async (body: string, title?: string) => {
+      const version = c.versions.length + 1;
+      const ok = await reviseThenAnswer({ revise: () => act.revise(c.id, body, title), answer: (text) => act.answer(c.id, text) }, version, questionOpen(c));
+      if (ok) ctx.showToast(t("team.ideaEditSaved", { version }));
+    };
     const ideaProps: OverviewIdeaProps = {
       // A problem says so where the idea says who raised it (DESIGN_RULES §2: told apart by a label); the band of old is gone.
       id: c.id, title: c.title, raised: f(c.raisedDay), dept: (c.kind === "problem" ? t("team.ideaKindProblem") + " · " : "") + (row.mine ? "" : c.from + " · ") + c.fromDept,
@@ -295,8 +302,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
         onSave: (ch) => {
           if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
           if (ch.title !== undefined || ch.body !== undefined) {
-            act.revise(c.id, ch.body ?? c.body, ch.title);
-            ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+            revise(ch.body ?? c.body, ch.title);
           }
         },
       } : null,
@@ -319,8 +325,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
           const { title, description, ...rest } = ch;
           if (Object.keys(rest).length) addIdeaEdits(rest);
           if (title !== undefined || description !== undefined) {
-            act.revise(c.id, description ?? c.body, title);
-            ctx.showToast(t("team.ideaEditSaved", { version: c.versions.length + 1 }));
+            revise(description ?? c.body, title);
           }
         } : null,
       };

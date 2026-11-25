@@ -131,3 +131,20 @@ export async function reviseThenAnswer(
   if (open) await step.answer(`See v${version}`);
   return true;
 }
+
+/**
+ * What came back on a question, for the desk that asked: the raiser's words, and the version when they revised the idea meanwhile
+ * (the newest one written between the question and the answer). An answer that only points at that version ("See v<n>", above) has
+ * no words of its own. Null while nothing came back, and once the desk has decided.
+ */
+export function cameBack(kase: Pick<ReducedCase, "question" | "decided" | "history" | "versions">): { text: string | null; version: number | null } | null {
+  const answer = kase.question?.answer;
+  if (!answer || kase.decided) return null;
+  const asked = kase.history.findLastIndex((e) => e.type === "case.asked");
+  const answered = kase.history.findLastIndex((e) => e.type === "case.answered");
+  if (asked < 0 || answered < asked) return null;
+  const revised = kase.history.slice(asked + 1, answered).some((e) => e.type === "case.revised");
+  // The versions written up to the answer: v1 is the raise, every case.revised adds one.
+  const version = revised ? 1 + kase.history.slice(0, answered).filter((e) => e.type === "case.revised").length : null;
+  return { text: version !== null && answer.text === `See v${version}` ? null : answer.text || null, version };
+}

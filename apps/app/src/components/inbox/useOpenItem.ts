@@ -8,6 +8,7 @@ import { useDemo } from "@/components/dashboard/DemoProvider";
 import { askedForView, deskCases, inboxIdeas } from "@/components/dashboard/derive";
 import type { IdeaProps } from "@/components/dashboard/leader/IdeaParts";
 import type { IdeaBrief } from "@/features/ideas/brief";
+import { cameBack } from "@/features/cases/case-actions";
 import { costEurOf, fastLane, roundState, withDiscussion } from "@/features/cases/discussion";
 import { readableComment } from "@/features/cases/notice";
 import { raisedWith } from "@/features/cases/rows";
@@ -84,6 +85,7 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
   const raised = raisedWith(sc);
   const standing = [...raised.affected, ...affectedOn(log, sc.id).map((a) => a.name).filter((n) => !raised.affected.includes(n))];
   const q = sc.question;
+  const back = cameBack(sc);
   const plain = briefForCase(sc, briefCtx, { promiseDays: P, viewer: me, affected: standing, attachments: raised.attachments, updates: rescoresOn(log, sc.id).length, passTo: handTo, history: handedNote });
   const brief = viewing && d ? { ...plain, actions: [], rec: "", recText: t("leader.askedViewDecide", { by: d.by }), next: t("leader.commentBelow"), by: rs ? t("leader.beforeCheckin", { day: f(rs.dueDay) }) : null }
     : talk ? withDiscussion(plain, sc, { fast: fastLane(sc.body, S.rules.fastLaneEur), costEur: costEurOf(sc.body), limitEur: S.rules.fastLaneEur }, locale)
@@ -106,8 +108,9 @@ export function useOpenItem(cid: string | null, close: () => void): IdeaProps | 
     idea, onClose: close, brief, advice: adviceOf(brief, why),
     feed: commentsOn(log, sc.id).map((m) => readableComment(m, t)).map((m) => ({ name: isMe(m.byUserId) ? t("leader.you") : m.by, role: m.rescore ? t("leader.newInformation") : t("leader.comment"), text: m.text, when: f(m.day), mine: isMe(m.byUserId), person: personOrNull(m.by, m.byUserId) })),
     status: talkNote ?? (!q ? null : {
+      ...(back ? { quote: back.text, changed: back.version === null ? null : t("leader.cameBackVersion", { version: back.version }) } : {}),
       label: q.answer ? t("leader.answeredBy", { name: sc.from }) : q.unanswered !== null ? t("leader.noAnswer", { name: sc.from }) : t("leader.questionOut"),
-      lines: [t("leader.youAsked", { text: q.text || t("leader.oneQuestion"), day: f(q.day) }), ...(q.answer ? [t("leader.answerLine", { text: q.answer.text, day: f(q.answer.day) })] : q.unanswered !== null ? [t("leader.noAnswerLine", { day: f(q.unanswered) })] : [])],
+      lines: [t("leader.youAsked", { text: q.text || t("leader.oneQuestion"), day: f(q.day) }), ...(q.answer && !back ? [t("leader.answerLine", { text: q.answer.text, day: f(q.answer.day) })] : q.unanswered !== null ? [t("leader.noAnswerLine", { day: f(q.unanswered) })] : [])],
     }),
     onDecide: (key: string) => {
       if (key === "yes" && projects) openSheet("accept", sc.id);
