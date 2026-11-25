@@ -11,6 +11,7 @@ import type { ReducedProject } from "@/features/projects/types";
 import { connectionsOf, safeUrl, systemFrom, timelineOf, toolName, toolOf, toolWhat, type JiraRow, type ToolId } from "@/features/projects/views";
 import { useLocale, useT } from "@/i18n/client";
 import { InvitePanel } from "./draft/DraftInvites";
+import { isCoLead, MemberActions } from "./MemberActions";
 import { peopleOf, teamOf, useRights, useSend, withIds } from "./parts";
 import styles from "./Projects.module.css";
 
@@ -42,10 +43,10 @@ export function TeamPanel({ p, bare = false }: { p: ReducedProject; bare?: boole
         {team.map((m, k) => (
           <li key={m.userId ?? m.name} className={styles.person}>
             <PersonFace name={m.name} size="sm" />
-            <span className={styles.grow}>{m.name}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}</span>
+            <span className={styles.grow}>{m.name}{k === 0 && <span className={styles.leadTag}>{t("projects.leadTag")}</span>}{isCoLead(p, m.userId) && <span className={styles.leadTag}>{t("projects.coLeadTag")}</span>}</span>
             {deptOf(m.name) ? <DeptChip name={deptOf(m.name)} /> : null}
             <span className={styles.load} title={t("projects.openStepsTheyOwn")}>{load(m.userId) ? t("projects.openCount", { count: load(m.userId) }) : ""}</span>
-            {k > 0 && m.userId !== null && r.lead && live && <button type="button" className={styles.quiet} onClick={() => send("project.member", { userId: m.userId as string, name: m.name }, () => act.project.member(p.id, { userId: m.userId as string, name: m.name }, false))} aria-label={t("projects.takeOffTeam", { name: m.name })}>{t("projects.remove")}</button>}
+            {k > 0 && m.userId !== null && live && <MemberActions p={p} who={{ userId: m.userId, name: m.name }} className={styles.quiet} below />}
           </li>
         ))}
       </ul>

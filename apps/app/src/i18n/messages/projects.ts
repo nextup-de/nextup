@@ -617,6 +617,11 @@ export const projects = defineMessages({
     // ── team, tools and activity (ProjectTeam)
     teamTitle: "Team",
     leadTag: "Lead",
+    coLeadTag: "Co-lead",
+    coLeadAsk: "Ask to co-lead",
+    coLeadAskLabel: "Ask {name} to co-lead",
+    coLeadOff: "End co-lead",
+    coLeadOffLabel: "End the co-lead role of {name}",
     openStepsTheyOwn: "Open steps they own",
     openCount: "{count} open",
     takeOffTeam: "Take {name} off the team",
@@ -1346,6 +1351,11 @@ export const projects = defineMessages({
     // ── team, tools and activity (ProjectTeam)
     teamTitle: "Team",
     leadTag: "Leitung",
+    coLeadTag: "Co-Leitung",
+    coLeadAsk: "Um Co-Leitung bitten",
+    coLeadAskLabel: "{name} um Co-Leitung bitten",
+    coLeadOff: "Co-Leitung beenden",
+    coLeadOffLabel: "Co-Leitung von {name} beenden",
     openStepsTheyOwn: "Offene Schritte, für die die Person zuständig ist",
     openCount: "{count} offen",
     takeOffTeam: "{name} aus dem Team nehmen",

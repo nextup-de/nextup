@@ -254,7 +254,7 @@ describe("REG demo acts split", () => {
 
     it("exposes exactly the project acts", () => {
       expect(Object.keys(projectActs(deps().d)).sort()).toEqual(
-        ["addStep", "answerInvite", "answerLead", "askHelp", "baseline", "changeLead", "claim", "comment", "confirmBaseline", "confirmMeasure", "done", "editStep", "form", "hand", "howWeWork", "invite", "link", "measure", "member", "milestone", "moveDoneBy", "moveStart", "moveStep", "page", "pause", "pickTemplate", "question", "reopen", "request", "resume", "reward", "setGoal", "start", "stepCheck", "stepComment", "stop", "stopAndReturn", "sync", "update"]);
+        ["addStep", "answerInvite", "answerLead", "askHelp", "baseline", "changeLead", "claim", "coLeadOff", "comment", "confirmBaseline", "confirmMeasure", "done", "editStep", "form", "hand", "howWeWork", "invite", "link", "measure", "member", "milestone", "moveDoneBy", "moveStart", "moveStep", "page", "pause", "pickTemplate", "question", "reopen", "request", "resume", "reward", "setGoal", "start", "stepCheck", "stepComment", "stop", "stopAndReturn", "sync", "update"]);
     });
   });
 });

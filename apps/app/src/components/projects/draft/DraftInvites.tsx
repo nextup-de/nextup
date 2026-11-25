@@ -12,7 +12,7 @@ import { useT } from "@/i18n/client";
 import { peopleOf, useRights, useSend } from "../parts";
 import styles from "./Draft.module.css";
 
-const ROLES: readonly InviteRole[] = ["sponsor", "member", "contributor", "follower"];
+const ROLES: readonly InviteRole[] = ["sponsor", "colead", "member", "contributor", "follower"];
 /** Up to two initials of a display name, for the round mark in front of a person. */
 const initialsOf = (name: string) => name.split(/[\s.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
@@ -26,6 +26,9 @@ export function InvitePanel({ p, bare = false }: { p: ReducedProject; bare?: boo
   const [role, setRole] = useState<InviteRole>("member");
   const nameOf = (userId: string) => seed.seats.find((s) => s.userId === userId)?.label ?? userId;
   const mayInvite = r.check("project.invited", { userId: "-", role: "member" }).ok;
+  // Not everyone can be asked to co-lead (a sponsor, a manager): then it is not offered.
+  const roles = who ? ROLES.filter((x) => x !== "colead" || r.check("project.invited", { userId: who, role: x }).ok) : ROLES;
+  const asked = roles.includes(role) ? role : "member";
   const people = peopleOf(seed.seats).filter((x) => x.userId !== p.leadUserId);
   // Inviting someone on a private or custom idea lets them read it (Q5.14).
   const closed = S.cases.some((c) => p.sources.includes(c.id) && hasClosedAudience(c));
@@ -53,15 +56,15 @@ export function InvitePanel({ p, bare = false }: { p: ReducedProject; bare?: boo
           aria-label={t("projectDraft.teamInvite")}
           onSubmit={(e) => {
             e.preventDefault();
-            if (who && send("project.invited", { userId: who, role }, () => act.project.invite(p.id, who, role))) setWho("");
+            if (who && send("project.invited", { userId: who, role: asked }, () => act.project.invite(p.id, who, asked))) setWho("");
           }}
         >
           <select className={`nh-input nh-select ${styles.input} ${styles.grow}`} value={who} onChange={(e) => setWho(e.target.value)} aria-label={t("projectDraft.teamPerson")}>
             <option value="">{t("projectDraft.teamPickPerson")}</option>
             {people.map((x) => <option key={x.userId} value={x.userId}>{x.name}</option>)}
           </select>
-          <select className={`nh-input nh-select ${styles.input}`} value={role} onChange={(e) => setRole(e.target.value as InviteRole)} aria-label={t("projectDraft.teamRole")}>
-            {ROLES.map((x) => <option key={x} value={x}>{t(("projectDraft.role_" + x) as "projectDraft.role_member")}</option>)}
+          <select className={`nh-input nh-select ${styles.input}`} value={asked} onChange={(e) => setRole(e.target.value as InviteRole)} aria-label={t("projectDraft.teamRole")}>
+            {roles.map((x) => <option key={x} value={x}>{t(("projectDraft.role_" + x) as "projectDraft.role_member")}</option>)}
           </select>
           <button type="submit" className="nh-btn nh-btn-ghost nh-btn-sm" disabled={!who}>{t("projectDraft.teamInvite")}</button>
         </form>
