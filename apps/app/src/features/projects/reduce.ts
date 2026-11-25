@@ -59,12 +59,12 @@ function dropCoLead(p: ReducedProject, userId: string): void {
 }
 
 /** The lead picks the co-leads: with a new lead every co-lead role and open question ends, and the event that did it is kept for the mail. */
-function newLead(p: ReducedProject, userId: string, eventId: string): void {
+function newLead(p: ReducedProject, userId: string | null, eventId: string): void {
   const ended = (p.coLeadUserIds ?? []).filter((u) => u !== userId && p.memberUserIds.includes(u));
   if (ended.length) p.coLeadsEnded = { eventId, userIds: ended };
   if (p.coLeadUserIds) p.coLeadUserIds = [];
   if (p.invites) p.invites = p.invites.filter((i) => i.role !== "colead");
-  dropAdded(p, userId);
+  if (userId !== null) dropAdded(p, userId);
 }
 
 /** Forget that a co-lead added them: the lead put them on the team too, or they are off it. */
@@ -456,6 +456,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
         p.leadUserId = p.deciderUserId;
         p.lead = p.openedBy;
         p.memberUserIds = p.memberUserIds.filter((u) => u !== p.leadUserId);
+        newLead(p, p.leadUserId, ev.id);
         f.movedStart = null;
         f.reassignedAt = p.history.length;
         takeLead(p, f, d);

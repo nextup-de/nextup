@@ -45,16 +45,20 @@ function measured(t: T, p: ReducedProject, check: number | undefined): string {
 /** The people a project's mails name by role (D23): the team is the lead and the members, the raiser is whoever raised the idea. */
 const teamOf = (p: ReducedProject): (string | null)[] => [p.leadUserId, ...p.memberUserIds];
 
-const projectHandedNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink, find }) => {
+/** A new lead asks again: whoever was co-lead hears that it ended, and who leads now. */
+const coLeadsEndedNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink, find }) => {
+  if (!project?.coLeadsEnded || project.coLeadsEnded.eventId !== ev.id) return;
+  for (const who of project.coLeadsEnded.userIds) {
+    const was = find(who)?.name ?? "";
+    send(who, (t) => t("mail.coLeadOffSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.coLeadOffIntro", { name: was }), t("projectMove.handedOthersIntro", { name: find(project.leadUserId)?.name || pl.to || project.lead, label: projectLabel(project) }), "", projectLink(project)]);
+  }
+};
+
+const projectHandedNotice: NoticeBuilder = (ctx) => {
+  const { ev, pl, project, send, projectLink, find } = ctx;
   if (!project) return;
   send(project.leadUserId, (t) => t("mail.leadSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.handedIntro", { actor: ev.actor }), ...(pl.why ? ["", pl.why] : []), "", projectLink(project)]);
-  // A new lead asks again: whoever was co-lead hears that it ended.
-  if (project.coLeadsEnded && project.coLeadsEnded.eventId === ev.id) {
-    for (const who of project.coLeadsEnded.userIds) {
-      const was = find(who)?.name ?? "";
-      send(who, (t) => t("mail.coLeadOffSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.coLeadOffIntro", { name: was }), t("projectMove.handedOthersIntro", { name: find(project.leadUserId)?.name || pl.to || project.lead, label: projectLabel(project) }), "", projectLink(project)]);
-    }
-  }
+  coLeadsEndedNotice(ctx);
   // The team (the old lead among them), the sponsor and the raiser hear who leads now, with the why (D23).
   const name = find(project.leadUserId)?.name || pl.to || project.lead;
   for (const who of [...project.memberUserIds, project.sponsorUserId, ...project.authorUserIds]) {
@@ -77,7 +81,9 @@ const projectStoppedNotice: NoticeBuilder = ({ ev, project, send, projectLink })
   }
 };
 
-const projectLeadAnsweredNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink }) => {
+const projectLeadAnsweredNotice: NoticeBuilder = (ctx) => {
+  const { ev, pl, project, send, projectLink } = ctx;
+  coLeadsEndedNotice(ctx);
   // A decline, or a lapse the clock wrote: the draft is back with the decider, who leads it now (D11).
   if (!project?.draft || pl.take !== false || project.deciderUserId === null || project.leadUserId !== project.deciderUserId) return;
   const who = pl.lapsed === true ? null : ev.actor;
