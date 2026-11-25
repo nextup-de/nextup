@@ -22,8 +22,8 @@ test("the inbox's side view walks through the items, leads to Decisions and back
 
   // Open an item: it is the marked step of the walk, its pages under it.
   const decide = page.getByTestId("section-card").filter({ has: page.getByRole("heading", { name: "Decide", exact: true }) }).getByTestId("inbox-row");
-  const first = (await decide.nth(0).locator("span").nth(1).innerText()).trim();
-  const second = (await decide.nth(1).locator("span").nth(1).innerText()).trim();
+  const first = (await decide.nth(0).getByTestId("inbox-row-title").innerText()).trim();
+  const second = (await decide.nth(1).getByTestId("inbox-row-title").innerText()).trim();
   await decide.nth(0).click();
   await expect(page.getByRole("heading", { level: 1, name: first })).toBeVisible();
   const current = page.locator('[data-testid="inbox-side-row"][aria-current="true"]');
