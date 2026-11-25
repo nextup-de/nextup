@@ -6,12 +6,13 @@ unit on the day the move takes effect, and leavers are deactivated from their en
 to a colleague. NextUp only ever **reads**. It never writes to SuccessFactors.
 
 > Internal note: this is the handout for plan SFX. Send it with the company's address (`https://<company>.sellux.ch`)
-> and NextUp's contact for the key exchange filled in. Ask for the API server address first: it differs per data centre.
+> filled in. Ask for the API server address first: it differs per data centre. NextUp's support session in the console
+> is read-only and cannot save these values (Q9.2): the customer's IT enters them, with NextUp on the call.
 
 **Plan the lead time.** Plan several weeks for the API user and the works council. Creating the API user and the
 OAuth client usually needs a change request in your SuccessFactors team, and where you have a works council the
-agreement in step 7 has to be in place before the connection is switched on. NextUp's side takes minutes once you have
-sent the details in step 5.
+agreement in step 7 has to be in place before the connection is switched on. Entering the values in step 6 is one
+short call.
 
 ## What NextUp can and cannot see
 
@@ -90,9 +91,9 @@ matches no unit is skipped and counted as `no-unit`. Before the first run, add t
 (**Settings → Org**), either named exactly like the departments, or with the department's external code (for example
 `D100`) as the unit's key. Inactive departments (status `I`) are not offered as groups.
 
-### 5. Send us
+### 5. Have it ready for the call
 
-Through the channel we agreed on, never by plain email:
+Book a short call with NextUp. Have these at hand; they stay with you and are not sent to NextUp:
 
 - the API server address
 - the Company ID
@@ -100,9 +101,10 @@ Through the channel we agreed on, never by plain email:
 - the API user's user name
 - the **private key** from step 3
 
-### 6. Enter it in the console (NextUp staff)
+### 6. Enter it in the console (your IT, with NextUp on the call)
 
-In the NextUp console, open the company → **Connectors → Directory**:
+The person in your IT who signs in to the NextUp console (`/admin`) enters the values; NextUp looks on and helps. NextUp
+support cannot save them: a support session in the console is read-only. Open **Connectors → Directory**:
 
 1. Under **SAP SuccessFactors access** enter API server, Company ID, API key (client ID), API user and paste the
    private key. The key is write-only: it is sealed on save and never shown again. Leaving the field empty on a later

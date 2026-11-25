@@ -47,7 +47,7 @@ It works with the AI switched off. The AI is optional and is off in the pilot un
 | Size | Up to 2,000 people in one company per stack |
 | Length | 6 weeks in the pilot stage, after a sandbox phase where nothing is sent |
 | Stage | Sandbox (real people, nothing sent), Pilot (case mails go out), then Live after the pilot |
-| Where your data is | On your own stack, on the server you chose; backups encrypted, off the server, at most 24 hours of data lost, a restore within 1 hour |
+| Where your data is | On your own stack, on the server you chose; backups encrypted, off the server, at most 24 hours of data lost, a whole restore within 4 hours in business hours (until Kevin decides, `SUPPORT.md`) |
 | Who can reach it | Only people you let in. NextUp staff have no standing access |
 | Stop | Your admin can switch back to sandbox at any time. Nothing is deleted |
 
