@@ -84,7 +84,7 @@ export function draftView(p: ReducedProject, viewer: Actor, state: State, locale
       answerLead: open && p.leadState === "pending" && ok("project.lead.answered", { take: true }),
       pickTemplate: ok("project.template", { key: p.template?.key ?? "quick-win", version: p.template?.version ?? 1 }),
       invite: ok("project.invited", { userId: "-", role: "member" }),
-      answerInvite: invite !== null && ok("project.invite.answered", { inviteId: invite.id, take: true }),
+      answerInvite: invite !== null && ok("project.invite.answered", { inviteId: invite.id, take: false }),
       setGoal: ok("project.goal", { goal: "-".repeat(3), doneWhen: "-".repeat(3) }),
       setBaseline: ok("project.baseline", { none: true, why: "-" }),
       confirmBaseline: baselineWaits && ok("project.baseline.confirmed", p.baseline?.eventId ? { baselineEventId: p.baseline.eventId } : {}),

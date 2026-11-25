@@ -79,8 +79,9 @@ function InviteRow({ p, invite, name, focus }: { p: ReducedProject; invite: Invi
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   const ref = useRef<HTMLLIElement>(null);
-  const mayAnswer = invite.state === "pending" && actorUserId !== null && invite.userId === actorUserId
-    && r.check("project.invite.answered", { inviteId: invite.id, userId: invite.userId, take: true }).ok;
+  // Declining stays possible where taking is refused (a manager asked to co-lead).
+  const may = (take: boolean) => r.check("project.invite.answered", { inviteId: invite.id, userId: invite.userId, take }).ok;
+  const mayAnswer = invite.state === "pending" && actorUserId !== null && invite.userId === actorUserId && may(false);
   // The inbox link ends in #invite-<id>: bring that response into view.
   useEffect(() => {
     if (typeof window === "undefined" || !ref.current) return;
@@ -104,7 +105,7 @@ function InviteRow({ p, invite, name, focus }: { p: ReducedProject; invite: Invi
           <p className={styles.strong}>{t("projectDraft.inviteYou", { role })}</p>
           {!declining ? (
             <span className={styles.actionRow}>
-              <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => answer(true)}>{t("projectDraft.inviteAccept")}</button>
+              {may(true) && <button type="button" className="nh-btn nh-btn-primary nh-btn-sm" onClick={() => answer(true)}>{t("projectDraft.inviteAccept")}</button>}
               <button type="button" className="nh-btn nh-btn-ghost nh-btn-sm" onClick={() => setDeclining(true)}>{t("projectDraft.inviteDecline")}</button>
             </span>
           ) : (
