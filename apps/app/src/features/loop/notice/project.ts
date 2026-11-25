@@ -142,7 +142,8 @@ const projectMemberNotice: NoticeBuilder = ({ ev, pl, project, send, projectLink
     send(project.leadUserId, (t) => t("projectMove.leftSubject", { name, label: projectLabel(project), title: project.title }), (t) => [t("projectMove.leftIntro", { name }), "", projectLink(project)]);
     return;
   }
-  if (project && pl.on !== false && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
+  // Making someone an administrator is not joining the team: no second welcome.
+  if (project && pl.on !== false && pl.admin === undefined && pl.userId) send(pl.userId, (t) => t("mail.memberSubject", { label: projectLabel(project), title: project.title }), (t) => [t("mail.memberIntro", { actor: ev.actor }), "", projectLink(project)]);
 };
 
 const projectStepNotice: NoticeBuilder = ({ ev, state, pl, project, send, projectLink, people }) => {

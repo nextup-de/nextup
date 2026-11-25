@@ -52,6 +52,11 @@ export function addCondition(p: ReducedProject, text: string): void {
 
 export type ProjectBook = { byId: Record<string, ReducedProject>; order: string[] };
 
+/** A new lead or someone off the team is no administrator any more: handing the lead on or coming back does not bring it back. */
+function dropAdmin(p: ReducedProject, userId: string): void {
+  if (p.adminUserIds) p.adminUserIds = p.adminUserIds.filter((u) => u !== userId);
+}
+
 export const newBook = (): ProjectBook => ({ byId: {}, order: [] });
 
 function fresh(book: ProjectBook, id: string, p: Pick<ReducedProject, "title" | "sources" | "authors" | "routeId" | "lead" | "members" | "leadUserId" | "memberUserIds" | "authorUserIds" | "openedDay" | "openedBy" | "seed">): ReducedProject {
@@ -375,7 +380,15 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       const userId = pl.userId;
       if (!userId || userId === p.leadUserId) break;
       const name = pl.name?.trim() ?? "";
+      if (pl.admin !== undefined) {
+        // Only someone on the team can be an administrator; it never adds or removes anyone.
+        dropAdmin(p, userId);
+        if (pl.admin && p.memberUserIds.includes(userId)) p.adminUserIds = [...(p.adminUserIds ?? []), userId];
+        break;
+      }
       if (pl.on === false) {
+        // Off the team is no longer an administrator either: coming back does not bring it back.
+        dropAdmin(p, userId);
         p.memberUserIds = p.memberUserIds.filter((u) => u !== userId);
         if (name) p.members = p.members.filter((m) => m !== name); // the shown list only
         if (pl.unassign === true) {
@@ -403,6 +416,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       p.memberUserIds = p.memberUserIds.filter((u) => u !== toUserId);
       if (to) p.members = p.members.filter((m) => m !== to);
       p.leadUserId = toUserId;
+      dropAdmin(p, toUserId);
       if (to) p.lead = to;
       if (draftAsk) {
         // The new lead is asked again, unless the one handing it over is the new lead (D11); a new window starts.
@@ -836,6 +850,7 @@ export function applyProjectEvent(book: ProjectBook, ev: CaseEvent, rules: LoopR
       if (to) p.members = p.members.filter((m) => m !== to);
       if (to) p.lead = to;
       p.leadUserId = toUserId;
+      dropAdmin(p, toUserId);
       p.leadVacatedDay = null;
       break;
     }

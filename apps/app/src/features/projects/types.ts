@@ -200,6 +200,8 @@ export type ReducedProject = {
   /** The same people by user id; null / [] when the events carried no id (a label never stands in). */
   leadUserId: string | null;
   memberUserIds: string[];
+  /** Team members the lead made administrators (project.member with admin). Absent until the first one. */
+  adminUserIds?: string[];
   authorUserIds: string[];
   openedDay: number;
   openedBy: string;

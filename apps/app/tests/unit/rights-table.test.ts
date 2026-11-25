@@ -19,6 +19,7 @@ type Who = { key: string; label: string; userId: string; role: Actor["role"] };
 /** The kinds of people the table asks about. Each is one user in the fixture project below. */
 const PEOPLE: Who[] = [
   { key: "lead", label: "Project lead", userId: "u_lb", role: "leader" },
+  { key: "admin", label: "Administrator", userId: "u_ad", role: "member" },
   { key: "member", label: "Team member", userId: "u_ci", role: "member" },
   { key: "sponsor", label: "Sponsor", userId: "u_sp", role: "leader" },
   { key: "raiser", label: "Raiser (employee, not on the team)", userId: "u_js", role: "member" },
@@ -42,6 +43,8 @@ const ROWS: { group: string; rows: Row[] }[] = [
       { label: "Comment on a step", type: "project.step.commented", target: "p_one", payload: { stepId: "s1", text: "Looks good" } },
       { label: "Add or change a milestone", type: "project.milestone.added", target: "p_one", payload: { milestoneId: "m9", title: "Pilot", dueDay: 40 } },
       { label: "Add someone to the team", type: "project.member", target: "p_one", payload: { name: "X. New", userId: "u_new", on: true } },
+      { label: "Take an administrator off the team", type: "project.member", target: "p_one", payload: { name: "A. Other", userId: "u_ad2", on: false } },
+      { label: "Make someone on the team an administrator", type: "project.member", target: "p_one", payload: { name: "C. Ilg", userId: "u_ci", admin: true } },
       { label: "Pause the project", type: "project.paused", target: "p_one", payload: { untilDay: DAY + 5, why: "Parts are late" } },
       { label: "Stop the project", type: "project.stopped", target: "p_one", payload: { why: "No longer needed" } },
     ],
@@ -60,6 +63,10 @@ function fixture(): State {
   const events: CaseEvent[] = [
     ...startedLog(),
     ev("project.member", "L. Brandt", "p_one", { name: "C. Ilg", userId: "u_ci", on: true }, 11),
+    ev("project.member", "L. Brandt", "p_one", { name: "A. Admin", userId: "u_ad", on: true }, 11),
+    ev("project.member", "L. Brandt", "p_one", { name: "A. Admin", userId: "u_ad", admin: true }, 11),
+    ev("project.member", "L. Brandt", "p_one", { name: "A. Other", userId: "u_ad2", on: true }, 11),
+    ev("project.member", "L. Brandt", "p_one", { name: "A. Other", userId: "u_ad2", admin: true }, 11),
     ev("project.step.added", "L. Brandt", "p_one", { stepId: "s1", text: "Nobody's step" }, 11),
     ev("project.step.added", "L. Brandt", "p_one", { stepId: "s2", text: "C. Ilg's step", owner: "C. Ilg", ownerUserId: "u_ci" }, 11),
     raised("c_b"),
@@ -99,7 +106,7 @@ function render(table: ReturnType<typeof verdicts>): string {
     "Rights changes follow the rules in `CONTRIBUTING.md` (\"Rights\"): their own PR, the `rights` label, Kevin told.",
     "",
     "✓ may, — may not. Everyone in a column is the same one person in the fixture: J. Schmidt raised the idea and the",
-    "project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, a sponsor was accepted. Who may",
+    "project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt leads it, C. Ilg is on the team and owns one step, A. Admin is an administrator, a sponsor was accepted. Who may",
     "*see* what is in `docs/VISIBILITY.md`.",
     "",
     ...groups.flatMap((g) => [g, ""]),
