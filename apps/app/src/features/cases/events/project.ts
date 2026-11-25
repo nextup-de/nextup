@@ -10,7 +10,7 @@ export const PROJECT_EVENT_TYPES = [
   "project.step.moved", "project.step.edited", "project.step.checklist", "project.step.commented", "project.linked", "project.sync", "project.commented", "project.done",
   "project.measured", "project.measure.confirmed", "project.rewarded", "project.claimed", "project.stopped",
   "project.lead.answered", "project.template", "project.invited", "project.invite.answered", "project.goal",
-  "project.start.moved",
+  "project.start.moved", "project.renamed",
   "project.doneby.moved", "project.paused", "project.resumed", "project.howwework", "project.update", "project.lead.vacated",
   "project.lead.changed",
   "project.measure.questioned", "project.baseline.confirmed", "project.help.asked",
@@ -62,7 +62,8 @@ export type ProjectAreaEventType =
   | "project.invited" // { userId, role }  the lead or a manager invites; the event's own id is the invitation's identity (Invite.id)
   | "project.invite.answered" // { inviteId, userId, take, reason?, lapsed? }  inviteId names the project.invited event; a legacy answer without it counts only when the person has exactly one pending invitation, else it is rejected
   | "project.goal" // { goal, doneWhen, doneBy?, brief? }  goal and doneWhen 3 to 400 characters, brief up to 1200
-  | "project.start.moved" // { dueDay, why }  the seat above keeps a late draft with a new start day
+  | "project.start.moved" // { dueDay, why }  the seat above keeps a late draft with a new start day; the lead picks another before it is late
+  | "project.renamed" // { title }  a draft gets another name; refused after the start
   // A project that keeps moving (plan MOV, D14 to D22).
   | "project.doneby.moved" // { doneBy, why }  a new done-by working day on a running project; the lead once, then the sponsor or a manager
   | "project.paused" // { why, untilDay }  the lead or a manager pauses a running project, at most PAUSE_MAX_DAYS ahead

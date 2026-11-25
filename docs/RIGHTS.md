@@ -38,6 +38,14 @@ project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt
 | Pause the project `project.paused` | ✓ | ✓ | — | — | — | — | ✓ | — | — | — |
 | Stop the project `project.stopped` | ✓ | — | — | ✓ | — | — | ✓ | — | — | — |
 
+### A project draft
+
+| Action | Project lead | Co-lead | Team member | Sponsor | Raiser (employee, not on the team) | Team leader, not on the team | Manager in charge (decided it) | Manager, not involved | Manager a co-lead added | Employee, not involved |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Rename the draft `project.renamed` | ✓ | — | — | — | — | — | ✓ | — | — | — |
+| Move the draft's start before it is late `project.start.moved` | ✓ | — | — | — | — | — | ✓ | ✓ | ✓ | — |
+| Move the start of a late draft `project.start.moved` | — | — | — | — | — | — | ✓ | ✓ | ✓ | — |
+
 ### The idea
 
 | Action | Project lead | Co-lead | Team member | Sponsor | Raiser (employee, not on the team) | Team leader, not on the team | Manager in charge (decided it) | Manager, not involved | Manager a co-lead added | Employee, not involved |

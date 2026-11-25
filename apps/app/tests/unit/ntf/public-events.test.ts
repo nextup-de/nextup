@@ -100,7 +100,7 @@ describe("SET public kickoff", () => {
   });
 
   it("the draft's own events are not public", () => {
-    for (const type of ["project.lead.answered", "project.invited", "project.invite.answered", "project.template", "project.goal", "project.start.moved"] as const) {
+    for (const type of ["project.lead.answered", "project.invited", "project.invite.answered", "project.template", "project.goal", "project.start.moved", "project.renamed"] as const) {
       expect(map(ev(type, "Raiser Label", "u_raiser", "p_one", { take: true, userId: "u_x", role: "member" }), draftYes)).toEqual([]);
     }
   });

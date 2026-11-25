@@ -145,7 +145,9 @@ const projectStartMovedNotice: NoticeBuilder = ({ ev, state, pl, project, send, 
   // The seat above kept the draft with a new start day: the lead is told which (D15).
   if (!project?.draft || typeof pl.dueDay !== "number" || project.startDay !== pl.dueDay) return;
   const days = pl.dueDay - state.day;
-  send(project.leadUserId, (t) => t("mail.startMovedSubject", { label: projectLabel(project), title: project.title }), (t) => [
+  // The lead picked it themselves: the one who said yes is told instead.
+  const own = (ev.actorUserId ?? null) !== null && ev.actorUserId === project.leadUserId;
+  send(own ? project.deciderUserId : project.leadUserId, (t) => t("mail.startMovedSubject", { label: projectLabel(project), title: project.title }), (t) => [
     t("mail.startMovedIntro", { actor: ev.actor, when: inDays(t, days) }), ...(pl.why ? ["", t("mail.startMovedWhy", { why: pl.why })] : []), "", projectLink(project),
   ]);
 };

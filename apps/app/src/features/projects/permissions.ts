@@ -78,6 +78,9 @@ export function mayNameLead(p: ReducedProject, route: Route | null | undefined, 
   return seatId !== null && who.me !== undefined && who.me.seatIds.includes(seatId);
 }
 
+/** How long after the yes the lead may put the start of a draft themselves; later than that is a manager's. */
+export const START_MOVE_DAYS = 60;
+
 export function mayAppendProject(actor: Actor, ev: { type: string; target: string | null; payload: EventPayload }, state: State, locale: Locale = DEFAULT_LOCALE): Verdict {
   const no = (key: MessageKey, params?: Record<string, string | number>): Verdict => ({ ok: false, error: translate(locale, key, params) });
   const p = ev.target ? state.projects.find((x) => x.id === ev.target) : undefined;
@@ -314,6 +317,12 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!templateExists(pl.key, pl.version)) return no("projects.permTemplateUnknown");
       return pl.title === undefined || text(pl.title, 200) ? OK : no("projects.permTemplateTitle");
 
+    case "project.renamed":
+      if (!draft) return no("projects.permNotAllowed");
+      if (!planning || p.startedDay !== null) return no("projects.permTemplateAfterStart");
+      if (!(isLead || decider)) return no("projects.permDraftSetupWho");
+      return text(pl.title, 200) ? OK : no("projects.permTemplateTitle");
+
     case "project.goal": {
       if (!draft) return no("projects.permNotAllowed");
       if (!live) return no("projects.permClosed");
@@ -326,7 +335,11 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
 
     case "project.start.moved":
       if (!draft || !planning) return no("projects.permNotAllowed");
-      if (!(isManager || escalatedHolder)) return no("projects.permStartMovedWho");
+      if (!(isManager || escalatedHolder)) {
+        // The lead picks another start only before the day comes and within START_MOVE_DAYS of the yes, so it never puts off a late draft.
+        if (!isLead || p.leadState !== "taken" || p.startDay === null || state.day > p.startDay || p.escalated !== null) return no("projects.permStartMovedWho");
+        if (typeof pl.dueDay === "number" && pl.dueDay > p.openedDay + START_MOVE_DAYS) return no("projects.permStartMovedFar", { days: START_MOVE_DAYS });
+      }
       if (!(typeof pl.dueDay === "number" && Number.isInteger(pl.dueDay) && pl.dueDay > state.day)) return no("projects.permStartMovedDay");
       return text(pl.why) ? OK : no("projects.permStartMovedWhy");
 

@@ -62,6 +62,14 @@ const ROWS: { group: string; rows: Row[] }[] = [
     ],
   },
   {
+    group: "A project draft",
+    rows: [
+      { label: "Rename the draft", type: "project.renamed", target: "p_draft", payload: { title: "Changeover cart, line 3" } },
+      { label: "Move the draft's start before it is late", type: "project.start.moved", target: "p_draft", payload: { dueDay: DAY + 5, why: "Parts are late" } },
+      { label: "Move the start of a late draft", type: "project.start.moved", target: "p_late", payload: { dueDay: DAY + 5, why: "Parts are late" } },
+    ],
+  },
+  {
     group: "The idea",
     rows: [
       { label: "Revise an open idea", type: "case.revised", target: "c_b", payload: { body: "Version 2" } },
@@ -95,6 +103,8 @@ function fixture(): State {
   const stop = ev("project.stopped", "L. Brandt", "p_stop", { why: "No longer needed" }, 15);
   state.projects.push(
     { ...p, id: "p_pause", pausedUntil: DAY + 3 }, { ...p, id: "p_done", steps: [] },
+    { ...p, id: "p_draft", status: "planning", startedDay: null, startDay: DAY + 2, leadState: "taken" },
+    { ...p, id: "p_late", status: "planning", startedDay: null, startDay: DAY - 2, leadState: "taken" },
     { ...p, id: "p_priv", sources: ["c_priv"] },
     { ...p, id: "p_stop", status: "stopped", sources: ["c_stop"], history: [...p.history, stop] });
   const priv = { ...c, id: "c_priv", history: c.history.map((e) => (e.type === "case.raised" ? { ...e, payload: { ...e.payload, visibility: "private" as const } } : e)) };
