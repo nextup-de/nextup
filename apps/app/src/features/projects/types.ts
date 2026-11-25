@@ -87,7 +87,7 @@ export function fieldsOf(form: Pick<Form, "fields" | "revisions">, rev: number):
 export type StepRole = "lead" | "sponsor" | "team";
 
 /** What a person is invited as to a project draft (project.invited). A follower is added at once, the others answer. */
-export type InviteRole = "sponsor" | "member" | "contributor" | "follower";
+export type InviteRole = "sponsor" | "colead" | "member" | "contributor" | "follower";
 
 /**
  * One invitation. Its identity is the project.invited event that made it (`id`): an answer and the clock's facts
@@ -200,8 +200,10 @@ export type ReducedProject = {
   /** The same people by user id; null / [] when the events carried no id (a label never stands in). */
   leadUserId: string | null;
   memberUserIds: string[];
-  /** Team members the lead made administrators (project.member with admin). Absent until the first one. */
-  adminUserIds?: string[];
+  /** Team members who took the lead's invitation as co-lead. Absent until the first one. */
+  coLeadUserIds?: string[];
+  /** Team members a co-lead added: a manager among them is not in charge by it, and a co-lead may take them off again. */
+  addedByCoLeadUserIds?: string[];
   authorUserIds: string[];
   openedDay: number;
   openedBy: string;
