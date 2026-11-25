@@ -208,7 +208,7 @@ function Dialog({ p, onClose }: { p: ReducedProject; onClose: () => void }) {
                     <PersonFace name={g.name} size="sm" />
                     <span className={styles.name}>{g.name}</span>
                     <select className={`nh-input nh-select ${styles.role}`} value={g.role} aria-label={t("projectDraft.setupRoleOf", { name: g.name })} onChange={(e) => change(() => setGuests(guests.map((y) => (y.userId === g.userId ? { ...y, role: e.target.value as InviteRole } : y))))}>
-                      {ROLES.map((x) => <option key={x} value={x}>{t(("projectDraft.role_" + x) as "projectDraft.role_member")}</option>)}
+                      {ROLES.filter((x) => x !== "colead" || check("project.invited", { userId: g.userId, role: x }).ok).map((x) => <option key={x} value={x}>{t(("projectDraft.role_" + x) as "projectDraft.role_member")}</option>)}
                     </select>
                     <button type="button" className={styles.x} aria-label={t("projectDraft.setupRemove", { name: g.name })} onClick={() => change(() => setGuests(guests.filter((y) => y.userId !== g.userId)))}>×</button>
                   </li>
