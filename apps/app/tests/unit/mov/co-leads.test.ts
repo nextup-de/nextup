@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { meFor } from "@/features/auth/identity";
 import type { CaseEvent, EventPayload } from "@/features/cases/events";
 import { mayAppend, type Actor } from "@/features/cases/permissions";
-import type { State } from "@/features/cases/reducer";
-import { ev, raised, SEATS, stateOf } from "@/features/projects/project-fixture";
+import { reduce, type State } from "@/features/cases/reducer";
+import { ev, logOf, raised, SEATS, SEED, stateOf } from "@/features/projects/project-fixture";
 
 const DAY = 20;
 const by = (userId: string, type: CaseEvent["type"], payload: EventPayload, day = 11): CaseEvent => ({ ...ev(type, userId, "p_one", payload, day), actorUserId: userId });
@@ -112,6 +112,32 @@ describe("co-leads", () => {
     const named = world(by("u_co", "project.member", ADD, 12), by("u_lb", "project.lead.vacated", { userId: "u_lb" }, 13), by("u_tv", "project.lead.changed", { toUserId: "u_mg", to: "M. Manager" }, 14));
     expect(p(named).coLeadUserIds).toEqual([]);
     expect(p(named).addedByCoLeadUserIds).toEqual([]);
+  });
+
+  it("a manager can't be asked, nor take it after becoming one", () => {
+    const s = reduce({ ...SEED, managerUserIds: ["u_mg"] }, logOf([...START, ...CO], DAY));
+    expect(may("u_lb", "project.invited", { userId: "u_mg", role: "colead" }, s)).toBe(false);
+    for (const role of ["member", "sponsor"] as const) expect(may("u_lb", "project.invited", { userId: "u_mg", role }, s), role).toBe(true);
+    expect(may("u_lb", "project.invited", { userId: "u_ci", role: "colead" }, s)).toBe(true);
+    const asked = world(invite("u_x", "colead"));
+    const answer = (yes: boolean) => ({ inviteId: "i_u_x_colead", userId: "u_x", take: yes, ...(yes ? {} : { reason: "No time" }) });
+    expect(may("u_x", "project.invite.answered", answer(true), asked)).toBe(true);
+    expect(may("u_x", "project.invite.answered", answer(true), asked, "manager")).toBe(false);
+    expect(may("u_x", "project.invite.answered", answer(false), asked, "manager")).toBe(true);
+    // Only a seed that has the list passes it on.
+    expect("managerUserIds" in stateOf([], DAY)).toBe(false);
+  });
+
+  it("a lead who declines the draft, or never answers, ends the co-lead role and open questions", () => {
+    for (const lapsed of [false, true]) {
+      const no: CaseEvent = { ...by("u_lb", "project.lead.answered", lapsed ? { take: false, lapsed } : { take: false, reason: "No time" }, 9), id: `no_${lapsed}`, ...(lapsed ? { actor: "system:clock", actorUserId: null } : {}) };
+      const s = stateOf([START[0], START[1], ...CO, invite("u_y", "colead"), no], DAY);
+      expect(p(s).leadUserId).toBe("u_tv");
+      expect(p(s).coLeadUserIds).toEqual([]);
+      expect(p(s).memberUserIds).toContain("u_co");
+      expect(p(s).invites.some((i) => i.role === "colead")).toBe(false);
+      expect(p(s).coLeadsEnded).toEqual({ eventId: no.id, userIds: ["u_co"] });
+    }
   });
 
   it("the role is put down, taken back, or gone with the team, and may be asked again", () => {

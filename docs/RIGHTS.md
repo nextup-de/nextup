@@ -27,6 +27,7 @@ project grew from it, T. Vogel (route owner, a manager here) said yes, L. Brandt
 | Take someone a co-lead added off the team `project.member` | ✓ | ✓ | — | — | — | — | ✓ | — | — | — |
 | Invite someone as member `project.invited` | ✓ | — | — | — | — | — | ✓ | — | — | — |
 | Ask someone to be co-lead `project.invited` | ✓ | — | — | — | — | — | ✓ | — | — | — |
+| Ask a manager to be co-lead `project.invited` | — | — | — | — | — | — | — | — | — | — |
 | Take the co-lead role back from someone else `project.member` | ✓ | — | — | — | — | — | ✓ | — | — | — |
 | Move a step somebody else owns `project.step.moved` | ✓ | ✓ | — | — | — | — | ✓ | — | — | — |
 | Remove a step somebody else added `project.step.edited` | ✓ | — | — | — | — | — | ✓ | — | — | — |

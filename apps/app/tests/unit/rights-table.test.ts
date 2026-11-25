@@ -30,8 +30,8 @@ const PEOPLE: Who[] = [
   { key: "employee", label: "Employee, not involved", userId: "u_xx", role: "member" },
 ];
 
-type Row = { label: string; type: string; target: string; payload: EventPayload };
-/** The actions. Each payload is valid, so a "no" is about who asks, never about what was sent. */
+type Row = { label: string; type: string; target: string; payload: EventPayload; nobody?: true };
+/** The actions. Each payload is valid, so a "no" is about who asks, never about what was sent; `nobody` marks a row no one may. */
 const ROWS: { group: string; rows: Row[] }[] = [
   {
     group: "A running project",
@@ -49,6 +49,7 @@ const ROWS: { group: string; rows: Row[] }[] = [
       { label: "Take someone a co-lead added off the team", type: "project.member", target: "p_one", payload: { name: "N. New", userId: "u_n", on: false, unassign: true } },
       { label: "Invite someone as member", type: "project.invited", target: "p_one", payload: { userId: "u_new", role: "member" } },
       { label: "Ask someone to be co-lead", type: "project.invited", target: "p_one", payload: { userId: "u_ci", role: "colead" } },
+      { label: "Ask a manager to be co-lead", type: "project.invited", target: "p_one", payload: { userId: "u_mg", role: "colead" }, nobody: true },
       { label: "Take the co-lead role back from someone else", type: "project.member", target: "p_one", payload: { userId: "u_co2", coLead: false } },
       { label: "Move a step somebody else owns", type: "project.step.moved", target: "p_one", payload: { stepId: "s3", to: "done" } },
       { label: "Remove a step somebody else added", type: "project.step.edited", target: "p_one", payload: { stepId: "s3", removed: true } },
@@ -81,6 +82,7 @@ function fixture(): State {
     raised("c_b"),
   ];
   const state = stateOf(events, DAY);
+  state.managerUserIds = PEOPLE.filter((w) => w.role === "manager").map((w) => w.userId);
   const p = state.projects.find((x) => x.id === "p_one")!;
   // A sponsor is accepted through a draft invitation; the fixture is a legacy project, so it is set here.
   p.sponsorUserId = "u_sp";
@@ -138,7 +140,7 @@ function render(table: ReturnType<typeof verdicts>): string {
 it("RIGHTS: docs/RIGHTS.md is what the rights code says", () => {
   const table = verdicts(fixture());
   // A row nobody may do means its payload or the fixture is wrong, not that the right is gone.
-  for (const { rows } of table) for (const { row, cells } of rows) expect(cells.some(Boolean), `nobody may: ${row.label}`).toBe(true);
+  for (const { rows } of table) for (const { row, cells } of rows) expect(cells.some(Boolean), `nobody may: ${row.label}`).toBe(row.nobody !== true);
   const text = render(table);
   if (process.env.RIGHTS_WRITE === "1") writeFileSync(FILE, text);
   let saved = "";

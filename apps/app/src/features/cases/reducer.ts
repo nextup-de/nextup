@@ -117,6 +117,8 @@ export type State = {
   approvals: ApprovalConfig & { roles: ApprovalRoleInfo[] };
   /** Absences and desk episodes (plan OVL, D16). Absent = empty: read it through overloadOf(state), so State literals in tests stay valid. */
   overload?: OverloadState;
+  /** The user ids with the app role manager, as the seed carried them (companySeed); absent without a database. */
+  managerUserIds?: readonly string[];
 };
 
 export type ReduceSeed = {
@@ -124,6 +126,7 @@ export type ReduceSeed = {
   projects?: SeedProject[]; loop?: Partial<LoopRules>; seats?: SeatRow[];
   roles?: readonly SeedRole[]; // the org chart, read for the fallback desk of a reopened case (plan NOR, D12) and, with their title and spend limit, by GAT
   approvals?: ApprovalConfig; // the company's review and approval settings (plan GAT, D27); missing = the empty config
+  managerUserIds?: readonly string[]; // the active people with the app role manager (companySeed); missing = unknown
   clock?: ClockSpec; // missing = demo (render-time escalation); workdays = escalation only from clock.due facts (CLK/D11)
 };
 
@@ -799,6 +802,7 @@ export function reduce(seed: ReduceSeed, log: EventLog): State {
     routes,
     clock,
     overload,
+    ...(seed.managerUserIds ? { managerUserIds: seed.managerUserIds } : {}),
     approvals: { ...(seed.approvals ?? EMPTY_APPROVAL_CONFIG), roles: (seed.roles ?? []).map((r) => ({ id: r.id, title: r.title ?? "", reportsToId: r.reportsToId, spendLimitEur: r.spendLimitEur ?? null })) },
   };
 }
