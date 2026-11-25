@@ -1,0 +1,5 @@
+.actions { display: flex; flex-wrap: wrap; gap: var(--nh-gap); }
+.actions:empty { display: none; }
+/* On a phone, and in the narrow team block, the buttons take their own line so the name keeps its width. */
+.actions[data-below="true"] { flex-basis: 100%; padding-left: 33px; }
+@media (max-width: 760px) { .actions { flex-basis: 100%; padding-left: 33px; } }

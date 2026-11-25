@@ -45,6 +45,8 @@ export type ProjectAct = {
   };
   /** Team changes name the person by user id; the label rides along for the timeline. */
   member: (projectId: string, who: { userId: string; name: string }, on: boolean) => void;
+  /** The lead makes someone on the team an administrator, or takes the role back. */
+  admin: (projectId: string, who: { userId: string; name: string }, on: boolean) => void;
   hand: (projectId: string, to: { userId: string; name: string }, why?: string) => void;
   baseline: (projectId: string, b: BaselineInput) => void;
   start: (projectId: string) => void;
@@ -164,6 +166,7 @@ export function projectActs(d: ActDeps): ProjectAct {
     },
     // Taking a person off the team also frees their open steps (D22).
     member: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, on, ...(on ? {} : { unassign: true }) }),
+    admin: (id, who, on) => emit("project.member", id, { name: who.name, userId: who.userId, admin: on }),
     hand: (id, to, why) => emit("project.handed", id, { to: to.name, toUserId: to.userId, why }),
     baseline: (id, b) => emit("project.baseline", id, "none" in b ? { none: true, why: b.why } : { ...b }),
     start: (id) => emit("project.started", id),

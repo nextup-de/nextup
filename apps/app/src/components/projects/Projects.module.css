@@ -328,7 +328,7 @@ a.key:hover { text-decoration: underline; }
 
 /* team, tools, files, activity */
 .people, .links, .comments, .timeline, .tools, .feed { list-style: none; margin: 10px 0 0; padding: 0; }
-.person { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
+.person { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding: 5px 0; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
 .leadTag { margin-left: 6px; font-size: var(--nh-fs-xs); font-weight: 700; color: var(--nh-brand); }
 .load { font-size: var(--nh-fs-xs); color: var(--nh-mute); white-space: nowrap; }
 .linkRow { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }

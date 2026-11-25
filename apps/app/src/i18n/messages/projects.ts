@@ -616,6 +616,11 @@ export const projects = defineMessages({
     // ── team, tools and activity (ProjectTeam)
     teamTitle: "Team",
     leadTag: "Lead",
+    adminTag: "Administrator",
+    adminOn: "Make administrator",
+    adminOff: "Make team member",
+    adminOnLabel: "Make {name} an administrator",
+    adminOffLabel: "Make {name} a team member again",
     openStepsTheyOwn: "Open steps they own",
     openCount: "{count} open",
     takeOffTeam: "Take {name} off the team",
@@ -1344,6 +1349,11 @@ export const projects = defineMessages({
     // ── team, tools and activity (ProjectTeam)
     teamTitle: "Team",
     leadTag: "Leitung",
+    adminTag: "Verwaltet mit",
+    adminOn: "Mitverwalten lassen",
+    adminOff: "Nicht mehr mitverwalten lassen",
+    adminOnLabel: "{name} das Projekt mitverwalten lassen",
+    adminOffLabel: "{name} das Projekt nicht mehr mitverwalten lassen",
     openStepsTheyOwn: "Offene Schritte, für die die Person zuständig ist",
     openCount: "{count} offen",
     takeOffTeam: "{name} aus dem Team nehmen",
