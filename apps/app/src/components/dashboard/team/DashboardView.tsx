@@ -276,11 +276,13 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
       return (seat && roleTitles.find((r) => r.id === seat.roleId)?.title) || "";
     };
     const canAnswer = row.mine && c.status === "asked";
-    // A new version while the desk's question is open also answers it, so it goes back to the desk (SEE D20, as in VersionsPanel).
-    const revise = async (body: string, title?: string) => {
+    // A new text while the desk's question is open also answers it, so it goes back to the desk (SEE D20, as in VersionsPanel).
+    // A title alone answers nothing: the question stays open and the raiser can still answer it.
+    const revise = async (body: string | undefined, title?: string) => {
       const version = c.versions.length + 1;
-      const ok = await reviseThenAnswer({ revise: () => act.revise(c.id, body, title), answer: (text) => act.answer(c.id, text) }, version, questionOpen(c));
-      if (ok) ctx.showToast(t("team.ideaEditSaved", { version }));
+      const answers = body !== undefined && questionOpen(c);
+      const ok = await reviseThenAnswer({ revise: () => act.revise(c.id, body ?? c.body, title), answer: (text) => act.answer(c.id, text) }, version, answers);
+      if (ok) ctx.showToast(answers ? t("team.ideaEditAnswered", { version, name: c.question?.by ?? "" }) : t("team.ideaEditSaved", { version }));
     };
     const ideaProps: OverviewIdeaProps = {
       // A problem says so where the idea says who raised it (DESIGN_RULES §2: told apart by a label); the band of old is gone.
@@ -302,7 +304,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
         onSave: (ch) => {
           if (ch.affects || ch.context !== undefined || ch.prompts) addIdeaEdits({ ...(ch.affects ? { affects: ch.affects } : {}), ...(ch.context !== undefined ? { context: ch.context } : {}), ...(ch.prompts ? { prompts: ch.prompts } : {}) });
           if (ch.title !== undefined || ch.body !== undefined) {
-            revise(ch.body ?? c.body, ch.title);
+            revise(ch.body, ch.title);
           }
         },
       } : null,
@@ -325,7 +327,7 @@ export function DashboardView({ caseId, linkCases = false, embedded = false, tit
           const { title, description, ...rest } = ch;
           if (Object.keys(rest).length) addIdeaEdits(rest);
           if (title !== undefined || description !== undefined) {
-            revise(description ?? c.body, title);
+            revise(description, title);
           }
         } : null,
       };

@@ -30,16 +30,25 @@ test("an edit of the idea goes back to the desk that asked", async ({ page }) =>
   await expect(move).toContainText(/Back with you: T\. Vogel asked · /);
   await expect(move).toContainText("“Which shift - early or late?”");
 
+  // A title alone answers nothing: the question stays with the raiser.
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("main").locator("textarea").first().fill(TITLE.replace("changeover", "change-over"));
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Saved as version 2. Everyone who can see the idea sees it.")).toBeVisible();
+  await expect(move).toContainText(/Back with you: T\. Vogel asked · /);
+  await expect(move.getByRole("button", { name: "Answer the question" })).toBeVisible();
+
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const text = page.getByRole("main").locator("textarea").nth(1);
   await text.fill("The late shift, 14:00-22:00, has no overtime hours for the changeover.");
   await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Saved as version 3. It is back with T. Vogel.")).toBeVisible();
   await expect(move).not.toContainText("Back with you");
 
   await viewAs(page, "Team leader");
   await expect(page).toHaveURL(/\/acme\/inbox/);
   await page.getByRole("main").getByText(SHOWN).first().click();
   await expect(move).toContainText("answered");
-  await expect(move).toContainText("Changed: version 2");
-  await expect(move).not.toContainText("See v2");
+  await expect(move).toContainText("Changed: version 3");
+  await expect(move).not.toContainText("See v3");
 });

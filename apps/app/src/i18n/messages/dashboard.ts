@@ -793,7 +793,7 @@ export const dashboard = defineMessages({
     detailCorrected: "Korrigiert wegen „{text}“ · {by}, {date}",
     detailAffects: "Betrifft auch mein Team",
     detailReevaluate: "Bewertung neu berechnen",
-    detailSentBack: "Wieder bei Ihnen: {name} fragt · {date}",
+    detailSentBack: "Wieder bei Ihnen: {name} hat gefragt · {date}",
     detailAnswerQuestion: "Frage beantworten",
     detailFollowUp: "Nachfolge-Anliegen einbringen",
     detailWhyAffects: "Warum es Ihr Team betrifft",
