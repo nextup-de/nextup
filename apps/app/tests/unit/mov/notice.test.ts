@@ -73,6 +73,16 @@ describe("MOV notices", () => {
     expect(told(P("project.handed", "u_lead", { to: "Nora New", toUserId: "u_new" }), state).u_m1).toBe("Nora New now leads P-1: Shorter changeover");
   });
 
+  it("a lead who declines the draft, or never answers, tells a co-lead that the role ended", () => {
+    for (const payload of [{ take: false, reason: "No time" }, { take: false, lapsed: true }]) {
+      const no = P("project.lead.answered", "u_lead", payload);
+      const state = stateOf([], (p) => { team(true)(p); p.draft = true; p.leadUserId = "u_new"; p.deciderUserId = "u_new"; p.memberUserIds = ["u_m1", "u_m2"]; p.coLeadsEnded = { eventId: no.id, userIds: ["u_m1"] }; });
+      const out = told(no, state);
+      expect(out.u_m1).toBe("No longer co-lead: P-1 Shorter changeover");
+      expect(who(out)).toEqual(["u_m1", "u_new"]);
+    }
+  });
+
   it("a hand-over tells the new lead as before, and the team, the sponsor and the raiser who leads now, with the why, never the mover", () => {
     const handed = P("project.handed", "u_lead", { to: "Nora New", toUserId: "u_new", why: "Moving to the night shift" });
     // After the event: the old lead is on the team, the new lead leads.

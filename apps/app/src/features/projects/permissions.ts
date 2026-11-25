@@ -283,6 +283,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (!(INVITE_ROLES as readonly unknown[]).includes(pl.role)) return no("projects.permInviteRole");
       // Nobody is sponsor and co-lead at once: the sponsor may stop and hand over.
       if (pl.role === "colead" && sponsorOrAsked(pl.userId)) return no("projects.permCoLeadSponsor");
+      // A manager on the team is in charge already, and taking the role back would not change that.
+      if (pl.role === "colead" && (state.managerUserIds ?? []).includes(pl.userId)) return no("projects.permCoLeadManager");
       if (pl.role === "sponsor" && coLeadOrAsked(pl.userId)) return no("projects.permCoLeadSponsor");
       return pl.userId === p.leadUserId ? no("projects.permInviteLeadSelf") : OK;
 
@@ -297,6 +299,8 @@ export function mayAppendProject(actor: Actor, ev: { type: string; target: strin
       if (pl.lapsed !== undefined && typeof pl.lapsed !== "boolean") return no("projects.permNotAllowed");
       if (pl.lapsed) return clock && pl.take === false ? OK : no("projects.permLapsedClock");
       if (!isMe(invite.userId)) return no("projects.permInviteAnswerWho");
+      // Became manager after being asked: declining stays possible.
+      if (pl.take === true && invite.role === "colead" && isManager) return no("projects.permCoLeadManager");
       // Asked before the other role was theirs: taking it is refused too.
       if (pl.take === true && invite.role === "colead" && p.sponsorUserId === invite.userId) return no("projects.permCoLeadSponsor");
       if (pl.take === true && invite.role === "sponsor" && (p.coLeadUserIds ?? []).includes(invite.userId)) return no("projects.permCoLeadSponsor");
