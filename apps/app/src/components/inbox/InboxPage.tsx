@@ -13,7 +13,7 @@ import { IdeaDetail } from "@/components/dashboard/leader/IdeaDetail";
 import { PageSkeleton } from "@/components/dashboard/shared/PageSkeleton";
 import { BulkBar } from "@/components/overload/BulkBar";
 import { DeskLoadCard } from "@/components/overload/DeskLoadCard";
-import { SectionCard } from "@/components/ui/elements";
+import { PersonFace, SectionCard } from "@/components/ui/elements";
 import { inboxItems, type InboxAsk, type InboxItem, type InboxKind } from "@/features/inbox";
 import { noticesBesideItems, type NoticeView } from "@/features/inbox/notices";
 import { deskLoads } from "@/features/overload/load";
@@ -59,7 +59,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
-  const { S, me, ready, href, serverMode, tenant } = ctx;
+  const { S, me, ready, href, serverMode, tenant, f } = ctx;
   const [cid, setCid] = useState<string | null>(initialId ?? null);
   const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => false);
   const [readIds, setReadIds] = useState<ReadonlySet<string>>(new Set());
@@ -211,13 +211,35 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                 <ul className={styles.list}>
                   {list.map((i) => {
                     const open = ask === "decide" && opensInPlace(i) && cid === openId(i);
-                    const body = (
+                    // An idea to decide reads as Paper's "To review" row: who raised it and where, the first lines of it, the day it came and
+                    // how long is left. Everything else keeps its one line.
+                    const kase = ask === "decide" && i.caseId ? S.cases.find((c) => c.id === i.caseId) : undefined;
+                    const left = i.dueDay === null ? null : i.dueDay - S.day;
+                    const due = i.late ? <span className={styles.badge} data-tone="late">{left !== null && left < 0 ? t("inbox.daysLate", { n: -left }) : t("inbox.late")}</span>
+                      : i.dueSoon ? <span className={styles.badge} data-tone="soon">{left !== null && left >= 0 ? t("inbox.daysLeft", { n: left }) : t("inbox.dueSoon")}</span>
+                      : kase && left !== null && left > 0 ? <span className={styles.badge}>{t("inbox.daysLeft", { n: left })}</span> : null;
+                    const fact = i.cause ? <span className={styles.rowKind} data-testid="inbox-cause" data-cause={i.cause}>{factOf(i)}</span> : factOf(i) ? <span className={styles.rowKind}>{factOf(i)}</span> : null;
+                    const body = kase ? (
+                      <>
+                        <PersonFace name={kase.from} />
+                        <span className={styles.rowMain}>
+                          <span className={styles.rowTitle} data-testid="inbox-row-title">{i.title}</span>
+                          <span className={styles.rowFrom}>{[kase.from, kase.fromDept].filter(Boolean).join(" · ")}</span>
+                          {i.cause && fact}
+                          {kase.body.trim() && <span className={styles.rowText}>{kase.body.trim()}</span>}
+                        </span>
+                        <span className={styles.rowSide}>
+                          <span className={styles.rowDay}>{f(kase.raisedDay)}</span>
+                          {due}
+                        </span>
+                      </>
+                    ) : (
                       <>
                         <span className={styles.rowMain}>
-                          <span className={styles.rowTitle}>{i.title}</span>
-                          {i.cause ? <span className={styles.rowKind} data-testid="inbox-cause" data-cause={i.cause}>{factOf(i)}</span> : factOf(i) ? <span className={styles.rowKind}>{factOf(i)}</span> : null}
+                          <span className={styles.rowTitle} data-testid="inbox-row-title">{i.title}</span>
+                          {fact}
                         </span>
-                        {i.late ? <span className={styles.badge} data-tone="late">{t("inbox.late")}</span> : i.dueSoon ? <span className={styles.badge} data-tone="soon">{t("inbox.dueSoon")}</span> : null}
+                        {due}
                       </>
                     );
                     const choosable = selecting && selectable(i);

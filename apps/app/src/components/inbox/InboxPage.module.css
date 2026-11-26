@@ -21,6 +21,14 @@
 .badge { flex: none; padding: 2px 8px; border-radius: 999px; font-size: var(--nh-fs-xs); font-weight: 600; }
 .badge[data-tone="late"] { color: var(--nh-danger); background: var(--nh-danger-tint); }
 .badge[data-tone="soon"] { color: var(--nh-warn); background: var(--nh-warn-tint); }
+.badge:not([data-tone]) { color: var(--nh-ink-2); background: var(--nh-fill); }
+/* An idea to decide (Paper, "Inbox list · To review"): face, who and where, two lines of the idea, the day and the time left. */
+.row:has(.rowSide) { align-items: flex-start; gap: 14px; padding: 16px 4px; }
+.row:has(.rowSide) .rowMain { flex: 1; }
+.rowFrom { font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.rowText { margin-top: 4px; font-size: var(--nh-fs-sm); line-height: 20px; color: var(--nh-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rowSide { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.rowDay { font-size: var(--nh-fs-sm); color: var(--nh-mute); white-space: nowrap; }
 
 .empty { margin: 0; color: var(--nh-mute); }
 .error { margin: 8px 0 0; color: var(--nh-danger); font-size: var(--nh-fs-sm); }
