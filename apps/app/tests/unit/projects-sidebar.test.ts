@@ -90,13 +90,15 @@ describe("ideas in the sidebar", () => {
     expect(mayEditIdeaPages({ userId: null })).toBe(false);
   });
 
-  it("lets the raiser revise an open idea and the project lead one after its yes; nobody else, never after a no", () => {
+  it("lets the raiser revise an open idea and, until its project is done, one after its yes, as the project lead may; nobody else, never after a no", () => {
     const idea = { id: "c1", fromUserId: "u5", withdrawn: null };
-    const projects = [{ sources: ["c1"], leadUserId: "u7" }];
+    const projects = [{ sources: ["c1"], leadUserId: "u7", status: "running" }];
     expect(mayReviseIdea({ ...idea, decided: null }, "u5", projects)).toBe(true);
     expect(mayReviseIdea({ ...idea, decided: null }, "u7", projects)).toBe(false);
     expect(mayReviseIdea({ ...idea, decided: { answer: "yes" } }, "u7", projects)).toBe(true);
-    expect(mayReviseIdea({ ...idea, decided: { answer: "yes" } }, "u5", projects)).toBe(false);
+    expect(mayReviseIdea({ ...idea, decided: { answer: "yes" } }, "u5", projects)).toBe(true);
+    expect(mayReviseIdea({ ...idea, decided: { answer: "yes" } }, "u5", [{ ...projects[0], status: "measuring" }])).toBe(false);
+    expect(mayReviseIdea({ ...idea, decided: { answer: "yes" } }, "u9", projects)).toBe(false);
     expect(mayReviseIdea({ ...idea, decided: { answer: "no" } }, "u7", projects)).toBe(false);
     expect(mayReviseIdea({ ...idea, decided: null, withdrawn: { day: 1 } }, "u5", projects)).toBe(false);
     expect(mayReviseIdea({ ...idea, decided: null }, null, projects)).toBe(false);

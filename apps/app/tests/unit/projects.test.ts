@@ -249,10 +249,15 @@ describe("projects: who may", () => {
     expect(mayAppend(actor("T. Vogel"), d({ answer: "yes", projectId: "p_new", lead: "L. Brandt" }), decided).ok).toBe(false);
   });
 
-  it("after its yes only the project lead changes the idea; the raiser, the team and a manager do not (Kevin, 16 Nov 2026)", () => {
+  it("after its yes the project lead changes the idea, and the raiser until the project is done; the team and a manager do not", () => {
     const revise = q("case.revised", { body: "v2" }, "c_a");
     expect(mayAppend(actor("L. Brandt"), revise, planning).ok).toBe(true);
-    expect(mayAppend(actor("J. Schmidt", "member", AUTHOR), revise, planning).ok).toBe(false);
+    const raiser = actor("J. Schmidt", "member", AUTHOR);
+    expect(mayAppend(raiser, revise, planning).ok).toBe(true);
+    for (const status of ["measuring", "done", "recognised", "stopped"] as const) {
+      const after = { ...planning, projects: planning.projects.map((p) => ({ ...p, status })) } as typeof planning;
+      expect(mayAppend(raiser, revise, after).ok, status).toBe(false);
+    }
     expect(mayAppend(actor("M. Roth"), revise, planning).ok).toBe(false);
     expect(mayAppend(actor("B. Hartmann", "manager"), revise, planning).ok).toBe(false);
     const open = reduce(SEED, logAt(0, raise("c_a")));

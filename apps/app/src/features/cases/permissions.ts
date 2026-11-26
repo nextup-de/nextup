@@ -123,13 +123,15 @@ export function mayAppend(
 
     case ev.type === "case.revised": {
       // Who writes the idea's next version (Kevin, 16 Nov 2026): while it is open, the person who raised it; after its yes,
-      // the lead of the project it became, who answers for carrying it out. A no or a withdrawal freezes it; nobody else
+      // the lead of the project it became, who answers for carrying it out, and the person who raised it until the project is
+      // done or stopped (rights PR, 25 Nov 2026). A no or a withdrawal freezes it; nobody else
       // writes it, whatever they may open.
       if (!kase) return no(t, "cases.permNoCase");
       if (kase.withdrawn || (kase.decided && kase.decided.answer !== "yes")) return no(t, "cases.permIdeaDecided");
       if (kase.decided) {
-        const leadUserId = state.projects.find((p) => p.sources.includes(kase.id))?.leadUserId ?? null;
-        if (userId === null || leadUserId !== userId) return no(t, "cases.permReviseLead");
+        const project = state.projects.find((p) => p.sources.includes(kase.id));
+        const raiser = isRaiser(kase) && (project?.status === "planning" || project?.status === "running");
+        if (userId === null || !(project?.leadUserId === userId || raiser)) return no(t, "cases.permReviseLead");
       } else if (!isRaiser(kase)) return no(t, "cases.permReviseOwner");
       if (afterLastDay(kase, state)) return no(t, "cases.permLastDay");
       return typeof ev.payload.body === "string" && ev.payload.body.trim() ? OK : no(t, "cases.permReviseText");
