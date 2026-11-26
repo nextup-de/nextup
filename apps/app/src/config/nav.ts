@@ -23,28 +23,30 @@ export const NAV: NavItem[] = [
 // `hideWhenEmpty`: shown only while its count is above 0 (a member sees the Inbox only while something waits for them).
 export type SimpleNavItem = { label: string; href: string; count?: "inbox" | "decisions"; flag?: FlagKey; unlessFlag?: FlagKey; hideWhenEmpty?: boolean };
 export const NAV_SIMPLE: Record<Role, SimpleNavItem[]> = {
+  // Raise: ideas live here before they are published. Progress: where my published ideas are, update them and answer
+  // whoever received them. Explore: campaigns and public ideas. (Sam's idea-to-project rework, 19 Nov 2026.)
   member: [
-    { label: "Ideas", href: "/raise" },
-    { label: "Inbox", href: "/inbox", count: "inbox", hideWhenEmpty: true },
-    { label: "Feed", href: "/feed" },
+    { label: "Raise", href: "/raise" },
+    { label: "Progress", href: "/ideas" },
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
+    { label: "Explore", href: "/feed" },
   ],
   leader: [
-    { label: "Ideas", href: "/raise" },
+    { label: "Raise", href: "/raise" },
     { label: "Inbox", href: "/inbox", count: "inbox" },
-    { label: "Feed", href: "/feed" },
     { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of the Inbox while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
+    { label: "Explore", href: "/feed" },
   ],
   manager: [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Inbox", href: "/inbox", count: "inbox" }, // what is asked of the manager: their desk, results to confirm, rewards due
-    { label: "Feed", href: "/feed" },
     { label: "Decisions", href: "/decisions", unlessFlag: "projects" }, // a tab of the Inbox while that is on
     { label: "Projects", href: "/projects", flag: "projects" },
     { label: "Overview", href: "/overview", unlessFlag: "projects" },
+    { label: "Explore", href: "/feed" },
   ],
 };
 
@@ -99,10 +101,11 @@ export const SECTION_TABS: Record<SectionKey, readonly SectionTabItem[]> = {
     { key: "profile", labelKey: "shell.myProfile", href: "/profile" },
     { key: "reports", labelKey: "shell.myReports", href: "/reports", needsServer: true },
   ],
-  // The Ideas tab: raise one, and follow the ones I raised. Managers raise nothing, so they get neither.
+  // The Ideas tab: raise one, and follow the ones I raised. Managers raise nothing, so they get neither. A member has both in
+  // the bar (Raise, Progress), so a strip would only say them again (DESIGN_RULES 9, one name per place).
   ideas: [
-    { key: "raise", labelKey: "ideas.tabRaise", href: "/raise", roles: ["member", "leader"] },
-    { key: "mine", labelKey: "ideas.tabMine", href: "/ideas", roles: ["member", "leader"] },
+    { key: "raise", labelKey: "ideas.tabRaise", href: "/raise", roles: ["leader"] },
+    { key: "mine", labelKey: "ideas.tabMine", href: "/ideas", roles: ["leader"] },
   ],
 };
 

@@ -119,7 +119,53 @@ export function ideaStatusText(s: IdeaStatus, t: T): string {
 
 const ENDED: readonly IdeaStatus["kind"][] = ["project", "approved", "no", "withdrawn", "merged"];
 
-export type MineIdea = { id: string; title: string; problem: boolean; since: OpenSince; running: boolean; status: IdeaStatus };
+export type MineIdea = { id: string; title: string; problem: boolean; since: OpenSince; running: boolean; status: IdeaStatus; progress: Progress };
+
+/**
+ * The Progress list's columns (Paper, "Progress · list"): the stage and how far it is, the day anything last happened to
+ * the idea or its project, who has it now, the one status that needs a chip, and whether the next move is the raiser's.
+ */
+export type Progress = {
+  stage: "desk" | "discussion" | "sentBack" | "approving" | "planning" | "running" | "measuring" | "recognised" | "stopped" | "approved" | "no" | "withdrawn" | "merged";
+  /** Done of total, for a stage that counts (approvals, a project's steps); null otherwise, and never 0 of 0. */
+  count: { done: number; total: number } | null;
+  updatedDay: number;
+  /** Who has it now: names, or "you" when the move is the raiser's. */
+  with: string[] | "you";
+  /** Only what the stage does not say already (DESIGN_RULES 9, one fact once). */
+  chip: { tone: "warn" | "danger"; kind: "yourMove" | "blocked"; n?: number } | null;
+  yourMove: boolean;
+};
+
+type ProgressProject = Pick<ReducedProject, "status" | "lead" | "steps" | "history">;
+
+export function progressOf(c: Pick<ReducedCase, "history" | "raisedDay">, status: IdeaStatus, project: ProgressProject | null): Progress {
+  const days = [c.raisedDay, ...c.history.map((e) => e.day), ...(project?.history ?? []).map((e) => e.day)];
+  const updatedDay = Math.max(...days);
+  const base = { count: null, updatedDay, with: [] as string[], chip: null, yourMove: false };
+  switch (status.kind) {
+    case "waiting": return { ...base, stage: "desk", with: status.on.length ? status.on : status.role ? [status.role] : [] };
+    case "discussion": return { ...base, stage: "discussion" };
+    case "sentBack": return { ...base, stage: "sentBack", with: "you", chip: { tone: "warn", kind: "yourMove" }, yourMove: true };
+    case "approving": return { ...base, stage: "approving", count: { done: status.approved, total: status.total }, with: status.waitingOn };
+    case "approved": return { ...base, stage: "approved" };
+    case "no": return { ...base, stage: "no" };
+    case "withdrawn": return { ...base, stage: "withdrawn" };
+    case "merged": return { ...base, stage: "merged" };
+    case "project": {
+      if (!project) return { ...base, stage: "approved" };
+      const steps = project.steps.filter((s) => !s.dropped);
+      const done = steps.filter((s) => s.column === "done").length;
+      const blocked = steps.filter((s) => s.column === "blocked").length;
+      const stage: Progress["stage"] = project.status === "measured" ? "measuring" : project.status;
+      return {
+        ...base, stage, with: project.lead ? [project.lead] : [],
+        count: (stage === "running" || stage === "planning") && steps.length ? { done, total: steps.length } : null,
+        chip: blocked && stage === "running" ? { tone: "danger", kind: "blocked", n: blocked } : null,
+      };
+    }
+  }
+}
 
 /** The ideas (and problems) this person raised, by user id: the running ones first, each newest first. */
 export function mineIdeas(state: State, userId: string | null, world: StatusWorld, clock: ClockSpec): MineIdea[] {
@@ -127,7 +173,8 @@ export function mineIdeas(state: State, userId: string | null, world: StatusWorl
   const rows = state.cases.filter((c) => c.fromUserId === userId).map((c) => {
     const status = ideaStatus(c, world, projectOfCase(state, c) ?? null);
     const running = !ENDED.includes(status.kind);
-    return { row: { id: c.id, title: c.title, problem: c.kind === "problem", since: openSince(c, state.day, clock), running, status }, raisedDay: c.raisedDay };
+    const project = status.kind === "project" ? state.projects.find((p) => p.id === status.projectId) ?? null : null;
+    return { row: { id: c.id, title: c.title, problem: c.kind === "problem", since: openSince(c, state.day, clock), running, status, progress: progressOf(c, status, project) }, raisedDay: c.raisedDay };
   });
   return rows.sort((a, b) => Number(b.row.running) - Number(a.row.running) || b.raisedDay - a.raisedDay).map((x) => x.row);
 }

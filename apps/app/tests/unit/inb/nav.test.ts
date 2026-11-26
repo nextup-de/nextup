@@ -24,8 +24,8 @@ describe("INB nav", () => {
 
   it("every Inbox entry of the rail and the simple nav points to /inbox", () => {
     const entries = [...NAV, ...Object.values(NAV_SIMPLE).flat()].filter((n) => n.label === "Inbox");
-    expect(entries.length).toBe(1 + 3);
-    expect(entries.map((n) => n.href)).toEqual(["/inbox", "/inbox", "/inbox", "/inbox"]);
+    expect(entries.length).toBe(1 + 2);
+    expect(entries.map((n) => n.href)).toEqual(["/inbox", "/inbox", "/inbox"]);
     expect([...NAV, ...Object.values(NAV_SIMPLE).flat()].some((n) => n.href === "/leader")).toBe(false);
     for (const role of ["leader", "manager"] as const) expect(navFor(role).map((n) => n.href)).toContain("/inbox");
     expect(navFor("member").map((n) => n.href)).not.toContain("/inbox");
@@ -39,18 +39,17 @@ describe("INB nav", () => {
     }
   });
 
-  it("a member sees Inbox right after Ideas only while at least one item waits", () => {
-    expect(hrefs("member", 0)).not.toContain("/inbox");
-    expect(hrefs("member", 0)[0]).toBe("/raise");
-    const waiting = hrefs("member", 1);
-    expect(waiting.slice(0, 2)).toEqual(["/raise", "/inbox"]);
-    expect(NAV_SIMPLE.member.find((n) => n.href === "/inbox")).toMatchObject({ label: "Inbox", count: "inbox", hideWhenEmpty: true });
+  it("a member's bar is Raise, Progress, Projects, Explore; a leader's Raise, Inbox, Projects, Explore", () => {
+    expect(hrefs("member", 0)).toEqual(["/raise", "/ideas", "/projects", "/feed"]);
+    expect(hrefs("member", 3)).not.toContain("/inbox");
+    expect(visibleSimpleNav("member", on, { inbox: 0, decisions: 0 }).map((n) => n.label)).toEqual(["Raise", "Progress", "Projects", "Explore"]);
+    expect(visibleSimpleNav("leader", on, { inbox: 0, decisions: 0 }).map((n) => n.label)).toEqual(["Raise", "Inbox", "Projects", "Explore"]);
   });
 
   it("only items that say hideWhenEmpty can disappear for lack of a count", () => {
     for (const role of ROLES) {
       const hidden = NAV_SIMPLE[role].filter((n) => n.hideWhenEmpty).map((n) => n.href);
-      expect(hidden).toEqual(role === "member" ? ["/inbox"] : []);
+      expect(hidden).toEqual([]);
       const shown = visibleSimpleNav(role, on, { inbox: 0, decisions: 0 }).map((n) => n.href);
       for (const n of NAV_SIMPLE[role].filter((x) => !x.hideWhenEmpty && (!x.unlessFlag))) expect(shown).toContain(n.href);
     }

@@ -2,7 +2,7 @@
 // draft is set up and the project starts. At every step the screen shows at most one filled button, and it is the
 // viewer's next move. One browser plays everyone through the dev panel.
 import type { Page } from "@playwright/test";
-import { expect, publishIdea, setupStep, showSidebar, test, yourMove } from "../helpers";
+import { expect, publishIdea, setupStep, test, yourMove } from "../helpers";
 
 const TITLE = "A tool cart beside press 3 so changeovers stop waiting for tools";
 // The coach gives the idea a short title; lists and the idea's page show that one.
@@ -51,11 +51,10 @@ test("an idea becomes a running project, and every screen on the way has one nex
   await page.goto("/acme");
   await expect(page).toHaveURL(/\/acme\/raise$/);
 
-  await test.step("the employee raises it; the chat says where it went and links to Mine", async () => {
+  await test.step("the employee raises it and finds it under Progress", async () => {
     await publishIdea(page, TITLE);
-    // The Ideas area's pages sit in its side view (the raise page's own sidebar); a phone's strip is not drawn here.
-    await showSidebar(page);
-    await page.getByRole("link", { name: "Mine", exact: true }).filter({ visible: true }).first().click();
+    // A member has Raise and Progress in the bar (Sam's idea-to-project rework, 19 Nov 2026).
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Progress", exact: true }).click();
     await expect(page).toHaveURL(/\/acme\/ideas$/);
     await expect(page.getByRole("main")).toContainText(SHOWN);
     expect(await filled(page), "Mine has nothing to press").toEqual([]);

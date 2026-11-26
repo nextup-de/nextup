@@ -14,7 +14,7 @@ describe("LOOP decisions in the nav", () => {
   it("the simple shell has it for leader and manager, not for member", () => {
     for (const role of ["leader", "manager"] as const) {
       const hrefs = NAV_SIMPLE[role].map((n) => n.href);
-      expect(hrefs[hrefs.indexOf("/feed") + 1]).toBe("/decisions");
+      expect(hrefs[hrefs.indexOf("/inbox") + 1]).toBe("/decisions");
     }
     expect(NAV_SIMPLE.member.map((n) => n.href)).not.toContain("/decisions");
   });
