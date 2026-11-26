@@ -28,6 +28,7 @@ test("the Set up window adds pages and asks people, and sends nothing before Sav
   const win = page.getByRole("dialog", { name: "Set up project" });
   await open.click();
   await expect(win.getByTestId("setup-page")).toHaveCount(3);
+  await expect(win.getByLabel("Name", { exact: true })).toHaveValue(/tool cart/i);
 
   // A page of its own, a person, another role; closing asks first and then sends nothing.
   await win.getByRole("button", { name: "+ Own page" }).click();
@@ -55,6 +56,18 @@ test("the Set up window adds pages and asks people, and sends nothing before Sav
   await win.getByRole("button", { name: "Cancel" }).click();
   await page.getByTestId("draft-progress").getByRole("button", { name: /^Team/ }).click();
   await expect(page.getByTestId("draft-step")).toContainText(name + " · Co-lead");
+
+  // The name and the start day: another start needs a why, and the heading shows the new name.
+  await open.click();
+  await win.getByLabel("Name", { exact: true }).fill("Tool cart, press 3");
+  const start = win.getByLabel("Starts in (days)");
+  await start.fill(String(Number(await start.inputValue()) + 3));
+  const save = win.getByRole("button", { name: "Save", exact: true });
+  await expect(save).toBeDisabled();
+  await win.getByLabel("Why").fill("Waiting for the cart");
+  await save.click();
+  await expect(win).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Tool cart, press 3" }).first()).toBeVisible();
 
   // Closing without saving sends nothing.
   await open.click();
