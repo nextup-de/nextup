@@ -68,6 +68,10 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [pending, start] = useTransition();
+  // Paper, "Inbox list · To review": a search behind its icon and the order of the ideas to decide (due first, or latest first).
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [latestFirst, setLatestFirst] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const detail = useOpenItem(cid, () => setCid(null));
   const isOpen = cid !== null && detail !== null;
@@ -127,6 +131,29 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   const openCase = cid !== null ? S.cases.find((c) => c.id === cid) : undefined;
   const counts = openCase ? { files: raisedWith(openCase).attachments || undefined, chats: commentsOn(ctx.log, openCase.id).length || undefined } : {};
 
+  // What the list shows: every item, or those whose title, text or raiser holds the search; ideas to decide latest first on request.
+  const caseOf = (i: InboxItem) => (i.ask === "decide" && i.caseId ? S.cases.find((c) => c.id === i.caseId) : undefined);
+  const needle = query.trim().toLowerCase();
+  const matches = (i: InboxItem) => {
+    if (!needle) return true;
+    const k = caseOf(i);
+    return [i.title, k?.body, k?.from, k?.fromDept].some((s) => s?.toLowerCase().includes(needle));
+  };
+  const listed = items.filter(matches);
+  const inOrder = (list: InboxItem[]) => latestFirst
+    ? [...list].sort((a, b) => (caseOf(b)?.raisedDay ?? -Infinity) - (caseOf(a)?.raisedDay ?? -Infinity))
+    : list;
+  // ↑ and ↓ walk the rows; Enter opens the one in focus (every row is a button or a link).
+  const onListKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[data-testid="inbox-row"]'));
+    if (rows.length === 0) return;
+    e.preventDefault();
+    const at = rows.indexOf(document.activeElement as HTMLElement);
+    const next = at < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, at + (e.key === "ArrowDown" ? 1 : -1)));
+    rows[next].focus();
+  };
+
   // One fact per row (DESIGN_RULES §9): why it is back on the list, else who raised what is to decide here, else what is asked.
   const factOf = (i: InboxItem): string => {
     if (i.cause) return causeText(i.cause, i);
@@ -181,7 +208,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
   }
 
   return (
-    <div className={styles.page} ref={topRef}>
+    <div className={styles.page} data-list="true" ref={topRef}>
       <h1 className={styles.srOnly}>{t("inbox.title")}</h1>
 
       {/* The seat above a loaded desk cannot open the Dashboard (OVL D36): the same card, for the desks it may share the load of, sits here. */}
@@ -192,19 +219,47 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
           {d.lateKey ? <span className={styles.triageLate}>{t(d.lateKey, { count: d.late })}</span> : null}
         </p>
       ))}
-      {anySelectable && (
+      {items.length > 0 && (
         <div className={styles.toolbar}>
-          <button type="button" className={styles.select} aria-pressed={selecting} onClick={() => (selecting ? leaveSelecting() : setSelecting(true))} data-testid="inbox-select">{t("overload.inbox.select")}</button>
+          {anySelectable ? (
+            <button type="button" className={styles.select} aria-pressed={selecting} onClick={() => (selecting ? leaveSelecting() : setSelecting(true))} data-testid="inbox-select">{t("overload.inbox.select")}</button>
+          ) : <span />}
+          <span className={styles.tools}>
+            {searching || query ? (
+              <input
+                type="search"
+                className={styles.search}
+                value={query}
+                autoFocus
+                placeholder={t("inbox.search")}
+                aria-label={t("inbox.search")}
+                onChange={(e) => setQuery(e.target.value)}
+                onBlur={() => { if (!query.trim()) setSearching(false); }}
+                onKeyDown={(e) => { if (e.key === "Escape") { setQuery(""); setSearching(false); } }}
+                data-testid="inbox-search"
+              />
+            ) : (
+              <button type="button" className={styles.tool} data-icon="true" aria-label={t("inbox.search")} onClick={() => setSearching(true)} data-testid="inbox-search-open">
+                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" /><path d="m16 16 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              </button>
+            )}
+            <button type="button" className={styles.tool} onClick={() => setLatestFirst((v) => !v)} data-testid="inbox-sort">
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v11M2.5 11 5 13.5 7.5 11M11 13.5v-11M8.5 5 11 2.5 13.5 5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              {t(latestFirst ? "inbox.latestFirst" : "inbox.dueFirst")}
+            </button>
+          </span>
         </div>
       )}
       {selecting && <div className={styles.bulk}><BulkBar cases={selectedCases} onDone={() => setSelected(new Set())} /></div>}
 
       <div className={styles.body}>
-        <div className={styles.lists}>
+        <div className={styles.lists} onKeyDown={onListKey}>
           {items.length === 0 ? (
             <SectionCard name="inbox-empty"><p className={styles.empty}>{t("inbox.empty")}</p></SectionCard>
+          ) : listed.length === 0 ? (
+            <SectionCard name="inbox-no-match"><p className={styles.empty}>{t("inbox.noMatch", { q: query.trim() })}</p></SectionCard>
           ) : ASKS.map((ask) => {
-            const list = items.filter((i) => i.ask === ask);
+            const list = inOrder(listed.filter((i) => i.ask === ask));
             if (list.length === 0) return null;
             return (
               <SectionCard key={ask} title={t(ASK_TITLE[ask])} name={`inbox-${ask}`} action={<span className={styles.count} data-testid="inbox-count">{list.length}</span>}>
@@ -259,6 +314,7 @@ export function InboxPage({ initialId, notices }: { initialId?: string; notices:
                     );
                   })}
                 </ul>
+                {ask === "decide" && <p className={styles.keys} aria-hidden="true">{t("inbox.keys")}</p>}
               </SectionCard>
             );
           })}

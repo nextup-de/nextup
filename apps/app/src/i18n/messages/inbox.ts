@@ -46,6 +46,11 @@ export const inbox = defineMessages({
     markFailed: "Could not mark the notices as read.",
     yourMove: "Your move",
     more: "More",
+    search: "Search the inbox",
+    noMatch: "Nothing in the inbox matches “{q}”.",
+    dueFirst: "Due first",
+    latestFirst: "Latest first",
+    keys: "↑ ↓ move · Enter opens",
   },
   de: {
     title: "Posteingang",
@@ -90,5 +95,10 @@ export const inbox = defineMessages({
     markFailed: "Die Mitteilungen konnten nicht als gelesen markiert werden.",
     yourMove: "Sie sind dran",
     more: "Mehr",
+    search: "Posteingang durchsuchen",
+    noMatch: "Nichts im Posteingang passt zu „{q}“.",
+    dueFirst: "Fällige zuerst",
+    latestFirst: "Neueste zuerst",
+    keys: "↑ ↓ wechseln · Enter öffnet",
   },
 });
