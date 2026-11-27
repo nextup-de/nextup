@@ -95,6 +95,7 @@
      (npm run lint enforces it); tests/unit/fluid.test.ts keeps them at 12px and up, 1px or more apart. */
   --nh-fs-xs: 12px;    /* meta, tags, badges, timestamps - the floor (nothing is smaller) */
   --nh-fs-sm: 13px;    /* labels, secondary lines, captions, small buttons */
+  --nh-fs-ui: 14px;    /* dense UI text: list rows, menus, nav, side panels (Paper's most used row size) */
   --nh-fs-md: 15px;    /* body text, buttons, list titles */
   --nh-fs-lg: 17px;    /* ledes, card headings, the opened item's intro */
   --nh-fs-xl: 20px;    /* section headings, big numbers */
@@ -103,12 +104,49 @@
   --nh-fs-4xl: 34px;   /* display: sign-in and empty pages */
   --nh-fs-input: 16px; /* text fields on phones - smaller makes iOS zoom in on focus (rule 6) */
 
-  /* Spacing: fixed too. The page gutter steps down on tablets and phones; it never follows the window. */
-  --nh-space: 8px;
-  --nh-gap: 16px;          /* between cards and columns, and from the screen edge in full-screen views */
-  --nh-pad-card: 24px;     /* inside a main card */
-  --nh-pad-card-sm: 18px;  /* inside a side card */
-  --nh-page-x: 56px;       /* the page's side gutter: 32px on tablets, 16px on phones (below) */
+  /* Line heights: one per size for a line of UI (rows, buttons, labels), and a looser "-text" one for
+     running text that wraps. Whole pixels, so a row is the same height in Paper and in the browser. */
+  --nh-lh-xs: 16px;    --nh-lh-xs-text: 18px;
+  --nh-lh-sm: 16px;    --nh-lh-sm-text: 20px;
+  --nh-lh-ui: 18px;    --nh-lh-ui-text: 20px;
+  --nh-lh-md: 18px;    --nh-lh-md-text: 22px;
+  --nh-lh-input: 20px; --nh-lh-input-text: 24px;
+  --nh-lh-lg: 22px;    --nh-lh-lg-text: 24px;
+  --nh-lh-xl: 24px;    --nh-lh-xl-text: 28px;
+  --nh-lh-2xl: 30px;
+  --nh-lh-3xl: 34px;
+  --nh-lh-4xl: 40px;
+
+  /* Spacing scale: the only values padding, margin and gap may use (npm run lint enforces it; 0 and
+     1px for hairline nudges are the exceptions). Named by their size, the same names in Paper. Fixed on
+     every screen. Measured 27 Nov 2026: hits 81% of Paper's values and 86% of the code's exactly. */
+  --nh-sp-2: 2px;
+  --nh-sp-4: 4px;
+  --nh-sp-6: 6px;
+  --nh-sp-8: 8px;
+  --nh-sp-10: 10px;
+  --nh-sp-12: 12px;
+  --nh-sp-14: 14px;
+  --nh-sp-16: 16px;
+  --nh-sp-18: 18px;
+  --nh-sp-20: 20px;
+  --nh-sp-24: 24px;
+  --nh-sp-28: 28px;
+  --nh-sp-32: 32px;
+  --nh-sp-40: 40px;
+  --nh-sp-48: 48px;
+  --nh-sp-56: 56px;
+  --nh-sp-64: 64px;
+  --nh-sp-80: 80px;
+  --nh-sp-96: 96px;
+  --nh-sp-128: 128px;
+
+  /* Named spaces: steps of the scale with a job. The page gutter steps down on tablets and phones. */
+  --nh-space: var(--nh-sp-8);
+  --nh-gap: var(--nh-sp-16);         /* between cards and columns, and from the screen edge in full-screen views */
+  --nh-pad-card: var(--nh-sp-24);    /* inside a main card */
+  --nh-pad-card-sm: var(--nh-sp-18); /* inside a side card */
+  --nh-page-x: var(--nh-sp-56);      /* the page's side gutter: 32px on tablets, 16px on phones (below) */
   --nh-max: 1120px;
   --nh-max-wide: 1920px; /* work surfaces (the projects and their boards): as wide as the screen allows */
   --nh-bar-h: 46px; /* the simple shell's top bar; pages that fill the screen below it subtract this */
@@ -119,5 +157,5 @@
   --nh-screen-w: 100vw;
 }
 
-@media (max-width: 1023px) { :root { --nh-page-x: 32px; } }
-@media (max-width: 760px) { :root { --nh-page-x: 16px; } }
+@media (max-width: 1023px) { :root { --nh-page-x: var(--nh-sp-32); } }
+@media (max-width: 760px) { :root { --nh-page-x: var(--nh-sp-16); } }
