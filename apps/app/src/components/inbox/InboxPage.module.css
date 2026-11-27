@@ -64,3 +64,26 @@
 .pinned { display: block; margin: var(--nh-sp-2) 0 0 var(--nh-sp-14); font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .row[data-select="true"] { justify-content: flex-start; }
 .row[data-select="true"] .rowMain { flex: 1; }
+
+/* The list as Paper draws it ("Inbox list · To review", 3AXO-0): one column of 900px in the middle, the tools above it on the
+   right (search behind its icon, the order), and the keys under the ideas to decide. The open item keeps the full width. */
+.page[data-list="true"] { width: 100%; max-width: 900px; margin-inline: auto; padding-top: var(--nh-sp-8); }
+.page[data-list="true"] .toolbar { justify-content: space-between; align-items: center; margin: 0; }
+.tools { display: flex; gap: var(--nh-sp-8); }
+.tool {
+  display: inline-flex; align-items: center; gap: var(--nh-sp-6); height: 34px; padding: 0 var(--nh-sp-12) 0 var(--nh-sp-10);
+  border: 1px solid var(--nh-line); border-radius: var(--radius-sm); background: var(--nh-card); color: var(--nh-ink-2);
+  font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; line-height: var(--nh-lh-sm); cursor: pointer;
+}
+.tool[data-icon="true"] { width: 34px; padding: 0; justify-content: center; }
+.tool:hover { background: var(--nh-fill); }
+.tool:focus-visible, .search:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
+.search {
+  width: 240px; height: 34px; padding: 0 var(--nh-sp-12); border: 1px solid var(--nh-line); border-radius: var(--radius-sm);
+  background: var(--nh-card); color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm);
+}
+.keys { margin: var(--nh-sp-4) 0 0; padding-top: var(--nh-sp-12); border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-xs); line-height: var(--nh-lh-xs); color: var(--nh-mute); }
+@media (max-width: 760px) {
+  .keys { display: none; }
+  .search { width: 160px; }
+}
