@@ -1,13 +1,13 @@
 /* The KPI report in the house look: a page header with the period and the export, then section cards. */
-.page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: var(--nh-max); margin: 0 auto; padding-bottom: 32px; min-width: 0; }
-.tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-16); width: 100%; max-width: var(--nh-max); margin: 0 auto; padding-bottom: var(--nh-sp-32); min-width: 0; }
+.tools { display: flex; align-items: center; gap: var(--nh-sp-8); flex-wrap: wrap; }
 /* The period: one segmented control, the chosen segment white on grey. */
-.periods { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--nh-fill); }
-.period { height: 32px; padding-inline: 12px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; white-space: nowrap; }
+.periods { display: inline-flex; padding: var(--nh-sp-2); border-radius: 8px; background: var(--nh-fill); }
+.period { height: 32px; padding-inline: var(--nh-sp-12); border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; white-space: nowrap; }
 .period[data-on="true"] { background: #fff; color: var(--nh-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
 .period:focus-visible, .export:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 /* Export is not the viewer's next move, so it is quiet: the page has no filled button (DESIGN_RULES §9). */
-.export { height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; background: var(--nh-fill); color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.export { height: 36px; padding-inline: var(--nh-sp-14); border: 0; border-radius: 8px; background: var(--nh-fill); color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
 .export:hover:not(:disabled) { background: var(--nh-line); }
 .export:disabled { opacity: 0.5; cursor: default; }
 /* Each figure keeps one colour: the tile's top edge, its number, its bar and its column. */
@@ -19,19 +19,19 @@
 .page [data-kpi="energy"] { --k: #e9a100; }
 .page [data-kpi="co2"] { --k: var(--nh-ok); }
 .page [data-kpi="premiums"] { --k: #c2410c; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-.tile { position: relative; overflow: hidden; min-width: 0; padding: 16px 16px 14px; border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--k) 9%, white), var(--nh-card) 70%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 14%, transparent); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--nh-sp-12); }
+.tile { position: relative; overflow: hidden; min-width: 0; padding: var(--nh-sp-16) var(--nh-sp-16) var(--nh-sp-14); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--k) 9%, white), var(--nh-card) 70%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 14%, transparent); }
 .tile::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--k); }
 .value { font-size: var(--nh-fs-2xl); line-height: 30px; font-weight: 650; letter-spacing: -0.02em; color: var(--k); }
-.meter { height: 6px; margin-top: 10px; border-radius: 3px; background: color-mix(in srgb, var(--k) 14%, white); overflow: hidden; }
+.meter { height: 6px; margin-top: var(--nh-sp-10); border-radius: 3px; background: color-mix(in srgb, var(--k) 14%, white); overflow: hidden; }
 .meter > span { display: block; height: 100%; border-radius: 3px; background: var(--k); }
-.cellBar { display: inline-flex; align-items: center; gap: 8px; }
+.cellBar { display: inline-flex; align-items: center; gap: var(--nh-sp-8); }
 .cellBar .meter { width: 56px; margin-top: 0; }
 .table thead th[data-kpi] { color: color-mix(in srgb, var(--k) 70%, var(--nh-ink)); }
-.label { margin-top: 2px; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
+.label { margin-top: var(--nh-sp-2); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
 .scroll { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--nh-fs-md); }
-.table th, .table td { padding: 10px 12px; text-align: left; border-top: 1px solid var(--nh-line-soft); white-space: nowrap; color: var(--nh-ink); }
+.table th, .table td { padding: var(--nh-sp-10) var(--nh-sp-12); text-align: left; border-top: 1px solid var(--nh-line-soft); white-space: nowrap; color: var(--nh-ink); }
 .table thead th { border-top: 0; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
 .table tbody th { font-weight: 400; }
 .table tbody tr:hover { background: var(--nh-surface); }

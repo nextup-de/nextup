@@ -1,4 +1,4 @@
-// Stylelint: keeps every page on the one fixed type scale (src/styles/tokens.css, docs/RESPONSIVE.md), and keeps
+// Stylelint: keeps every page on the one fixed type and spacing scale (src/styles/tokens.css, docs/DESIGN_SCALE.md), and keeps
 // colour on tokens: no black fills, and a blue only ever through a token, so tokens.css can change it in one place.
 // Files still on scripts/design/allowlist.json are let through until their page group is moved. Runs in `npm run lint`.
 import { readFileSync } from "node:fs";
@@ -8,11 +8,12 @@ const allowlist = JSON.parse(readFileSync(new URL("./scripts/design/allowlist.js
 const colourRule = [{ "/^background/": [...BLACK_FILL_PATTERNS, ...BLUE_PATTERNS], "/.*/": BLUE_PATTERNS }, { message: "Use a token from src/styles/tokens.css: no black fills and no hardcoded blue." }];
 /** @type {import("stylelint").Config} */
 const config = {
-  plugins: ["stylelint-declaration-strict-value"],
+  plugins: ["stylelint-declaration-strict-value", "./scripts/design/stylelint-spacing.mjs"],
   ignoreFiles: ["src/styles/tokens.css"],
   overrides: allowlist.css.length ? [{ files: allowlist.css, rules: { "declaration-property-value-disallowed-list": null } }] : [],
   rules: {
     "declaration-property-value-disallowed-list": colourRule,
+    "nextup/spacing-scale": true, // padding, margin, gap: var(--nh-sp-N), 0 or 1px
     "scale-unlimited/declaration-strict-value": [
       ["font-size"],
       {
@@ -23,7 +24,7 @@ const config = {
           "/^\\d*\\.?\\d+em$/",                          // relative to the parent's size: 0.9em
           "inherit",
         ],
-        message: "Use a step of the type scale for \"${property}\": var(--nh-fs-xs | sm | md | lg | xl | 2xl | 3xl | 4xl), or var(--nh-fs-input) for text fields on phones. Not \"${value}\" (docs/RESPONSIVE.md).",
+        message: "Use a step of the type scale for \"${property}\": var(--nh-fs-xs | sm | ui | md | lg | xl | 2xl | 3xl | 4xl), or var(--nh-fs-input) for text fields on phones. Not \"${value}\" (docs/RESPONSIVE.md).",
       },
     ],
   },

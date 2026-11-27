@@ -8,7 +8,7 @@ export default function Loading() {
       {[0, 1].map((i) => (
         <section key={i} className={styles.card}>
           <Skeleton w={160} h={22} />
-          <Skeleton w="60%" h={12} style={{ marginTop: 10 }} />
+          <Skeleton w="60%" h={12} style={{ marginTop: "var(--nh-sp-10)" }} />
           {[0, 1, 2].map((j) => (
             <Skeleton key={j} w="100%" h={44} r="md" style={{ marginTop: j === 0 ? 18 : 8 }} />
           ))}

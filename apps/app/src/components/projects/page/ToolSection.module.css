@@ -21,7 +21,7 @@
 .item { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); min-height: calc(var(--nh-space) * 4.75); padding: 0 var(--nh-gap); border: 0; border-radius: var(--nh-r-sm); background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-md); text-align: left; text-decoration: none; cursor: pointer; }
 .item:hover, .item:focus-visible { background: var(--nh-fill); outline: none; }
 .item:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: -2px; }
-.item[data-danger="true"] { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; color: var(--nh-danger); }
+.item[data-danger="true"] { flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--nh-sp-2); color: var(--nh-danger); }
 .hint { color: var(--nh-mute-2); font-size: var(--nh-fs-xs); }
 .arrow { color: var(--nh-mute-2); }
 .rule { height: 1px; margin: var(--nh-space) calc(var(--nh-space) / 2); background: var(--nh-line-soft); }

@@ -1,10 +1,10 @@
 /* The decision log in the house look: one section card holding the search, the folded filters and the table.
    The table is a real <table> (each row keeps its test id); it looks like the DataTable element, and on a
    phone every row becomes a small card. */
-.page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: var(--nh-max); margin: 0 auto; min-width: 0; }
-.filters { display: flex; flex-direction: column; gap: 8px; }
-.selects { display: flex; flex-wrap: wrap; gap: 8px; }
-.filters select, .search { box-sizing: border-box; height: 36px; padding-inline: 12px; border: 1px solid var(--nh-line); border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-16); width: 100%; max-width: var(--nh-max); margin: 0 auto; min-width: 0; }
+.filters { display: flex; flex-direction: column; gap: var(--nh-sp-8); }
+.selects { display: flex; flex-wrap: wrap; gap: var(--nh-sp-8); }
+.filters select, .search { box-sizing: border-box; height: 36px; padding-inline: var(--nh-sp-12); border: 1px solid var(--nh-line); border-radius: 8px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
 .filters select:focus, .search:focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .search { width: 100%; min-width: 0; }
 .allLink { color: var(--nh-brand-ink); font-weight: 600; text-decoration: none; }
@@ -12,33 +12,33 @@
 .allLink:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
 .table { width: 100%; border-collapse: collapse; }
-.table th { text-align: left; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); padding: 10px 12px; }
-.table td { vertical-align: top; padding: 12px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-md); color: var(--nh-ink); overflow-wrap: anywhere; }
+.table th { text-align: left; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); padding: var(--nh-sp-10) var(--nh-sp-12); }
+.table td { vertical-align: top; padding: var(--nh-sp-12); border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-md); color: var(--nh-ink); overflow-wrap: anywhere; }
 .table tbody tr:hover { background: var(--nh-surface); }
 .date { white-space: nowrap; color: var(--nh-mute); }
 .caseLink { display: block; color: var(--nh-ink); font-weight: 600; text-decoration: none; }
 .caseLink:hover { color: var(--nh-brand-ink); }
 .caseLink:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .meta { display: block; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
-.person { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.person { display: flex; align-items: center; gap: var(--nh-sp-6); margin-top: var(--nh-sp-4); }
 .person .meta { display: inline; }
-.quote { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; color: var(--nh-ink-2); }
+.quote { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: var(--nh-sp-6); color: var(--nh-ink-2); }
 /* Yes: ink on grey. No: white with a line. Never green or red. */
-.pillYes, .pillNo { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: var(--nh-ink); }
+.pillYes, .pillNo { display: inline-block; padding: var(--nh-sp-2) var(--nh-sp-10); border-radius: 999px; font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; color: var(--nh-ink); }
 .pillYes { background: var(--nh-line); }
 .pillNo { background: #fff; box-shadow: inset 0 0 0 1px var(--nh-mute-2); }
-.paging { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px 12px 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.paging { display: flex; justify-content: flex-end; align-items: center; gap: var(--nh-sp-12); padding: var(--nh-sp-12) var(--nh-sp-12) 0; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .paging a, .paging span[aria-hidden] { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--nh-fill); color: var(--nh-ink); text-decoration: none; }
 .paging span[aria-hidden] { background: none; color: var(--nh-ghost); }
 .paging a:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
-.empty { margin: 0; padding: 24px 0; font-size: var(--nh-fs-md); color: var(--nh-mute); text-align: center; }
+.empty { margin: 0; padding: var(--nh-sp-24) 0; font-size: var(--nh-fs-md); color: var(--nh-mute); text-align: center; }
 
 @media (max-width: 760px) {
   .filters select, .search { height: 44px; font-size: var(--nh-fs-input); }
   .table, .table tbody, .table tr, .table td { display: block; }
   .table thead { display: none; }
-  .table tr { padding: 12px 0; border-top: 1px solid var(--nh-line-soft); }
-  .table td { padding: 2px 0; border: 0; }
+  .table tr { padding: var(--nh-sp-12) 0; border-top: 1px solid var(--nh-line-soft); }
+  .table td { padding: var(--nh-sp-2) 0; border: 0; }
   .table td::before { content: attr(data-label) ": "; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
   .table td:nth-child(2)::before { content: ""; }
 }

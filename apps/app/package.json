@@ -19,7 +19,11 @@
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "lint:css": "stylelint \"src/**/*.css\"",
-    "e2e:visual": "playwright test -c playwright.visual.config.ts"
+    "e2e:visual": "playwright test -c playwright.visual.config.ts",
+    "design:spacing-fix": "node scripts/design/spacing-fix.mjs",
+    "paper:check": "node scripts/design/paper-check.mjs check",
+    "paper:fix": "node scripts/design/paper-check.mjs fix",
+    "paper:sync-tokens": "node scripts/design/paper-check.mjs sync-tokens"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^0.36.0",

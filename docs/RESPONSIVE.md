@@ -19,6 +19,7 @@ with a 12px floor) put labels, body text and buttons all on 12px.
 |---|---|---|
 | `--nh-fs-xs` | 12px | meta, tags, badges, timestamps - the floor |
 | `--nh-fs-sm` | 13px | labels, secondary lines, small buttons |
+| `--nh-fs-ui` | 14px | dense UI: list rows, menus, nav, side panels |
 | `--nh-fs-md` | 15px | body text, buttons, list titles |
 | `--nh-fs-lg` | 17px | ledes, card headings |
 | `--nh-fs-xl` | 20px | section headings, big numbers |
@@ -27,16 +28,18 @@ with a 12px floor) put labels, body text and buttons all on 12px.
 | `--nh-fs-4xl` | 34px | display: sign-in, empty pages |
 | `--nh-fs-input` | 16px | text fields on phones (rule 6) |
 
-Spacing is fixed too: `--nh-gap` (16px, between cards and columns), `--nh-pad-card` (24px, inside a
-main card), `--nh-pad-card-sm` (18px, side cards). The page gutter `--nh-page-x` is 56px, 32px on
-tablets and 16px on phones - a step per kind of screen, never a share of the window. Small gaps inside a
-component (4px between an icon and its label) are plain px.
+Each size has two fixed line heights (`--nh-lh-*` for a line of UI, `--nh-lh-*-text` for wrapping text) and
+spacing has its own scale (`--nh-sp-2` … `--nh-sp-128`): both in [DESIGN_SCALE.md](DESIGN_SCALE.md), the one
+scale Paper and the app share. Named spaces sit on it: `--nh-gap` (16px, between cards and columns),
+`--nh-pad-card` (24px, inside a main card), `--nh-pad-card-sm` (18px, side cards). The page gutter `--nh-page-x`
+is 56px, 32px on tablets and 16px on phones - a step per kind of screen, never a share of the window. Small gaps
+inside a component are steps too (`var(--nh-sp-4)` between an icon and its label), never plain px.
 
 - **Change a size in `tokens.css`.** `npm test` fails when a step is not plain px, dips under 12px, or
   comes within 1px of its neighbour (the hierarchy collapsing).
-- **A design handed off in px** (the overview and raise pages): use its px as they are, on every screen.
-  No multiplier (`calc(12 * var(--u))`), no `clamp()` on `vw`: *checked by `npm test`*. Map each font
-  size to the nearest step.
+- **A design handed off in px**: run the Paper check on the frame first and build with the steps it names
+  ([DESIGN_SCALE.md](DESIGN_SCALE.md)), on every screen. No multiplier (`calc(12 * var(--u))`), no `clamp()` on
+  `vw`: *checked by `npm test`*.
 - **Something sized by its container** (a score tile's ring) may use container units for the graphic;
   its text still uses a step.
 

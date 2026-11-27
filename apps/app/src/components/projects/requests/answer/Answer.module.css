@@ -5,7 +5,7 @@
 .intro { margin: 0; color: var(--nh-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .field { display: flex; flex-direction: column; gap: var(--nh-space); }
 .label { font-weight: 600; font-size: var(--nh-fs-sm); color: var(--nh-ink); }
-.mark { margin-left: 2px; color: var(--nh-danger); }
+.mark { margin-left: var(--nh-sp-2); color: var(--nh-danger); }
 .new { margin-left: var(--nh-space); padding: 0 var(--nh-space); border-radius: var(--nh-r-sm); background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-size: var(--nh-fs-xs); font-weight: 600; }
 .counter { color: var(--nh-mute); font-size: var(--nh-fs-xs); }
 .counter[data-hot="true"] { color: var(--nh-danger); }
@@ -16,7 +16,7 @@
 .actions { display: flex; gap: var(--nh-space); }
 .h2 { margin: 0; font-size: var(--nh-fs-lg); font-weight: 600; }
 .requests { display: flex; flex-direction: column; gap: var(--nh-space); margin: 0; padding: 0; list-style: none; }
-.request { display: flex; flex-direction: column; gap: 2px; padding: var(--nh-pad-card); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-sm); }
+.request { display: flex; flex-direction: column; gap: var(--nh-sp-2); padding: var(--nh-pad-card); border-radius: var(--nh-r-lg); background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-sm); }
 .state { align-self: flex-start; padding: 0 var(--nh-gap); border-radius: var(--nh-r-sm); border: 1px solid var(--nh-line); color: var(--nh-ink-2); font-weight: 600; font-size: var(--nh-fs-xs); }
 .state[data-state="new"] { background: var(--nh-brand-tint); border-color: var(--nh-brand-line); color: var(--nh-brand-ink); }
 .state[data-state="declined"] { color: var(--nh-danger); }

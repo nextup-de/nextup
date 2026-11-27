@@ -5,7 +5,7 @@
 .popover { display: flex; flex-direction: column; gap: var(--nh-gap); padding: var(--nh-pad-card-sm); background: var(--nh-card); box-shadow: var(--nh-card-shadow); border: 1px solid var(--nh-line); border-radius: var(--nh-r-lg); max-width: 100%; box-sizing: border-box; }
 .field { display: flex; flex-direction: column; gap: var(--nh-space); font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--nh-space); }
-.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--nh-line-soft); min-width: 0; }
+.row { display: flex; align-items: center; gap: var(--nh-sp-12); padding: var(--nh-sp-12) 0; border-top: 1px solid var(--nh-line-soft); min-width: 0; }
 .row:first-child { border-top: 0; }
 .name { flex: 1; min-width: 0; color: var(--nh-ink); font-size: var(--nh-fs-sm); font-weight: 600; line-height: 18px; overflow-wrap: anywhere; }
 .name a { color: var(--nh-ink); text-decoration: none; }

@@ -4,7 +4,7 @@
 .root {
   position: relative; display: flex; align-items: stretch; min-width: 0;
   width: var(--nh-screen-w); min-height: calc(var(--nh-screen-h) - var(--nh-bar-h));
-  margin: -20px 0 -40px calc((min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x)) - var(--nh-screen-w)) / 2);
+  margin: calc(-1 * var(--nh-sp-20)) 0 calc(-1 * var(--nh-sp-40)) calc((min(var(--nh-max), var(--nh-screen-w) - 2 * var(--nh-page-x)) - var(--nh-screen-w)) / 2);
 }
 .side {
   flex: none; width: 256px; overflow: hidden; z-index: 6;
@@ -13,8 +13,8 @@
 .root[data-sb="hidden"] .side { width: 0; }
 /* The width slides on the button only; a load draws the side view open or hidden at once. */
 .root[data-moved="true"] .side { transition: width 420ms cubic-bezier(.2,.8,.2,1); }
-.main { flex: 1; min-width: 0; padding: 20px var(--nh-page-x) 40px; }
-.inner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.main { flex: 1; min-width: 0; padding: var(--nh-sp-20) var(--nh-page-x) var(--nh-sp-40); }
+.inner { max-width: var(--nh-max); margin: 0 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--nh-sp-14); }
 .show { position: absolute; top: 12px; left: 12px; z-index: 7; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .show:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
 .show:focus-visible { outline: 2px solid var(--nh-brand-line); outline-offset: -2px; }
@@ -26,15 +26,15 @@
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink); -webkit-font-smoothing: antialiased;
 }
 .sb :is(a, button):focus-visible { outline: 2px solid var(--nh-brand-line); outline-offset: -2px; }
-.top { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 12px 10px 8px; }
+.top { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--nh-sp-6); padding: var(--nh-sp-12) var(--nh-sp-10) var(--nh-sp-8); }
 .iconBtn { width: 32px; height: 32px; flex: none; padding: 0; border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 160ms ease; }
 .iconBtn:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
-.pages { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 0 10px 8px; }
+.pages { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 0 var(--nh-sp-10) var(--nh-sp-8); }
 /* A page's own list (AreaSideSlot). Nothing in it, nothing drawn: no line under the pages. */
-.lower { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 10px; border-top: 1px solid var(--nh-line); padding: 8px 0 12px; scrollbar-width: none; }
+.lower { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 var(--nh-sp-10); border-top: 1px solid var(--nh-line); padding: var(--nh-sp-8) 0 var(--nh-sp-12); scrollbar-width: none; }
 .lower:empty { display: none; }
 .row {
-  display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; box-sizing: border-box; width: 100%;
+  display: flex; align-items: center; gap: var(--nh-sp-10); min-height: 34px; padding: 0 var(--nh-sp-8); box-sizing: border-box; width: 100%;
   border: none; border-radius: var(--radius-xs, 6px); background: transparent; color: var(--nh-ink); text-decoration: none; text-align: left;
   font-size: var(--nh-fs-sm); line-height: 18px; cursor: pointer; transition: background 160ms ease;
 }
@@ -46,7 +46,7 @@
 
 /* Between a phone and a laptop the gutter is narrower than the button: the page moves aside while the side view is hidden. */
 @media (min-width: 761px) and (max-width: 1023px) {
-  .root[data-sb="hidden"] .main { padding-left: 60px; }
+  .root[data-sb="hidden"] .main { padding-left: var(--nh-sp-64); }
 }
 /* Phones have no side view; the strip of tabs under the bar stays (SectionTabs). */
 /* An open idea in the Inbox fills the screen beside the side view (dashboard/team/Overview.module.css sizes it from the

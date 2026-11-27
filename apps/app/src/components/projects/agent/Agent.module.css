@@ -1,27 +1,27 @@
 /* The Agent tab of a project (plan AGT-U1). Tokens from src/styles/tokens.css; no colour carries meaning alone. */
-.tab { display: flex; flex-direction: column; gap: 4px; max-width: 760px; min-width: 0; }
-.block { padding: 16px 0 18px; border-top: 1px solid var(--nh-line); min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.block:first-child { border-top: 0; padding-top: 4px; }
+.tab { display: flex; flex-direction: column; gap: var(--nh-sp-4); max-width: 760px; min-width: 0; }
+.block { padding: var(--nh-sp-16) 0 var(--nh-sp-18); border-top: 1px solid var(--nh-line); min-width: 0; display: flex; flex-direction: column; gap: var(--nh-sp-10); }
+.block:first-child { border-top: 0; padding-top: var(--nh-sp-4); }
 .title { font-size: var(--nh-fs-lg); font-weight: 600; line-height: 22px; color: var(--nh-ink); letter-spacing: -0.01em; margin: 0; }
 .hint { font-size: var(--nh-fs-sm); color: var(--nh-mute); line-height: 1.45; margin: 0; }
-.row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.cards { display: flex; flex-direction: column; gap: 12px; list-style: none; margin: 0; padding: 0; }
-.card { border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; background: var(--nh-card, transparent); }
-.head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--nh-sp-8); }
+.cards { display: flex; flex-direction: column; gap: var(--nh-sp-12); list-style: none; margin: 0; padding: 0; }
+.card { border: 1px solid var(--nh-line); border-radius: var(--radius-sm, 8px); padding: var(--nh-sp-14) var(--nh-sp-16); display: flex; flex-direction: column; gap: var(--nh-sp-8); min-width: 0; background: var(--nh-card, transparent); }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nh-sp-8); }
 .kind { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
 .cardTitle { margin: 0; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); line-height: 1.35; overflow-wrap: anywhere; }
 .meta { margin: 0; font-size: var(--nh-fs-xs); color: var(--nh-mute); line-height: 1.45; }
 .why { margin: 0; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.5; overflow-wrap: anywhere; }
-.draft { margin: 0; padding: 10px 12px; border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.draft { margin: 0; padding: var(--nh-sp-10) var(--nh-sp-12); border-radius: var(--radius-sm, 8px); background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .draftLabel { font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
-.form { display: flex; flex-direction: column; gap: 8px; }
-.textarea { min-height: 110px; font-size: var(--nh-fs-sm); padding: 9px 11px; line-height: 1.5; }
-.input { height: 38px; font-size: var(--nh-fs-sm); padding: 0 11px; }
+.form { display: flex; flex-direction: column; gap: var(--nh-sp-8); }
+.textarea { min-height: 110px; font-size: var(--nh-fs-sm); padding: var(--nh-sp-10) var(--nh-sp-12); line-height: 1.5; }
+.input { height: 38px; font-size: var(--nh-fs-sm); padding: 0 var(--nh-sp-12); }
 .label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink-2); }
-.history { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
-.past { display: flex; flex-direction: column; gap: 2px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.45; }
+.history { display: flex; flex-direction: column; gap: var(--nh-sp-8); list-style: none; margin: 0; padding: 0; }
+.past { display: flex; flex-direction: column; gap: var(--nh-sp-2); font-size: var(--nh-fs-sm); color: var(--nh-ink-2); line-height: 1.45; }
 .pastMeta { font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .link { color: var(--nh-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 760px) {
-  .card { padding: 12px; }
+  .card { padding: var(--nh-sp-12); }
 }

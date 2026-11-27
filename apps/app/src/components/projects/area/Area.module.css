@@ -1,14 +1,14 @@
 /* Projects › Progress (the Steps card) and Projects › Collaboration: rows of projects inside a card, divided by
    hairlines. Tokens from src/styles/tokens.css. */
-.stack { display: flex; flex-direction: column; gap: 16px; }
+.stack { display: flex; flex-direction: column; gap: var(--nh-sp-16); }
 
 .rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(140px, 1fr); grid-template-areas: "main bar" "meta meta"; gap: 6px 24px; align-items: center; padding: 12px 0; border-top: 1px solid var(--nh-line-soft); }
-.row:first-child { border-top: 0; padding-top: 4px; }
+.row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(140px, 1fr); grid-template-areas: "main bar" "meta meta"; gap: var(--nh-sp-6) var(--nh-sp-24); align-items: center; padding: var(--nh-sp-12) 0; border-top: 1px solid var(--nh-line-soft); }
+.row:first-child { border-top: 0; padding-top: var(--nh-sp-4); }
 .row:not(:has(.bar)) { grid-template-areas: "main main" "meta meta"; }
-.rowMain { grid-area: main; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.rowMain { grid-area: main; display: flex; align-items: baseline; gap: var(--nh-sp-10); flex-wrap: wrap; min-width: 0; }
 .bar { grid-area: bar; min-width: 0; }
-.meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--nh-fs-sm); color: var(--nh-mute); line-height: 1.45; }
+.meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: var(--nh-sp-4) var(--nh-sp-14); font-size: var(--nh-fs-sm); color: var(--nh-mute); line-height: 1.45; }
 .meta [data-hot="true"] { color: var(--nh-danger); font-weight: 500; }
 .meta [data-done="true"] { color: var(--nh-ink-2); font-weight: 500; }
 
@@ -16,12 +16,12 @@
 .link:hover { text-decoration: underline; }
 .meta .link { font-weight: 500; }
 .what { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); min-width: 0; overflow-wrap: anywhere; }
-.status { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: var(--nh-fill); font-size: var(--nh-fs-xs); font-weight: 500; color: var(--nh-ink-2); white-space: nowrap; }
+.status { display: inline-flex; align-items: center; padding: var(--nh-sp-2) var(--nh-sp-10); border-radius: 999px; background: var(--nh-fill); font-size: var(--nh-fs-xs); font-weight: 500; color: var(--nh-ink-2); white-space: nowrap; }
 .status[data-tone="open"] { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }
-.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: var(--nh-sp-6); }
 
 /* A list with nothing in it: one quiet line where its card would be. */
-.quiet { margin: 0; padding: 0 4px; font-size: var(--nh-fs-sm); color: var(--nh-mute); line-height: 1.5; }
+.quiet { margin: 0; padding: 0 var(--nh-sp-4); font-size: var(--nh-fs-sm); color: var(--nh-mute); line-height: 1.5; }
 
 @media (max-width: 760px) {
   .row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "bar" "meta"; }

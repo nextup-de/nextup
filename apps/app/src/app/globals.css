@@ -46,8 +46,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* Buttons */
 .nh-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: 42px; padding: 0 18px; border-radius: var(--radius-sm, 999px); border: 1px solid transparent;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--nh-sp-8);
+  height: 42px; padding: 0 var(--nh-sp-18); border-radius: var(--radius-sm, 999px); border: 1px solid transparent;
   font-weight: 600; font-size: var(--nh-fs-md); cursor: pointer; white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
@@ -65,14 +65,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nh-btn-accent { background: var(--nh-brand); color: var(--nh-on-brand); }
 .nh-btn-accent:hover { background: var(--nh-brand-hover); color: var(--nh-on-brand); }
 .nh-btn-block { width: 100%; }
-.nh-btn-sm { height: 34px; padding: 0 14px; font-size: var(--nh-fs-sm); }
+.nh-btn-sm { height: 34px; padding: 0 var(--nh-sp-14); font-size: var(--nh-fs-sm); }
 
 /* Fields */
-.nh-field { display: grid; gap: 6px; }
+.nh-field { display: grid; gap: var(--nh-sp-6); }
 .nh-label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
 .nh-hint { font-size: var(--nh-fs-xs); color: var(--nh-mute); }
 .nh-input {
-  height: 44px; width: 100%; padding: 0 14px; border-radius: var(--nh-r);
+  height: 44px; width: 100%; padding: 0 var(--nh-sp-14); border-radius: var(--nh-r);
   border: 1px solid var(--nh-line); background: var(--nh-card); color: var(--nh-ink);
   outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -81,18 +81,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
 /* Set by the form's own validation, never by the browser's - forms that use it carry noValidate. */
 .nh-input[aria-invalid="true"] { border-color: var(--nh-danger); }
 .nh-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgb(179 38 30 / 0.14); }
-.nh-error { display: flex; gap: 6px; align-items: flex-start; font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--nh-danger); }
-.nh-error svg { flex: none; width: 14px; height: 14px; margin-top: 2px; }
-.nh-textarea { height: auto; min-height: 120px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
-.nh-select { appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235b5b5b' stroke-width='1.6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+.nh-error { display: flex; gap: var(--nh-sp-6); align-items: flex-start; font-size: var(--nh-fs-sm); line-height: 1.4; color: var(--nh-danger); }
+.nh-error svg { flex: none; width: 14px; height: 14px; margin-top: var(--nh-sp-2); }
+.nh-textarea { height: auto; min-height: 120px; padding: var(--nh-sp-12) var(--nh-sp-14); resize: vertical; line-height: 1.5; }
+.nh-select { appearance: none; padding-right: var(--nh-sp-40); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235b5b5b' stroke-width='1.6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
 .nh-input-wrap { position: relative; }
-.nh-input-wrap .nh-input { padding-right: 44px; }
+.nh-input-wrap .nh-input { padding-right: var(--nh-sp-48); }
 .nh-input-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--nh-mute); display: flex; }
 
-.nh-check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
+.nh-check { display: flex; align-items: center; gap: var(--nh-sp-8); font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 .nh-check input { width: 16px; height: 16px; accent-color: var(--nh-brand); margin: 0; }
 
-.nh-divider { display: flex; align-items: center; gap: 12px; color: var(--nh-mute-2); font-size: var(--nh-fs-xs); }
+.nh-divider { display: flex; align-items: center; gap: var(--nh-sp-12); color: var(--nh-mute-2); font-size: var(--nh-fs-xs); }
 .nh-divider::before, .nh-divider::after { content: ""; flex: 1; height: 1px; background: var(--nh-line); }
 
 .nh-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

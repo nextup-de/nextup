@@ -1,9 +1,9 @@
 /* Shared by the console's People, Company data, Decisions, Support and Assistant pages (plan UIP, UIP-C1).
    It lives in a folder UIP-C1 owns; the components in components/admin import it from here.
    Values are those of Connectors.module.css and the elements, so the pages sit with the Connectors page. */
-.page { display: flex; flex-direction: column; gap: 16px; max-width: 860px; font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink); }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-16); max-width: 860px; font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink); }
 .page[data-wide] { max-width: none; }
-.stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: var(--nh-sp-14); min-width: 0; }
 .note { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
 .note[data-tone="error"] { color: var(--nh-danger); }
 .note[data-tone="ok"] { color: #1e6b43; }
@@ -12,31 +12,31 @@
 .strong { font-weight: 600; color: var(--nh-ink); }
 .nowrap { white-space: nowrap; }
 .mono { font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
-.pre { margin: 0; padding: 14px 16px; max-height: 480px; overflow: auto; border-radius: 8px; background: var(--nh-surface); white-space: pre-wrap; font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-sm); line-height: 1.5; }
+.pre { margin: 0; padding: var(--nh-sp-14) var(--nh-sp-16); max-height: 480px; overflow: auto; border-radius: 8px; background: var(--nh-surface); white-space: pre-wrap; font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-sm); line-height: 1.5; }
 
 /* A person or a department with the face / chip of the elements beside it. */
-.who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.who { display: flex; align-items: center; gap: var(--nh-sp-10); min-width: 0; }
 .whoText { display: flex; flex-direction: column; min-width: 0; }
-.whoNames { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.whoName { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.indent { padding-left: calc(var(--depth, 0) * 18px); }
+.whoNames { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nh-sp-6) var(--nh-sp-10); }
+.whoName { display: inline-flex; align-items: center; gap: var(--nh-sp-6); min-width: 0; }
+.indent { padding-left: calc(var(--depth, 0) * var(--nh-sp-18)); }
 
 /* Counts: a soft tile each, never a bordered box. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-.tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 8px; background: var(--nh-surface); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--nh-sp-10); }
+.tile { display: flex; flex-direction: column; gap: var(--nh-sp-2); padding: var(--nh-sp-12) var(--nh-sp-14); border-radius: 8px; background: var(--nh-surface); }
 .tileValue { font-size: var(--nh-fs-xl); line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
 .tileLabel { font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-mute); }
 
 /* Label and value pairs. */
-.facts { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 14px 16px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; }
-.fact { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 12px; }
+.facts { display: flex; flex-direction: column; gap: var(--nh-sp-10); margin: 0; padding: var(--nh-sp-14) var(--nh-sp-16); border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; }
+.fact { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--nh-sp-12); }
 .fact dt { color: var(--nh-mute-2); }
 .fact dd { margin: 0; color: var(--nh-ink); overflow-wrap: anywhere; }
 
 /* One source of company data. */
-.sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
-.source { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 14px 16px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; }
-.sourceHead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 600; color: var(--nh-ink); }
+.sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--nh-sp-10); margin: 0; padding: 0; list-style: none; }
+.source { display: flex; flex-direction: column; gap: var(--nh-sp-4); min-width: 0; padding: var(--nh-sp-14) var(--nh-sp-16); border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-sm); line-height: 18px; }
+.sourceHead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nh-sp-4) var(--nh-sp-8); font-weight: 600; color: var(--nh-ink); }
 .dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: var(--nh-ghost); }
 .source[data-tone="ok"] .dot { background: #2f8f5b; }
 .source[data-tone="warn"] .dot { background: #d97706; }
@@ -45,23 +45,23 @@
 .sourceNote { color: #8a4600; }
 
 /* The router's verdict, in a soft tint with its own darker ink. */
-.verdict { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; white-space: nowrap; }
+.verdict { display: inline-flex; align-items: center; padding: var(--nh-sp-2) var(--nh-sp-8); border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 18px; font-weight: 500; white-space: nowrap; }
 .verdict[data-v="agreed"] { background: #e8f6ee; color: #1e6b43; }
 .verdict[data-v="overridden"], .verdict[data-v="handed elsewhere"] { background: #fff0f0; color: #c00012; }
 .verdict[data-v="no route"] { background: #fff4e5; color: #8a4600; }
 
 /* Forms. */
-.form { display: flex; flex-direction: column; gap: 16px; }
-.form :global(.nh-input) { box-sizing: border-box; width: 100%; padding-inline: 12px; border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.form { display: flex; flex-direction: column; gap: var(--nh-sp-16); }
+.form :global(.nh-input) { box-sizing: border-box; width: 100%; padding-inline: var(--nh-sp-12); border: 1px solid var(--nh-line); border-radius: 6px; background: #fff; font: inherit; font-size: var(--nh-fs-md); color: var(--nh-ink); }
 .form :global(.nh-input):not(textarea) { height: 34px; }
 .form :global(.nh-input):focus { outline: none; border-color: var(--nh-brand); box-shadow: 0 0 0 3px var(--nh-brand-tint); }
 .form :global(.nh-label) { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
 .form :global(.nh-hint) { font-size: var(--nh-fs-xs); line-height: 16px; color: var(--nh-mute); }
-.form textarea { padding-block: 8px; }
-.inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.form textarea { padding-block: var(--nh-sp-8); }
+.inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nh-sp-8); margin: 0; }
 .inline :global(.nh-input) { flex: 1; min-width: 200px; max-width: none; }
-.foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-.btn, .primary { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding-inline: 14px; border: 0; border-radius: 8px; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--nh-sp-8); }
+.btn, .primary { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding-inline: var(--nh-sp-14); border: 0; border-radius: 8px; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap; }
 .btn { background: var(--nh-fill); color: var(--nh-ink); text-decoration: none; }
 .btn:hover:not(:disabled) { background: var(--nh-line); }
 .primary { background: var(--nh-brand); color: var(--nh-on-brand); }
@@ -69,19 +69,19 @@
 .btn:disabled, .primary:disabled { opacity: 0.45; cursor: default; }
 .btn:focus-visible, .primary:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .label { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-ink); }
-.check { display: inline-flex; align-items: center; gap: 8px; font-size: var(--nh-fs-sm); color: var(--nh-ink); cursor: pointer; }
+.check { display: inline-flex; align-items: center; gap: var(--nh-sp-8); font-size: var(--nh-fs-sm); color: var(--nh-ink); cursor: pointer; }
 .check input { margin: 0; accent-color: var(--nh-brand); }
 
 /* The login code, shown once. */
-.codeBox { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--nh-line); border-radius: 8px; background: var(--nh-surface); }
+.codeBox { display: flex; flex-direction: column; gap: var(--nh-sp-8); padding: var(--nh-sp-14) var(--nh-sp-16); border: 1px solid var(--nh-line); border-radius: 8px; background: var(--nh-surface); }
 .code { font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-xl); line-height: 28px; overflow-wrap: anywhere; user-select: all; color: var(--nh-ink); }
 
-.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--nh-sp-8); }
 .rowActions form { display: contents; }
-.list { margin: 0; padding-left: 18px; font-size: var(--nh-fs-md); line-height: 22px; }
+.list { margin: 0; padding-left: var(--nh-sp-18); font-size: var(--nh-fs-md); line-height: 22px; }
 
 @media (max-width: 760px) {
-  .fact { grid-template-columns: 1fr; gap: 2px; }
+  .fact { grid-template-columns: 1fr; gap: var(--nh-sp-2); }
   .btn, .primary { height: 44px; }
   .form :global(.nh-input):not(textarea) { height: 44px; font-size: var(--nh-fs-input); }
   .rowActions { justify-content: flex-start; }

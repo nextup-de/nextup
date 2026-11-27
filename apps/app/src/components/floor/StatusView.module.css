@@ -1,7 +1,7 @@
-.wrap { display: flex; flex-direction: column; gap: 12px; }
-.wrap :global([data-testid="floor-keypad-boxes"]) { gap: 4px; }
+.wrap { display: flex; flex-direction: column; gap: var(--nh-sp-12); }
+.wrap :global([data-testid="floor-keypad-boxes"]) { gap: var(--nh-sp-4); }
 .wrap :global([data-testid="floor-keypad-boxes"]) > span { width: 36px; }
 .wrap :global([data-testid="floor-keypad-boxes"]) > span:nth-child(3) { margin-right: 0; }
-.wrap :global([data-testid="floor-keypad-boxes"]) > span:nth-child(4) { margin-right: 12px; }
+.wrap :global([data-testid="floor-keypad-boxes"]) > span:nth-child(4) { margin-right: var(--nh-sp-12); }
 .steps { display: flex; justify-content: space-between; font-size: var(--nh-fs-sm); color: var(--nh-ink-2); }
 .answer { font-weight: 600; font-size: var(--nh-fs-xl); margin: 0; }

@@ -1,6 +1,6 @@
 # Design rules
 
-> **Updated 2026-11-16.** The fixed rules every screen follows. Kevin decides them; a PR that breaks one changes, not
+> **Updated 2026-11-27.** The fixed rules every screen follows. Kevin decides them; a PR that breaks one changes, not
 > the rule. Each rule names where it is enforced. "Not tested" means no check guards it yet, so reviewers must.
 
 NextUp is a quiet product: one question per screen, nothing drawn that has nothing to say. When a design choice is
@@ -73,7 +73,10 @@ still calls black the action colour (Visual Foundations), this file and its own 
 |---|---|
 | No black fills, anywhere. Actions and selected states are blue (`--nh-brand`); the logo blue is never a button fill. | `design-guard.spec.ts` (`no black fill…`); `colors.test.ts`; Stylelint |
 | No blue outside `tokens.css`: changing `--nh-brand` changes it everywhere. The colour allowlist can only shrink. | `design-guard.spec.ts`; `colors.test.ts` |
-| Font sizes only from the scale 12/13/15/17/20/24/28/34 (16 for inputs); nothing under 12px; no raw px, rem or calc font sizes. | `fluid.test.ts`; Stylelint |
+| Font sizes only from the scale 12/13/14/15/17/20/24/28/34 (16 for inputs); nothing under 12px; no raw px, rem or calc font sizes. One font: Inter (IBM Plex Mono for codes). 14 added 27 Nov 2026 ([DESIGN_SCALE.md](DESIGN_SCALE.md)). | `fluid.test.ts`; Stylelint |
+| padding, margin and gap only from the spacing scale `--nh-sp-2 … --nh-sp-128` (0 and 1px allowed), in CSS and inline styles. Decided 27 Nov 2026. | Stylelint `nextup/spacing-scale`; `tests/unit/design/spacing.test.ts` |
+| Paper and the app share one set of tokens: tokens.css is the source, Paper's tokens are copied from it. | `npm run paper:sync-tokens -- --dry` (by hand; Paper is not in CI) |
+| Every Paper frame is checked before it is built (`npm run paper:check -- <nodeId>`); the build uses the values the check names, and the PR shows its summary plus the built page next to the frame. | not tested: reviewers ([DESIGN_SCALE.md](DESIGN_SCALE.md) "From Paper to code") |
 | Motion respects reduced motion. Focused fields get the blue focus ring (`--nh-brand-focus`). | `tests/unit/design/motion-focus.test.ts` (eleven style files still animate without a reduced-motion rule: listed there) |
 
 ## 8. Ideas and projects are separate

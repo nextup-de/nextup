@@ -174,7 +174,7 @@ export function DashboardBoard({ data: fromServer, slug, kind: servedKind, unitI
               <div className={s.menu} role="menu">
                 <button type="button" role="menuitemradio" aria-checked={unitId === null} className={s.menuItem} onClick={() => go(kind, null)}>{t("metrics.dashUnitAll")}</button>
                 {data.units.map((u) => (
-                  <button key={u.id} type="button" role="menuitemradio" aria-checked={unitId === u.id} className={s.menuItem} style={{ paddingLeft: 12 + u.depth * 14 }} onClick={() => go(kind, u.id)}>{u.label}</button>
+                  <button key={u.id} type="button" role="menuitemradio" aria-checked={unitId === u.id} className={s.menuItem} style={{ paddingLeft: `calc(var(--nh-sp-12) + ${u.depth} * var(--nh-sp-14))` }} onClick={() => go(kind, u.id)}>{u.label}</button>
                 ))}
               </div>
             )}

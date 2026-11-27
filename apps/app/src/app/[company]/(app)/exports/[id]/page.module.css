@@ -1,12 +1,12 @@
 /* The download page: a header and one section card holding what the file is, its size, until when, and the button. */
-.page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 40rem; margin: 0 auto; padding: 24px 0; }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-16); width: 100%; max-width: 40rem; margin: 0 auto; padding: var(--nh-sp-24) 0; }
 .text { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink); }
 .hint { margin: 0; font-size: var(--nh-fs-sm); line-height: 18px; color: #6e6e73; }
-.download { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; height: 36px; padding-inline: 14px; border-radius: 8px; background: var(--nh-brand); color: var(--nh-on-brand); font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; }
+.download { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; height: 36px; padding-inline: var(--nh-sp-14); border-radius: 8px; background: var(--nh-brand); color: var(--nh-on-brand); font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; }
 .download:hover { background: var(--nh-brand-hover); }
 .download:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 
 @media (width < 760px) {
-  .page { padding: 16px 0; }
+  .page { padding: var(--nh-sp-16) 0; }
   .download { align-self: stretch; height: 44px; }
 }

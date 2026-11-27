@@ -1,8 +1,8 @@
 /* What a person sees when a page breaks: src/app/error.tsx, [company]/(app)/error.tsx, global-error.tsx. */
 .screen { min-height: var(--nh-screen-h); display: grid; place-items: center; padding: var(--nh-page-x); background: var(--nh-surface); }
-.inShell { min-height: 0; padding: 48px var(--nh-page-x); background: none; place-items: start; }
-.body { display: grid; gap: 14px; justify-items: start; max-width: 480px; }
+.inShell { min-height: 0; padding: var(--nh-sp-48) var(--nh-page-x); background: none; place-items: start; }
+.body { display: grid; gap: var(--nh-sp-14); justify-items: start; max-width: 480px; }
 .title { font-size: var(--nh-fs-3xl); font-weight: 800; }
 .text { color: var(--nh-ink-2); }
 .ref { font-family: var(--font-mono, monospace); font-size: var(--nh-fs-xs); color: var(--nh-ink-2); }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--nh-sp-10); margin-top: var(--nh-sp-4); }
