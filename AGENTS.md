@@ -1,3 +1,14 @@
+# Rules for coding agents (Codex, Claude, any other)
+
+Read `CLAUDE.md` in this folder and follow it: its rules apply to every agent, not only Claude. The two most
+often missed:
+
+- **Design:** `docs/DESIGN_RULES.md` and `docs/DESIGN_SCALE.md`. Only tokens from
+  `apps/app/src/styles/tokens.css`: sizes, line heights, spacing (`var(--nh-sp-N)`), colours; font Inter.
+- **Building from a Paper frame:** run `npm run paper:check -w @nextup/app -- <frame id>` first, build with the
+  values it names, never write to Paper, and fill the PR's "Paper" section (check summary + screenshot next to
+  the frame, or `No Paper frame:` and why). CI fails a CSS/TSX PR with that section empty.
+
 <!-- BEGIN:turborepo-agent-rules -->
 
 # This is NOT the Turborepo you know

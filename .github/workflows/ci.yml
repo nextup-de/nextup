@@ -54,6 +54,9 @@ jobs:
   guard:
     name: guard · secrets & forbidden files
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # the Paper section step reads the PR's current description
     outputs:
       brain: ${{ steps.changed.outputs.brain }}
     steps:
@@ -110,6 +113,26 @@ jobs:
             done
           fi
           exit $fail
+
+      # One scale for Paper and code (docs/DESIGN_SCALE.md, Kevin 27 Nov 2026): a PR that changes the app's CSS or
+      # TSX says in its "Paper" section either the Paper check's summary for the frame it built, or "No Paper
+      # frame:" and why. The description is read live, so after filling it in a re-run of this job is enough.
+      - name: Paper section in UI PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if ! grep -Eq '^apps/app/src/.*\.(css|tsx)$' changed.txt; then echo "no app CSS or TSX changed: nothing to check"; exit 0; fi
+          gh api "repos/${{ github.repository }}/pulls/$PR" --jq '.body // ""' | tr -d '\r' > body.md
+          # the "## Paper" section, template comments removed
+          perl -0pe 's/<!--.*?-->//gs' body.md | awk '/^## /{f=($0 ~ /^## Paper/); next} f' > paper.md
+          if grep -Eq 'Paper check [A-Za-z0-9]+-[0-9]+|No Paper frame' paper.md; then
+            echo "Paper section:"; cat paper.md; exit 0
+          fi
+          echo "::error::This PR changes the app's CSS or TSX. Fill the PR's \"## Paper\" section: the first line of 'npm run paper:check -w @nextup/app -- <frame id>' (\"Paper check <id>: ...\") with its \"Off the scale\" block and a screenshot next to the frame, or \"No Paper frame:\" and why. Then re-run this job (docs/DESIGN_SCALE.md)."
+          exit 1
 
       - name: Block oversized files (> 1 MB)
         shell: bash

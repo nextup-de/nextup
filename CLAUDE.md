@@ -44,6 +44,15 @@ src/lib/            db client, small utils.   src/server/actions/  server action
 - **Styling:** tokens in `src/styles/tokens.css`, shared primitives (`nh-*`) in
   `src/app/globals.css`, page/component styles in a sibling `*.module.css`.
   No Tailwind, no styled-components, no inline style objects beyond a one-off.
+- **One scale for Paper and code** (`docs/DESIGN_SCALE.md`): font sizes `var(--nh-fs-*)`, line heights
+  `var(--nh-lh-*)`, padding/margin/gap `var(--nh-sp-N)`, font Inter. `npm run lint` rejects raw px and names
+  the step; `npm run design:spacing-fix -w @nextup/app` writes it in.
+- **Building from a Paper frame:** before you build, run `npm run paper:check -w @nextup/app -- <frame id>`
+  (Paper app open). Build with the tokens it names; where it says a value is off the scale, use exactly the
+  value it gives, never your own rounding. Never write to Paper (`paper:fix` and `paper:sync-tokens` are for
+  design). Fill the PR's "Paper" section: the check's first line and its "Off the scale" block, plus a
+  screenshot of the built page next to the frame. Not from Paper: write `No Paper frame:` and why. CI (guard)
+  fails a PR that changes CSS or TSX when that section is empty.
 - **Tests:** `tests/unit/*.test.ts` (vitest) for anything in `features/`.
   If your change breaks a test, the change is wrong, not the test — unless
   you changed behaviour deliberately; then update the test in the same PR and
