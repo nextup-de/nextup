@@ -35,8 +35,8 @@
     "@xmldom/xmldom": "0.9.12",
     "modern-screenshot": "^4.7.0",
     "next": "16.4.6",
-    "nodemailer": "^10.5.0",
-    "posthog-js": "^1.448.0",
+    "nodemailer": "^10.6.1",
+    "posthog-js": "^1.453.0",
     "qrcode": "^1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -44,7 +44,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^22.20.5",
     "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",
@@ -57,7 +57,7 @@
     "stylelint-declaration-strict-value": "^1.13.0",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^5.1.0",
+    "vitest": "^5.1.1",
     "xml-crypto": "6.4.0"
   }
 }
