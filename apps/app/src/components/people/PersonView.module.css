@@ -1,10 +1,10 @@
 /* The person page in the house look: one section card with the person's face, name, role and unit. */
-.page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 720px; margin: 0 auto; min-width: 0; }
-.hero { display: flex; align-items: center; gap: 18px; }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-16); width: 100%; max-width: 720px; margin: 0 auto; min-width: 0; }
+.hero { display: flex; align-items: center; gap: var(--nh-sp-18); }
 .hero > :first-child { width: 64px; height: 64px; font-size: var(--nh-fs-xl); }
-.text { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.text { display: flex; flex-direction: column; gap: var(--nh-sp-6); min-width: 0; flex: 1; }
 .name { margin: 0; font-size: var(--nh-fs-3xl); line-height: 34px; font-weight: 600; letter-spacing: -0.02em; color: var(--nh-ink); overflow-wrap: anywhere; }
-.text p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: var(--nh-fs-md); color: var(--nh-ink); }
-.label { margin-right: 6px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.text p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--nh-sp-4); font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.label { margin-right: var(--nh-sp-6); font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .sep { color: var(--nh-ghost); }
 @media (max-width: 760px) { .hero { flex-direction: column; align-items: flex-start; } }

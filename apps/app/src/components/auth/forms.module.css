@@ -1,31 +1,31 @@
 /* Pieces shared by the auth forms. */
-.form { display: grid; gap: 16px; margin-top: 6px; }
-.form :global(.nh-btn-primary) { margin-top: 4px; }
+.form { display: grid; gap: var(--nh-sp-16); margin-top: var(--nh-sp-6); }
+.form :global(.nh-btn-primary) { margin-top: var(--nh-sp-4); }
 
 .slug { display: flex; align-items: stretch; }
 .slug :global(.nh-input) { border-radius: var(--nh-r) 0 0 var(--nh-r); }
-.slugSuffix { display: flex; align-items: center; padding: 0 12px; font-size: var(--nh-fs-xs); color: var(--nh-mute); background: var(--nh-surface); border: 1px solid var(--nh-line); border-left: 0; border-radius: 0 var(--nh-r) var(--nh-r) 0; white-space: nowrap; }
+.slugSuffix { display: flex; align-items: center; padding: 0 var(--nh-sp-12); font-size: var(--nh-fs-xs); color: var(--nh-mute); background: var(--nh-surface); border: 1px solid var(--nh-line); border-left: 0; border-radius: 0 var(--nh-r) var(--nh-r) 0; white-space: nowrap; }
 
-.company { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--nh-line-soft); }
+.company { display: flex; align-items: center; gap: var(--nh-sp-12); margin-bottom: var(--nh-sp-14); padding-bottom: var(--nh-sp-16); border-bottom: 1px solid var(--nh-line-soft); }
 .company strong { display: block; font-size: var(--nh-fs-md); }
 .mark { width: 40px; height: 40px; border-radius: var(--radius-xs, 10px); display: grid; place-items: center; background: var(--nh-brand-tint); color: var(--nh-brand-ink); font-weight: 800; font-size: var(--nh-fs-xl); flex: none; }
 .switch { margin-left: auto; font-size: var(--nh-fs-xs); color: var(--nh-mute); white-space: nowrap; }
 .switch:hover { color: var(--nh-ink); }
 
 /* The line under "Continue with Microsoft". */
-.under { margin: -8px 0 0; text-align: center; }
+.under { margin: calc(-1 * var(--nh-sp-8)) 0 0; text-align: center; }
 
 /* Demo boxes only: the "open the demo" button under the login. Dashed and labelled, so nobody mistakes
    it for the way real people get in. */
 .demo {
-  margin-top: 22px;
-  padding: 14px;
+  margin-top: var(--nh-sp-24);
+  padding: var(--nh-sp-14);
   border: 1px dashed var(--nh-line);
   border-radius: var(--nh-r);
   display: grid;
-  gap: 10px;
+  gap: var(--nh-sp-10);
 }
-.demoHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.demoHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--nh-sp-8); flex-wrap: wrap; }
 .demoHead strong { font-size: var(--nh-fs-sm); }
 .demoTag {
   font-size: var(--nh-fs-xs);
@@ -34,17 +34,17 @@
   color: var(--nh-mute);
   border: 1px solid var(--nh-line);
   border-radius: var(--radius-sm, 999px);
-  padding: 2px 8px;
+  padding: var(--nh-sp-2) var(--nh-sp-8);
 }
 
 /* The admin login: the code field with the optional "Demo code" fill button inside it, and its error line. */
 .inputWrap { position: relative; display: flex; align-items: center; }
-.inputWrap .inputWithFill { padding-right: 112px; }
+.inputWrap .inputWithFill { padding-right: var(--nh-sp-128); }
 .fill {
   position: absolute;
   right: 6px;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--nh-sp-12);
   border: 1px solid var(--nh-line);
   border-radius: var(--radius-sm, 999px);
   background: var(--nh-surface);
@@ -58,8 +58,8 @@
 .error { color: var(--nh-danger); font-size: var(--nh-fs-md); margin: 0; }
 
 /* The enrol step: the key in a box, and the long otpauth link wraps instead of running off a phone. */
-.enrolKey { display: grid; gap: 6px; }
+.enrolKey { display: grid; gap: var(--nh-sp-6); }
 .enrolLink { overflow-wrap: anywhere; }
 
 /* The company is closed until it opens (features/pilot/open.ts). */
-.notOpen { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--nh-brand-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }
+.notOpen { margin: 0; padding: var(--nh-sp-10) var(--nh-sp-12); border-radius: 8px; background: var(--nh-brand-tint); font-size: var(--nh-fs-sm); line-height: 18px; color: var(--nh-ink); }

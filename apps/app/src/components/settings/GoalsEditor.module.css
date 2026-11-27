@@ -1,17 +1,17 @@
 /* The goals card of /settings/rules, in the settings card look (settings.module.css). */
 .wrap {
-  display: grid; gap: 12px; padding: 24px; border-radius: 12px; background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / 6%);
+  display: grid; gap: var(--nh-sp-12); padding: var(--nh-sp-24); border-radius: 12px; background: #fff; box-shadow: 0 6px 20px rgb(40 60 100 / 6%);
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--nh-ink);
 }
-.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: var(--nh-sp-12); }
 .title { margin: 0; font-size: var(--nh-fs-lg); line-height: 22px; font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); }
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.row { display: grid; gap: 4px; padding: 10px 14px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); }
-.rowHead { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-.scope { margin: 8px 0 6px; font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; color: var(--nh-mute); }
-.drawer { position: fixed; inset: 0 0 0 auto; width: min(420px, 100%); z-index: 50; overflow-y: auto; display: grid; align-content: start; gap: 12px; padding: 24px; background: #fff; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--nh-sp-8); }
+.row { display: grid; gap: var(--nh-sp-4); padding: var(--nh-sp-10) var(--nh-sp-14); border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); }
+.rowHead { display: flex; justify-content: space-between; gap: var(--nh-sp-8); align-items: center; flex-wrap: wrap; }
+.buttons { display: flex; gap: var(--nh-sp-8); flex-wrap: wrap; }
+.scope { margin: var(--nh-sp-8) 0 var(--nh-sp-6); font-size: var(--nh-fs-xs); line-height: 16px; font-weight: 600; color: var(--nh-mute); }
+.drawer { position: fixed; inset: 0 0 0 auto; width: min(420px, 100%); z-index: 50; overflow-y: auto; display: grid; align-content: start; gap: var(--nh-sp-12); padding: var(--nh-sp-24); background: #fff; box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12); }
 
 @media (max-width: 760px) {
-  .wrap { padding: 18px; }
+  .wrap { padding: var(--nh-sp-18); }
 }

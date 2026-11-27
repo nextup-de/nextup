@@ -1,6 +1,6 @@
 /* Teams: the switch form, the buttons under a card's text and the delivery lines. */
-.form { display: flex; flex-direction: column; gap: 18px; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.form { display: flex; flex-direction: column; gap: var(--nh-sp-18); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--nh-sp-8); }
 .line { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; overflow-wrap: anywhere; }
 @media (max-width: 760px) {
   .actions > * { flex: 1; height: 44px; }

@@ -9,10 +9,10 @@
   color: var(--nh-ink);
   border: 1px solid var(--nh-line);
   border-radius: var(--radius-sm, 0);
-  padding: 12px 14px;
+  padding: var(--nh-sp-12) var(--nh-sp-14);
   box-shadow: 0 14px 40px rgb(0 0 0 / 14%);
   display: grid;
-  gap: 8px;
+  gap: var(--nh-sp-8);
 }
 .label {
   font-family: var(--nh-mono);
@@ -22,11 +22,11 @@
   color: var(--nh-mute);
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--nh-sp-8);
 }
 .say { font-size: var(--nh-fs-sm); line-height: 1.45; margin: 0; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.dots { display: flex; gap: 4px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-sp-10); }
+.dots { display: flex; gap: var(--nh-sp-4); }
 .dot { width: 6px; height: 6px; background: var(--nh-line-2); }
 .dot[data-done="true"] { background: var(--nh-brand-line); }
 .dot[data-now="true"] { background: var(--nh-brand); }

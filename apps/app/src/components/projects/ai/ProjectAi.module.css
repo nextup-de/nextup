@@ -40,7 +40,7 @@
   font-family: var(--font-inter, "Inter"), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 .head {
-  flex: none; display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 12px 12px 16px;
+  flex: none; display: flex; align-items: center; gap: var(--nh-sp-12); min-height: 72px; padding: var(--nh-sp-12) var(--nh-sp-12) var(--nh-sp-12) var(--nh-sp-16);
   border-bottom: 1px solid var(--nh-line-soft);
 }
 .logo { flex: none; width: 40px; height: 40px; background: url("/brand/nextup-star-blue.png") center / contain no-repeat; }
@@ -51,24 +51,24 @@
 }
 .close:hover { background: var(--nh-fill-2); color: var(--nh-ink); }
 
-.body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 20px; padding: 24px 20px; }
-.intro { display: flex; flex-direction: column; gap: 6px; }
+.body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--nh-sp-20); padding: var(--nh-sp-24) var(--nh-sp-20); }
+.intro { display: flex; flex-direction: column; gap: var(--nh-sp-6); }
 .heading { margin: 0; color: var(--nh-ink); font-size: var(--nh-fs-xl); font-weight: 600; line-height: 26px; letter-spacing: -0.01em; }
 .lead { margin: 0; color: var(--nh-ink-2); font-size: var(--nh-fs-sm); line-height: 20px; }
-.acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--nh-sp-8); }
 .act {
   cursor: default;
-  width: 100%; padding: 10px 12px; border: 1px solid var(--nh-line); border-radius: 8px; background: #fff; text-align: left;
+  width: 100%; padding: var(--nh-sp-10) var(--nh-sp-12); border: 1px solid var(--nh-line); border-radius: 8px; background: #fff; text-align: left;
   color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); line-height: 18px;
   transition: border-color 120ms ease, background 120ms ease;
 }
 .act:hover { border-color: var(--nh-brand-line); background: var(--nh-brand-tint); }
 
 
-.foot { flex: none; padding: 12px 14px 14px; }
+.foot { flex: none; padding: var(--nh-sp-12) var(--nh-sp-14) var(--nh-sp-14); }
 .composer {
   position: relative;
-  display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 12px 16px;
+  display: flex; flex-direction: column; gap: var(--nh-sp-12); padding: var(--nh-sp-14) var(--nh-sp-14) var(--nh-sp-12) var(--nh-sp-16);
   background: #fff; border: 1.5px solid #f0b429; border-radius: 12px; box-shadow: 0 8px 24px #283c6414;
 }
 .input {
@@ -76,9 +76,9 @@
   color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-md); line-height: 22px;
 }
 .input::placeholder { color: var(--nh-mute-2); }
-.tools { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tools { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-sp-6); }
 .attach {
-  display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--nh-line); border-radius: 8px;
+  display: flex; align-items: center; gap: var(--nh-sp-6); height: 32px; padding: 0 var(--nh-sp-12); border: 1px solid var(--nh-line); border-radius: 8px;
   background: #fff; color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-xs); font-weight: 500; line-height: 16px; cursor: pointer;
 }
 .attach:disabled { cursor: default; }

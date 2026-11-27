@@ -8,7 +8,7 @@
   color: var(--nh-ink-2);
   background: var(--nh-fill);
   border-radius: var(--radius-xs, 6px);
-  padding: 1px 7px;
+  padding: 1px var(--nh-sp-8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

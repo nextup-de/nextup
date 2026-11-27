@@ -1,10 +1,10 @@
 .text { margin: 0; font-size: var(--nh-fs-md); line-height: 22px; color: var(--nh-ink); }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--nh-sp-8); }
 .actions:empty { display: none; }
 .ok { margin: 0; color: var(--nh-ok); font-size: var(--nh-fs-sm); }
 .error { margin: 0; color: var(--nh-danger); font-size: var(--nh-fs-sm); }
 .note { margin: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.primary, .soft { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding-inline: 14px; border: 0; border-radius: 8px; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.primary, .soft { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding-inline: var(--nh-sp-14); border: 0; border-radius: 8px; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .primary { background: var(--nh-brand); color: var(--nh-on-brand); }
 .primary:hover { background: var(--nh-brand-hover); }
 .soft { background: var(--nh-brand-tint); color: var(--nh-brand-ink); }

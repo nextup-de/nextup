@@ -1,24 +1,24 @@
 /* The filter row of Board and List (plan FIL-H2, Paper "Jira pages · new header"): search, people, toggles and, on the board, the grouping switch. It sits in the page header when its tool is the page's first. */
-.row, .faces, .toggles { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.row, .faces, .toggles { display: flex; align-items: center; gap: var(--nh-sp-10); flex-wrap: wrap; min-width: 0; }
 .row { width: 100%; }
-.search { display: flex; align-items: center; gap: 8px; flex: 0 1 220px; width: 220px; max-width: 100%; height: 32px; padding: 0 10px; border-radius: var(--radius-sm); background: var(--nh-fill); color: var(--nh-mute-2); }
+.search { display: flex; align-items: center; gap: var(--nh-sp-8); flex: 0 1 220px; width: 220px; max-width: 100%; height: 32px; padding: 0 var(--nh-sp-10); border-radius: var(--radius-sm); background: var(--nh-fill); color: var(--nh-mute-2); }
 .search:focus-within { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 .search input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); line-height: 16px; outline: none; }
 .search input::placeholder { color: var(--nh-mute-2); }
 .search input::-webkit-search-cancel-button { display: none; }
-.faces { gap: 0; padding-left: 4px; }
+.faces { gap: 0; padding-left: var(--nh-sp-4); }
 .face { display: flex; padding: 0; border: 2px solid var(--nh-card); border-radius: var(--radius-full); background: var(--nh-card); cursor: pointer; }
-.face + .face { margin-left: -6px; }
+.face + .face { margin-left: calc(-1 * var(--nh-sp-6)); }
 .face > [data-person-face] { width: 26px; height: 26px; font-size: var(--nh-fs-xs); }
 .face[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--nh-brand); }
-.control { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--nh-line); border-radius: var(--radius-sm); background: var(--nh-card); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; line-height: 16px; cursor: pointer; }
+.control { display: inline-flex; align-items: center; gap: var(--nh-sp-6); height: 32px; padding: 0 var(--nh-sp-12); border: 1px solid var(--nh-line); border-radius: var(--radius-sm); background: var(--nh-card); color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; line-height: 16px; cursor: pointer; }
 .control:hover { background: var(--nh-surface); }
 .control[aria-pressed="true"] { border-color: var(--nh-brand); background: var(--nh-brand); color: var(--nh-on-brand); font-weight: 600; }
 .count { color: var(--nh-mute); font-weight: 500; }
 .control[aria-pressed="true"] .count { color: var(--nh-brand-line); }
 .spacer { flex: 1 1 0; }
-.segmented { display: flex; gap: 2px; height: 32px; padding: 2px; border-radius: var(--radius-sm); background: var(--nh-fill); }
-.segment { height: 28px; padding: 0 12px; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; line-height: 16px; cursor: pointer; }
+.segmented { display: flex; gap: var(--nh-sp-2); height: 32px; padding: var(--nh-sp-2); border-radius: var(--radius-sm); background: var(--nh-fill); }
+.segment { height: 28px; padding: 0 var(--nh-sp-12); border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--nh-ink-2); font: inherit; font-size: var(--nh-fs-sm); font-weight: 500; line-height: 16px; cursor: pointer; }
 .segment[aria-pressed="true"] { background: var(--nh-card); color: var(--nh-ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
 .control:focus-visible, .face:focus-visible, .segment:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
 @media (max-width: 760px) { .search { flex-basis: 100%; width: 100%; } .search input { font-size: var(--nh-fs-input); } .spacer { display: none; } }

@@ -1,13 +1,13 @@
 /* Members (Paper: "Pilot 01 · Settings and structure"): toolbar, the people table, the code box.
    Doubled selectors: these override .card and .input of settings.module.css, whichever file loads first. */
-.headButtons { display: flex; gap: 8px; flex-shrink: 0; }
+.headButtons { display: flex; gap: var(--nh-sp-8); flex-shrink: 0; }
 .empty.empty { align-items: center; text-align: center; }
 
-.code.code { gap: 10px; }
-.codeRow { display: flex; gap: 8px; align-items: stretch; }
-.codeValue { flex: 1; display: flex; align-items: center; min-height: 40px; padding-inline: 12px; border-radius: 8px; background: var(--nh-fill); font-family: var(--nh-mono); font-size: var(--nh-fs-xl); letter-spacing: 0.04em; word-break: break-all; user-select: all; }
+.code.code { gap: var(--nh-sp-10); }
+.codeRow { display: flex; gap: var(--nh-sp-8); align-items: stretch; }
+.codeValue { flex: 1; display: flex; align-items: center; min-height: 40px; padding-inline: var(--nh-sp-12); border-radius: 8px; background: var(--nh-fill); font-family: var(--nh-mono); font-size: var(--nh-fs-xl); letter-spacing: 0.04em; word-break: break-all; user-select: all; }
 
-.toolbar { display: flex; gap: 8px; }
+.toolbar { display: flex; gap: var(--nh-sp-8); }
 .toolbar > input { flex: 1; }
 .filter.filter { width: auto; min-width: 140px; }
 
@@ -15,13 +15,13 @@
 .list { list-style: none; margin: 0; padding: 0; }
 .row {
   display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1.2fr) 40px;
-  gap: 12px; align-items: center; padding: 14px 20px; border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm);
+  gap: var(--nh-sp-12); align-items: center; padding: var(--nh-sp-14) var(--nh-sp-20); border-top: 1px solid var(--nh-line-soft); font-size: var(--nh-fs-sm);
 }
 .list .row:first-child { border-top: 1px solid var(--nh-line-soft); }
-.th { padding-block: 16px 12px; border-top: 0; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
+.th { padding-block: var(--nh-sp-16) var(--nh-sp-12); border-top: 0; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute); }
 .row[data-inactive] { color: var(--nh-mute-2); }
-.who { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.whoText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.who { display: flex; align-items: center; gap: var(--nh-sp-12); min-width: 0; }
+.whoText { display: flex; flex-direction: column; gap: var(--nh-sp-2); min-width: 0; }
 .whoText strong { font-size: var(--nh-fs-md); font-weight: 600; }
 .row[data-inactive] [data-person-face] { opacity: 0.5; }
 .sub { color: var(--nh-mute); overflow-wrap: anywhere; }
@@ -29,7 +29,7 @@
 .roleText { text-transform: capitalize; color: var(--nh-mute); }
 .roleSelect.roleSelect { height: 32px; text-transform: capitalize; }
 .seatLink { padding: 0; border: 0; background: none; font: inherit; text-align: left; color: var(--nh-ink); text-decoration: underline; text-decoration-color: var(--nh-ghost); text-underline-offset: 3px; cursor: pointer; }
-.noMatch { margin: 0; padding: 24px; text-align: center; font-size: var(--nh-fs-md); color: var(--nh-mute); }
+.noMatch { margin: 0; padding: var(--nh-sp-24); text-align: center; font-size: var(--nh-fs-md); color: var(--nh-mute); }
 
 @media (max-width: 760px) {
   .headButtons { width: 100%; }
@@ -38,8 +38,8 @@
   .toolbar > input { flex-basis: 100%; }
   .filter { flex: 1; }
   .th { display: none; }
-  .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 14px 16px; row-gap: 10px; position: relative; }
-  .who { grid-column: 1 / -1; padding-right: 40px; }
+  .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: var(--nh-sp-14) var(--nh-sp-16); row-gap: var(--nh-sp-10); position: relative; }
+  .who { grid-column: 1 / -1; padding-right: var(--nh-sp-40); }
   .row > details { position: absolute; top: 12px; right: 10px; }
-  .cell::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute-2); }
+  .cell::before { content: attr(data-label); display: block; margin-bottom: var(--nh-sp-2); font-size: var(--nh-fs-xs); font-weight: 600; color: var(--nh-mute-2); }
 }

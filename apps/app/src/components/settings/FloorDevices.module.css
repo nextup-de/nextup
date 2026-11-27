@@ -1,7 +1,7 @@
 /* /settings/areas/devices: row buttons, the person cell and the drawer form. Cards, table and buttons come from the shared elements. */
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.person { display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-weight: 600; }
-.form { display: flex; flex-direction: column; gap: 18px; }
-.areas { display: flex; flex-direction: column; gap: 10px; border: 0; padding: 0; margin: 0; min-width: 0; }
-.areas legend { padding: 0; margin-bottom: 4px; }
-.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.buttons { display: flex; gap: var(--nh-sp-8); flex-wrap: wrap; align-items: center; }
+.person { display: inline-flex; align-items: center; gap: var(--nh-sp-10); min-width: 0; font-weight: 600; }
+.form { display: flex; flex-direction: column; gap: var(--nh-sp-18); }
+.areas { display: flex; flex-direction: column; gap: var(--nh-sp-10); border: 0; padding: 0; margin: 0; min-width: 0; }
+.areas legend { padding: 0; margin-bottom: var(--nh-sp-4); }
+.check { display: flex; align-items: center; gap: var(--nh-sp-8); font-size: var(--nh-fs-md); color: var(--nh-ink); }

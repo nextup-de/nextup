@@ -4,7 +4,7 @@
 .hint { max-width: calc(var(--nh-space) * 60); margin: 0; color: var(--nh-mute); font-size: var(--nh-fs-sm); }
 .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--nh-space); }
 .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--nh-gap); width: 100%; max-width: calc(var(--nh-space) * 90); margin: var(--nh-gap) 0 0; padding: 0; list-style: none; text-align: left; }
-.step { display: flex; flex-direction: column; gap: 2px; padding: var(--nh-gap); border: 1px solid var(--nh-line-soft); border-radius: var(--nh-r-lg); background: var(--nh-ground); font-size: var(--nh-fs-sm); }
+.step { display: flex; flex-direction: column; gap: var(--nh-sp-2); padding: var(--nh-gap); border: 1px solid var(--nh-line-soft); border-radius: var(--nh-r-lg); background: var(--nh-ground); font-size: var(--nh-fs-sm); }
 .stepNo { color: var(--nh-brand-ink); font-weight: 600; }
 .stepTitle { font-weight: 600; }
 .stepHint { color: var(--nh-mute); font-size: var(--nh-fs-xs); }
@@ -20,7 +20,7 @@
 .field { display: flex; flex-direction: column; gap: var(--nh-space); font-size: var(--nh-fs-sm); font-weight: 600; }
 .error { margin: 0; color: var(--nh-danger); font-size: var(--nh-fs-sm); }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nh-space); color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.list { display: flex; flex-direction: column; gap: var(--nh-sp-2); margin: 0; padding: 0; list-style: none; }
 .pick { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-gap); width: 100%; padding: var(--nh-gap); border: 1px solid transparent; border-radius: var(--nh-r-sm); background: transparent; color: var(--nh-ink); font: inherit; font-size: var(--nh-fs-sm); text-align: left; cursor: pointer; }
 .pick:hover { background: var(--nh-fill); }
 .pick[aria-pressed="true"] { border-color: var(--nh-brand); background: var(--nh-brand-tint); }

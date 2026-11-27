@@ -1,15 +1,15 @@
 /* API tokens: the token table cells and the create drawer. Cards, buttons and fields come from settings.module.css. */
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.form { display: flex; flex-direction: column; gap: 18px; }
-.fieldset { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
-.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); }
-.name { display: flex; flex-direction: column; gap: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--nh-sp-8); }
+.form { display: flex; flex-direction: column; gap: var(--nh-sp-18); }
+.fieldset { display: flex; flex-direction: column; gap: var(--nh-sp-8); margin: 0; padding: 0; border: 0; min-width: 0; }
+.check { display: flex; align-items: center; gap: var(--nh-sp-8); font-size: var(--nh-fs-md); }
+.name { display: flex; flex-direction: column; gap: var(--nh-sp-2); }
 .meta { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
-.person { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-xs); line-height: 18px; overflow-wrap: anywhere; }
+.person { display: inline-flex; align-items: center; gap: var(--nh-sp-6); vertical-align: middle; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--nh-sp-6); }
+.chip { padding: var(--nh-sp-2) var(--nh-sp-8); border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-xs); line-height: 18px; overflow-wrap: anywhere; }
 .facts { margin: 0; }
-.state { display: block; width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 6px; font-size: var(--nh-fs-xs); font-weight: 600; }
+.state { display: block; width: fit-content; margin-top: var(--nh-sp-4); padding: var(--nh-sp-2) var(--nh-sp-8); border-radius: 6px; font-size: var(--nh-fs-xs); font-weight: 600; }
 .state[data-state="revoked"] { background: #fff0f0; color: var(--nh-danger); }
 .state[data-state="expired"] { background: #fff4e5; color: #b25000; }
 @media (max-width: 760px) {

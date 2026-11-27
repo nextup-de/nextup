@@ -1,23 +1,23 @@
 /* The upload menu, the drop zone and the progress rows of the Files page (plan FIL-B1, frames 5.2, 3.3 and 3.4). */
-.scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: flex-end; padding: 96px 24px 24px; background: rgb(0 0 0 / 8%); }
-.menu { display: flex; flex-direction: column; min-width: 240px; max-width: 100%; padding: 6px; border: 1px solid var(--nh-line); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-sm); }
-.head { padding: 8px 12px 4px; color: var(--nh-mute); font-size: var(--nh-fs-xs); }
-.menu button { border: 0; border-radius: var(--radius-sm); padding: 9px 12px; background: transparent; color: var(--nh-ink); font: inherit; text-align: left; cursor: pointer; }
+.scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: flex-end; padding: var(--nh-sp-96) var(--nh-sp-24) var(--nh-sp-24); background: rgb(0 0 0 / 8%); }
+.menu { display: flex; flex-direction: column; min-width: 240px; max-width: 100%; padding: var(--nh-sp-6); border: 1px solid var(--nh-line); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); font-size: var(--nh-fs-sm); }
+.head { padding: var(--nh-sp-8) var(--nh-sp-12) var(--nh-sp-4); color: var(--nh-mute); font-size: var(--nh-fs-xs); }
+.menu button { border: 0; border-radius: var(--radius-sm); padding: var(--nh-sp-10) var(--nh-sp-12); background: transparent; color: var(--nh-ink); font: inherit; text-align: left; cursor: pointer; }
 .menu button:hover:not(:disabled), .menu button:focus-visible { background: var(--nh-brand-tint); color: var(--nh-brand-ink); outline: none; }
 .menu button:disabled { color: var(--nh-mute); cursor: default; }
-.hint { margin: 4px 12px 8px; color: var(--nh-mute); font-size: var(--nh-fs-xs); line-height: 1.5; }
+.hint { margin: var(--nh-sp-4) var(--nh-sp-12) var(--nh-sp-8); color: var(--nh-mute); font-size: var(--nh-fs-xs); line-height: 1.5; }
 .hint a { color: var(--nh-brand-ink); }
-.drop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: color-mix(in srgb, var(--nh-brand) 12%, transparent); outline: 2px dashed var(--nh-brand); outline-offset: -12px; pointer-events: none; }
-.dropCard { display: flex; flex-direction: column; gap: 4px; padding: 20px 28px; border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); text-align: center; }
+.drop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: var(--nh-sp-24); background: color-mix(in srgb, var(--nh-brand) 12%, transparent); outline: 2px dashed var(--nh-brand); outline-offset: -12px; pointer-events: none; }
+.dropCard { display: flex; flex-direction: column; gap: var(--nh-sp-4); padding: var(--nh-sp-20) var(--nh-sp-28); border-radius: var(--radius-md); background: var(--nh-card); box-shadow: var(--nh-card-shadow); text-align: center; }
 .dropCard strong { color: var(--nh-brand-ink); font-size: var(--nh-fs-md); }
 .dropCard span { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
 .rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 1px; border-radius: var(--radius-sm); overflow: hidden; background: var(--nh-line-soft); }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--nh-brand-tint); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-sp-12); padding: var(--nh-sp-10) var(--nh-sp-12); background: var(--nh-brand-tint); }
 .row[data-state="failed"] { background: var(--nh-danger-tint); }
-.rowText { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.rowText { display: flex; flex-direction: column; gap: var(--nh-sp-4); min-width: 0; flex: 1; }
 .name { color: var(--nh-ink); font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
 .line { color: var(--nh-mute); font-size: var(--nh-fs-xs); }
 .row[data-state="failed"] .line { color: var(--nh-danger); }
 .bar { width: 100%; height: 4px; accent-color: var(--nh-brand); }
-.cancel { border: 0; background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); cursor: pointer; padding: 4px 8px; }
+.cancel { border: 0; background: transparent; color: var(--nh-brand-ink); font: inherit; font-size: var(--nh-fs-sm); cursor: pointer; padding: var(--nh-sp-4) var(--nh-sp-8); }
 .rows :focus-visible, .drop :focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }

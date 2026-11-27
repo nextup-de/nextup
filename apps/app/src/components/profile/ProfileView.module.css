@@ -1,43 +1,43 @@
 /* The profile in the house look: a header, then white section cards with the iOS greys of the settings pages. */
-.page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: var(--nh-max); margin: 0 auto; padding-bottom: 32px; min-width: 0; }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-16); width: 100%; max-width: var(--nh-max); margin: 0 auto; padding-bottom: var(--nh-sp-32); min-width: 0; }
 
-.identity { display: flex; align-items: center; gap: 18px; }
+.identity { display: flex; align-items: center; gap: var(--nh-sp-18); }
 .heroFace > span { width: 64px; height: 64px; font-size: var(--nh-fs-xl); }
-.identityText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.identityText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: var(--nh-sp-4); }
 .identity h2 { margin: 0; font-size: var(--nh-fs-xl); line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--nh-ink); overflow-wrap: anywhere; }
-.identity p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--nh-ink); font-size: var(--nh-fs-md); }
+.identity p { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--nh-sp-6); color: var(--nh-ink); font-size: var(--nh-fs-md); }
 .affiliation { color: var(--nh-mute); font-size: var(--nh-fs-sm); overflow-wrap: anywhere; }
 a.affiliation { text-decoration: none; }
 a.affiliation:hover { color: var(--nh-brand-ink); }
 .affiliation:empty { display: none; }
 
 
-.columns { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 16px; }
-.mainColumn, .sideColumn { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.columns { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: var(--nh-sp-16); }
+.mainColumn, .sideColumn { display: flex; flex-direction: column; gap: var(--nh-sp-16); min-width: 0; }
 /* Nothing of the person's own to show (no work, no absence): no empty half; the settings and people take the width. */
 .mainColumn:empty { display: none; }
 .columns:has(> .mainColumn:empty) { grid-template-columns: minmax(0, 1fr); }
 
 .workList { display: flex; flex-direction: column; }
-.workItem { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 12px; margin-inline: -12px; border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }
+.workItem { display: flex; align-items: center; gap: var(--nh-sp-12); min-height: 60px; padding: var(--nh-sp-8) var(--nh-sp-12); margin-inline: calc(-1 * var(--nh-sp-12)); border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }
 .workItem:first-child { border-top: 0; }
 .workItem:hover, .person:hover { background: var(--nh-surface); }
 .workItem:focus-visible, .person:focus-visible, .workIcon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--nh-fill); color: var(--nh-mute); font-size: var(--nh-fs-md); }
 .workText { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .workText strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
 .workText small, .person small { color: var(--nh-mute); font-size: var(--nh-fs-sm); }
-.status { padding: 2px 8px; border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); font-weight: 500; white-space: nowrap; }
+.status { padding: var(--nh-sp-2) var(--nh-sp-8); border-radius: 6px; background: var(--nh-fill); color: var(--nh-ink-2); font-size: var(--nh-fs-sm); font-weight: 500; white-space: nowrap; }
 .arrow { color: var(--nh-ghost); }
 
 .people { display: flex; flex-direction: column; }
-.person { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; margin-inline: -12px; border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }
+.person { display: flex; align-items: center; gap: var(--nh-sp-10); min-height: 52px; padding: var(--nh-sp-8) var(--nh-sp-12); margin-inline: calc(-1 * var(--nh-sp-12)); border-top: 1px solid var(--nh-line-soft); border-radius: 8px; color: inherit; text-decoration: none; }
 .person:first-child { border-top: 0; }
 .person > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .person strong { font-size: var(--nh-fs-md); font-weight: 600; color: var(--nh-ink); }
 
 /* The language: a segmented control, the chosen language white on grey. */
-.languages { display: inline-flex; align-self: flex-start; padding: 2px; border-radius: 8px; background: var(--nh-fill); }
-.segment { height: 32px; padding-inline: 14px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; }
+.languages { display: inline-flex; align-self: flex-start; padding: var(--nh-sp-2); border-radius: 8px; background: var(--nh-fill); }
+.segment { height: 32px; padding-inline: var(--nh-sp-14); border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); cursor: pointer; }
 .segment[aria-checked="true"] { background: #fff; color: var(--nh-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
 .segment:disabled { cursor: default; }
 .segment:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }

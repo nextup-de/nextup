@@ -1,12 +1,12 @@
 /* Settings -> Areas: the area cell, the status text and the drawer form. The page, cards and buttons are settings.module.css. */
-.buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.area { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.areaText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.buttons { display: flex; gap: var(--nh-sp-8); flex-wrap: wrap; align-items: center; }
+.area { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-sp-10); flex-wrap: wrap; }
+.areaText { display: flex; flex-direction: column; gap: var(--nh-sp-2); min-width: 0; }
 .key { font-family: var(--nh-mono), ui-monospace, monospace; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .status { font-size: var(--nh-fs-sm); font-weight: 600; color: #8a5d00; }
 .status[data-on] { color: var(--nh-ok); }
-.form { display: flex; flex-direction: column; gap: 18px; }
-.check { display: flex; align-items: center; gap: 8px; font-size: var(--nh-fs-md); color: var(--nh-ink); }
+.form { display: flex; flex-direction: column; gap: var(--nh-sp-18); }
+.check { display: flex; align-items: center; gap: var(--nh-sp-8); font-size: var(--nh-fs-md); color: var(--nh-ink); }
 @media (max-width: 760px) {
   .buttons { width: 100%; }
   .buttons > * { flex: 1; }

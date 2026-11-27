@@ -1,10 +1,10 @@
 /* The approver line on the idea page (decisions A to D, 16 Nov 2026): one quiet grey block, one row per approver, the count, and a returned idea's reason. */
-.line { display: grid; gap: 8px; margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); }
-.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; min-width: 0; }
+.line { display: grid; gap: var(--nh-sp-8); margin: 0; padding: var(--nh-sp-12) var(--nh-sp-14); border-radius: 8px; background: var(--nh-surface); font-size: var(--nh-fs-md); }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--nh-sp-4) var(--nh-sp-12); min-width: 0; }
 .title { font-size: var(--nh-fs-sm); font-weight: 600; color: var(--nh-mute); }
 .count { font-size: var(--nh-fs-sm); color: var(--nh-mute); overflow-wrap: anywhere; }
-.people { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.person { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-width: 0; color: var(--nh-ink); }
+.people { display: grid; gap: var(--nh-sp-4); margin: 0; padding: 0; list-style: none; }
+.person { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--nh-sp-4) var(--nh-sp-12); min-width: 0; color: var(--nh-ink); }
 .name { overflow-wrap: anywhere; }
 .state { font-size: var(--nh-fs-sm); color: var(--nh-mute); }
 .state[data-answer="approved"] { color: var(--nh-ok); }

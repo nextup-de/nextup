@@ -1,58 +1,58 @@
 /* The layouts the skeletons echo. Dimensions follow the real views (the tiles, the cards of rows, the lines that
    open, the raise box) closely enough that the page does not jump when the content lands. */
-.page { display: flex; flex-direction: column; gap: 14px; min-height: 40vh; }
+.page { display: flex; flex-direction: column; gap: var(--nh-sp-14); min-height: 40vh; }
 /* Delayed: hidden for 400ms, then fades in (fast loads never flash). Reduced motion keeps the delay, drops the fade. */
 .page[data-delay="true"], .raise[data-delay="true"] { animation: appear 0.25s ease 0.4s both; }
 @keyframes appear { from { opacity: 0; visibility: hidden; } to { opacity: 1; visibility: visible; } }
 @media (prefers-reduced-motion: reduce) { .page[data-delay="true"], .raise[data-delay="true"] { animation-duration: 0s; } }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.headText { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.headText { display: flex; flex-direction: column; gap: var(--nh-sp-10); min-width: 0; }
 
 /* The Dashboard's tiles: a label and a number each. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.tile { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; background: var(--nh-card); border-radius: var(--nh-r-lg); box-shadow: var(--nh-card-shadow); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--nh-sp-12); }
+.tile { display: flex; flex-direction: column; gap: var(--nh-sp-14); padding: var(--nh-sp-16) var(--nh-sp-18); background: var(--nh-card); border-radius: var(--nh-r-lg); box-shadow: var(--nh-card-shadow); }
 
-.card { background: var(--nh-card); border-radius: var(--nh-r-lg); padding: 20px 20px 18px; min-width: 0; box-shadow: var(--nh-card-shadow); }
-.cardTitle { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 6px; }
+.card { background: var(--nh-card); border-radius: var(--nh-r-lg); padding: var(--nh-sp-20) var(--nh-sp-20) var(--nh-sp-18); min-width: 0; box-shadow: var(--nh-card-shadow); }
+.cardTitle { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-sp-14); margin-bottom: var(--nh-sp-6); }
 
-.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--nh-sp-14); align-items: start; }
 .wide { grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); }
 
-.row { display: flex; gap: 13px; align-items: center; padding: 13px 0 12px; border-top: 1px solid var(--nh-line-soft); }
+.row { display: flex; gap: var(--nh-sp-14); align-items: center; padding: var(--nh-sp-14) 0 var(--nh-sp-12); border-top: 1px solid var(--nh-line-soft); }
 .row:first-of-type { border-top: 0; }
-.rowBody { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.rowBody { flex: 1; display: flex; flex-direction: column; gap: var(--nh-sp-8); min-width: 0; }
 
 
 .list { display: flex; flex-direction: column; background: var(--nh-card); border-radius: var(--nh-r-lg); overflow: hidden; box-shadow: var(--nh-card-shadow); }
-.list .row { padding: 14px 18px 13px; }
+.list .row { padding: var(--nh-sp-14) var(--nh-sp-18) var(--nh-sp-14); }
 
 /* A line that opens: its name and, on some, one fact at the right. */
-.line { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; border-top: 1px solid var(--nh-line-soft); }
+.line { display: flex; align-items: center; justify-content: space-between; gap: var(--nh-sp-14); min-height: 44px; border-top: 1px solid var(--nh-line-soft); }
 .line:first-child { border-top: 0; }
-.fields + .line { margin-top: 16px; }
-.who { display: flex; align-items: center; gap: 10px; }
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fields + .line { margin-top: var(--nh-sp-16); }
+.who { display: flex; align-items: center; gap: var(--nh-sp-10); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--nh-sp-8); }
 
-.fields { display: flex; flex-direction: column; gap: 16px; }
-.field { display: flex; flex-direction: column; gap: 7px; }
+.fields { display: flex; flex-direction: column; gap: var(--nh-sp-16); }
+.field { display: flex; flex-direction: column; gap: var(--nh-sp-8); }
 
 /* The raise page (RaiseView.module.css): the greeting, the box, the "How it works" card - and on a landscape
    screen the same 1fr / auto / 1fr grid, so the box sits in the middle where the real one lands. */
-.raise { width: 100%; max-width: 1040px; margin: 0 auto; min-height: 40vh; display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 24px; }
+.raise { width: 100%; max-width: 1040px; margin: 0 auto; min-height: 40vh; display: flex; flex-direction: column; align-items: center; gap: var(--nh-sp-20); padding-top: var(--nh-sp-24); }
 .raiseTitle { max-width: 100%; }
-.raiseBox { width: 100%; display: flex; flex-direction: column; gap: 14px; background: var(--nh-card); border-radius: var(--radius-md, 28px); padding: 20px 24px 18px; box-shadow: 0 26px 56px -20px rgb(25 50 70 / 0.22), 0 6px 14px rgb(25 50 70 / 0.06); }
-.raiseLine { display: flex; align-items: center; gap: 12px; min-height: 30px; }
-.raiseFoot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.chips { display: flex; gap: 7px; flex-wrap: wrap; }
+.raiseBox { width: 100%; display: flex; flex-direction: column; gap: var(--nh-sp-14); background: var(--nh-card); border-radius: var(--radius-md, 28px); padding: var(--nh-sp-20) var(--nh-sp-24) var(--nh-sp-18); box-shadow: 0 26px 56px -20px rgb(25 50 70 / 0.22), 0 6px 14px rgb(25 50 70 / 0.06); }
+.raiseLine { display: flex; align-items: center; gap: var(--nh-sp-12); min-height: 30px; }
+.raiseFoot { display: flex; justify-content: space-between; align-items: center; gap: var(--nh-sp-12); }
+.chips { display: flex; gap: var(--nh-sp-8); flex-wrap: wrap; }
 
 @media (min-width: 761px) and (orientation: landscape) {
-  .raise { display: grid; grid-template-rows: 1fr auto 1fr; justify-items: center; height: calc(var(--nh-screen-h) - 120px); padding-top: 0; padding-bottom: 40px; }
+  .raise { display: grid; grid-template-rows: 1fr auto 1fr; justify-items: center; height: calc(var(--nh-screen-h) - 120px); padding-top: 0; padding-bottom: var(--nh-sp-40); }
   .raiseTitle { align-self: end; }
 }
 @media (max-width: 760px) {
-  .raise { padding-top: 4px; gap: 14px; }
-  .raiseBox { padding: 14px 14px 12px; border-radius: var(--radius-md, 24px); }
+  .raise { padding-top: var(--nh-sp-4); gap: var(--nh-sp-14); }
+  .raiseBox { padding: var(--nh-sp-14) var(--nh-sp-14) var(--nh-sp-12); border-radius: var(--radius-md, 24px); }
 }
 
 @media (max-width: 760px) {

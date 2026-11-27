@@ -1,7 +1,7 @@
 /* stylelint-disable scale-unlimited/declaration-strict-value -- a printed poster is sized in pt and mm (FLR D13), not on the screen type scale */
-.toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; font-size: var(--nh-fs-sm); color: var(--nh-mute); }
-.group { display: inline-flex; align-items: center; gap: 6px; }
-.choice { display: inline-flex; align-items: center; height: 32px; padding-inline: 12px; border-radius: 8px; background: var(--nh-fill); color: var(--nh-ink); font-weight: 600; text-decoration: none; }
+.toolbar { display: flex; gap: var(--nh-sp-16); align-items: center; flex-wrap: wrap; margin-bottom: var(--nh-sp-16); font-size: var(--nh-fs-sm); color: var(--nh-mute); }
+.group { display: inline-flex; align-items: center; gap: var(--nh-sp-6); }
+.choice { display: inline-flex; align-items: center; height: 32px; padding-inline: var(--nh-sp-12); border-radius: 8px; background: var(--nh-fill); color: var(--nh-ink); font-weight: 600; text-decoration: none; }
 .choice:hover { background: var(--nh-line); }
 .choice[aria-current="true"] { background: var(--nh-brand); color: var(--nh-on-brand); }
 .choice:focus-visible { outline: 2px solid var(--nh-brand); outline-offset: 2px; }
